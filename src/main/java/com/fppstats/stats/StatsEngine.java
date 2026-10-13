@@ -98,13 +98,15 @@ public final class StatsEngine {
      */
     static String teamKey(TeamRef t, int clubTeamsInCompetition, String clubCode) {
         String code = t.code().trim().replaceAll("\\s+", " ");
+        // El código del club varía entre torneos (Huracán: "HUR" en el Apertura, "HURA" en el Clausura):
+        // se usa siempre el código canónico del club y solo se toma la letra del equipo.
         if (code.matches(".*\\s[A-D]$")) {
-            return code;
+            return clubCode + " " + code.charAt(code.length() - 1);
         }
         if (code.length() == clubCode.length() + 1 && code.startsWith(clubCode) && code.matches(".*[A-D]$")) {
             return clubCode + " " + code.charAt(code.length() - 1);
         }
-        return clubTeamsInCompetition > 1 ? code + " A" : code;
+        return clubTeamsInCompetition > 1 ? clubCode + " A" : clubCode;
     }
 
     private static TeamReport team(String key, List<Entry> entries, LocalDate today, int lastMatches) {

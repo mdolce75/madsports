@@ -279,6 +279,10 @@ public class StatsEngineTest {
         // SIDGAD a veces omite el espacio: "GEBAB" es el GEBA B.
         assertThat(StatsEngine.teamKey(ref("GEBAB"), 2, "GEBA")).isEqualTo("GEBA B");
         assertThat(StatsEngine.teamKey(ref("GEBA  B"), 2, "GEBA")).isEqualTo("GEBA B");
+        // El código cambia entre torneos (Huracán: "HUR" en el Apertura 2026, "HURA" en el Clausura).
+        assertThat(StatsEngine.teamKey(ref("HUR"), 1, "HURA")).isEqualTo("HURA");
+        assertThat(StatsEngine.teamKey(ref("HURA"), 1, "HURA")).isEqualTo("HURA");
+        assertThat(StatsEngine.teamKey(ref("HUR B"), 2, "HURA")).isEqualTo("HURA B");
     }
 
     @Test
