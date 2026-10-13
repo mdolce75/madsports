@@ -115,6 +115,10 @@
             catalog = await res.json();
             const sel = $("club");
             sel.innerHTML = "";
+            if (catalog.clubs.length === 0) {
+                sel.add(new Option("Sin datos publicados por la FPP por el momento"));
+                return;
+            }
             catalog.clubs.forEach(c => sel.add(new Option(`${c.name} (${c.code})`, c.id)));
             sel.disabled = false;
             fillCategories();

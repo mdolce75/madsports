@@ -267,6 +267,11 @@
     <li th:each="s : ${d.sources}"><span th:text="${s.competition}"></span> — <span class="muted" th:text="${s.url}"></span></li>
 </ul>
 <p class="muted" th:text="|Contexto de liga: ${d.league.teams} equipos, ${d.league.matchesPlayed} partidos jugados en las competiciones incluidas.|"></p>
+<div th:if="${!d.notPublished.isEmpty()}">
+    <p class="muted">Datos que el sitio de la FPP no tenía publicados al generar el informe (las secciones
+        correspondientes quedan vacías o parciales):</p>
+    <ul class="muted"><li th:each="n : ${d.notPublished}" th:text="${n}"></li></ul>
+</div>
 
 </body>
 </html>

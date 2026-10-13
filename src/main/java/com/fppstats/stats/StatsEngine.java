@@ -79,7 +79,7 @@ public final class StatsEngine {
         List<Source> sources = data.stream()
                 .map(cd -> new Source(cd.competition().name(), cd.competition().url())).toList();
         return new ReportData(new ReportData.ClubInfo(club.id(), club.code(), club.name()),
-                categoryLabel, torneoLabel, today, lastMatches, sources, teams, league(data));
+                categoryLabel, torneoLabel, today, lastMatches, sources, teams, league(data), List.of());
     }
 
     /** Partidos jugados del equipo en todas sus competiciones, en orden cronológico; los últimos N si N > 0. */

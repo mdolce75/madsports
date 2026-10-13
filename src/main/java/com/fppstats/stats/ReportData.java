@@ -8,7 +8,13 @@ import java.util.List;
  * las lee (vía herramientas) y escribe el análisis, nunca produce números propios.
  */
 public record ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn,
-                         int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league) {
+                         int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league,
+                         List<String> notPublished) {
+
+    /** Copia con la lista de datos que el sitio no publicó (respuestas 404 de SIDGAD). */
+    public ReportData withNotPublished(List<String> items) {
+        return new ReportData(club, category, torneo, generatedOn, lastMatches, sources, teams, league, List.copyOf(items));
+    }
 
     /** True si el informe se limita a los últimos N partidos (jugadores y pelota parada siguen siendo del torneo). */
     public boolean partial() {

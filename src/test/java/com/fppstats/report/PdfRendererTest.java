@@ -34,6 +34,10 @@ class PdfRendererTest {
         assertThat(html).contains("VELEZ (CAVS)", "VELEZ A (CAVS A)", "VELEZ B (CAVS B)",
                 "Goleadores y asistidores", "Pelota parada", "Cara a cara", "Análisis: Reglas");
 
+        assertThat(html).doesNotContain("no tenía publicados");
+        assertThat(renderer.html(data.withNotPublished(List.of("Actas de partido: 9 de 9")), analysis))
+                .contains("no tenía publicados", "Actas de partido: 9 de 9");
+
         byte[] pdf = renderer.pdf(data, analysis);
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
         // Copia para revisar a ojo: target/informe-ejemplo.pdf

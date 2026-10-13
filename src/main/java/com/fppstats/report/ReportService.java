@@ -168,15 +168,19 @@ public class ReportService {
         Scope scope = job.request().scope();
         List<Competition> comps = catalog.competitionsFor(club.id(), category, scope.torneo());
         List<CompetitionData> data = new ArrayList<>();
+        List<String> notPublished = new ArrayList<>();
         Map<Competition, List<Match>> clubMatches = new LinkedHashMap<>();
         for (Competition c : comps) {
             job.update(Status.EXTRAYENDO, "Leyendo " + c.name());
-            String standings = sidgad.standings(c.id());
-            List<Match> matches = SidgadParser.calendar(sidgad.calendar(c.id()));
+            String torneo = c.torneoLabel();
+            String standings = published(sidgad.standings(c.id()), "Tabla de posiciones (" + torneo + ")", notPublished);
+            String calendar = published(sidgad.calendar(c.id()), "Calendario y resultados (" + torneo + ")", notPublished);
+            String players = published(sidgad.playerStats(c.id()), "Estadísticas por jugador (" + torneo + ")", notPublished);
+            List<Match> matches = SidgadParser.calendar(calendar);
             clubMatches.put(c, sheetsToRead(c, matches, club.id(), scope.lastMatches()));
             data.add(new CompetitionData(c,
                     SidgadParser.standings(standings), SidgadParser.reportDate(standings), matches,
-                    SidgadParser.playerStats(sidgad.playerStats(c.id())), new HashMap<>()));
+                    SidgadParser.playerStats(players), new HashMap<>()));
         }
         // Actas: una por partido jugado del club (minuto de goles y tarjetas).
         int total = clubMatches.values().stream().mapToInt(List::size).sum();
@@ -187,11 +191,25 @@ public class ReportService {
                 cd.sheets().put(m.idp(), SidgadParser.gameEvents(sidgad.gameSheet(cd.competition().id(), m.idp())));
             }
         }
+        // Las actas faltantes ya se informan en el PDF ("N actas de M partidos"); acá solo se resume.
+        long missingSheets = data.stream().flatMap(cd -> cd.sheets().values().stream()).filter(List::isEmpty).count();
+        if (missingSheets > 0) {
+            notPublished.add("Actas de partido: " + missingSheets + " de " + total);
+        }
         String torneos = comps.stream().map(Competition::torneoLabel).distinct().collect(Collectors.joining(" + "));
         String label = scope == Scope.ULTIMOS_5
                 ? "Últimos 5 partidos (" + torneos + ")"
                 : "Temporada " + LocalDate.now(clock).getYear() + " · " + torneos;
-        return StatsEngine.build(club, category.label(), label, data, LocalDate.now(clock), scope.lastMatches());
+        return StatsEngine.build(club, category.label(), label, data, LocalDate.now(clock), scope.lastMatches())
+                .withNotPublished(notPublished);
+    }
+
+    /** Si SIDGAD no publicó el fragmento (404), se anota para el PDF y se sigue con contenido vacío. */
+    private static String published(String body, String what, List<String> notPublished) {
+        if (SidgadClient.NOT_PUBLISHED.equals(body)) {
+            notPublished.add(what);
+        }
+        return body;
     }
 
     /**

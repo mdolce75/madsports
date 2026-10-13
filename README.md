@@ -51,8 +51,14 @@ disciplina, cara a cara con cada rival, y **goles a favor/en contra y tarjetas p
 (amarilla, azul y roja por separado) por tramos de 5 minutos**, según las actas.
 
 La duración de los períodos sale de `tpo_reg` en el catálogo (20' de Infantil a Juvenil, 25' de Juniors a
-Primera). SIDGAD no publica actas para algunas competiciones (p. ej. Clausura femenino Infantil a Juvenil):
-el informe indica cuántas actas se usaron sobre el total de partidos jugados.
+Primera). SIDGAD no publica el acta de todos los partidos: el informe indica cuántas actas se usaron sobre el
+total de partidos jugados.
+
+### Datos no publicados (404)
+
+Si un fragmento de SIDGAD responde **404** (tabla, calendario, estadísticas o acta no publicados), el informe
+**se genera igual** con lo disponible, sin error en la web, y el PDF lista al final qué datos faltaban. Un 404 no
+se cachea (se reintenta en el próximo informe). Cualquier otro error (5xx, timeout) sí corta el informe.
 
 ## Correr
 
