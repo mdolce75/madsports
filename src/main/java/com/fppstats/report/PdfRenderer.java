@@ -27,16 +27,26 @@ public class PdfRenderer {
     }
 
     public String html(ReportData data, AnalysisResult analysis) {
+        return html(data, analysis, false);
+    }
+
+    /** @param sample informe modelo: cada página lleva la marca "datos ficticios" */
+    public String html(ReportData data, AnalysisResult analysis, boolean sample) {
         Context ctx = new Context(Locale.forLanguageTag("es-AR"));
         ctx.setVariable("d", data);
         ctx.setVariable("a", analysis);
         ctx.setVariable("f", new Format());
+        ctx.setVariable("sample", sample);
         return templates.process("report", ctx);
     }
 
     public byte[] pdf(ReportData data, AnalysisResult analysis) {
+        return pdf(data, analysis, false);
+    }
+
+    public byte[] pdf(ReportData data, AnalysisResult analysis, boolean sample) {
         // openhtmltopdf exige XML bien formado: jsoup normaliza el HTML5 de Thymeleaf a un DOM W3C.
-        org.w3c.dom.Document dom = new W3CDom().fromJsoup(Jsoup.parse(html(data, analysis)));
+        org.w3c.dom.Document dom = new W3CDom().fromJsoup(Jsoup.parse(html(data, analysis, sample)));
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             new PdfRendererBuilder()
                     .useFastMode()

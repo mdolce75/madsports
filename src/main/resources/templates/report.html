@@ -49,8 +49,19 @@
         .team { page-break-before: always; }
         .nobreak { page-break-inside: avoid; }
     </style>
+    <style th:if="${sample}">
+        @page {
+            @top-center { content: "INFORME DE EJEMPLO — DATOS FICTICIOS"; font-size: 9pt; font-weight: bold; color: #c53030; font-family: sans-serif; }
+        }
+        .sample-banner { border: 2px solid #c53030; color: #c53030; padding: 6px 10px; margin-bottom: 10px; font-size: 9pt; }
+    </style>
 </head>
 <body>
+
+<div class="sample-banner" th:if="${sample}">
+    <b>Informe de ejemplo.</b> Club, rivales, jugadores y resultados son ficticios: sirven solo para mostrar el
+    formato y las secciones de un informe de Mad Sports. Los informes reales usan los datos publicados por la FPP.
+</div>
 
 <div class="header">
     <h1 th:text="|${d.club.name} (${d.club.code})|">Club</h1>

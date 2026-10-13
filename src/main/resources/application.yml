@@ -3,6 +3,11 @@ spring:
     name: fpp-stats
   thymeleaf:
     cache: true
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true   # la web se revalida en cada visita: los cambios se ven sin limpiar cache
 
 server:
   port: ${PORT:8080}

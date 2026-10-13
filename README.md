@@ -85,6 +85,8 @@ Cada análisis con Claude deja en el log el consumo real de tokens (`Consumo de 
 ## API
 
 - `GET /api/catalogo` — clubes con sus categorías y ramas
+- `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
+  SIDGAD ni la API de Claude. Enlazado desde la web.
 - `POST /api/informes` `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA"}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`

@@ -44,10 +44,12 @@ public class ApiController {
 
     private final CatalogService catalog;
     private final ReportService reports;
+    private final SampleReport sample;
 
-    public ApiController(CatalogService catalog, ReportService reports) {
+    public ApiController(CatalogService catalog, ReportService reports, SampleReport sample) {
         this.catalog = catalog;
         this.reports = reports;
+        this.sample = sample;
     }
 
     @GetMapping("/catalogo")
@@ -66,6 +68,16 @@ public class ApiController {
     public ResponseEntity<JobView> estado(@PathVariable UUID id) {
         return reports.find(id).map(JobView::of).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /** Informe modelo con datos ficticios; se abre en el navegador (inline). */
+    @GetMapping("/ejemplo.pdf")
+    public ResponseEntity<byte[]> ejemplo() {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename("informe-ejemplo-mad-sports.pdf").build().toString())
+                .body(sample.pdf());
     }
 
     @GetMapping("/informes/{id}/pdf")
