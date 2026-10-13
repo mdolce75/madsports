@@ -175,10 +175,27 @@ public final class StatsEngine {
                 players.stream().mapToInt(PlayerLine::penaltiesTaken).sum());
         int blue = players.stream().mapToInt(PlayerLine::blueCards).sum();
         int red = players.stream().mapToInt(PlayerLine::redCards).sum();
-        Discipline discipline = new Discipline(blue, red, seasonPlayed == 0 ? 0 : (double) (blue + red) / seasonPlayed);
+        TimeProfile timeProfile = timeProfile(entries, included);
+        Discipline discipline = lastMatches > 0
+                ? disciplineFromSheets(timeProfile)
+                : new Discipline(-1, blue, red, seasonPlayed == 0 ? 0 : (double) (blue + red) / seasonPlayed,
+                        seasonPlayed, false);
 
         return new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
-                biggestWin, worstLoss, players, setPieces, discipline, rivals(results), byTorneo, timeProfile(entries, included));
+                biggestWin, worstLoss, players, setPieces, discipline, rivals(results), byTorneo, timeProfile);
+    }
+
+    /**
+     * Con "últimos N" las tarjetas se cuentan solo en esos partidos, desde sus fichas (las estadísticas por
+     * jugador de SIDGAD son del torneo completo). Partidos sin ficha no aportan tarjetas: se promedia sobre
+     * los que tienen ficha.
+     */
+    private static Discipline disciplineFromSheets(TimeProfile tp) {
+        int yellow = tp.byPeriod().stream().mapToInt(TimeBucket::yellowOwn).sum();
+        int blue = tp.byPeriod().stream().mapToInt(TimeBucket::blueOwn).sum();
+        int red = tp.byPeriod().stream().mapToInt(TimeBucket::redOwn).sum();
+        int matches = tp.matchesWithSheet();
+        return new Discipline(yellow, blue, red, matches == 0 ? 0 : (double) (blue + red) / matches, matches, true);
     }
 
     /** Goles del equipo del informe en un partido (el equipo es el de la competición a la que pertenece el partido). */

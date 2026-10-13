@@ -257,7 +257,7 @@
         </p>
     </div>
 
-    <p class="muted" th:if="${d.partial()}">Pelota parada y disciplina: acumulado del torneo completo.</p>
+    <p class="muted" th:if="${d.partial()}">Pelota parada: acumulado del torneo completo.</p>
     <table class="two nobreak">
         <tr>
             <td>
@@ -269,11 +269,19 @@
                 </table>
             </td>
             <td>
-                <h3>Disciplina</h3>
+                <h3 th:text="${t.discipline.fromSheets ? 'Disciplina (últimos ' + d.lastMatches + ' partidos)' : 'Disciplina'}">Disciplina</h3>
                 <table>
-                    <tr><th>Azules</th><th>Rojas</th><th>Tarjetas/PJ</th><th>Liga</th></tr>
-                    <tr><td th:text="${t.discipline.blueCards}"></td><td th:text="${t.discipline.redCards}"></td><td th:text="${f.dec(t.discipline.cardsPerGame)}"></td><td th:text="${f.dec(d.league.cardsPerTeamGame)}"></td></tr>
+                    <tr><th title="Amarillas"><span class="card y"></span></th><th title="Azules"><span class="card b"></span></th><th title="Rojas"><span class="card r"></span></th><th>Az+Rj / PJ</th><th>Liga</th></tr>
+                    <tr><td th:text="${t.discipline.yellowKnown() ? t.discipline.yellowCards : '–'}"></td>
+                        <td th:text="${t.discipline.blueCards}"></td><td th:text="${t.discipline.redCards}"></td>
+                        <td th:text="${f.dec(t.discipline.cardsPerGame)}"></td><td th:text="${f.dec(d.league.cardsPerTeamGame)}"></td></tr>
                 </table>
+                <p class="muted" th:if="${t.discipline.fromSheets}"
+                   th:text="${t.discipline.matches < t.timeProfile.matchesPlayed
+                        ? 'Contadas en las fichas de ' + t.discipline.matches + ' de los ' + t.timeProfile.matchesPlayed + ' partidos (las demás no están publicadas). El promedio de la liga es del torneo completo.'
+                        : 'Contadas en las fichas de esos ' + t.discipline.matches + ' partidos. El promedio de la liga es del torneo completo.'}"></p>
+                <p class="muted" th:unless="${t.discipline.fromSheets}">Las amarillas no figuran en las estadísticas del
+                    torneo; por partido, ver la tabla de tramos de 5 minutos.</p>
             </td>
         </tr>
     </table>

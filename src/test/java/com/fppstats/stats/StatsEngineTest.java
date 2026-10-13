@@ -33,10 +33,10 @@ public class StatsEngineTest {
                 .filter(c -> c.id() == idc).findFirst().orElseThrow();
         String standings = Fixtures.read("clasif_" + idc + ".html");
         List<Match> matches = SidgadParser.calendar(Fixtures.read("cal_" + idc + ".html"));
-        // Actas guardadas: los dos partidos jugados de Vélez en Primera (779). El resto, sin acta.
+        // Actas guardadas (779): los dos partidos de Vélez y Huracán 13-2 GEBA B. El resto, sin acta.
         Map<Integer, List<MatchEvent>> sheets = new HashMap<>();
         for (Match m : matches) {
-            if (m.played() && (m.idp() == 26390 || m.idp() == 26396)) {
+            if (m.played() && (m.idp() == 26390 || m.idp() == 26396 || m.idp() == 26389)) {
                 sheets.put(m.idp(), SidgadParser.gameEvents(Fixtures.read("gr_" + m.idp() + ".html")));
             }
         }
@@ -82,13 +82,39 @@ public class StatsEngineTest {
         assertThat(last5.form()).isEqualTo(full.form());
         assertThat(last5.byTorneo()).extracting(ReportData.TorneoLine::torneo).containsExactly("Clausura");
         assertThat(last5.rivals().stream().mapToInt(ReportData.RivalLine::played).sum()).isEqualTo(5);
-        // Jugadores y disciplina son del torneo completo: no cambian con el recorte.
+        // Jugadores son del torneo completo: no cambian con el recorte.
         assertThat(last5.players()).isEqualTo(full.players());
-        assertThat(last5.discipline()).isEqualTo(full.discipline());
+        // Las tarjetas sí se recortan: salen de las fichas de esos partidos (acá no hay fichas cargadas).
+        assertThat(full.discipline().fromSheets()).isFalse();
+        assertThat(last5.discipline().fromSheets()).isTrue();
+        assertThat(last5.discipline().matches()).isZero();
         // La tabla publicada se sigue comparando contra todos los partidos del calendario.
         assertThat(last5.standings()).isEqualTo(full.standings());
         // Los próximos partidos no dependen del recorte.
         assertThat(last5.upcoming()).isEqualTo(full.upcoming());
+    }
+
+    @Test
+    void conUltimosPartidosLasTarjetasSeCuentanEnLasFichasDeEsosPartidos() {
+        ClubView geba = new ClubView(76, "GEBA", "GEBA", List.of());
+        TeamReport gebaB = team(StatsEngine.build(geba, "Primera Masculino", "Últimos 5", List.of(data(779)), HOY, 5), "GEBA B");
+
+        // Ficha de Huracán 13-2 GEBA B: GEBA B recibió 1 amarilla y 4 azules (las de Huracán son del rival).
+        ReportData.Discipline d = gebaB.discipline();
+        assertThat(d.fromSheets()).isTrue();
+        assertThat(d.matches()).isEqualTo(1);
+        assertThat(d.yellowCards()).isEqualTo(1);
+        assertThat(d.blueCards()).isEqualTo(4);
+        assertThat(d.redCards()).isZero();
+        // Az + Rj por partido con ficha, comparable con el promedio de la liga.
+        assertThat(d.cardsPerGame()).isEqualTo(4.0);
+        assertThat(gebaB.timeProfile().byPeriod().stream().mapToInt(TimeBucket::yellowRival).sum()).isEqualTo(1);
+
+        // Sin recorte, la disciplina sale de las estadísticas del torneo (sin amarillas).
+        ReportData.Discipline season = team(StatsEngine.build(geba, "Primera Masculino", "Clausura",
+                List.of(data(779)), HOY), "GEBA B").discipline();
+        assertThat(season.fromSheets()).isFalse();
+        assertThat(season.yellowKnown()).isFalse();
     }
 
     @Test

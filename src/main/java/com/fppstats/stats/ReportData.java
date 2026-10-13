@@ -153,7 +153,21 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
         }
     }
 
-    public record Discipline(int blueCards, int redCards, double cardsPerGame) {
+    /**
+     * Tarjetas propias.
+     *
+     * @param yellowCards  solo se conocen desde las fichas ({@code fromSheets}); si no, -1
+     * @param cardsPerGame azules + rojas por partido, comparable con {@link LeagueContext#cardsPerTeamGame()}
+     * @param matches      partidos sobre los que se cuentan las tarjetas
+     * @param fromSheets   true = contadas en las fichas de los partidos del recorte ("últimos N");
+     *                     false = estadísticas por jugador del torneo completo
+     */
+    public record Discipline(int yellowCards, int blueCards, int redCards, double cardsPerGame,
+                             int matches, boolean fromSheets) {
+
+        public boolean yellowKnown() {
+            return yellowCards >= 0;
+        }
     }
 
     public record RivalLine(String rival, int played, int won, int drawn, int lost, int goalsFor, int goalsAgainst) {

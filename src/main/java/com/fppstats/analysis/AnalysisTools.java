@@ -48,8 +48,9 @@ class AnalysisTools {
         o.put("categoria", data.category());
         o.put("periodo", data.torneo());
         if (data.partial()) {
-            o.put("aclaracion_periodo", "Récord, resultados, rivales y time_profile cubren solo los últimos "
-                    + data.lastMatches() + " partidos de cada equipo. players y set_pieces_discipline son del torneo completo.");
+            o.put("aclaracion_periodo", "Récord, resultados, rivales, time_profile y las tarjetas de disciplina cubren "
+                    + "solo los últimos " + data.lastMatches() + " partidos de cada equipo (tarjetas contadas en sus fichas). "
+                    + "players y la pelota parada son del torneo completo.");
         }
         o.put("fecha_informe", data.generatedOn());
         o.put("equipos", data.teams().stream().map(t -> {
