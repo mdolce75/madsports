@@ -40,12 +40,16 @@ public class ClaudeAnalyst {
     private static final Logger log = LoggerFactory.getLogger(ClaudeAnalyst.class);
 
     private static final String SYSTEM = """
-            Sos un analista de hockey sobre patines de la Federación Porteña de Patín (FPP), Argentina.
-            Vas a escribir el análisis de un informe estadístico de un club en una categoría.
+            Sos un analista de hockey sobre patines de Mad Sports. Vas a escribir el análisis de un informe
+            estadístico de un club en una categoría de la Federación Porteña de Patín (FPP), Argentina.
 
             Reglas:
             - Usá las herramientas para leer los datos. Empezá por get_overview y get_league_context, y pedí el
-              detalle (resultados, jugadores, pelota parada y disciplina, rivales, próximos partidos) que necesites.
+              detalle (resultados, jugadores, pelota parada y disciplina, rivales, próximos partidos, perfil por
+              minuto) que necesites.
+            - time_profile tiene goles a favor/en contra y tarjetas propias/de los rivales por tramos de 5 minutos,
+              solo de los partidos con acta publicada (matchesWithSheet de matchesPlayed): aclaralo si no son todos.
+              Amarilla, azul y roja son tarjetas distintas: no las mezcles.
             - Toda cifra que menciones tiene que salir textualmente de lo que devolvieron las herramientas.
               No calcules ni estimes números nuevos; si un dato no está, no lo menciones.
             - Compará siempre contra el contexto de la liga (promedios) para decir si algo es fortaleza o debilidad.
@@ -77,15 +81,41 @@ public class ClaudeAnalyst {
         if (client == null) {
             return Optional.empty();
         }
+        Usage usage = new Usage();
         try {
-            return Optional.ofNullable(runLoop(data));
+            return Optional.ofNullable(runLoop(data, usage));
         } catch (AnthropicException e) {
             log.warn("Falló la llamada a Claude, se usa el análisis por reglas: {}", e.getMessage());
             return Optional.empty();
+        } finally {
+            log.info("Consumo de Claude para {} {}: {}", data.club().code(), data.category(), usage);
         }
     }
 
-    private AnalysisResult runLoop(ReportData data) {
+    /** Tokens acumulados de todas las vueltas del loop, para medir el costo real por informe. */
+    private static final class Usage {
+        private int requests;
+        private long input;
+        private long cacheWrite;
+        private long cacheRead;
+        private long output;
+
+        void add(Message response) {
+            requests++;
+            input += response.usage().inputTokens();
+            cacheWrite += response.usage().cacheCreationInputTokens().orElse(0L);
+            cacheRead += response.usage().cacheReadInputTokens().orElse(0L);
+            output += response.usage().outputTokens();
+        }
+
+        @Override
+        public String toString() {
+            return requests + " pedidos, entrada " + input + " (+" + cacheWrite + " escritos en cache, "
+                    + cacheRead + " leídos de cache), salida " + output;
+        }
+    }
+
+    private AnalysisResult runLoop(ReportData data, Usage usage) {
         AnalysisTools tools = new AnalysisTools(data, mapper);
         List<MessageParam> messages = new ArrayList<>();
         messages.add(MessageParam.builder().role(MessageParam.Role.USER)
@@ -96,6 +126,7 @@ public class ClaudeAnalyst {
 
         for (int turn = 0; turn < props.maxTurns(); turn++) {
             Message response = client.messages().create(params(messages));
+            usage.add(response);
             String stop = response.stopReason().map(Object::toString).orElse("");
             if ("refusal".equals(stop)) {
                 log.warn("Claude rechazó el pedido de análisis");
@@ -208,7 +239,8 @@ public class ClaudeAnalyst {
                         Map.of(), List.of()),
                 tool(AnalysisTools.TEAM_DETAIL,
                         "Detalle de un equipo del club. section: results (partidos jugados), upcoming (próximos), "
-                                + "players (estadísticas por jugador), set_pieces_discipline, rivals (cara a cara).",
+                                + "players (estadísticas por jugador), set_pieces_discipline, rivals (cara a cara), "
+                                + "time_profile (goles y tarjetas amarillas/azules/rojas por tramos de 5', propios y de rivales).",
                         Map.of("team_code", Map.of("type", "string", "description", "Código del equipo, p. ej. CAVS o CAVS B"),
                                 "section", Map.of("type", "string", "enum", AnalysisTools.SECTIONS)),
                         List.of("team_code", "section")),

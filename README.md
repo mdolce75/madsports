@@ -1,11 +1,14 @@
-# FPP Stats
+# FPP Stats — Mad Sports
 
-Aplicación web que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
+Aplicación de **Mad Sports** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
 Federación Porteña de Patín (FPP), con análisis redactado por IA (Claude).
 
-**Filtros:** Club · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera) · Rama (Masculino/Femenino).
-El informe cubre la temporada completa (Apertura + Clausura). Si el club tiene equipo A y B en la
+**Filtros:** Club · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera) · Rama (Masculino/Femenino)
+· Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos). Si el club tiene equipo A y B en la
 categoría y rama, cada uno tiene su sección.
+
+En "Últimos 5 partidos", récord, resultados, rivales y el análisis por minuto usan solo esos partidos;
+goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no publica estadísticas por partido).
 
 ## Cómo funciona
 
@@ -33,6 +36,7 @@ destacados que no existen en los datos se descartan.
 | `cap_clasif_idc_<idc>_1.php` | Tabla de posiciones |
 | `cap_cal_idc_<idc>_1.php` | Calendario y resultados |
 | `cap_stats_1_<idc>.php` | Estadísticas por jugador |
+| `cap_gr_<idp>_1.php` | Acta del partido: goles y tarjetas con período y minuto |
 
 FPP = `id_fede_3`; la temporada activa es la de mayor `temp_N`. La tabla de posiciones de SIDGAD puede
 quedar congelada (ej.: Apertura 2026 publicada el 03/05): el informe la muestra con su fecha y la marca
@@ -43,7 +47,12 @@ como desactualizada; el récord se calcula siempre desde el calendario.
 Ficha (PJ/G/E/P/GF/GC/puntos/efectividad), últimos 5, posiciones por torneo, local/visitante,
 Apertura vs Clausura, comparativa de goles por partido contra la liga y el top 3, resultados y próximos
 partidos, goleadores/asistidores con % de los goles del equipo, faltas directas y penales vs liga,
-disciplina, cara a cara con cada rival.
+disciplina, cara a cara con cada rival, y **goles a favor/en contra y tarjetas propias/de los rivales
+(amarilla, azul y roja por separado) por tramos de 5 minutos**, según las actas.
+
+La duración de los períodos sale de `tpo_reg` en el catálogo (20' de Infantil a Juvenil, 25' de Juniors a
+Primera). SIDGAD no publica actas para algunas competiciones (p. ej. Clausura femenino Infantil a Juvenil):
+el informe indica cuántas actas se usaron sobre el total de partidos jugados.
 
 ## Correr
 
@@ -65,10 +74,13 @@ Abrir http://localhost:8080.
 
 Categorías relevadas: `fpp.sidgad.levels` en `application.yml`.
 
+Cada análisis con Claude deja en el log el consumo real de tokens (`Consumo de Claude para ...`).
+
 ## API
 
 - `GET /api/catalogo` — clubes con sus categorías y ramas
-- `POST /api/informes` `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO"}` → `202 {id, estado}`
+- `POST /api/informes` `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA"}` → `202 {id, estado}`
+  (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
 - `GET /api/informes/{id}/pdf`
 

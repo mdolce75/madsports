@@ -8,6 +8,9 @@ import com.fppstats.catalog.CatalogService.ClubView;
 import com.fppstats.sidgad.SidgadClient;
 import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Competition.Category;
+import com.fppstats.sidgad.model.Competition.Torneo;
+import com.fppstats.sidgad.model.Models.Match;
+import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.sidgad.parse.SidgadParser;
 import com.fppstats.stats.ReportData;
 import com.fppstats.stats.StatsEngine;
@@ -22,7 +25,12 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -40,8 +48,42 @@ public class ReportService {
 
     public enum Status { PENDIENTE, EXTRAYENDO, ANALIZANDO, GENERANDO_PDF, LISTO, ERROR }
 
-    /** Parámetros del informe: club, categoría (nivel) y rama. Cubre la temporada completa. */
-    public record Request(int clubId, String category, String branch) {
+    /** Período que cubre el informe. */
+    public enum Scope {
+        APERTURA(Torneo.APERTURA, 0, "Apertura"),
+        CLAUSURA(Torneo.CLAUSURA, 0, "Clausura"),
+        TEMPORADA(null, 0, "Apertura + Clausura"),
+        ULTIMOS_5(null, 5, "Últimos 5 partidos");
+
+        private final Torneo torneo;
+        private final int lastMatches;
+        private final String label;
+
+        Scope(Torneo torneo, int lastMatches, String label) {
+            this.torneo = torneo;
+            this.lastMatches = lastMatches;
+            this.label = label;
+        }
+
+        public Torneo torneo() { return torneo; }
+        public int lastMatches() { return lastMatches; }
+        public String label() { return label; }
+
+        public static Scope parse(String value) {
+            if (value == null || value.isBlank()) {
+                return TEMPORADA;
+            }
+            try {
+                return valueOf(value.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Período inválido: " + value + ". Válidos: "
+                        + Arrays.toString(values()));
+            }
+        }
+    }
+
+    /** Parámetros del informe: club, categoría (nivel), rama y período. */
+    public record Request(int clubId, String category, String branch, Scope scope) {
     }
 
     public static final class Job {
@@ -92,8 +134,10 @@ public class ReportService {
     public Job submit(Request request) {
         ClubView club = catalog.club(request.clubId());
         Category category = catalog.category(request.category(), request.branch());
-        if (catalog.competitionsFor(club.id(), category).isEmpty()) {
-            throw new IllegalArgumentException(club.name() + " no participa en " + category.label() + " esta temporada.");
+        Torneo torneo = request.scope().torneo();
+        if (catalog.competitionsFor(club.id(), category, torneo).isEmpty()) {
+            throw new IllegalArgumentException(club.name() + " no participa en " + category.label()
+                    + (torneo == null ? "" : " - " + torneo.label()) + " esta temporada.");
         }
         Job job = new Job(request);
         jobs.put(job.id(), job);
@@ -112,7 +156,7 @@ public class ReportService {
             AnalysisResult analysis = claude.analyze(data).orElseGet(() -> rules.analyze(data));
             job.update(Status.GENERANDO_PDF, "Generando el PDF");
             job.pdf = renderer.pdf(data, analysis);
-            job.fileName = fileName(club, category);
+            job.fileName = fileName(club, category, job.request().scope());
             job.update(Status.LISTO, "Informe listo");
         } catch (RuntimeException e) {
             log.error("Falló el informe {}", job.id(), e);
@@ -121,22 +165,58 @@ public class ReportService {
     }
 
     ReportData extract(Job job, ClubView club, Category category) {
-        List<Competition> comps = catalog.competitionsFor(club.id(), category);
+        Scope scope = job.request().scope();
+        List<Competition> comps = catalog.competitionsFor(club.id(), category, scope.torneo());
         List<CompetitionData> data = new ArrayList<>();
+        Map<Competition, List<Match>> clubMatches = new LinkedHashMap<>();
         for (Competition c : comps) {
             job.update(Status.EXTRAYENDO, "Leyendo " + c.name());
             String standings = sidgad.standings(c.id());
+            List<Match> matches = SidgadParser.calendar(sidgad.calendar(c.id()));
+            clubMatches.put(c, sheetsToRead(c, matches, club.id(), scope.lastMatches()));
             data.add(new CompetitionData(c,
-                    SidgadParser.standings(standings), SidgadParser.reportDate(standings),
-                    SidgadParser.calendar(sidgad.calendar(c.id())),
-                    SidgadParser.playerStats(sidgad.playerStats(c.id()))));
+                    SidgadParser.standings(standings), SidgadParser.reportDate(standings), matches,
+                    SidgadParser.playerStats(sidgad.playerStats(c.id())), new HashMap<>()));
+        }
+        // Actas: una por partido jugado del club (minuto de goles y tarjetas).
+        int total = clubMatches.values().stream().mapToInt(List::size).sum();
+        int done = 0;
+        for (CompetitionData cd : data) {
+            for (Match m : clubMatches.get(cd.competition())) {
+                job.update(Status.EXTRAYENDO, "Leyendo actas de partido (" + (++done) + "/" + total + ")");
+                cd.sheets().put(m.idp(), SidgadParser.gameEvents(sidgad.gameSheet(cd.competition().id(), m.idp())));
+            }
         }
         String torneos = comps.stream().map(Competition::torneoLabel).distinct().collect(Collectors.joining(" + "));
-        return StatsEngine.build(club, category.label(), "Temporada " + LocalDate.now(clock).getYear() + " (" + torneos + ")",
-                data, LocalDate.now(clock));
+        String label = scope == Scope.ULTIMOS_5
+                ? "Últimos 5 partidos (" + torneos + ")"
+                : "Temporada " + LocalDate.now(clock).getYear() + " · " + torneos;
+        return StatsEngine.build(club, category.label(), label, data, LocalDate.now(clock), scope.lastMatches());
     }
 
-    private static String fileName(ClubView club, Category category) {
-        return ("informe-" + club.code() + "-" + category.key() + ".pdf").toLowerCase().replaceAll("[^a-z0-9.-]+", "-");
+    /**
+     * Partidos jugados del club con acta para leer. Con "últimos N" alcanza con los últimos N de cada equipo
+     * en cada competición: los últimos N de la temporada están siempre dentro de ese conjunto.
+     */
+    static List<Match> sheetsToRead(Competition c, List<Match> matches, int clubId, int lastMatches) {
+        List<Match> result = new ArrayList<>();
+        for (TeamRef t : c.teams()) {
+            if (t.clubId() != clubId) {
+                continue;
+            }
+            List<Match> played = matches.stream()
+                    .filter(m -> m.played() && m.idp() > 0 && m.involves(t.teamId()))
+                    .sorted(Comparator.comparing(Match::date, Comparator.nullsLast(Comparator.naturalOrder()))
+                            .thenComparing(Match::round))
+                    .toList();
+            int skip = lastMatches > 0 ? Math.max(0, played.size() - lastMatches) : 0;
+            played.subList(skip, played.size()).stream().filter(m -> !result.contains(m)).forEach(result::add);
+        }
+        return result;
+    }
+
+    private static String fileName(ClubView club, Category category, Scope scope) {
+        return ("informe-" + club.code() + "-" + category.key() + "-" + scope.name() + ".pdf")
+                .toLowerCase().replaceAll("[^a-z0-9.-]+", "-");
     }
 }

@@ -20,7 +20,8 @@ class AnalysisTools {
     static final String LEAGUE = "get_league_context";
     static final String SUBMIT = "submit_analysis";
 
-    static final List<String> SECTIONS = List.of("results", "upcoming", "players", "set_pieces_discipline", "rivals");
+    static final List<String> SECTIONS = List.of("results", "upcoming", "players", "set_pieces_discipline", "rivals",
+            "time_profile");
 
     private final ReportData data;
     private final ObjectMapper mapper;
@@ -45,7 +46,11 @@ class AnalysisTools {
         Map<String, Object> o = new LinkedHashMap<>();
         o.put("club", data.club());
         o.put("categoria", data.category());
-        o.put("torneo", data.torneo());
+        o.put("periodo", data.torneo());
+        if (data.partial()) {
+            o.put("aclaracion_periodo", "Récord, resultados, rivales y time_profile cubren solo los últimos "
+                    + data.lastMatches() + " partidos de cada equipo. players y set_pieces_discipline son del torneo completo.");
+        }
         o.put("fecha_informe", data.generatedOn());
         o.put("equipos", data.teams().stream().map(t -> {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -82,6 +87,7 @@ class AnalysisTools {
                             "penales_pct", round(t.setPieces().penaltyPct())),
                     "disciplina", t.discipline());
             case "rivals" -> t.rivals();
+            case "time_profile" -> t.timeProfile();
             default -> throw new IllegalArgumentException("section inválida: " + section + ". Válidas: " + SECTIONS);
         };
     }

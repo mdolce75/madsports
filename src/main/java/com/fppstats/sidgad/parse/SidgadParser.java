@@ -1,7 +1,9 @@
 package com.fppstats.sidgad.parse;
 
 import com.fppstats.sidgad.model.Competition;
+import com.fppstats.sidgad.model.Models.EventType;
 import com.fppstats.sidgad.model.Models.Match;
+import com.fppstats.sidgad.model.Models.MatchEvent;
 import com.fppstats.sidgad.model.Models.PlayerStats;
 import com.fppstats.sidgad.model.Models.StandingRow;
 import com.fppstats.sidgad.model.Models.TeamRef;
@@ -47,9 +49,66 @@ public final class SidgadParser {
             int temp = classNumber(a, "temp_");
             Element input = doc.getElementById("teams_array_" + id);
             List<TeamRef> teams = input == null ? List.of() : teamsArray(input.val());
-            result.add(Competition.of(id, clean(a.attr("name")), fede, temp, teams));
+            result.add(Competition.of(id, clean(a.attr("name")), fede, temp, teams, periodMinutes(a.attr("config_params"))));
         }
         return result;
+    }
+
+    private static final Pattern PERIOD_MINUTES = Pattern.compile("(?:^|;)tpo_reg:(\\d+)");
+
+    /** Minutos por período: {@code tpo_reg:20} dentro de config_params (0 si no está). */
+    static int periodMinutes(String configParams) {
+        Matcher m = PERIOD_MINUTES.matcher(configParams == null ? "" : configParams);
+        return m.find() ? Integer.parseInt(m.group(1)) : 0;
+    }
+
+    private static final Pattern PERIOD = Pattern.compile("P(\\d+)");
+    private static final Pattern CLOCK = Pattern.compile("(\\d{1,3}):(\\d{2})");
+
+    /**
+     * {@code cap_gr_<idp>_1.php}: acta del partido. Cada evento es un {@code tr} con
+     * {@code .game_view_indcidencias_period} (P1/P2), {@code .game_view_incidencias_time} (minuto transcurrido
+     * en el período) y la descripción en {@code .evento_*} (texto en español en {@code .lang_es}).
+     * Si SIDGAD no publicó el acta responde "File not found." y se devuelve una lista vacía.
+     */
+    public static List<MatchEvent> gameEvents(String html) {
+        List<MatchEvent> events = new ArrayList<>();
+        if (html == null || html.isBlank() || html.startsWith("File not found")) {
+            return events;
+        }
+        Document doc = Jsoup.parse(html);
+        for (Element periodDiv : doc.select("div.game_view_indcidencias_period")) {
+            Element tr = periodDiv.closest("tr");
+            Element label = tr == null ? null : tr.selectFirst("[class^=evento_] .lang_es");
+            EventType type = label == null ? null : eventType(label.text());
+            Element time = tr == null ? null : tr.selectFirst(".game_view_incidencias_time");
+            if (type == null || time == null) {
+                continue;
+            }
+            Matcher clock = CLOCK.matcher(time.text());
+            if (!clock.find()) {
+                continue;
+            }
+            Matcher p = PERIOD.matcher(periodDiv.text());
+            Element player = tr.selectFirst("a[team_id]");
+            Element code = tr.selectFirst("td.stats_table .texto_gris_11");
+            events.add(new MatchEvent(p.find() ? Integer.parseInt(p.group(1)) : 0,
+                    Integer.parseInt(clock.group(1)), Integer.parseInt(clock.group(2)), type,
+                    player == null ? 0 : parseInt(player.attr("team_id")), clubId(tr),
+                    code == null ? "" : clean(code.text()),
+                    player == null ? "" : clean(player.text())));
+        }
+        return events;
+    }
+
+    private static EventType eventType(String label) {
+        return switch (clean(label).toUpperCase()) {
+            case "GOL" -> EventType.GOAL;
+            case "TARJETA AMARILLA" -> EventType.YELLOW_CARD;
+            case "TARJETA AZUL" -> EventType.BLUE_CARD;
+            case "TARJETA ROJA" -> EventType.RED_CARD;
+            default -> null;
+        };
     }
 
     /** Formato: {@code "74_3.png,4660,CAVS A,VELEZ A ;74_3.png,4659,CAVS B,VELEZ B;..."}. */

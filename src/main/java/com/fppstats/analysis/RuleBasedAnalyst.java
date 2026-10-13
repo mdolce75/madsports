@@ -6,9 +6,12 @@ import com.fppstats.stats.ReportData.MatchLine;
 import com.fppstats.stats.ReportData.PlayerLine;
 import com.fppstats.stats.ReportData.TeamRecord;
 import com.fppstats.stats.ReportData.TeamReport;
+import com.fppstats.stats.ReportData.TimeBucket;
+import com.fppstats.stats.ReportData.TimeProfile;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -58,6 +61,15 @@ public class RuleBasedAnalyst {
             }
             t.players().stream().filter(p -> p.goals() > 0).limit(2).forEach(p -> keyPlayers.add(
                     new AnalysisResult.KeyPlayer(p.name(), describe(p))));
+            TimeProfile tp = t.timeProfile();
+            if (tp.hasData()) {
+                tp.buckets().stream().max(Comparator.comparingInt(TimeBucket::goalsFor)).filter(b -> b.goalsFor() > 0)
+                        .ifPresent(b -> trend.add(String.format(Locale.ROOT, "%sTramo con más goles a favor: %s (%d).",
+                                prefix, b.label(), b.goalsFor())));
+                tp.buckets().stream().max(Comparator.comparingInt(TimeBucket::goalsAgainst)).filter(b -> b.goalsAgainst() > 0)
+                        .ifPresent(b -> trend.add(String.format(Locale.ROOT, "%sTramo con más goles en contra: %s (%d).",
+                                prefix, b.label(), b.goalsAgainst())));
+            }
             if (!t.form().isEmpty()) {
                 trend.add(prefix + "Últimos resultados: " + String.join(" ", t.form()) + ".");
             }

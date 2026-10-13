@@ -11,7 +11,10 @@ import java.util.regex.Pattern;
  */
 public record Competition(int id, String name, int federationId, int seasonId,
                           Torneo torneo, Category category, int division,
-                          List<Models.TeamRef> teams) {
+                          List<Models.TeamRef> teams, int periodMinutes) {
+
+    /** Duración de período si el catálogo no la informa ({@code tpo_reg} en config_params). */
+    public static final int DEFAULT_PERIOD_MINUTES = 25;
 
     public enum Torneo {
         APERTURA, CLAUSURA;
@@ -49,14 +52,16 @@ public record Competition(int id, String name, int federationId, int seasonId,
             "TORNEO\\s+(APERTURA|CLAUSURA)\\s+(.+?)\\s+(MASCULINO|FEMENINO)(?:\\s+(\\d+))?\\b");
 
     /** Interpreta el nombre de la competición; devuelve {@code null} si no es del formato FPP. */
-    public static Competition of(int id, String name, int federationId, int seasonId, List<Models.TeamRef> teams) {
+    public static Competition of(int id, String name, int federationId, int seasonId, List<Models.TeamRef> teams,
+                                 int periodMinutes) {
+        int minutes = periodMinutes > 0 ? periodMinutes : DEFAULT_PERIOD_MINUTES;
         Matcher m = NAME.matcher(name.toUpperCase());
         if (!m.find()) {
-            return new Competition(id, name, federationId, seasonId, null, null, 1, teams);
+            return new Competition(id, name, federationId, seasonId, null, null, 1, teams, minutes);
         }
         int division = m.group(4) == null ? 1 : Integer.parseInt(m.group(4));
         return new Competition(id, name, federationId, seasonId, Torneo.valueOf(m.group(1)),
-                new Category(m.group(2).trim(), m.group(3)), division, teams);
+                new Category(m.group(2).trim(), m.group(3)), division, teams, minutes);
     }
 
     public String torneoLabel() {

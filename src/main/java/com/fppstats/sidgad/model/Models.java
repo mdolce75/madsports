@@ -32,6 +32,20 @@ public final class Models {
         }
     }
 
+    /** Tipos de evento del acta que se analizan. Amarilla, azul y roja son tarjetas distintas. */
+    public enum EventType { GOAL, YELLOW_CARD, BLUE_CARD, RED_CARD }
+
+    /**
+     * Evento del acta de un partido.
+     *
+     * @param period  1 o 2 (0 si el acta trae otro período)
+     * @param minute  minuto transcurrido dentro del período
+     * @param teamId  equipo al que se atribuye (0 si el acta no lo indica; ver {@code clubId}/{@code teamCode})
+     */
+    public record MatchEvent(int period, int minute, int second, EventType type,
+                             int teamId, int clubId, String teamCode, String player) {
+    }
+
     public record PlayerStats(int playerId, int teamId, String teamCode, int clubId, String name,
                               int goals, int games, int assists,
                               int penaltiesScored, int penaltiesTaken,

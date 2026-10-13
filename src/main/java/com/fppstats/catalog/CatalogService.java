@@ -108,10 +108,15 @@ public class CatalogService {
                 .toList();
     }
 
-    /** Competiciones (Apertura y Clausura, todas las divisiones) de la categoría en las que juega el club. */
-    public List<Competition> competitionsFor(int clubId, Category category) {
+    /**
+     * Competiciones de la categoría en las que juega el club (todas las divisiones).
+     *
+     * @param torneo Apertura o Clausura; {@code null} = ambos
+     */
+    public List<Competition> competitionsFor(int clubId, Category category, Competition.Torneo torneo) {
         return activeCompetitions().stream()
                 .filter(c -> c.category().equals(category))
+                .filter(c -> torneo == null || c.torneo() == torneo)
                 .filter(c -> c.teams().stream().anyMatch(t -> t.clubId() == clubId))
                 .toList();
     }

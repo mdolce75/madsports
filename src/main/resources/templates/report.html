@@ -7,7 +7,7 @@
         @page {
             size: A4;
             margin: 16mm 14mm 18mm 14mm;
-            @bottom-left { content: "FPP Stats · datos: buenosaires.sidgad.com"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-left { content: "Informe elaborado por Mad Sports · Datos: FPP (buenosaires.sidgad.com)"; font-size: 8pt; color: #888; font-family: sans-serif; }
             @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
         }
         body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
@@ -33,6 +33,12 @@
         .bar { background: #2b6cb0; height: 10px; }
         .bar.league { background: #a0aec0; }
         .bar.top { background: #63b3ed; }
+        .bar.gf { background: #2f855a; }
+        .bar.ga { background: #c53030; }
+        .minutes td { padding: 2px 4px; }
+        tr.sep td { border-top: 2px solid #0f2a52; }
+        .card { display: inline-block; width: 7px; height: 10px; border-radius: 1px; vertical-align: middle; }
+        .card.y { background: #ecc94b; } .card.b { background: #3182ce; } .card.r { background: #e53e3e; }
         .analysis { background: #f7fafc; border-left: 4px solid #2b6cb0; padding: 8px 10px; margin: 6px 0; }
         .analysis ul { margin: 3px 0 3px 16px; padding: 0; }
         .two { width: 100%; }
@@ -47,7 +53,7 @@
 <div class="header">
     <h1 th:text="|${d.club.name} (${d.club.code})|">Club</h1>
     <div class="subtitle" th:text="|${d.category} · ${d.torneo}|">Categoría · Torneo</div>
-    <div class="meta" th:text="|Informe generado el ${f.date(d.generatedOn)} · Federación Porteña de Patín|">fecha</div>
+    <div class="meta" th:text="|Informe elaborado por Mad Sports · ${f.date(d.generatedOn)}|">fecha</div>
 </div>
 
 <h2>Resumen</h2>
@@ -174,6 +180,7 @@
     </div>
 
     <h3>Goleadores y asistidores</h3>
+    <p class="muted" th:if="${d.partial()}">Acumulado del torneo completo: SIDGAD no publica estadísticas individuales por partido.</p>
     <table th:if="${!t.players.isEmpty()}" th:with="maxShare=${t.players[0].goalShare}">
         <tr><th class="l">Jugador</th><th>PJ</th><th>Goles</th><th>G/PJ</th><th>As</th><th class="l" style="width: 28%">% de los goles del equipo</th></tr>
         <tr th:each="p : ${t.players}">
@@ -184,6 +191,48 @@
     </table>
     <p class="muted" th:if="${t.players.isEmpty()}">No hay estadísticas individuales publicadas.</p>
 
+    <div class="nobreak" th:with="tp=${t.timeProfile}">
+        <h3 th:text="${d.partial() ? 'Goles y tarjetas por tramos de 5 minutos (últimos ' + d.lastMatches + ' partidos)' : 'Goles y tarjetas por tramos de 5 minutos'}">Goles y tarjetas por tramos de 5 minutos</h3>
+        <p class="muted" th:if="${!tp.hasData()}">No hay actas de partido publicadas para este equipo: el análisis por
+            minuto no está disponible.</p>
+        <table th:if="${tp.hasData()}" class="minutes" th:with="maxG=${tp.maxGoalsInBucket()}">
+            <tr>
+                <th rowspan="2" class="l">Tramo</th>
+                <th colspan="2">Goles a favor</th>
+                <th colspan="2">Goles en contra</th>
+                <th colspan="3">Tarjetas propias</th>
+                <th colspan="3">Tarjetas a rivales</th>
+            </tr>
+            <tr>
+                <th></th><th></th><th></th><th></th>
+                <th title="Amarilla"><span class="card y"></span></th><th title="Azul"><span class="card b"></span></th><th title="Roja"><span class="card r"></span></th>
+                <th title="Amarilla"><span class="card y"></span></th><th title="Azul"><span class="card b"></span></th><th title="Roja"><span class="card r"></span></th>
+            </tr>
+            <tr th:each="b, it : ${tp.buckets}" th:class="${b.period == 2 and b.fromMinute == 0} ? 'sep' : ''">
+                <td class="l" th:text="${b.label}"></td>
+                <td style="width: 13%"><div class="bar-bg"><div class="bar gf" th:style="${f.bar(b.goalsFor, maxG)}"></div></div></td>
+                <td th:text="${b.goalsFor}"></td>
+                <td style="width: 13%"><div class="bar-bg"><div class="bar ga" th:style="${f.bar(b.goalsAgainst, maxG)}"></div></div></td>
+                <td th:text="${b.goalsAgainst}"></td>
+                <td th:text="${b.yellowOwn}"></td><td th:text="${b.blueOwn}"></td><td th:text="${b.redOwn}"></td>
+                <td th:text="${b.yellowRival}"></td><td th:text="${b.blueRival}"></td><td th:text="${b.redRival}"></td>
+            </tr>
+            <tr th:each="b : ${tp.byPeriod}" class="hl">
+                <td class="l" th:text="${b.label}"></td>
+                <td></td><td th:text="${b.goalsFor}"></td><td></td><td th:text="${b.goalsAgainst}"></td>
+                <td th:text="${b.yellowOwn}"></td><td th:text="${b.blueOwn}"></td><td th:text="${b.redOwn}"></td>
+                <td th:text="${b.yellowRival}"></td><td th:text="${b.blueRival}"></td><td th:text="${b.redRival}"></td>
+            </tr>
+        </table>
+        <p class="muted" th:if="${tp.hasData()}">
+            <span th:text="|Según ${tp.matchesWithSheet} actas de ${tp.matchesPlayed} partidos jugados (períodos de ${tp.periodMinutes}').|"></span>
+            <span th:if="${tp.matchesWithSheet < tp.matchesPlayed}">SIDGAD no publicó el acta de los partidos restantes.</span>
+            <span th:if="${tp.goalMismatches > 0}" th:text="|En ${tp.goalMismatches} acta(s) los goles cargados no coinciden con el resultado oficial.|"></span>
+            Tarjetas: <span class="card y"></span> amarilla · <span class="card b"></span> azul · <span class="card r"></span> roja.
+        </p>
+    </div>
+
+    <p class="muted" th:if="${d.partial()}">Pelota parada y disciplina: acumulado del torneo completo.</p>
     <table class="two nobreak">
         <tr>
             <td>

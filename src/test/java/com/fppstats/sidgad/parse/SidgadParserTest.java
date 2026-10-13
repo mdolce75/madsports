@@ -2,7 +2,9 @@ package com.fppstats.sidgad.parse;
 
 import com.fppstats.Fixtures;
 import com.fppstats.sidgad.model.Competition;
+import com.fppstats.sidgad.model.Models.EventType;
 import com.fppstats.sidgad.model.Models.Match;
+import com.fppstats.sidgad.model.Models.MatchEvent;
 import com.fppstats.sidgad.model.Models.PlayerStats;
 import com.fppstats.sidgad.model.Models.StandingRow;
 import org.junit.jupiter.api.Test;
@@ -94,6 +96,50 @@ class SidgadParserTest {
 
         assertThat(players.get(1).blueCards()).isEqualTo(2);
         assertThat(players.stream().filter(p -> p.teamId() == 5455).mapToInt(PlayerStats::goals).sum()).isEqualTo(67);
+    }
+
+    @Test
+    void actaDePartidoConGolesYTarjetas() {
+        List<MatchEvent> events = SidgadParser.gameEvents(Fixtures.read("gr_26390.html"));
+
+        assertThat(events).filteredOn(e -> e.type() == EventType.GOAL).hasSize(6);
+        assertThat(events).filteredOn(e -> e.type() == EventType.GOAL && e.teamId() == 5581).hasSize(2);
+        assertThat(events).filteredOn(e -> e.type() == EventType.YELLOW_CARD).singleElement().satisfies(e -> {
+            assertThat(e.period()).isEqualTo(1);
+            assertThat(e.minute()).isEqualTo(13);
+            assertThat(e.second()).isEqualTo(51);
+            assertThat(e.teamId()).isEqualTo(5589);
+            assertThat(e.teamCode()).isEqualTo("AAAJ");
+            assertThat(e.clubId()).isEqualTo(94);
+        });
+    }
+
+    @Test
+    void actaConTarjetasAzulesYAmarillasDistintas() {
+        // Acta 26389 (779, Huracán 13-2 GEBA B): 15 goles, 4 azules y 2 amarillas.
+        List<MatchEvent> events = SidgadParser.gameEvents(Fixtures.read("gr_26389.html"));
+
+        assertThat(events).filteredOn(e -> e.type() == EventType.GOAL).hasSize(15);
+        assertThat(events).filteredOn(e -> e.type() == EventType.BLUE_CARD).hasSize(4);
+        assertThat(events).filteredOn(e -> e.type() == EventType.YELLOW_CARD).hasSize(2);
+        assertThat(events).filteredOn(e -> e.type() == EventType.RED_CARD).isEmpty();
+        // Faltas, tiempos muertos y penales no son eventos analizados.
+        assertThat(events).hasSize(21);
+    }
+
+    @Test
+    void actaNoPublicada() {
+        assertThat(SidgadParser.gameEvents(Fixtures.read("gr_sin_acta.html"))).isEmpty();
+    }
+
+    @Test
+    void duracionDePeriodoDesdeConfigParams() {
+        assertThat(SidgadParser.periodMinutes("ids_teams:1,2;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;"))
+                .isEqualTo(20);
+        assertThat(SidgadParser.periodMinutes("")).isZero();
+        Competition infantil = SidgadParser.catalog(Fixtures.read("catalogo.html")).stream()
+                .filter(c -> c.id() == 765).findFirst().orElseThrow();
+        assertThat(infantil.periodMinutes()).isEqualTo(20);
     }
 
     @Test

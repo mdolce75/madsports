@@ -29,8 +29,9 @@ public class ApiController {
     /**
      * @param categoria INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA o PRIMERA
      * @param rama      MASCULINO o FEMENINO
+     * @param periodo   APERTURA, CLAUSURA, TEMPORADA (Apertura + Clausura, por defecto) o ULTIMOS_5
      */
-    public record ReportRequest(@Positive int clubId, @NotBlank String categoria, @NotBlank String rama) {
+    public record ReportRequest(@Positive int clubId, @NotBlank String categoria, @NotBlank String rama, String periodo) {
     }
 
     public record JobView(UUID id, ReportService.Status estado, String mensaje, String pdfUrl) {
@@ -56,7 +57,8 @@ public class ApiController {
 
     @PostMapping("/informes")
     public ResponseEntity<JobView> crear(@Valid @RequestBody ReportRequest req) {
-        ReportService.Job job = reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama()));
+        ReportService.Job job = reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(),
+                ReportService.Scope.parse(req.periodo())));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 

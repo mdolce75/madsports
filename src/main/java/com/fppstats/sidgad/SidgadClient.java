@@ -28,6 +28,7 @@ public class SidgadClient {
     private final FppProperties.Sidgad props;
     private final Cache<String, String> dataCache;
     private final Cache<String, String> catalogCache;
+    private final Cache<Integer, String> sheetCache;
     private final Object throttle = new Object();
     private long lastRequestNanos;
 
@@ -35,6 +36,7 @@ public class SidgadClient {
         this.props = props.sidgad();
         this.dataCache = Caffeine.newBuilder().expireAfterWrite(this.props.dataTtl()).maximumSize(500).build();
         this.catalogCache = Caffeine.newBuilder().expireAfterWrite(this.props.catalogTtl()).maximumSize(4).build();
+        this.sheetCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(3000).build();
     }
 
     public String catalog() {
@@ -53,6 +55,15 @@ public class SidgadClient {
     public String playerStats(int idc) {
         return cached("cap_stats_1_" + idc + ".php",
                 Map.of("idc", String.valueOf(idc), "tipo_stats", "goles", "site_lang", "es"));
+    }
+
+    /**
+     * Acta de un partido. Solo se piden actas de partidos ya jugados, que no cambian: cache de 24 h.
+     * Si SIDGAD no la publicó devuelve el texto "File not found." (el parser lo trata como acta vacía).
+     */
+    public String gameSheet(int idc, int idp) {
+        return sheetCache.get(idp, k -> post("cap_gr_" + idp + "_1.php", Map.of(
+                "idm", "1", "idc", String.valueOf(idc), "idp", String.valueOf(idp), "tab", "tab_ficha_resumen")));
     }
 
     private String cached(String file, Map<String, String> params) {

@@ -3,14 +3,22 @@ package com.fppstats.stats;
 import com.fppstats.Fixtures;
 import com.fppstats.catalog.CatalogService.ClubView;
 import com.fppstats.sidgad.model.Competition;
+import com.fppstats.sidgad.model.Models;
+import com.fppstats.sidgad.model.Models.Match;
+import com.fppstats.sidgad.model.Models.MatchEvent;
+import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.sidgad.parse.SidgadParser;
 import com.fppstats.stats.ReportData.TeamRecord;
 import com.fppstats.stats.ReportData.TeamReport;
+import com.fppstats.stats.ReportData.TimeBucket;
+import com.fppstats.stats.ReportData.TimeProfile;
 import com.fppstats.stats.StatsEngine.CompetitionData;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -24,10 +32,98 @@ public class StatsEngineTest {
         Competition comp = SidgadParser.catalog(Fixtures.read("catalogo.html")).stream()
                 .filter(c -> c.id() == idc).findFirst().orElseThrow();
         String standings = Fixtures.read("clasif_" + idc + ".html");
-        return new CompetitionData(comp,
-                SidgadParser.standings(standings), SidgadParser.reportDate(standings),
-                SidgadParser.calendar(Fixtures.read("cal_" + idc + ".html")),
-                SidgadParser.playerStats(Fixtures.read("stats_" + idc + ".html")));
+        List<Match> matches = SidgadParser.calendar(Fixtures.read("cal_" + idc + ".html"));
+        // Actas guardadas: los dos partidos jugados de Vélez en Primera (779). El resto, sin acta.
+        Map<Integer, List<MatchEvent>> sheets = new HashMap<>();
+        for (Match m : matches) {
+            if (m.played() && (m.idp() == 26390 || m.idp() == 26396)) {
+                sheets.put(m.idp(), SidgadParser.gameEvents(Fixtures.read("gr_" + m.idp() + ".html")));
+            }
+        }
+        return new CompetitionData(comp, SidgadParser.standings(standings), SidgadParser.reportDate(standings),
+                matches, SidgadParser.playerStats(Fixtures.read("stats_" + idc + ".html")), sheets);
+    }
+
+    @Test
+    void golesYTarjetasPorTramosDeCincoMinutos() {
+        TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "CAVS")
+                .timeProfile();
+
+        // Vélez 2-4 Argentinos (26390) y Vélez 7-0 Comunicaciones (26396); períodos de 25'.
+        assertThat(tp.periodMinutes()).isEqualTo(25);
+        assertThat(tp.matchesPlayed()).isEqualTo(2);
+        assertThat(tp.matchesWithSheet()).isEqualTo(2);
+        assertThat(tp.goalMismatches()).isZero();
+        assertThat(tp.buckets()).hasSize(10);
+        assertThat(tp.buckets()).extracting(TimeBucket::label)
+                .startsWith("1T 0-5'", "1T 5-10'").endsWith("2T 20-25'");
+        assertThat(tp.buckets()).extracting(TimeBucket::goalsFor).containsExactly(0, 2, 0, 0, 0, 2, 1, 2, 1, 1);
+        assertThat(tp.buckets()).extracting(TimeBucket::goalsAgainst).containsExactly(1, 1, 0, 1, 0, 0, 0, 0, 1, 0);
+        // Amarilla a un jugador de Argentinos en el 13:51 del 1T: es tarjeta del rival, no propia.
+        assertThat(tp.buckets().get(2).yellowRival()).isEqualTo(1);
+        assertThat(tp.buckets()).allSatisfy(b -> {
+            assertThat(b.cardsOwn()).isZero();
+            assertThat(b.blueRival() + b.redRival()).isZero();
+        });
+        assertThat(tp.byPeriod()).extracting(TimeBucket::goalsFor).containsExactly(2, 7);
+        assertThat(tp.byPeriod()).extracting(TimeBucket::goalsAgainst).containsExactly(3, 1);
+    }
+
+    @Test
+    void ultimosCincoPartidosRecortaRecordYResultadosPeroNoLosPromediosDelTorneo() {
+        List<CompetitionData> season = List.of(data(693), data(765));
+        TeamReport full = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Temporada", season, HOY), "CAVS A");
+        ReportData lastFiveReport = StatsEngine.build(VELEZ, "Infantil Femenino", "Últimos 5", season, HOY, 5);
+        TeamReport last5 = team(lastFiveReport, "CAVS A");
+
+        assertThat(lastFiveReport.partial()).isTrue();
+        assertThat(last5.total().played()).isEqualTo(5);
+        assertThat(last5.results()).containsExactlyElementsOf(full.results().subList(full.results().size() - 5, full.results().size()));
+        assertThat(last5.form()).isEqualTo(full.form());
+        assertThat(last5.byTorneo()).extracting(ReportData.TorneoLine::torneo).containsExactly("Clausura");
+        assertThat(last5.rivals().stream().mapToInt(ReportData.RivalLine::played).sum()).isEqualTo(5);
+        // Jugadores y disciplina son del torneo completo: no cambian con el recorte.
+        assertThat(last5.players()).isEqualTo(full.players());
+        assertThat(last5.discipline()).isEqualTo(full.discipline());
+        // La tabla publicada se sigue comparando contra todos los partidos del calendario.
+        assertThat(last5.standings()).isEqualTo(full.standings());
+        // Los próximos partidos no dependen del recorte.
+        assertThat(last5.upcoming()).isEqualTo(full.upcoming());
+    }
+
+    @Test
+    void ultimosPartidosLimitaElPerfilPorMinuto() {
+        TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 1", List.of(data(779)), HOY, 1), "CAVS")
+                .timeProfile();
+
+        // Solo el último partido: Vélez 7-0 Comunicaciones.
+        assertThat(tp.matchesPlayed()).isEqualTo(1);
+        assertThat(tp.byPeriod()).extracting(TimeBucket::goalsFor).containsExactly(1, 6);
+        assertThat(tp.byPeriod()).extracting(TimeBucket::goalsAgainst).containsExactly(0, 0);
+    }
+
+    @Test
+    void sinActasPublicadasNoHayPerfilPorMinuto() {
+        TimeProfile tp = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A")
+                .timeProfile();
+
+        assertThat(tp.hasData()).isFalse();
+        assertThat(tp.matchesPlayed()).isEqualTo(9);
+        assertThat(tp.periodMinutes()).isEqualTo(20);
+        assertThat(tp.buckets()).hasSize(8);
+    }
+
+    @Test
+    void enUnCruceAvsBElEventoSeAtribuyePorCodigo() {
+        TeamRef velezA = new TeamRef(10, 74, "CAVS A", "VELEZ A");
+        MatchEvent golDelB = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS B", "");
+        MatchEvent golDelA = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS A", "");
+
+        assertThat(StatsEngine.isOwn(golDelA, velezA, 11, 74)).isTrue();
+        assertThat(StatsEngine.isOwn(golDelB, velezA, 11, 74)).isFalse();
+        // Con team_id en el acta manda el id.
+        assertThat(StatsEngine.isOwn(new MatchEvent(1, 3, 0, Models.EventType.BLUE_CARD, 11, 74, "", ""), velezA, 11, 74))
+                .isFalse();
     }
 
     @Test
@@ -124,8 +220,8 @@ public class StatsEngineTest {
         assertThat(team(report, "CAVS B").rivals()).anySatisfy(r -> assertThat(r.rival()).isEqualTo("VELEZ A"));
     }
 
-    private static com.fppstats.sidgad.model.Models.TeamRef ref(String code) {
-        return new com.fppstats.sidgad.model.Models.TeamRef(1, 1, code, code);
+    private static TeamRef ref(String code) {
+        return new TeamRef(1, 1, code, code);
     }
 
     static TeamReport team(ReportData r, String code) {

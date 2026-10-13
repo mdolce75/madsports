@@ -8,7 +8,12 @@ import java.util.List;
  * las lee (vía herramientas) y escribe el análisis, nunca produce números propios.
  */
 public record ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn,
-                         List<Source> sources, List<TeamReport> teams, LeagueContext league) {
+                         int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league) {
+
+    /** True si el informe se limita a los últimos N partidos (jugadores y pelota parada siguen siendo del torneo). */
+    public boolean partial() {
+        return lastMatches > 0;
+    }
 
     public record ClubInfo(int id, String code, String name) {
     }
@@ -21,7 +26,41 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
                              List<MatchLine> results, List<MatchLine> upcoming,
                              MatchLine biggestWin, MatchLine worstLoss,
                              List<PlayerLine> players, SetPieces setPieces, Discipline discipline,
-                             List<RivalLine> rivals, List<TorneoLine> byTorneo) {
+                             List<RivalLine> rivals, List<TorneoLine> byTorneo, TimeProfile timeProfile) {
+    }
+
+    /**
+     * Goles y tarjetas por tramos de 5 minutos, según las actas de los partidos jugados.
+     *
+     * @param matchesWithSheet partidos con acta publicada (solo esos se cuentan)
+     * @param goalMismatches   actas cuyos goles no coinciden con el resultado oficial
+     */
+    public record TimeProfile(int periodMinutes, int matchesPlayed, int matchesWithSheet, int goalMismatches,
+                              List<TimeBucket> buckets, List<TimeBucket> byPeriod) {
+
+        public boolean hasData() {
+            return matchesWithSheet > 0;
+        }
+
+        /** Máximo de goles (a favor o en contra) en un tramo, para escalar los gráficos. */
+        public int maxGoalsInBucket() {
+            return buckets.stream().mapToInt(b -> Math.max(b.goalsFor(), b.goalsAgainst())).max().orElse(0);
+        }
+    }
+
+    /** Un tramo (p. ej. "1T 5-10'") o un período completo. "Propias" = del equipo; "rival" = sacadas a los rivales. */
+    public record TimeBucket(String label, int period, int fromMinute, int toMinute,
+                             int goalsFor, int goalsAgainst,
+                             int yellowOwn, int blueOwn, int redOwn,
+                             int yellowRival, int blueRival, int redRival) {
+
+        public int cardsOwn() {
+            return yellowOwn + blueOwn + redOwn;
+        }
+
+        public int cardsRival() {
+            return yellowRival + blueRival + redRival;
+        }
     }
 
     /**
