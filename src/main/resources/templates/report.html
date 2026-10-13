@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="|Informe ${d.club.name} - ${d.category}|">Informe</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 16mm 14mm 18mm 14mm;
+            @bottom-left { content: "FPP Stats · datos: buenosaires.sidgad.com"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
+        }
+        body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
+        h1 { font-size: 20pt; margin: 0; color: #0f2a52; }
+        h2 { font-size: 13pt; color: #0f2a52; border-bottom: 2px solid #0f2a52; padding-bottom: 3px; margin: 18px 0 8px 0; }
+        h3 { font-size: 10.5pt; color: #0f2a52; margin: 12px 0 5px 0; }
+        .subtitle { font-size: 11pt; color: #4a5568; margin-top: 3px; }
+        .meta { font-size: 8.5pt; color: #718096; margin-top: 4px; }
+        .header { border-bottom: 4px solid #0f2a52; padding-bottom: 8px; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        th { background: #0f2a52; color: #fff; font-weight: bold; font-size: 8.5pt; padding: 3px 4px; text-align: center; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 3px 4px; text-align: center; font-size: 8.5pt; }
+        td.l, th.l { text-align: left; }
+        tr.hl td { background: #edf2f7; font-weight: bold; }
+        .kpis { width: 100%; margin: 6px 0 4px 0; }
+        .kpis td { border: none; background: #f4f6fa; padding: 6px 2px; width: 12.5%; }
+        .kpi-v { font-size: 15pt; font-weight: bold; color: #0f2a52; }
+        .kpi-l { font-size: 7.5pt; color: #718096; text-transform: uppercase; }
+        .chip { display: inline-block; width: 16px; padding: 1px 0; margin-right: 2px; text-align: center; color: #fff; font-weight: bold; font-size: 8pt; border-radius: 3px; }
+        .G { background: #2f855a; } .E { background: #b7791f; } .P { background: #c53030; }
+        .bar-row td { border: none; padding: 2px 4px; }
+        .bar-bg { background: #edf2f7; height: 10px; width: 100%; }
+        .bar { background: #2b6cb0; height: 10px; }
+        .bar.league { background: #a0aec0; }
+        .bar.top { background: #63b3ed; }
+        .analysis { background: #f7fafc; border-left: 4px solid #2b6cb0; padding: 8px 10px; margin: 6px 0; }
+        .analysis ul { margin: 3px 0 3px 16px; padding: 0; }
+        .two { width: 100%; }
+        .two > tbody > tr > td { width: 50%; vertical-align: top; border: none; padding: 0 6px 0 0; text-align: left; }
+        .muted { color: #718096; font-size: 8pt; }
+        .team { page-break-before: always; }
+        .nobreak { page-break-inside: avoid; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 th:text="|${d.club.name} (${d.club.code})|">Club</h1>
+    <div class="subtitle" th:text="|${d.category} · ${d.torneo}|">Categoría · Torneo</div>
+    <div class="meta" th:text="|Informe generado el ${f.date(d.generatedOn)} · Federación Porteña de Patín|">fecha</div>
+</div>
+
+<h2>Resumen</h2>
+<div class="analysis">
+    <p th:text="${a.summary}">Resumen</p>
+    <p th:if="${!#strings.isEmpty(a.trend)}"><b>Tendencia:</b> <span th:text="${a.trend}"></span></p>
+    <p class="muted" th:text="|Análisis: ${a.source}. Las cifras provienen de los datos publicados por la FPP en SIDGAD.|"></p>
+</div>
+
+<table class="two">
+    <tr>
+        <td>
+            <h3>Fortalezas</h3>
+            <ul><li th:each="s : ${a.strengths}" th:text="${s}"></li></ul>
+            <p class="muted" th:if="${a.strengths.isEmpty()}">Sin datos suficientes.</p>
+        </td>
+        <td>
+            <h3>Aspectos a mejorar</h3>
+            <ul><li th:each="s : ${a.weaknesses}" th:text="${s}"></li></ul>
+            <p class="muted" th:if="${a.weaknesses.isEmpty()}">Sin datos suficientes.</p>
+        </td>
+    </tr>
+</table>
+
+<div th:if="${!a.keyPlayers.isEmpty()}" class="nobreak">
+    <h3>Jugadores destacados</h3>
+    <table>
+        <tr><th class="l" style="width: 30%">Jugador</th><th class="l">Motivo</th></tr>
+        <tr th:each="p : ${a.keyPlayers}"><td class="l" th:text="${p.name}"></td><td class="l" th:text="${p.reason}"></td></tr>
+    </table>
+</div>
+
+<div th:if="${!#strings.isEmpty(a.nextOpponentPreview)}" class="nobreak">
+    <h3>Próximo rival</h3>
+    <p th:text="${a.nextOpponentPreview}"></p>
+</div>
+
+<div th:each="t : ${d.teams}" class="team">
+    <h2 th:text="|${t.name} (${t.code})|">Equipo</h2>
+
+    <table class="kpis">
+        <tr>
+            <td><div class="kpi-v" th:text="${t.total.played}">0</div><div class="kpi-l">PJ</div></td>
+            <td><div class="kpi-v" th:text="${t.total.won}">0</div><div class="kpi-l">Ganados</div></td>
+            <td><div class="kpi-v" th:text="${t.total.drawn}">0</div><div class="kpi-l">Empatados</div></td>
+            <td><div class="kpi-v" th:text="${t.total.lost}">0</div><div class="kpi-l">Perdidos</div></td>
+            <td><div class="kpi-v" th:text="${t.total.goalsFor}">0</div><div class="kpi-l">GF</div></td>
+            <td><div class="kpi-v" th:text="${t.total.goalsAgainst}">0</div><div class="kpi-l">GC</div></td>
+            <td><div class="kpi-v" th:text="${t.total.points}">0</div><div class="kpi-l">Puntos</div></td>
+            <td><div class="kpi-v" th:text="${f.pct(t.total.effectiveness)}">0</div><div class="kpi-l">Efectividad</div></td>
+        </tr>
+    </table>
+    <p th:if="${!t.form.isEmpty()}"><b>Últimos resultados:</b>
+        <span th:each="r : ${t.form}" th:class="|chip ${r}|" th:text="${r}">G</span>
+    </p>
+
+    <h3>Posiciones</h3>
+    <table th:if="${!t.standings.isEmpty()}">
+        <tr><th class="l">Torneo</th><th>Grupo</th><th>Pos.</th><th>Pts</th><th>PJ</th><th>GF</th><th>GC</th><th>Dif</th><th>Publicada</th></tr>
+        <tr th:each="s : ${t.standings}">
+            <td class="l" th:text="${s.outdated ? s.competition + ' *' : s.competition}"></td>
+            <td th:text="${#strings.isEmpty(s.group) ? '-' : s.group}"></td>
+            <td th:text="|${s.position}° de ${s.groupSize}|"></td>
+            <td th:text="${s.points}"></td><td th:text="${s.played}"></td>
+            <td th:text="${s.goalsFor}"></td><td th:text="${s.goalsAgainst}"></td><td th:text="${s.goalDiff}"></td>
+            <td th:text="${s.publishedOn == null ? '-' : f.date(s.publishedOn)}"></td>
+        </tr>
+    </table>
+    <p class="muted" th:if="${t.standings.?[outdated].size() > 0}">* Tabla de posiciones tal como la publica la FPP, desactualizada respecto del
+        calendario. El récord, los resultados y el resto de las cifras del informe se calculan a partir de todos los partidos jugados.</p>
+    <p class="muted" th:if="${t.standings.isEmpty()}">La tabla de posiciones no está publicada.</p>
+
+    <table class="two">
+        <tr>
+            <td>
+                <h3>Local / visitante</h3>
+                <table>
+                    <tr><th class="l"></th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th></tr>
+                    <tr><td class="l">Local</td><td th:text="${t.home.played}"></td><td th:text="${t.home.won}"></td><td th:text="${t.home.drawn}"></td><td th:text="${t.home.lost}"></td><td th:text="${t.home.goalsFor}"></td><td th:text="${t.home.goalsAgainst}"></td></tr>
+                    <tr><td class="l">Visitante</td><td th:text="${t.away.played}"></td><td th:text="${t.away.won}"></td><td th:text="${t.away.drawn}"></td><td th:text="${t.away.lost}"></td><td th:text="${t.away.goalsFor}"></td><td th:text="${t.away.goalsAgainst}"></td></tr>
+                </table>
+                <div th:if="${t.byTorneo.size() > 1}">
+                    <h3>Por torneo</h3>
+                    <table>
+                        <tr><th class="l">Torneo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th></tr>
+                        <tr th:each="b : ${t.byTorneo}"><td class="l" th:text="${b.torneo}"></td><td th:text="${b.record.played}"></td><td th:text="${b.record.won}"></td><td th:text="${b.record.drawn}"></td><td th:text="${b.record.lost}"></td><td th:text="${b.record.goalsFor}"></td><td th:text="${b.record.goalsAgainst}"></td></tr>
+                    </table>
+                </div>
+            </td>
+            <td th:with="maxG=${f.max(f.max(t.total.goalsForPerGame, t.total.goalsAgainstPerGame), f.max(d.league.goalsPerTeamGame, d.league.top3GoalsForPerGame))}">
+                <h3>Comparativa con la liga (goles por partido)</h3>
+                <table>
+                    <tr class="bar-row"><td class="l" style="width: 34%">GF equipo</td><td><div class="bar-bg"><div class="bar" th:style="${f.bar(t.total.goalsForPerGame, maxG)}"></div></div></td><td style="width: 12%" th:text="${f.dec(t.total.goalsForPerGame)}"></td></tr>
+                    <tr class="bar-row"><td class="l">GF top 3</td><td><div class="bar-bg"><div class="bar top" th:style="${f.bar(d.league.top3GoalsForPerGame, maxG)}"></div></div></td><td th:text="${f.dec(d.league.top3GoalsForPerGame)}"></td></tr>
+                    <tr class="bar-row"><td class="l">Promedio liga</td><td><div class="bar-bg"><div class="bar league" th:style="${f.bar(d.league.goalsPerTeamGame, maxG)}"></div></div></td><td th:text="${f.dec(d.league.goalsPerTeamGame)}"></td></tr>
+                    <tr class="bar-row"><td class="l">GC equipo</td><td><div class="bar-bg"><div class="bar" style="background: #c53030" th:style="|background: #c53030; ${f.bar(t.total.goalsAgainstPerGame, maxG)}|"></div></div></td><td th:text="${f.dec(t.total.goalsAgainstPerGame)}"></td></tr>
+                </table>
+                <p class="muted" th:if="${t.biggestWin != null}" th:text="|Mayor victoria: ${t.biggestWin.score()} ante ${t.biggestWin.rival} (${f.date(t.biggestWin.date)}).|"></p>
+                <p class="muted" th:if="${t.worstLoss != null}" th:text="|Peor derrota: ${t.worstLoss.score()} ante ${t.worstLoss.rival} (${f.date(t.worstLoss.date)}).|"></p>
+            </td>
+        </tr>
+    </table>
+
+    <h3>Resultados</h3>
+    <table th:if="${!t.results.isEmpty()}">
+        <tr><th class="l">Torneo</th><th>Fecha</th><th>J</th><th>L/V</th><th class="l">Rival</th><th>Resultado</th><th></th></tr>
+        <tr th:each="m : ${t.results}">
+            <td class="l" th:text="${m.torneo}"></td><td th:text="${f.date(m.date)}"></td><td th:text="${m.round}"></td>
+            <td th:text="${m.home ? 'L' : 'V'}"></td><td class="l" th:text="${m.rival}"></td>
+            <td th:text="${m.score()}"></td><td><span th:class="|chip ${m.outcome}|" th:text="${m.outcome}"></span></td>
+        </tr>
+    </table>
+    <p class="muted" th:if="${t.results.isEmpty()}">Sin partidos jugados.</p>
+
+    <div th:if="${!t.upcoming.isEmpty()}" class="nobreak">
+        <h3>Próximos partidos</h3>
+        <table>
+            <tr><th class="l">Torneo</th><th>Fecha</th><th>Hora</th><th>J</th><th>L/V</th><th class="l">Rival</th><th class="l">Cancha</th></tr>
+            <tr th:each="m : ${t.upcoming}">
+                <td class="l" th:text="${m.torneo}"></td><td th:text="${f.date(m.date)}"></td><td th:text="${m.time}"></td><td th:text="${m.round}"></td>
+                <td th:text="${m.home ? 'L' : 'V'}"></td><td class="l" th:text="${m.rival}"></td><td class="l" th:text="${m.venue}"></td>
+            </tr>
+        </table>
+    </div>
+
+    <h3>Goleadores y asistidores</h3>
+    <table th:if="${!t.players.isEmpty()}" th:with="maxShare=${t.players[0].goalShare}">
+        <tr><th class="l">Jugador</th><th>PJ</th><th>Goles</th><th>G/PJ</th><th>As</th><th class="l" style="width: 28%">% de los goles del equipo</th></tr>
+        <tr th:each="p : ${t.players}">
+            <td class="l" th:text="${p.name}"></td><td th:text="${p.games}"></td><td th:text="${p.goals}"></td>
+            <td th:text="${f.dec(p.goalsPerGame)}"></td><td th:text="${p.assists}"></td>
+            <td class="l"><div class="bar-bg"><div class="bar" th:style="${f.bar(p.goalShare, 100)}"></div></div><span class="muted" th:text="${f.pct(p.goalShare)}"></span></td>
+        </tr>
+    </table>
+    <p class="muted" th:if="${t.players.isEmpty()}">No hay estadísticas individuales publicadas.</p>
+
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <h3>Pelota parada</h3>
+                <table>
+                    <tr><th class="l"></th><th>Equipo</th><th>%</th><th>Liga</th></tr>
+                    <tr><td class="l">Faltas directas</td><td th:text="${f.fraction(t.setPieces.directFreeScored, t.setPieces.directFreeTaken)}"></td><td th:text="${f.pct(t.setPieces.directFreePct())}"></td><td th:text="${f.pct(d.league.directFreePct)}"></td></tr>
+                    <tr><td class="l">Penales</td><td th:text="${f.fraction(t.setPieces.penaltiesScored, t.setPieces.penaltiesTaken)}"></td><td th:text="${f.pct(t.setPieces.penaltyPct())}"></td><td th:text="${f.pct(d.league.penaltyPct)}"></td></tr>
+                </table>
+            </td>
+            <td>
+                <h3>Disciplina</h3>
+                <table>
+                    <tr><th>Azules</th><th>Rojas</th><th>Tarjetas/PJ</th><th>Liga</th></tr>
+                    <tr><td th:text="${t.discipline.blueCards}"></td><td th:text="${t.discipline.redCards}"></td><td th:text="${f.dec(t.discipline.cardsPerGame)}"></td><td th:text="${f.dec(d.league.cardsPerTeamGame)}"></td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div th:if="${!t.rivals.isEmpty()}" class="nobreak">
+        <h3>Cara a cara con cada rival</h3>
+        <table>
+            <tr><th class="l">Rival</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th></tr>
+            <tr th:each="r : ${t.rivals}"><td class="l" th:text="${r.rival}"></td><td th:text="${r.played}"></td><td th:text="${r.won}"></td><td th:text="${r.drawn}"></td><td th:text="${r.lost}"></td><td th:text="${r.goalsFor}"></td><td th:text="${r.goalsAgainst}"></td></tr>
+        </table>
+    </div>
+</div>
+
+<h2>Fuentes</h2>
+<ul>
+    <li th:each="s : ${d.sources}"><span th:text="${s.competition}"></span> — <span class="muted" th:text="${s.url}"></span></li>
+</ul>
+<p class="muted" th:text="|Contexto de liga: ${d.league.teams} equipos, ${d.league.matchesPlayed} partidos jugados en las competiciones incluidas.|"></p>
+
+</body>
+</html>

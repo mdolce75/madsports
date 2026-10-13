@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: fpp-stats
+  thymeleaf:
+    cache: true
+
+server:
+  port: ${PORT:8080}
+
+fpp:
+  sidgad:
+    base-url: https://www.server2.sidgad.es/cap/
+    origin: https://www.buenosaires.sidgad.com
+    federation-id: 3          # FPP
+    min-interval: 400ms       # espera entre pedidos al sitio
+    data-ttl: 15m
+    catalog-ttl: 6h
+    timeout: 20s
+    # Categorías relevadas (Mini y Promo quedan afuera)
+    levels: [INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA, PRIMERA]
+  ai:
+    enabled: ${FPP_AI_ENABLED:true}
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${FPP_AI_MODEL:claude-opus-5-5}
+    effort: ${FPP_AI_EFFORT:high}
+    max-turns: 12
