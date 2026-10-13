@@ -37,6 +37,8 @@
         .bar.ga { background: #c53030; }
         .minutes td { padding: 2px 4px; }
         tr.sep td { border-top: 2px solid #0f2a52; }
+        tr.unrecorded td { color: #718096; font-style: italic; }
+        tr.total td { border-top: 2px solid #0f2a52; }
         .card { display: inline-block; width: 7px; height: 10px; border-radius: 1px; vertical-align: middle; }
         .card.y { background: #ecc94b; } .card.b { background: #3182ce; } .card.r { background: #e53e3e; }
         .analysis { background: #f7fafc; border-left: 4px solid #2b6cb0; padding: 8px 10px; margin: 6px 0; }
@@ -223,11 +225,23 @@
                 <td th:text="${b.yellowOwn}"></td><td th:text="${b.blueOwn}"></td><td th:text="${b.redOwn}"></td>
                 <td th:text="${b.yellowRival}"></td><td th:text="${b.blueRival}"></td><td th:text="${b.redRival}"></td>
             </tr>
+            <tr th:if="${tp.hasUnrecordedGoals()}" class="unrecorded">
+                <td class="l">Sin minuto registrado *</td>
+                <td></td><td th:text="${tp.unrecorded.goalsFor}"></td><td></td><td th:text="${tp.unrecorded.goalsAgainst}"></td>
+                <td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td>
+            </tr>
+            <tr class="hl total">
+                <td class="l">Total</td>
+                <td></td><td th:text="${tp.totalGoalsFor()}"></td><td></td><td th:text="${tp.totalGoalsAgainst()}"></td>
+                <td colspan="6"></td>
+            </tr>
         </table>
         <p class="muted" th:if="${tp.hasData()}">
             <span th:text="|Según ${tp.matchesWithSheet} actas de ${tp.matchesPlayed} partidos jugados (períodos de ${tp.periodMinutes}').|"></span>
             <span th:if="${tp.matchesWithSheet < tp.matchesPlayed}">SIDGAD no publicó el acta de los partidos restantes.</span>
             <span th:if="${tp.goalMismatches > 0}" th:text="|En ${tp.goalMismatches} acta(s) los goles cargados no coinciden con el resultado oficial.|"></span>
+            <span th:if="${tp.hasUnrecordedGoals()}">* Goles de partidos sin ficha publicada o que faltan en fichas
+                incompletas: se conoce el resultado pero no el minuto. Las tarjetas de esos partidos no se conocen.</span>
             Tarjetas: <span class="card y"></span> amarilla · <span class="card b"></span> azul · <span class="card r"></span> roja.
         </p>
     </div>

@@ -203,6 +203,8 @@ public final class StatsEngine {
         int played = 0;
         int withSheet = 0;
         int mismatches = 0;
+        int unrecordedFor = 0;
+        int unrecordedAgainst = 0;
 
         for (Entry e : entries) {
             TeamRef own = e.team();
@@ -211,15 +213,22 @@ public final class StatsEngine {
                     continue;
                 }
                 played++;
+                boolean home = m.homeTeamId() == own.teamId();
+                int resultFor = home ? m.homeGoals() : m.awayGoals();
+                int resultAgainst = home ? m.awayGoals() : m.homeGoals();
                 List<MatchEvent> events = e.data().sheets().getOrDefault(m.idp(), List.of());
                 if (events.isEmpty()) {
+                    // Sin ficha: se conoce el resultado pero no el minuto de los goles ni las tarjetas.
+                    unrecordedFor += resultFor;
+                    unrecordedAgainst += resultAgainst;
                     continue;
                 }
                 withSheet++;
-                boolean home = m.homeTeamId() == own.teamId();
                 int rivalTeamId = home ? m.awayTeamId() : m.homeTeamId();
                 int rivalClubId = home ? m.awayClubId() : m.homeClubId();
                 int goalsInSheet = 0;
+                int ownGoalsInSheet = 0;
+                int rivalGoalsInSheet = 0;
                 for (MatchEvent ev : events) {
                     if (ev.period() < 1 || ev.period() > 2) {
                         continue;
@@ -235,11 +244,19 @@ public final class StatsEngine {
                     counts[bucket][column]++;
                     if (ev.type() == EventType.GOAL) {
                         goalsInSheet++;
+                        if (ours) {
+                            ownGoalsInSheet++;
+                        } else {
+                            rivalGoalsInSheet++;
+                        }
                     }
                 }
                 if (goalsInSheet != m.homeGoals() + m.awayGoals()) {
                     mismatches++;
                 }
+                // Ficha incompleta: los goles del resultado que no figuran en ella quedan sin minuto.
+                unrecordedFor += Math.max(0, resultFor - ownGoalsInSheet);
+                unrecordedAgainst += Math.max(0, resultAgainst - rivalGoalsInSheet);
             }
         }
 
@@ -260,7 +277,9 @@ public final class StatsEngine {
             }
             byPeriod.add(bucket(period == 1 ? "1er tiempo" : "2do tiempo", period, 0, periodMinutes, sum));
         }
-        return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod);
+        TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0,
+                new int[]{unrecordedFor, unrecordedAgainst, 0, 0, 0, 0, 0, 0});
+        return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod, unrecorded);
     }
 
     private static TimeBucket bucket(String label, int period, int from, int to, int[] c) {

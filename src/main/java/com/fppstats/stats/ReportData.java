@@ -41,8 +41,24 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      * @param matchesWithSheet partidos con acta publicada (solo esos se cuentan)
      * @param goalMismatches   actas cuyos goles no coinciden con el resultado oficial
      */
+    /**
+     * @param unrecorded goles sin minuto conocido: los de partidos sin ficha y los que faltan en fichas incompletas.
+     *                   Con esta fila, los goles de la tabla suman lo mismo que el récord. Sus tarjetas no se conocen.
+     */
     public record TimeProfile(int periodMinutes, int matchesPlayed, int matchesWithSheet, int goalMismatches,
-                              List<TimeBucket> buckets, List<TimeBucket> byPeriod) {
+                              List<TimeBucket> buckets, List<TimeBucket> byPeriod, TimeBucket unrecorded) {
+
+        public boolean hasUnrecordedGoals() {
+            return unrecorded.goalsFor() + unrecorded.goalsAgainst() > 0;
+        }
+
+        public int totalGoalsFor() {
+            return byPeriod.stream().mapToInt(TimeBucket::goalsFor).sum() + unrecorded.goalsFor();
+        }
+
+        public int totalGoalsAgainst() {
+            return byPeriod.stream().mapToInt(TimeBucket::goalsAgainst).sum() + unrecorded.goalsAgainst();
+        }
 
         public boolean hasData() {
             return matchesWithSheet > 0;

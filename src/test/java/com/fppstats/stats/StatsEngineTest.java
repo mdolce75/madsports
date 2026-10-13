@@ -103,6 +103,49 @@ public class StatsEngineTest {
     }
 
     @Test
+    void losGolesSinMinutoHacenQueLaTablaSumeIgualQueElRecord() {
+        // Todas las fichas: nada sin minuto.
+        TeamReport completo = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "CAVS");
+        assertThat(completo.timeProfile().hasUnrecordedGoals()).isFalse();
+        assertTotalsMatchRecord(completo);
+
+        // Sin ninguna ficha: todo el resultado queda sin minuto.
+        TeamReport sinFichas = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A");
+        assertThat(sinFichas.timeProfile().unrecorded().goalsFor()).isEqualTo(80);
+        assertThat(sinFichas.timeProfile().unrecorded().goalsAgainst()).isEqualTo(8);
+        assertTotalsMatchRecord(sinFichas);
+    }
+
+    @Test
+    void partidoSinFichaYFichaIncompletaVanASinMinuto() {
+        CompetitionData full = data(779);
+        Map<Integer, List<MatchEvent>> sheets = new HashMap<>();
+        // 26390 (Vélez 2-4 Argentinos): sin ficha.
+        // 26396 (Vélez 7-0 Comunicaciones): ficha a la que le falta un gol de Vélez.
+        List<MatchEvent> incompleta = new java.util.ArrayList<>(full.sheets().get(26396));
+        incompleta.remove(incompleta.stream().filter(e -> e.type() == Models.EventType.GOAL).findFirst().orElseThrow());
+        sheets.put(26396, incompleta);
+        CompetitionData partial = new CompetitionData(full.competition(), full.standings(), full.standingsDate(),
+                full.matches(), full.players(), sheets);
+
+        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(partial), HOY), "CAVS");
+        TimeProfile tp = velez.timeProfile();
+
+        assertThat(tp.matchesWithSheet()).isEqualTo(1);
+        assertThat(tp.goalMismatches()).isEqualTo(1);
+        // 2 + 4 del partido sin ficha, más el gol que falta en la ficha incompleta.
+        assertThat(tp.unrecorded().goalsFor()).isEqualTo(3);
+        assertThat(tp.unrecorded().goalsAgainst()).isEqualTo(4);
+        assertThat(tp.unrecorded().cardsOwn() + tp.unrecorded().cardsRival()).isZero();
+        assertTotalsMatchRecord(velez);
+    }
+
+    private static void assertTotalsMatchRecord(TeamReport t) {
+        assertThat(t.timeProfile().totalGoalsFor()).isEqualTo(t.total().goalsFor());
+        assertThat(t.timeProfile().totalGoalsAgainst()).isEqualTo(t.total().goalsAgainst());
+    }
+
+    @Test
     void sinActasPublicadasNoHayPerfilPorMinuto() {
         TimeProfile tp = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A")
                 .timeProfile();
