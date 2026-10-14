@@ -3,7 +3,7 @@
 Aplicación de **Mad Sports** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
 Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
 
-**Filtros:** Año (2026, 2027) · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Club · Rama
+**Filtros:** Año (2026, 2027) · Club · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Rama
 (solo las que tiene el club) · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera; solo las del club
 en esa rama). Si SIDGAD todavía no tiene un año, la web lo informa y no deja generar el informe.
 
