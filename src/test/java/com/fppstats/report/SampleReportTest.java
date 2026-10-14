@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import com.fppstats.player.PlayerReport;
+import com.fppstats.player.SamplePlayerData;
 import java.util.List;
 import com.fppstats.stats.StatsEngine;
 
@@ -90,6 +92,38 @@ class SampleReportTest {
         assertThat(text.get(2)).contains("perdiendo", "Comete faltas más seguido cuando va perdiendo");
         assertThat(text.get(3)).isEqualTo("No recibió tarjetas azules en esos partidos.");
         assertThat(rules.analyze(d).foulsAnalysis()).isEqualTo(text);
+    }
+
+    @Test
+    void informeDeEjemploDeJugador() throws Exception {
+        PlayerReport r = SamplePlayerData.build(HOY, Crests.sample("CE"));
+
+        // Juniors que también juega en Primera: las dos categorías, en orden de nivel, y el total coherente.
+        assertThat(r.categories()).extracting(PlayerReport.Line::category)
+                .containsExactly("Juniors Masculino", "Primera Masculino");
+        PlayerReport.Line t = r.total();
+        assertThat(t.played()).isEqualTo(r.matches().size()).isEqualTo(t.won() + t.drawn() + t.lost());
+        assertThat(t.goals()).isEqualTo(r.matches().stream().mapToInt(PlayerReport.MatchRow::goals).sum());
+        assertThat(t.yellowCards() + t.blueCards() + t.redCards()).isEqualTo(r.matches().stream()
+                .mapToInt(m -> m.yellowCards() + m.blueCards() + m.redCards()).sum());
+        // Cada gol y tarjeta está en un tramo o en "sin minuto registrado".
+        PlayerReport.Minutes mn = r.minutes();
+        assertThat(mn.buckets().stream().mapToInt(PlayerReport.Bucket::goals).sum() + mn.unrecorded().goals())
+                .isEqualTo(t.goals());
+        assertThat(mn.buckets().stream().mapToInt(PlayerReport.Bucket::cards).sum() + mn.unrecorded().cards())
+                .isEqualTo(t.cards());
+        assertThat(t.hasSetPieces()).isTrue();
+        assertThat(r.notes()).anyMatch(n -> n.startsWith("Categorías revisadas: Juniors, Reserva y Primera Masculino"))
+                .anyMatch(n -> n.contains("no tiene acta publicada"));
+
+        String html = renderer.playerHtml(r, true);
+        assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.", "Tomás Ejemplo",
+                "CLUB EJEMPLO", "Penales y libres directos", "Goles y tarjetas por tramos de 5 minutos");
+        assertThat(renderer.playerHtml(r, false)).doesNotContain("DATOS FICTICIOS");
+
+        byte[] pdf = sample.playerPdf();
+        assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
+        Files.write(Path.of("target", "informe-jugador-modelo.pdf"), pdf);
     }
 
     @Test

@@ -55,7 +55,8 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/login.html", "/registro.html", "/css/**", "/js/**", "/error",
-                                "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf")
+                                "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
+                                "/api/ejemplo-jugador.pdf")
                         .permitAll()
                         .requestMatchers("/", "/index.html", "/api/informes", "/api/informes/**")
                         .hasAuthority(Perfil.CLUBFPP.name())

@@ -150,3 +150,4 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .alt a { color: var(--accent); }
 [hidden] { display: none !important; }
 @media (max-width: 480px) { .profiles { grid-template-columns: 1fr; } }
+.hint a { color: var(--accent); }

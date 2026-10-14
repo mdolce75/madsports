@@ -52,15 +52,25 @@ public class PdfRenderer {
 
     /** Informe de un jugador (perfil PLAYERFPP), plantilla {@code templates/player-report.html}. */
     public String playerHtml(PlayerReport report) {
+        return playerHtml(report, false);
+    }
+
+    /** @param sample informe modelo: cada página lleva la marca "datos ficticios" */
+    public String playerHtml(PlayerReport report, boolean sample) {
         Context ctx = new Context(Locale.forLanguageTag("es-AR"));
         ctx.setVariable("r", report);
+        ctx.setVariable("sample", sample);
         ctx.setVariable("f", new Format());
         ctx.setVariable("c", new Charts());
         return templates.process("player-report", ctx);
     }
 
     public byte[] playerPdf(PlayerReport report) {
-        return toPdf(playerHtml(report));
+        return playerPdf(report, false);
+    }
+
+    public byte[] playerPdf(PlayerReport report, boolean sample) {
+        return toPdf(playerHtml(report, sample));
     }
 
     private static byte[] toPdf(String html) {

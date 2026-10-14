@@ -159,7 +159,7 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 
 ## API
 
-Públicos: registro, sesión, catálogo e informe de ejemplo. El resto pide sesión con el perfil que corresponde
+Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide sesión con el perfil que corresponde
 (sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
 
 - `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","nombre":"...","apellido":"...","clubId":22,"dni":"30123456","categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973}` → `201`
@@ -171,6 +171,9 @@ Públicos: registro, sesión, catálogo e informe de ejemplo. El resto pide sesi
   `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
   SIDGAD ni la API de Gemini. Enlazado desde la web.
+- `GET /api/ejemplo-jugador.pdf`: informe modelo de jugador con datos ficticios ("Tomás Ejemplo", de Juniors, que
+  también juega en Primera del "Club Ejemplo"). Se arma con el mismo motor que los informes reales. Enlazado desde
+  el login, el registro y la pantalla de jugador.
 - `POST /api/informes` (CLUBFPP, solo su club) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`

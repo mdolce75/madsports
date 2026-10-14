@@ -96,6 +96,16 @@ public class ApiController {
                 .body(sample.pdf());
     }
 
+    /** Informe modelo de jugador con datos ficticios; se abre en el navegador (inline). */
+    @GetMapping("/ejemplo-jugador.pdf")
+    public ResponseEntity<byte[]> ejemploJugador() {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename("informe-jugador-ejemplo-mad-sports.pdf").build().toString())
+                .body(sample.playerPdf());
+    }
+
     @GetMapping("/informes/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
         return reports.find(id, auth.getName())

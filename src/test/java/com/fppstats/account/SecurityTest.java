@@ -103,6 +103,7 @@ class SecurityTest {
         mvc.perform(get("/jugador.html")).andExpect(redirectedUrlPattern("**/login.html"));
         mvc.perform(get("/login.html")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());
+        mvc.perform(get("/api/ejemplo-jugador.pdf")).andExpect(status().isOk());
         mvc.perform(get("/api/informes/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/sesion")).andExpect(status().isOk()).andExpect(jsonPath("$.autenticado").value(false));
     }
