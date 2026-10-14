@@ -1,6 +1,9 @@
 spring:
   application:
     name: fpp-stats
+  # Secretos locales (SMTP, Gemini...) en un .env junto a la app, fuera de git. En producción, variables de entorno.
+  config:
+    import: optional:file:.env[.properties]
   thymeleaf:
     cache: true
   # Usuarios: H2 en archivo (./data). En producción, FPP_DB_URL apunta a la base que corresponda.
@@ -37,7 +40,7 @@ server:
 
 fpp:
   mail:
-    from: ${MAIL_FROM:Mad Sports <no-responder@madsports.com.ar>}
+    from: ${MAIL_FROM:Mad Sports <info@madsportsapp.com>}
     # Dirección pública de la web, para armar los enlaces de los mails
     base-url: ${APP_BASE_URL:http://localhost:8080}
   sidgad:

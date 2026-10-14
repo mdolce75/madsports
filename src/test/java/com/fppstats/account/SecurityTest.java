@@ -64,6 +64,15 @@ class SecurityTest {
     @MockitoBean RosterService roster;
     @MockitoBean ReportService reports;
     @MockitoBean Mailer mailer;
+    @Autowired org.thymeleaf.ITemplateEngine templates;
+
+    /** Mailer de verdad (sin SMTP) para revisar el HTML; el de la app está simulado para capturar los envíos. */
+    Mailer realMailer;
+
+    @BeforeEach
+    void realMailer() {
+        realMailer = new Mailer(null, templates, "", "Mad Sports <info@madsportsapp.com>");
+    }
 
     @BeforeEach
     void setUp() {
@@ -102,9 +111,10 @@ class SecurityTest {
 
     /** Token del último mail enviado a esa dirección con un enlace a {@code path}. */
     String token(String email, String path) {
-        ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
-        verify(mailer, atLeastOnce()).send(eq(email), anyString(), text.capture());
-        String last = text.getAllValues().getLast();
+        ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer, atLeastOnce()).send(mail.capture());
+        String last = mail.getAllValues().stream().filter(m -> m.to().equals(email)).reduce((a, b) -> b)
+                .orElseThrow().url();
         Matcher m = Pattern.compile(Pattern.quote(path) + "\\?token=([A-Za-z0-9_-]+)").matcher(last);
         assertThat(m.find()).as("enlace en el mail:\n%s", last).isTrue();
         return m.group(1);
@@ -216,12 +226,12 @@ class SecurityTest {
         // Un mail por minuto como mucho: el reenvío inmediato no manda otro.
         mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"usuario\":\"ana\"}")).andExpect(status().isOk());
-        verify(mailer, times(1)).send(eq("ana@example.com"), anyString(), anyString());
+        verify(mailer, times(1)).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("ana@example.com")));
         // Email inexistente: misma respuesta, sin mail.
         mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Si hay una cuenta")));
-        verify(mailer, never()).send(eq("nadie@example.com"), anyString(), anyString());
+        verify(mailer, never()).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("nadie@example.com")));
     }
 
     @Test
@@ -251,7 +261,33 @@ class SecurityTest {
         // Email inexistente: misma respuesta y ningún mail.
         mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk());
-        verify(mailer, never()).send(eq("nadie@example.com"), anyString(), anyString());
+        verify(mailer, never()).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("nadie@example.com")));
+    }
+
+    @Test
+    void elMailTieneElLookDeLaWeb() {
+        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de Mad Sports", "Un paso más",
+                "Tu cuenta", "Confirmá tu email", "ana", List.of("Gracias por sumarte."), "Confirmar mi email",
+                "http://localhost/api/verificar?token=abc", "El enlace vale 48 horas.");
+        String html = realMailer.html(m);
+        assertThat(html).contains("#0a0e17", "#ff5a1f", "cid:logo", "Confirmá tu email", "Hola ana:",
+                "href=\"http://localhost/api/verificar?token=abc\"", "Confirmar mi email ►", "Mad Sports");
+        assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verificar?token=abc");
+        assertThat(new String(Mailer.logo(), 1, 3)).isEqualTo("PNG");
+    }
+
+    @Test
+    void vistaPreviaDelMail() throws Exception {
+        // Copia para revisar a ojo en el navegador: target/mail-ejemplo.html (logo embebido en lugar de cid:).
+        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de Mad Sports", "Un paso más",
+                "Tu cuenta", "Confirmá tu email", "ana",
+                List.of("Gracias por sumarte a Mad Sports. Para activar tu cuenta (usuario ana), confirmá tu email con el botón de abajo.",
+                        "Después ya podés ingresar y generar tus informes de hockey sobre patines."),
+                "Confirmar mi email", "http://localhost:8091/api/verificar?token=ejemplo",
+                "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.");
+        String preview = realMailer.html(m).replace("cid:logo",
+                "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(Mailer.logo()));
+        java.nio.file.Files.writeString(java.nio.file.Path.of("target", "mail-ejemplo.html"), preview);
     }
 
     @Test

@@ -148,7 +148,12 @@ Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo
 
 ## Correr
 
-Requiere JDK 21.
+Requiere JDK 21. Los secretos locales (SMTP de Resend, Gemini) van en un `.env` junto al proyecto, fuera de git;
+ver `.env.example`. En producción se cargan como variables de entorno.
+
+Los mails (confirmar el email, elegir una clave nueva) salen en HTML con la identidad de la web (`templates/mail/`)
+y el logo embebido, más una versión en texto. Con Resend: host `smtp.resend.com`, usuario `resend` y la API key
+como clave (alcanza con permiso de solo envío).
 
 ```bash
 export GEMINI_API_KEY=...   # opcional: sin key se usa el análisis por reglas
@@ -165,7 +170,7 @@ Abrir http://localhost:8080.
 | `FPP_DB_URL` | `jdbc:h2:file:./data/fpp-stats` | Base de usuarios |
 | `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
-| `MAIL_FROM` | `Mad Sports <no-responder@madsports.com.ar>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
+| `MAIL_FROM` | `Mad Sports <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
 
 **API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.

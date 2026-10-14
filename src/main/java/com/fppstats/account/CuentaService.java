@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -56,17 +57,14 @@ public class CuentaService {
             return;
         }
         String token = nuevoToken(u, Tipo.VERIFICACION, VIGENCIA_VERIFICACION);
-        mailer.send(u.getEmail(), "Confirmá tu cuenta de Mad Sports", """
-                Hola %s:
-
-                Para activar tu cuenta de Mad Sports, confirmá tu email con este enlace:
-
-                %s/api/verificar?token=%s
-
-                El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.
-
-                Mad Sports · Estadísticas de hockey sobre patines
-                """.formatted(saludo(u), baseUrl, token));
+        mailer.send(new MailContent(u.getEmail(), "Confirmá tu cuenta de Mad Sports",
+                "Un paso más: confirmá tu email para empezar a usar Mad Sports.",
+                "Tu cuenta", "Confirmá tu email", saludo(u),
+                List.of("Gracias por sumarte a Mad Sports. Para activar tu cuenta (usuario " + u.getUsuario()
+                        + "), confirmá tu email con el botón de abajo.",
+                        "Después ya podés ingresar y generar tus informes de hockey sobre patines."),
+                "Confirmar mi email", baseUrl + "/api/verificar?token=" + token,
+                "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail."));
     }
 
     /** Vuelve a mandar la confirmación, si hay una cuenta sin confirmar con ese email (o ese usuario). */
@@ -95,18 +93,14 @@ public class CuentaService {
     public void olvideClave(String email) {
         buscarPorEmail(email).filter(u -> !recienEnviado(u, Tipo.RECUPERO)).ifPresent(u -> {
             String token = nuevoToken(u, Tipo.RECUPERO, VIGENCIA_RECUPERO);
-            mailer.send(u.getEmail(), "Elegí una clave nueva para Mad Sports", """
-                    Hola %s:
-
-                    Pediste cambiar la clave de tu usuario %s. Elegí una nueva con este enlace:
-
-                    %s/restablecer.html?token=%s
-
-                    El enlace vale 1 hora y se puede usar una sola vez. Si no lo pediste, ignorá este mail: tu clave
-                    sigue siendo la misma.
-
-                    Mad Sports · Estadísticas de hockey sobre patines
-                    """.formatted(saludo(u), u.getUsuario(), baseUrl, token));
+            mailer.send(new MailContent(u.getEmail(), "Elegí una clave nueva para Mad Sports",
+                    "Pediste cambiar la clave de tu usuario de Mad Sports.",
+                    "Tu cuenta", "Elegí una clave nueva", saludo(u),
+                    List.of("Pediste cambiar la clave de tu usuario " + u.getUsuario()
+                            + ". Elegí una nueva con el botón de abajo."),
+                    "Elegir clave nueva", baseUrl + "/restablecer.html?token=" + token,
+                    "El enlace vale 1 hora y se puede usar una sola vez. Si no lo pediste, ignorá este mail: "
+                            + "tu clave sigue siendo la misma."));
         });
     }
 
