@@ -36,6 +36,7 @@ public class PdfRenderer {
         ctx.setVariable("d", data);
         ctx.setVariable("a", analysis);
         ctx.setVariable("f", new Format());
+        ctx.setVariable("c", new Charts());
         ctx.setVariable("sample", sample);
         return templates.process("report", ctx);
     }

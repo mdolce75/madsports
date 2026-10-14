@@ -41,6 +41,8 @@
         .bar.ga { background: #c53030; }
         .minutes td { padding: 2px 4px; }
         tr.sep td { border-top: 2px solid #0a0e17; }
+        img.chart { width: 100%; }
+        .chart-cell { text-align: center; }
         .verdict { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
         .v-FORTALEZA { background: #c6f6d5; color: #22543d; }
         .v-DEBILIDAD { background: #fed7d7; color: #822727; }
@@ -57,6 +59,7 @@
         .muted { color: #718096; font-size: 8pt; }
         .team { page-break-before: always; }
         .nobreak { page-break-inside: avoid; }
+        tr { page-break-inside: avoid; }
     </style>
     <style th:if="${sample}">
         @page {
@@ -132,6 +135,19 @@
     <p th:if="${!t.form.isEmpty()}"><b>Últimos resultados:</b>
         <span th:each="r : ${t.form}" th:class="|chip ${r}|" th:text="${r}">G</span>
     </p>
+
+    <table class="two nobreak" th:if="${t.total.played > 0}">
+        <tr>
+            <td style="width: 38%">
+                <h3>Resultados</h3>
+                <img class="chart" th:src="${c.resultsDonut(t.total)}" alt="Ganados, empatados y perdidos"/>
+            </td>
+            <td>
+                <h3>Partido a partido (diferencia de gol)</h3>
+                <img class="chart" th:src="${c.matchDiffBars(t.results)}" alt="Diferencia de gol de cada partido"/>
+            </td>
+        </tr>
+    </table>
 
     <div class="nobreak" th:if="${!t.indicators.isEmpty()}">
         <h3>Análisis de fortalezas y debilidades</h3>
@@ -230,9 +246,18 @@
         </tr>
     </table>
     <p class="muted" th:if="${t.players.isEmpty()}">No hay estadísticas individuales publicadas.</p>
+    <div class="nobreak" th:with="donut=${c.scorersDonut(t.players)}" th:if="${!t.players.isEmpty()}">
+        <th:block th:if="${donut != null}">
+            <h3>Reparto del gol</h3>
+            <table class="two"><tr><td style="width: 62%"><img class="chart" th:src="${donut}" alt="Goles por jugador"/></td>
+                <td><p class="muted">Goles de los cinco máximos goleadores y del resto del plantel, sobre los goles con
+                    autor registrado en las estadísticas de la FPP.</p></td></tr></table>
+        </th:block>
+    </div>
 
     <div class="nobreak" th:with="tp=${t.timeProfile}">
         <h3 th:text="${d.partial() ? 'Goles y tarjetas por tramos de 5 minutos (últimos ' + d.lastMatches + ' partidos)' : 'Goles y tarjetas por tramos de 5 minutos'}">Goles y tarjetas por tramos de 5 minutos</h3>
+        <img class="chart" th:if="${tp.hasData()}" th:src="${c.goalsByBucket(tp)}" alt="Goles a favor y en contra por tramo"/>
         <p class="muted" th:if="${!tp.hasData()}">No hay actas de partido publicadas para este equipo: el análisis por
             minuto no está disponible.</p>
         <table th:if="${tp.hasData()}" class="minutes" th:with="maxG=${tp.maxGoalsInBucket()}">
@@ -289,6 +314,9 @@
 
     <div class="nobreak" th:with="tp=${t.timeProfile}" th:if="${t.timeProfile.hasData()}">
         <h3>Faltas y marcador por tramos de 5 minutos</h3>
+        <th:block th:with="fc=${c.foulsByBucket(tp)}">
+            <img class="chart" th:if="${fc != null}" th:src="${fc}" alt="Faltas propias y de los rivales por tramo"/>
+        </th:block>
         <table class="minutes">
             <tr>
                 <th rowspan="2" class="l">Tramo</th>
@@ -333,6 +361,9 @@
                     </table>
                     <p class="muted">Faltas propias según cómo iba el partido en el minuto de la falta, y tiempo jugado en
                         cada situación (mm:ss), en los partidos con ficha.</p>
+                    <th:block th:with="sc=${c.situationDonut(s)}">
+                        <img class="chart" th:if="${sc != null}" th:src="${sc}" alt="Tiempo jugado ganando, empatando y perdiendo"/>
+                    </th:block>
                 </td>
                 <td>
                     <div class="analysis" style="margin-top: 0">

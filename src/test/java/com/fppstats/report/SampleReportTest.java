@@ -98,6 +98,8 @@ class SampleReportTest {
         String html = renderer.html(d, sample.analysis(d), true);
 
         assertThat(html).contains("Análisis de faltas", "Según el marcador");
+        // Gráficos: resultados, partido a partido, reparto del gol, goles por tramo, faltas por tramo y tiempo según el marcador.
+        assertThat(html.split("src=\"data:image/png;base64,", -1)).hasSize(6 + 1);
         assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.",
                 "CLUB EJEMPLO (CEJ)", "texto de ejemplo", "Sin minuto registrado");
         assertThat(renderer.html(d, rules.analyze(d), false)).doesNotContain("DATOS FICTICIOS");
