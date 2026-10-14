@@ -198,12 +198,12 @@
 
         <div class="grid2">
             <div class="field">
-                <label for="categoria"><span class="num"><i>4</i></span>Categoría</label>
-                <select id="categoria" required disabled></select>
+                <label for="rama"><span class="num"><i>4</i></span>Rama</label>
+                <select id="rama" required disabled></select>
             </div>
             <div class="field">
-                <label for="rama"><span class="num"><i>5</i></span>Rama</label>
-                <select id="rama" required disabled></select>
+                <label for="categoria"><span class="num"><i>5</i></span>Categoría</label>
+                <select id="categoria" required disabled></select>
             </div>
         </div>
 
@@ -237,24 +237,27 @@
         return catalog.clubs.find(c => String(c.id) === $("club").value);
     }
 
-    // Solo se ofrecen las categorías y ramas en las que el club tiene equipo.
-    function fillCategories() {
-        const club = selectedClub();
-        const sel = $("categoria");
-        sel.innerHTML = "";
-        (club ? club.categories : []).forEach(c => sel.add(new Option(c.label, c.key)));
-        sel.disabled = !club;
-        fillBranches();
-    }
-
+    // Club → Rama → Categoría: solo se ofrecen las ramas en que el club tiene equipo y, dentro de la rama,
+    // sus categorías (con "Infantil A" / "Infantil B" si tiene dos equipos).
     function fillBranches() {
         const club = selectedClub();
-        const level = club && club.categories.find(c => c.key === $("categoria").value);
         const sel = $("rama");
         sel.innerHTML = "";
-        (level ? level.branches : []).forEach(b => sel.add(new Option(BRANCH_LABEL[b] || b, b)));
-        sel.disabled = !level;
-        $("go").disabled = !level;
+        const branches = club ? ["MASCULINO", "FEMENINO"].filter(b => club.categories.some(c => c.branches.includes(b))) : [];
+        branches.forEach(b => sel.add(new Option(BRANCH_LABEL[b] || b, b)));
+        sel.disabled = branches.length === 0;
+        fillCategories();
+    }
+
+    function fillCategories() {
+        const club = selectedClub();
+        const branch = $("rama").value;
+        const sel = $("categoria");
+        sel.innerHTML = "";
+        const options = club && branch ? club.categories.filter(c => c.branches.includes(branch)) : [];
+        options.forEach(c => sel.add(new Option(c.label, c.key)));
+        sel.disabled = options.length === 0;
+        $("go").disabled = options.length === 0;
     }
 
     // Carga el catálogo del año (sin año: el más reciente con datos) y arma los selectores.
@@ -281,7 +284,7 @@
             }
             catalog.clubs.forEach(c => sel.add(new Option(`${c.name} (${c.code})`, c.id)));
             sel.disabled = false;
-            fillCategories();
+            fillBranches();
         } catch (e) {
             status("No se pudo cargar el catálogo: " + e.message, true);
         }
@@ -316,8 +319,8 @@
     }
 
     $("anio").addEventListener("change", () => { status(""); loadCatalog($("anio").value); });
-    $("club").addEventListener("change", fillCategories);
-    $("categoria").addEventListener("change", fillBranches);
+    $("club").addEventListener("change", fillBranches);
+    $("rama").addEventListener("change", fillCategories);
     $("periodo").addEventListener("change", () => { $("periodo-hint").hidden = $("periodo").value !== "ULTIMOS_5"; });
     $("form").addEventListener("submit", async ev => {
         ev.preventDefault();

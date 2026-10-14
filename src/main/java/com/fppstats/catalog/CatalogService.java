@@ -6,6 +6,7 @@ import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Competition.Category;
 import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.sidgad.parse.SidgadParser;
+import com.fppstats.stats.TeamKeys;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -28,7 +29,32 @@ import java.util.stream.Collectors;
 public class CatalogService {
 
     /** Categoría (nivel) y las ramas en que el club tiene equipo. */
+    /**
+     * Opción de categoría. Si el club tiene equipo A y B en la categoría, hay una opción por equipo
+     * ("Infantil A", "Infantil B"; clave "INFANTIL:A"); si tiene uno solo, una opción ("Infantil", clave "INFANTIL").
+     *
+     * @param branches ramas en las que existe ese equipo
+     */
     public record LevelView(String key, String label, List<String> branches) {
+    }
+
+    /** Categoría elegida en la web: nivel y, si el club tiene más de un equipo, la letra ("INFANTIL:B"). */
+    public record CategoryOption(String level, String letter) {
+
+        public static CategoryOption parse(String key) {
+            String k = key == null ? "" : key.trim().toUpperCase();
+            int i = k.indexOf(':');
+            return i < 0 ? new CategoryOption(k, null) : new CategoryOption(k.substring(0, i), k.substring(i + 1));
+        }
+
+        public String key() {
+            return letter == null ? level : level + ":" + letter;
+        }
+
+        /** Clave del equipo en el informe: "CAVS B" (o "CAVS" si es el único equipo). */
+        public String teamKey(String clubCode) {
+            return letter == null ? clubCode : clubCode + " " + letter;
+        }
     }
 
     public record ClubView(int id, String code, String name, List<LevelView> categories) {
@@ -117,19 +143,18 @@ public class CatalogService {
 
     static CatalogView view(List<Competition> comps, List<String> levels, int year, List<Integer> years) {
         Map<Integer, List<TeamRef>> teamsByClub = new HashMap<>();
-        Map<Integer, List<Category>> categoriesByClub = new HashMap<>();
         for (Competition c : comps) {
             for (TeamRef t : c.teams()) {
                 teamsByClub.computeIfAbsent(t.clubId(), k -> new ArrayList<>()).add(t);
-                categoriesByClub.computeIfAbsent(t.clubId(), k -> new ArrayList<>()).add(c.category());
             }
         }
         List<ClubView> clubs = teamsByClub.entrySet().stream()
                 .filter(e -> e.getKey() > 0)
-                .map(e -> new ClubView(e.getKey(),
-                        mode(e.getValue(), t -> baseName(t.code())),
-                        mode(e.getValue(), t -> baseName(t.name())),
-                        levelViews(categoriesByClub.get(e.getKey()), levels)))
+                .map(e -> {
+                    String code = mode(e.getValue(), t -> baseName(t.code()));
+                    String name = mode(e.getValue(), t -> baseName(t.name()));
+                    return new ClubView(e.getKey(), code, name, teamOptions(comps, e.getKey(), code, name, levels));
+                })
                 .sorted(Comparator.comparing(ClubView::name))
                 .toList();
         return new CatalogView(year, true, null, years,
@@ -137,6 +162,40 @@ public class CatalogService {
     }
 
     /** Agrupa por nivel (en el orden configurado) con sus ramas (masculino primero). */
+    /** Opciones de categoría del club: una por equipo (A, B) en cada nivel, con las ramas en que existe. */
+    private static List<LevelView> teamOptions(List<Competition> comps, int clubId, String clubCode, String clubName,
+                                               List<String> levels) {
+        Map<String, List<String>> branchesByOption = new TreeMap<>(Comparator
+                .comparingInt((String k) -> levels.indexOf(CategoryOption.parse(k).level()))
+                .thenComparing(k -> k));
+        Map<Category, Boolean> severalTeams = new HashMap<>();
+        for (Competition c : comps) {
+            long count = c.teams().stream()
+                    .filter(t -> t.clubId() == clubId && TeamKeys.belongs(t, clubCode, clubName)).count();
+            severalTeams.merge(c.category(), count > 1, Boolean::logicalOr);
+        }
+        for (Competition c : comps) {
+            List<TeamRef> own = c.teams().stream()
+                    .filter(t -> t.clubId() == clubId && TeamKeys.belongs(t, clubCode, clubName)).toList();
+            for (String key : TeamKeys.keys(own, clubCode, severalTeams.get(c.category())).values()) {
+                String letter = key.length() > clubCode.length() ? key.substring(clubCode.length()).trim() : null;
+                String option = new CategoryOption(c.category().level(), letter).key();
+                List<String> branches = branchesByOption.computeIfAbsent(option, k -> new ArrayList<>());
+                if (!branches.contains(c.category().branch())) {
+                    branches.add(c.category().branch());
+                }
+            }
+        }
+        return branchesByOption.entrySet().stream()
+                .map(e -> {
+                    CategoryOption o = CategoryOption.parse(e.getKey());
+                    String label = new Category(o.level(), "X").levelLabel() + (o.letter() == null ? "" : " " + o.letter());
+                    return new LevelView(e.getKey(), label,
+                            e.getValue().stream().sorted(Comparator.comparingInt(BRANCHES::indexOf)).toList());
+                })
+                .toList();
+    }
+
     private static List<LevelView> levelViews(List<Category> categories, List<String> levels) {
         Map<Integer, List<String>> byLevel = new TreeMap<>();
         for (Category c : categories) {

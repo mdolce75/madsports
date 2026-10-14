@@ -74,21 +74,43 @@ public final class StatsEngine {
      */
     public static ReportData build(ClubView club, String categoryLabel, String torneoLabel,
                                    List<CompetitionData> data, LocalDate today, int lastMatches) {
-        // Un mismo equipo tiene distinto teamId en Apertura y Clausura: se agrupa por código.
+        return build(club, categoryLabel, torneoLabel, data, today, lastMatches, null);
+    }
+
+    /**
+     * @param teamKey solo ese equipo del club (p. ej. "CAVS B"); null = todos. Los equipos A y B de un club son
+     *                equipos distintos y cada uno tiene su informe.
+     */
+    public static ReportData build(ClubView club, String categoryLabel, String torneoLabel,
+                                   List<CompetitionData> data, LocalDate today, int lastMatches, String teamKey) {
+        // Un mismo equipo tiene distinto teamId en Apertura y Clausura: se agrupa por su clave (código del club + letra).
         Map<String, List<Entry>> byTeam = new LinkedHashMap<>();
+        boolean severalTeams = data.stream().anyMatch(cd -> ownTeams(cd.competition(), club).size() > 1);
         for (CompetitionData cd : data) {
-            List<TeamRef> own = cd.competition().teams().stream().filter(t -> t.clubId() == club.id()).toList();
+            List<TeamRef> own = ownTeams(cd.competition(), club);
+            Map<Integer, String> keys = TeamKeys.keys(own, club.code(), severalTeams);
             for (TeamRef t : own) {
-                byTeam.computeIfAbsent(teamKey(t, own.size(), club.code()), k -> new ArrayList<>()).add(new Entry(cd, t));
+                String key = keys.get(t.teamId());
+                if (teamKey == null || teamKey.equals(key)) {
+                    byTeam.computeIfAbsent(key, k -> new ArrayList<>()).add(new Entry(cd, t));
+                }
             }
         }
         LeagueContext league = league(data);
         List<TeamReport> teams = byTeam.entrySet().stream()
-                .map(e -> team(e.getKey(), e.getValue(), today, lastMatches, league)).toList();
+                .map(e -> team(e.getKey(), TeamKeys.displayName(club.name(), club.code(), e.getKey()),
+                        e.getValue(), today, lastMatches, league))
+                .toList();
         List<Source> sources = data.stream()
                 .map(cd -> new Source(cd.competition().name(), cd.competition().url())).toList();
         return new ReportData(new ReportData.ClubInfo(club.id(), club.code(), club.name()),
                 categoryLabel, torneoLabel, today, lastMatches, sources, teams, league, List.of());
+    }
+
+    private static List<TeamRef> ownTeams(Competition c, ClubView club) {
+        return c.teams().stream()
+                .filter(t -> t.clubId() == club.id() && TeamKeys.belongs(t, club.code(), club.name()))
+                .toList();
     }
 
     /** Partidos jugados del equipo en todas sus competiciones, en orden cronológico; los últimos N si N > 0. */
@@ -100,27 +122,8 @@ public final class StatsEngine {
     private record Entry(CompetitionData data, TeamRef team) {
     }
 
-    /**
-     * Identifica al equipo a lo largo de la temporada (el teamId cambia entre torneos). Un club puede tener
-     * equipo A y B en la misma categoría y rama: "CAVS B" se mantiene, "GEBAB" (SIDGAD a veces omite el espacio)
-     * pasa a "GEBA B", y si hay varios equipos el que no tiene letra es el A. Un único equipo queda con el código base.
-     */
-    static String teamKey(TeamRef t, int clubTeamsInCompetition, String clubCode) {
-        String code = t.code().trim().replaceAll("\\s+", " ");
-        // El código del club varía entre torneos (Huracán: "HUR" en el Apertura, "HURA" en el Clausura):
-        // se usa siempre el código canónico del club y solo se toma la letra del equipo.
-        if (code.matches(".*\\s[A-D]$")) {
-            return clubCode + " " + code.charAt(code.length() - 1);
-        }
-        if (code.length() == clubCode.length() + 1 && code.startsWith(clubCode) && code.matches(".*[A-D]$")) {
-            return clubCode + " " + code.charAt(code.length() - 1);
-        }
-        return clubTeamsInCompetition > 1 ? clubCode + " A" : clubCode;
-    }
-
-    private static TeamReport team(String key, List<Entry> entries, LocalDate today, int lastMatches,
+    private static TeamReport team(String key, String name, List<Entry> entries, LocalDate today, int lastMatches,
                                    LeagueContext league) {
-        String name = entries.getLast().team().name();
         List<Match> allPlayed = entries.stream()
                 .flatMap(e -> e.data().matches().stream().filter(m -> m.played() && m.involves(e.team().teamId())))
                 .sorted(CHRONO).toList();

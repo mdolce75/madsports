@@ -4,6 +4,7 @@ import com.fppstats.analysis.AnalysisResult;
 import com.fppstats.analysis.GeminiAnalyst;
 import com.fppstats.analysis.RuleBasedAnalyst;
 import com.fppstats.catalog.CatalogService;
+import com.fppstats.catalog.CatalogService.CategoryOption;
 import com.fppstats.catalog.CatalogService.ClubView;
 import com.fppstats.sidgad.SidgadClient;
 import com.fppstats.sidgad.model.Competition;
@@ -137,30 +138,47 @@ public class ReportService {
             throw new IllegalArgumentException(CatalogService.unavailableMessage(request.year()));
         }
         ClubView club = catalog.club(request.clubId(), request.year());
-        Category category = catalog.category(request.category(), request.branch());
+        CategoryOption option = CategoryOption.parse(request.category());
+        Category category = catalog.category(option.level(), request.branch());
+        // A y B son equipos distintos: la categoría elegida tiene que ser una de las opciones del club en esa rama.
+        boolean exists = club.categories().stream()
+                .anyMatch(l -> l.key().equals(option.key()) && l.branches().contains(category.branch()));
+        if (!exists) {
+            List<String> valid = club.categories().stream()
+                    .filter(l -> CategoryOption.parse(l.key()).level().equals(option.level())
+                            && l.branches().contains(category.branch()))
+                    .map(CatalogService.LevelView::label).toList();
+            throw new IllegalArgumentException(club.name() + " no tiene equipo en " + label(category, option)
+                    + " en " + request.year() + "." + (valid.isEmpty() ? "" : " Opciones: " + String.join(", ", valid) + "."));
+        }
         Torneo torneo = request.scope().torneo();
         if (catalog.competitionsFor(club.id(), category, torneo, request.year()).isEmpty()) {
-            throw new IllegalArgumentException(club.name() + " no participa en " + category.label()
+            throw new IllegalArgumentException(club.name() + " no participa en " + label(category, option)
                     + (torneo == null ? "" : " - " + torneo.label()) + " en " + request.year() + ".");
         }
         Job job = new Job(request);
         jobs.put(job.id(), job);
-        executor.submit(() -> run(job, club, category));
+        executor.submit(() -> run(job, club, category, option));
         return job;
+    }
+
+    /** "Infantil B Femenino" (o "Infantil Femenino" si el club tiene un solo equipo). */
+    static String label(Category category, CategoryOption option) {
+        return category.levelLabel() + (option.letter() == null ? "" : " " + option.letter()) + " " + category.branchLabel();
     }
 
     public Optional<Job> find(UUID id) {
         return Optional.ofNullable(jobs.getIfPresent(id));
     }
 
-    private void run(Job job, ClubView club, Category category) {
+    private void run(Job job, ClubView club, Category category, CategoryOption option) {
         try {
-            ReportData data = extract(job, club, category);
+            ReportData data = extract(job, club, category, option);
             job.update(Status.ANALIZANDO, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
             AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
             job.update(Status.GENERANDO_PDF, "Generando el PDF");
             job.pdf = renderer.pdf(data, analysis);
-            job.fileName = fileName(club, category, job.request().scope());
+            job.fileName = fileName(club, category, option, job.request().scope());
             job.update(Status.LISTO, "Informe listo");
         } catch (RuntimeException e) {
             log.error("Falló el informe {}", job.id(), e);
@@ -168,7 +186,7 @@ public class ReportService {
         }
     }
 
-    ReportData extract(Job job, ClubView club, Category category) {
+    ReportData extract(Job job, ClubView club, Category category, CategoryOption option) {
         Scope scope = job.request().scope();
         int year = job.request().year();
         List<Competition> comps = catalog.competitionsFor(club.id(), category, scope.torneo(), year);
@@ -220,7 +238,8 @@ public class ReportService {
         String label = scope == Scope.ULTIMOS_5
                 ? "Últimos 5 partidos (" + torneos + ")"
                 : "Temporada " + year + " · " + torneos;
-        return StatsEngine.build(club, category.label(), label, data, LocalDate.now(clock), scope.lastMatches())
+        return StatsEngine.build(club, label(category, option), label, data, LocalDate.now(clock), scope.lastMatches(),
+                        option.teamKey(club.code()))
                 .withNotPublished(notPublished);
     }
 
@@ -253,8 +272,8 @@ public class ReportService {
         return result;
     }
 
-    private static String fileName(ClubView club, Category category, Scope scope) {
-        return ("informe-" + club.code() + "-" + category.key() + "-" + scope.name() + ".pdf")
+    private static String fileName(ClubView club, Category category, CategoryOption option, Scope scope) {
+        return ("informe-" + option.teamKey(club.code()) + "-" + category.key() + "-" + scope.name() + ".pdf")
                 .toLowerCase().replaceAll("[^a-z0-9.-]+", "-");
     }
 }

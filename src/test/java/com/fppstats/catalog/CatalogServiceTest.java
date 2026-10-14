@@ -55,6 +55,7 @@ class CatalogServiceTest {
         assertThat(velez.code()).isEqualTo("CAVS");
         assertThat(velez.name()).isEqualTo("VELEZ");
         assertThat(velez.categories()).extracting(LevelView::key).doesNotContain("MINI", "PROMO").contains("PRIMERA");
+        assertThat(view.clubs()).filteredOn(c -> c.id() == 74).hasSize(1);
         assertThat(view.clubs()).extracting(ClubView::name).isSorted();
     }
 
@@ -77,6 +78,27 @@ class CatalogServiceTest {
             }
         };
         return new CatalogService(client, props);
+    }
+
+    @Test
+    void conEquipoAYBLaCategoriaSeOfreceComoInfantilAEInfantilB() {
+        ClubView velez = CatalogService.view(active, LEVELS, 2026, List.of(2026, 2027)).clubs().stream()
+                .filter(c -> c.id() == 74).findFirst().orElseThrow();
+
+        // Infantil: A y B en Femenino (Apertura y Clausura) y en Masculino.
+        assertThat(velez.categories()).extracting(LevelView::key)
+                .containsSubsequence("INFANTIL:A", "INFANTIL:B", "PREJUVENIL");
+        assertThat(velez.categories()).filteredOn(l -> l.key().equals("INFANTIL:B")).singleElement()
+                .satisfies(l -> {
+                    assertThat(l.label()).isEqualTo("Infantil B");
+                    assertThat(l.branches()).contains("FEMENINO");
+                });
+        // Prejuvenil: un solo equipo en cada rama (aunque en el Apertura femenino se llame "VELEZ A").
+        assertThat(velez.categories()).filteredOn(l -> l.key().startsWith("PREJUVENIL"))
+                .extracting(LevelView::key).containsExactly("PREJUVENIL");
+        // Juniors Masculino Clausura: Comunicaciones tiene el logo de Vélez en SIDGAD, pero no es de Vélez.
+        assertThat(velez.categories()).filteredOn(l -> l.key().startsWith("JUNIORS"))
+                .extracting(LevelView::key).containsExactly("JUNIORS");
     }
 
     @Test

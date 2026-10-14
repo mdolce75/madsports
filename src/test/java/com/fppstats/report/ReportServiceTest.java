@@ -1,6 +1,7 @@
 package com.fppstats.report;
 
 import com.fppstats.Fixtures;
+import com.fppstats.catalog.CatalogService;
 import com.fppstats.report.ReportService.Scope;
 import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Models.Match;
@@ -28,6 +29,19 @@ class ReportServiceTest {
     void conUltimosNSoloSeLeenEsasActas() {
         assertThat(ReportService.sheetsToRead(primera, matches, 74, 1))
                 .extracting(Match::idp).containsExactly(26396);
+    }
+
+    @Test
+    void etiquetaDeLaCategoriaConElEquipo() {
+        CatalogService.CategoryOption b = CatalogService.CategoryOption.parse("infantil:b");
+        Competition.Category cat = new Competition.Category("INFANTIL", "FEMENINO");
+
+        assertThat(b.level()).isEqualTo("INFANTIL");
+        assertThat(b.teamKey("CAVS")).isEqualTo("CAVS B");
+        assertThat(ReportService.label(cat, b)).isEqualTo("Infantil B Femenino");
+        CatalogService.CategoryOption unico = CatalogService.CategoryOption.parse("PRIMERA");
+        assertThat(unico.teamKey("HURA")).isEqualTo("HURA");
+        assertThat(ReportService.label(new Competition.Category("PRIMERA", "MASCULINO"), unico)).isEqualTo("Primera Masculino");
     }
 
     @Test

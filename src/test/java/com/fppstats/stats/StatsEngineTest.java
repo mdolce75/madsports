@@ -371,20 +371,14 @@ public class StatsEngineTest {
     }
 
     @Test
-    void equiposAyBSeIdentificanIgualEnTodosLosTorneos() {
-        assertThat(StatsEngine.teamKey(ref("CAVS B"), 2, "CAVS")).isEqualTo("CAVS B");
-        assertThat(StatsEngine.teamKey(ref("CAVS A"), 2, "CAVS")).isEqualTo("CAVS A");
-        // Torneo donde el A figura sin letra.
-        assertThat(StatsEngine.teamKey(ref("CAVS"), 2, "CAVS")).isEqualTo("CAVS A");
-        // Único equipo del club en la competición.
-        assertThat(StatsEngine.teamKey(ref("CAVS"), 1, "CAVS")).isEqualTo("CAVS");
-        // SIDGAD a veces omite el espacio: "GEBAB" es el GEBA B.
-        assertThat(StatsEngine.teamKey(ref("GEBAB"), 2, "GEBA")).isEqualTo("GEBA B");
-        assertThat(StatsEngine.teamKey(ref("GEBA  B"), 2, "GEBA")).isEqualTo("GEBA B");
-        // El código cambia entre torneos (Huracán: "HUR" en el Apertura 2026, "HURA" en el Clausura).
-        assertThat(StatsEngine.teamKey(ref("HUR"), 1, "HURA")).isEqualTo("HURA");
-        assertThat(StatsEngine.teamKey(ref("HURA"), 1, "HURA")).isEqualTo("HURA");
-        assertThat(StatsEngine.teamKey(ref("HUR B"), 2, "HURA")).isEqualTo("HURA B");
+    void elInformePuedeSerDeUnSoloEquipo() {
+        ReportData soloB = StatsEngine.build(VELEZ, "Infantil B Femenino", "Clausura", List.of(data(765)), HOY, 0, "CAVS B");
+
+        assertThat(soloB.teams()).extracting(TeamReport::code).containsExactly("CAVS B");
+        assertThat(soloB.teams().getFirst().name()).isEqualTo("VELEZ B");
+        assertThat(soloB.teams().getFirst().total()).isEqualTo(new TeamRecord(10, 3, 0, 7, 29, 74));
+        // El cruce con Vélez A sigue apareciendo como rival.
+        assertThat(soloB.teams().getFirst().rivals()).anySatisfy(r -> assertThat(r.rival()).isEqualTo("VELEZ A"));
     }
 
     @Test
@@ -395,9 +389,6 @@ public class StatsEngineTest {
         assertThat(team(report, "CAVS B").rivals()).anySatisfy(r -> assertThat(r.rival()).isEqualTo("VELEZ A"));
     }
 
-    private static TeamRef ref(String code) {
-        return new TeamRef(1, 1, code, code);
-    }
 
     public static TeamReport team(ReportData r, String code) {
         return r.teams().stream().filter(t -> t.code().equals(code)).findFirst().orElseThrow();

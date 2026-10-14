@@ -74,7 +74,7 @@
 
 <div class="header">
     <div class="brandline">Mad Sports · Hockey sobre patines</div>
-    <h1 th:text="|${d.club.name} (${d.club.code})|">Club</h1>
+    <h1 th:text="${d.teams.size() == 1 ? d.teams[0].name + ' (' + d.teams[0].code + ')' : d.club.name + ' (' + d.club.code + ')'}">Club</h1>
     <div class="subtitle" th:text="|${d.category} · ${d.torneo}|">Categoría · Torneo</div>
     <div class="meta" th:text="|Informe elaborado por Mad Sports · ${f.date(d.generatedOn)}|">fecha</div>
 </div>
