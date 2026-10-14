@@ -35,7 +35,7 @@ public class GeminiAnalyst {
     private static final Duration MAX_RETRY_WAIT = Duration.ofSeconds(60);
 
     static final String SYSTEM = """
-            Sos un analista de hockey sobre patines de Mad Sports. Vas a escribir el análisis de un informe
+            Sos un analista de hockey sobre patines de RinkMetrics. Vas a escribir el análisis de un informe
             estadístico de un club en una categoría de la Federación Porteña de Patín (FPP), Argentina.
 
             Los datos ya calculados del informe están en el mensaje, en JSON: overview, league_context y, por

@@ -60,11 +60,11 @@ public final class Crests {
             g.scale(SCALE, SCALE);
             double d = SIZE * (1 - 2 * PADDING);
             double o = (SIZE - d) / 2;
-            g.setColor(new Color(0x121a2a));
+            g.setColor(new Color(0x13203a));
             g.fill(new Ellipse2D.Double(o, o, d, d));
-            g.setColor(new Color(0xff5a1f));
+            g.setColor(new Color(0x22b8f0));
             g.fill(new Ellipse2D.Double(o + 4, o + 4, d - 8, d - 8));
-            g.setColor(new Color(0x121a2a));
+            g.setColor(new Color(0x13203a));
             g.fill(new Ellipse2D.Double(o + 7, o + 7, d - 14, d - 14));
             g.setColor(Color.WHITE);
             g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));

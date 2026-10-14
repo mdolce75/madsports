@@ -40,7 +40,7 @@ server:
 
 fpp:
   mail:
-    from: ${MAIL_FROM:Mad Sports <info@madsportsapp.com>}
+    from: ${MAIL_FROM:RinkMetrics <info@madsportsapp.com>}
     # Dirección pública de la web, para armar los enlaces de los mails
     base-url: ${APP_BASE_URL:http://localhost:8080}
   sidgad:

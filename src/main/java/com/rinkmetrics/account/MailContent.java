@@ -22,7 +22,7 @@ public record MailContent(String to, String subject, String preheader, String ta
         paragraphs.forEach(p -> sb.append(p).append("\n\n"));
         sb.append(button).append(": ").append(url).append("\n\n");
         sb.append(note).append("\n\n");
-        sb.append("Mad Sports · Estadísticas de hockey sobre patines\n");
+        sb.append("RinkMetrics · Estadísticas de hockey sobre patines\n");
         return sb.toString();
     }
 }

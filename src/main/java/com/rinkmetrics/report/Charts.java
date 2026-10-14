@@ -53,8 +53,8 @@ public class Charts {
     static final Color CARD_YELLOW = new Color(0xecc94b);
     static final Color CARD_BLUE = new Color(0x3182ce);
     static final Color CARD_RED = new Color(0xe53e3e);
-    static final Color OWN = new Color(0xff5a1f);
-    static final Color RIVAL = new Color(0x121a2a);
+    static final Color OWN = new Color(0x22b8f0);
+    static final Color RIVAL = new Color(0x13203a);
     private static final Color INK = new Color(0x1d2433);
     private static final Color MUTED = new Color(0x52514e);
     private static final Color GRID = new Color(0xe2e8f0);

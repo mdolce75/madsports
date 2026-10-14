@@ -87,7 +87,7 @@ class GeminiAnalystTest {
         assertThat(req.at("/generationConfig/responseMimeType").asText()).isEqualTo("application/json");
         assertThat(req.at("/generationConfig/responseSchema/required").toString())
                 .contains("resumen", "jugadores_destacados", "tendencia", "analisis_faltas");
-        assertThat(req.at("/systemInstruction/parts/0/text").asText()).contains("Mad Sports", "no las mezcles");
+        assertThat(req.at("/systemInstruction/parts/0/text").asText()).contains("RinkMetrics", "no las mezcles");
         String userText = req.at("/contents/0/parts/0/text").asText();
         assertThat(userText).contains("VELEZ (CAVS)", "\"league_context\"", "\"team_detail\"", "\"time_profile\"",
                 "Simona Emma Demata Bianchi");

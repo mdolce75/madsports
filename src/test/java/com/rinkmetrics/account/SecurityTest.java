@@ -71,7 +71,7 @@ class SecurityTest {
 
     @BeforeEach
     void realMailer() {
-        realMailer = new Mailer(null, templates, "", "Mad Sports <info@madsportsapp.com>");
+        realMailer = new Mailer(null, templates, "", "RinkMetrics <info@madsportsapp.com>");
     }
 
     @BeforeEach
@@ -266,12 +266,12 @@ class SecurityTest {
 
     @Test
     void elMailTieneElLookDeLaWeb() {
-        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de Mad Sports", "Un paso más",
+        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de RinkMetrics", "Un paso más",
                 "Tu cuenta", "Confirmá tu email", "ana", List.of("Gracias por sumarte."), "Confirmar mi email",
                 "http://localhost/api/verificar?token=abc", "El enlace vale 48 horas.");
         String html = realMailer.html(m);
-        assertThat(html).contains("#0a0e17", "#ff5a1f", "cid:logo", "Confirmá tu email", "Hola ana:",
-                "href=\"http://localhost/api/verificar?token=abc\"", "Confirmar mi email ►", "Mad Sports");
+        assertThat(html).contains("#0b1220", "#22b8f0", "cid:logo", "Confirmá tu email", "Hola ana:",
+                "href=\"http://localhost/api/verificar?token=abc\"", "Confirmar mi email ►", "RinkMetrics");
         assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verificar?token=abc");
         assertThat(new String(Mailer.logo(), 1, 3)).isEqualTo("PNG");
     }
@@ -279,9 +279,9 @@ class SecurityTest {
     @Test
     void vistaPreviaDelMail() throws Exception {
         // Copia para revisar a ojo en el navegador: target/mail-ejemplo.html (logo embebido en lugar de cid:).
-        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de Mad Sports", "Un paso más",
+        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de RinkMetrics", "Un paso más",
                 "Tu cuenta", "Confirmá tu email", "ana",
-                List.of("Gracias por sumarte a Mad Sports. Para activar tu cuenta (usuario ana), confirmá tu email con el botón de abajo.",
+                List.of("Gracias por sumarte a RinkMetrics. Para activar tu cuenta (usuario ana), confirmá tu email con el botón de abajo.",
                         "Después ya podés ingresar y generar tus informes de hockey sobre patines."),
                 "Confirmar mi email", "http://localhost:8091/api/verificar?token=ejemplo",
                 "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.");

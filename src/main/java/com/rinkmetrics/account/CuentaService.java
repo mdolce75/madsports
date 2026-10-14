@@ -57,10 +57,10 @@ public class CuentaService {
             return;
         }
         String token = nuevoToken(u, Tipo.VERIFICACION, VIGENCIA_VERIFICACION);
-        mailer.send(new MailContent(u.getEmail(), "Confirmá tu cuenta de Mad Sports",
-                "Un paso más: confirmá tu email para empezar a usar Mad Sports.",
+        mailer.send(new MailContent(u.getEmail(), "Confirmá tu cuenta de RinkMetrics",
+                "Un paso más: confirmá tu email para empezar a usar RinkMetrics.",
                 "Tu cuenta", "Confirmá tu email", saludo(u),
-                List.of("Gracias por sumarte a Mad Sports. Para activar tu cuenta (usuario " + u.getUsuario()
+                List.of("Gracias por sumarte a RinkMetrics. Para activar tu cuenta (usuario " + u.getUsuario()
                         + "), confirmá tu email con el botón de abajo.",
                         "Después ya podés ingresar y generar tus informes de hockey sobre patines."),
                 "Confirmar mi email", baseUrl + "/api/verificar?token=" + token,
@@ -93,8 +93,8 @@ public class CuentaService {
     public void olvideClave(String email) {
         buscarPorEmail(email).filter(u -> !recienEnviado(u, Tipo.RECUPERO)).ifPresent(u -> {
             String token = nuevoToken(u, Tipo.RECUPERO, VIGENCIA_RECUPERO);
-            mailer.send(new MailContent(u.getEmail(), "Elegí una clave nueva para Mad Sports",
-                    "Pediste cambiar la clave de tu usuario de Mad Sports.",
+            mailer.send(new MailContent(u.getEmail(), "Elegí una clave nueva para RinkMetrics",
+                    "Pediste cambiar la clave de tu usuario de RinkMetrics.",
                     "Tu cuenta", "Elegí una clave nueva", saludo(u),
                     List.of("Pediste cambiar la clave de tu usuario " + u.getUsuario()
                             + ". Elegí una nueva con el botón de abajo."),

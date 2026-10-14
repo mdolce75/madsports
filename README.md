@@ -1,6 +1,6 @@
-# Rink Metrics — Mad Sports
+# Rink Metrics — RinkMetrics
 
-Aplicación de **Mad Sports** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
+Aplicación de **RinkMetrics** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
 Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
 
 **Filtros:** Año (2026, 2027) · Club · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Rama
@@ -171,7 +171,7 @@ Abrir http://localhost:8080.
 | `FPP_DB_URL` | `jdbc:h2:file:./data/rink-metrics` | Base de usuarios |
 | `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
-| `MAIL_FROM` | `Mad Sports <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
+| `MAIL_FROM` | `RinkMetrics <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
 
 **API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.

@@ -92,7 +92,7 @@ public class ApiController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.inline().filename("informe-ejemplo-mad-sports.pdf").build().toString())
+                        ContentDisposition.inline().filename("informe-ejemplo-rinkmetrics.pdf").build().toString())
                 .body(sample.pdf());
     }
 
@@ -102,7 +102,7 @@ public class ApiController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.inline().filename("informe-jugador-ejemplo-mad-sports.pdf").build().toString())
+                        ContentDisposition.inline().filename("informe-jugador-ejemplo-rinkmetrics.pdf").build().toString())
                 .body(sample.playerPdf());
     }
 

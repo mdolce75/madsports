@@ -19,8 +19,6 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -83,7 +81,7 @@ public class Mailer {
         }
     }
 
-    /** Logo de la web (palos cruzados y bocha sobre naranja), en PNG: los clientes de mail no muestran SVG. */
+    /** Logo de la web (pista con barras de métricas sobre celeste), en PNG: los clientes de mail no muestran SVG. */
     static byte[] logo() {
         int px = 132;   // 44 px a 3x
         BufferedImage img = new BufferedImage(px, px, BufferedImage.TYPE_INT_ARGB);
@@ -93,21 +91,15 @@ public class Mailer {
             g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             double k = px / 64.0;   // mismas coordenadas que el SVG de la web (viewBox 64x64)
             g.scale(k, k);
-            g.setColor(new Color(0xff5a1f));
+            g.setColor(new Color(0x22b8f0));
             g.fill(new RoundRectangle2D.Double(0, 0, 64, 64, 28, 28));
+            // Pista (rectángulo de esquinas redondeadas) con tres barras de métricas, como el SVG de la web.
             g.setColor(Color.WHITE);
-            g.setStroke(new BasicStroke(6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            Path2D a = new Path2D.Double();
-            a.moveTo(16, 14);
-            a.lineTo(36, 44);
-            a.lineTo(46, 44);
-            g.draw(a);
-            Path2D b = new Path2D.Double();
-            b.moveTo(48, 14);
-            b.lineTo(28, 44);
-            b.lineTo(18, 44);
-            g.draw(b);
-            g.fill(new Ellipse2D.Double(27, 47, 10, 10));
+            g.setStroke(new BasicStroke(4));
+            g.draw(new RoundRectangle2D.Double(8, 15, 48, 34, 28, 28));
+            g.fill(new RoundRectangle2D.Double(20, 33, 6, 9, 3, 3));
+            g.fill(new RoundRectangle2D.Double(29, 27, 6, 15, 3, 3));
+            g.fill(new RoundRectangle2D.Double(38, 21, 6, 21, 3, 3));
         } finally {
             g.dispose();
         }
