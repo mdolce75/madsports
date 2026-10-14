@@ -11,10 +11,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.fppstats</groupId>
-    <artifactId>fpp-stats</artifactId>
+    <groupId>com.rinkmetrics</groupId>
+    <artifactId>rink-metrics</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>fpp-stats</name>
+    <name>rink-metrics</name>
     <description>Informes PDF de estadísticas de hockey sobre patines (FPP) con análisis de IA</description>
 
     <properties>

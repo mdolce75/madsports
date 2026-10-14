@@ -1,4 +1,4 @@
-# FPP Stats — Mad Sports
+# Rink Metrics — Mad Sports
 
 Aplicación de **Mad Sports** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
 Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
@@ -168,7 +168,7 @@ Abrir http://localhost:8080.
 | `GEMINI_API_KEY` | — | Habilita el análisis con Gemini |
 | `FPP_AI_MODEL` | `gemini-3.8-flash` | Modelo de Gemini (con plan gratuito) |
 | `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
-| `FPP_DB_URL` | `jdbc:h2:file:./data/fpp-stats` | Base de usuarios |
+| `FPP_DB_URL` | `jdbc:h2:file:./data/rink-metrics` | Base de usuarios |
 | `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
 | `MAIL_FROM` | `Mad Sports <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |

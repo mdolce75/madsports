@@ -1,6 +1,6 @@
 spring:
   application:
-    name: fpp-stats
+    name: rink-metrics
   # Secretos locales (SMTP, Gemini...) en un .env junto a la app, fuera de git. En producción, variables de entorno.
   config:
     import: optional:file:.env[.properties]
@@ -8,7 +8,7 @@ spring:
     cache: true
   # Usuarios: H2 en archivo (./data). En producción, FPP_DB_URL apunta a la base que corresponda.
   datasource:
-    url: ${FPP_DB_URL:jdbc:h2:file:./data/fpp-stats}
+    url: ${FPP_DB_URL:jdbc:h2:file:./data/rink-metrics}
     username: ${FPP_DB_USER:sa}
     password: ${FPP_DB_PASSWORD:}
   # Mails (confirmar email, recuperar clave) por SMTP: Resend, Brevo, Gmail... Sin SMTP_HOST, se escriben en el log.
