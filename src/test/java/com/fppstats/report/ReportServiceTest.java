@@ -20,6 +20,29 @@ class ReportServiceTest {
     final List<Match> matches = SidgadParser.calendar(Fixtures.read("cal_779.html"));
 
     @Test
+    void elEscudoEsElLogoMasUsadoPorLosEquiposDelClub() {
+        assertThat(ReportService.logoFile(List.of(primera), 22)).isEqualTo("22_10.png");
+        assertThat(ReportService.logoFile(List.of(primera), 74)).isEqualTo("74_3.png");
+        assertThat(ReportService.logoFile(List.of(primera), 999)).isNull();
+    }
+
+    @Test
+    void laPlacaDelEscudoEsUnPngCuadrado() throws Exception {
+        java.awt.image.BufferedImage logo = new java.awt.image.BufferedImage(40, 65, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.io.ByteArrayOutputStream png = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(logo, "png", png);
+
+        String tile = Crests.tile(png.toByteArray());
+        assertThat(tile).startsWith("data:image/png;base64,");
+        java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(
+                java.util.Base64.getDecoder().decode(tile.substring(tile.indexOf(',') + 1))));
+        assertThat(img.getWidth()).isEqualTo(img.getHeight());
+        // Si la imagen no se puede leer, el informe sale sin escudo.
+        assertThat(Crests.tile("no es un png".getBytes())).isNull();
+        assertThat(Crests.tile(null)).isNull();
+    }
+
+    @Test
     void seLeenLasActasDeTodosLosPartidosJugadosDelClub() {
         assertThat(ReportService.sheetsToRead(primera, matches, 74, 0))
                 .extracting(Match::idp).containsExactly(26390, 26396);

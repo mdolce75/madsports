@@ -33,6 +33,13 @@ class SidgadClientTest {
         server.createContext("/cap/", ex -> {
             String file = ex.getRequestURI().getPath().substring("/cap/".length());
             hits.computeIfAbsent(file, k -> new AtomicInteger()).incrementAndGet();
+            if (file.equals("logos/22_10.png")) {
+                byte[] png = {(byte) 0x89, 'P', 'N', 'G'};
+                ex.sendResponseHeaders(200, png.length);
+                ex.getResponseBody().write(png);
+                ex.close();
+                return;
+            }
             if (file.startsWith("cap_gr_10")) {
                 // Ficha lenta: mide cuántos pedidos hay en curso a la vez.
                 int now = inFlight.incrementAndGet();
@@ -67,6 +74,27 @@ class SidgadClientTest {
     @AfterEach
     void stop() {
         server.stop(0);
+    }
+
+    @Test
+    void escudosConCacheYSinFallarSiNoEstan() {
+        String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/logos/";
+        SidgadClient logos = new SidgadClient(new FppProperties(
+                new FppProperties.Sidgad(base, "http://localhost", 3, Duration.ZERO, 3, Duration.ofMinutes(5),
+                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of("PRIMERA"), List.of(2026)),
+                new FppProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1)))) {
+            @Override
+            protected String logosUrl() {
+                return base;
+            }
+        };
+        assertThat(logos.clubLogo("22_10.png")).hasSize(4);
+        assertThat(logos.clubLogo("22_10.png")).hasSize(4);
+        assertThat(hits.get("logos/22_10.png")).hasValue(1);
+        assertThat(logos.clubLogo("99.png")).isNull();
+        // Solo nombres de archivo de escudo: nada de rutas.
+        assertThat(logos.clubLogo("../cap_ls_1.php")).isNull();
+        assertThat(hits).doesNotContainKey("cap_ls_1.php");
     }
 
     @Test

@@ -21,6 +21,11 @@
         .subtitle { font-size: 11pt; color: #e3e8f1; margin-top: 3px; }
         .meta { font-size: 8.5pt; color: #93a1b8; margin-top: 4px; }
         .header { background: #0a0e17; border-left: 8px solid #ff5a1f; padding: 12px 14px; margin-bottom: 12px; }
+        .header table { margin: 0; }
+        .header td { border: none; padding: 0; text-align: left; vertical-align: middle; }
+        .header td.crest { width: 78px; padding-right: 14px; }
+        .crest img { width: 64px; height: 64px; }
+        img.team-crest { width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
         th { background: #121a2a; color: #fff; font-weight: bold; font-size: 8.5pt; padding: 3px 4px; text-align: center; }
         td { border-bottom: 1px solid #e2e8f0; padding: 3px 4px; text-align: center; font-size: 8.5pt; }
@@ -76,10 +81,17 @@
 </div>
 
 <div class="header">
-    <div class="brandline">Mad Sports · Hockey sobre patines</div>
-    <h1 th:text="${d.teams.size() == 1 ? d.teams[0].name + ' (' + d.teams[0].code + ')' : d.club.name + ' (' + d.club.code + ')'}">Club</h1>
-    <div class="subtitle" th:text="|${d.category} · ${d.torneo}|">Categoría · Torneo</div>
-    <div class="meta" th:text="|Informe elaborado por Mad Sports · ${f.date(d.generatedOn)}|">fecha</div>
+    <table>
+        <tr>
+            <td class="crest" th:if="${d.club.logo != null}"><img th:src="${d.club.logo}" th:alt="|Escudo de ${d.club.name}|"/></td>
+            <td>
+                <div class="brandline">Mad Sports · Hockey sobre patines</div>
+                <h1 th:text="${d.teams.size() == 1 ? d.teams[0].name + ' (' + d.teams[0].code + ')' : d.club.name + ' (' + d.club.code + ')'}">Club</h1>
+                <div class="subtitle" th:text="|${d.category} · ${d.torneo}|">Categoría · Torneo</div>
+                <div class="meta" th:text="|Informe elaborado por Mad Sports · ${f.date(d.generatedOn)}|">fecha</div>
+            </td>
+        </tr>
+    </table>
 </div>
 
 <h2>Resumen</h2>
@@ -118,7 +130,7 @@
 </div>
 
 <div th:each="t : ${d.teams}" class="team">
-    <h2 th:text="|${t.name} (${t.code})|">Equipo</h2>
+    <h2><img class="team-crest" th:if="${d.club.logo != null}" th:src="${d.club.logo}" alt=""/><span th:text="|${t.name} (${t.code})|">Equipo</span></h2>
 
     <table class="kpis">
         <tr>

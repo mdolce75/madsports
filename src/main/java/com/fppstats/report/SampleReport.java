@@ -30,7 +30,7 @@ public class SampleReport {
         if (pdf == null || !today.equals(builtOn)) {
             synchronized (this) {
                 if (pdf == null || !today.equals(builtOn)) {
-                    ReportData data = SampleData.build(today);
+                    ReportData data = SampleData.build(today).withLogo(Crests.sample("CE"));
                     pdf = renderer.pdf(data, analysis(data), true);
                     builtOn = today;
                 }

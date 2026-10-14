@@ -266,7 +266,23 @@ public class ReportService {
                 : "Temporada " + year + " · " + torneos;
         return StatsEngine.build(club, label(category, option), label, data, LocalDate.now(clock), scope.lastMatches(),
                         option.teamKey(club.code()))
-                .withNotPublished(notPublished);
+                .withNotPublished(notPublished)
+                .withLogo(Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))));
+    }
+
+    /**
+     * Archivo del escudo del club según teams_array: el más usado entre sus equipos (SIDGAD a veces le pone a un
+     * equipo el logo de otro club, pero nunca a la mayoría).
+     */
+    static String logoFile(List<Competition> comps, int clubId) {
+        return comps.stream()
+                .flatMap(c -> c.teams().stream())
+                .filter(t -> t.clubId() == clubId && !t.logo().isBlank())
+                .collect(Collectors.groupingBy(TeamRef::logo, LinkedHashMap::new, Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 
     /** Espera el resultado de un pedido en paralelo; si falló, relanza el error original (p. ej. SidgadException). */

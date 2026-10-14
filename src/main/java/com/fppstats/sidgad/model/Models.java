@@ -9,8 +9,16 @@ public final class Models {
     private Models() {
     }
 
-    /** Equipo dentro de una competición (el id cambia entre Apertura y Clausura). */
-    public record TeamRef(int teamId, int clubId, String code, String name) {
+    /**
+     * Equipo dentro de una competición (el id cambia entre Apertura y Clausura).
+     *
+     * @param logo archivo del escudo en {@code logos_clubes/} (p. ej. "22_10.png"; vacío si no tiene)
+     */
+    public record TeamRef(int teamId, int clubId, String code, String name, String logo) {
+
+        public TeamRef(int teamId, int clubId, String code, String name) {
+            this(teamId, clubId, code, name, "");
+        }
     }
 
     public record StandingRow(String group, int position, int clubId, String name, String code,

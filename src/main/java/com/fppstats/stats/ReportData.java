@@ -15,6 +15,12 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
                          int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league,
                          List<String> notPublished) {
 
+    /** Copia con el escudo del club (data URI, o null si no hay). */
+    public ReportData withLogo(String logo) {
+        return new ReportData(new ClubInfo(club.id(), club.code(), club.name(), logo), category, torneo, generatedOn,
+                lastMatches, sources, teams, league, notPublished);
+    }
+
     /** Copia con la lista de datos que el sitio no publicó (respuestas 404 de SIDGAD). */
     public ReportData withNotPublished(List<String> items) {
         return new ReportData(club, category, torneo, generatedOn, lastMatches, sources, teams, league, List.copyOf(items));
@@ -25,7 +31,12 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
         return lastMatches > 0;
     }
 
-    public record ClubInfo(int id, String code, String name) {
+    /** @param logo escudo del club como data URI PNG (null si SIDGAD no lo tiene) */
+    public record ClubInfo(int id, String code, String name, String logo) {
+
+        public ClubInfo(int id, String code, String name) {
+            this(id, code, name, null);
+        }
     }
 
     public record Source(String competition, String url) {

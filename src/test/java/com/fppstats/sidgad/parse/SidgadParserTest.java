@@ -33,6 +33,7 @@ class SidgadParserTest {
                     assertThat(t.clubId()).isEqualTo(74);
                     assertThat(t.code()).isEqualTo("CAVS");
                     assertThat(t.name()).isEqualTo("VELEZ");
+                    assertThat(t.logo()).isEqualTo("74_3.png");
                 })
                 .anySatisfy(t -> assertThat(t.name()).isEqualTo("ESTUDIANTIL PORTEÑO"));
 

@@ -103,6 +103,10 @@ class SampleReportTest {
         assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.",
                 "CLUB EJEMPLO (CEJ)", "texto de ejemplo", "Sin minuto registrado");
         assertThat(renderer.html(d, rules.analyze(d), false)).doesNotContain("DATOS FICTICIOS");
+        // Con escudo: uno en la cabecera y uno en el título de cada equipo.
+        String withCrest = renderer.html(d.withLogo(Crests.sample("CE")), sample.analysis(d), true);
+        assertThat(withCrest).contains("Escudo de CLUB EJEMPLO");
+        assertThat(withCrest.split("src=\"data:image/png;base64,", -1)).hasSize(6 * d.teams().size() + 1 + d.teams().size() + 1);
 
         byte[] pdf = sample.pdf();
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
