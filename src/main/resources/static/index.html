@@ -177,7 +177,8 @@
             if (!res.ok) throw new Error(body.detail || res.statusText);
             const job = await poll(body.id);
             $("status").className = "";
-            $("status").innerHTML = `Listo: <a href="${job.pdfUrl}">descargar el PDF</a>`;
+            $("status").innerHTML = `Listo: <a href="${job.pdfUrl}">descargar el PDF</a>
+                · <a href="${job.datosUrl}">datos (JSON) para IA</a>`;
             window.location.href = job.pdfUrl;
         } catch (e) {
             status(e.message, true);

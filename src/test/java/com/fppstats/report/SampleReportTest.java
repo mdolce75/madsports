@@ -54,6 +54,27 @@ class SampleReportTest {
         assertThat(SampleData.build(HOY)).isEqualTo(d);
     }
 
+    @Autowired
+    com.fasterxml.jackson.databind.ObjectMapper mapper;
+
+    @Test
+    void elJsonExportadoTraeLasCifrasDerivadas() throws Exception {
+        ReportData d = SampleData.build(HOY);
+        TeamReport t = d.teams().getFirst();
+        com.fasterxml.jackson.databind.JsonNode json = mapper.readTree(mapper.writeValueAsString(d));
+        com.fasterxml.jackson.databind.JsonNode team = json.at("/teams/0");
+
+        assertThat(team.at("/total/points").asInt()).isEqualTo(t.total().points());
+        assertThat(team.at("/total/effectiveness").asDouble()).isEqualTo(t.total().effectiveness());
+        assertThat(team.at("/total/goalsForPerGame").asDouble()).isEqualTo(t.total().goalsForPerGame());
+        assertThat(team.at("/results/0/score").asText()).isEqualTo(t.results().getFirst().score());
+        assertThat(team.at("/setPieces/directFreePct").isNumber()).isTrue();
+        assertThat(team.at("/timeProfile/shortHandedMinutesPerGame").isNumber()).isTrue();
+        assertThat(team.at("/timeProfile/totalGoalsFor").asInt()).isEqualTo(t.total().goalsFor());
+        // Se puede volver a leer (los derivados se ignoran al deserializar).
+        assertThat(mapper.readValue(mapper.writeValueAsString(d), ReportData.class)).isEqualTo(d);
+    }
+
     @Test
     void elPdfLlevaLaMarcaDeDatosFicticios() throws Exception {
         ReportData d = SampleData.build(HOY);

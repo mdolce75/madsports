@@ -1,11 +1,15 @@
 package com.fppstats.stats;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Todas las cifras del informe. Las calcula {@link StatsEngine} en código; el agente de IA solo
- * las lee (vía herramientas) y escribe el análisis, nunca produce números propios.
+ * Todas las cifras del informe. Las calcula {@link StatsEngine} en código; la IA solo las lee y escribe
+ * el análisis, nunca produce números propios.
+ * Los métodos derivados con {@code @JsonProperty} (puntos, efectividad, promedios, porcentajes, minutos por
+ * partido) también van al JSON exportado, para que quien lo lea no tenga que hacer cuentas.
  */
 public record ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn,
                          int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league,
@@ -55,11 +59,13 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
                               int shortHandedSeconds, int powerPlaySeconds) {
 
         /** Minutos por partido con uno menos (promedio sobre los partidos con ficha). */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double shortHandedMinutesPerGame() {
             return matchesWithSheet == 0 ? 0 : shortHandedSeconds / 60.0 / matchesWithSheet;
         }
 
         /** Minutos por partido con uno más (promedio sobre los partidos con ficha). */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double powerPlayMinutesPerGame() {
             return matchesWithSheet == 0 ? 0 : powerPlaySeconds / 60.0 / matchesWithSheet;
         }
@@ -73,10 +79,12 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
             return unrecorded.cardsOwn() + unrecorded.cardsRival() > 0;
         }
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public int totalGoalsFor() {
             return byPeriod.stream().mapToInt(TimeBucket::goalsFor).sum() + unrecorded.goalsFor();
         }
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public int totalGoalsAgainst() {
             return byPeriod.stream().mapToInt(TimeBucket::goalsAgainst).sum() + unrecorded.goalsAgainst();
         }
@@ -97,10 +105,12 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
                              int yellowOwn, int blueOwn, int redOwn,
                              int yellowRival, int blueRival, int redRival) {
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public int cardsOwn() {
             return yellowOwn + blueOwn + redOwn;
         }
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public int cardsRival() {
             return yellowRival + blueRival + redRival;
         }
@@ -121,23 +131,28 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
 
         public static final TeamRecord EMPTY = new TeamRecord(0, 0, 0, 0, 0, 0);
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public int points() {
             return won * 3 + drawn;
         }
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public int goalDiff() {
             return goalsFor - goalsAgainst;
         }
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double goalsForPerGame() {
             return played == 0 ? 0 : (double) goalsFor / played;
         }
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double goalsAgainstPerGame() {
             return played == 0 ? 0 : (double) goalsAgainst / played;
         }
 
         /** Porcentaje de puntos obtenidos sobre los posibles. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double effectiveness() {
             return played == 0 ? 0 : 100.0 * points() / (played * 3);
         }
@@ -152,6 +167,7 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     public record MatchLine(String torneo, int round, LocalDate date, String time, boolean home, String rival,
                             Integer goalsFor, Integer goalsAgainst, String outcome, String venue) {
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public String score() {
             return goalsFor == null ? "-" : goalsFor + " - " + goalsAgainst;
         }
@@ -165,10 +181,12 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
 
     public record SetPieces(int directFreeScored, int directFreeTaken, int penaltiesScored, int penaltiesTaken) {
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double directFreePct() {
             return pct(directFreeScored, directFreeTaken);
         }
 
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double penaltyPct() {
             return pct(penaltiesScored, penaltiesTaken);
         }

@@ -3,6 +3,7 @@ package com.fppstats.report;
 import com.fppstats.catalog.CatalogService;
 import com.fppstats.catalog.CatalogService.CatalogView;
 import com.fppstats.sidgad.SidgadClient.SidgadException;
+import com.fppstats.stats.ReportData;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -34,11 +35,13 @@ public class ApiController {
     public record ReportRequest(@Positive int clubId, @NotBlank String categoria, @NotBlank String rama, String periodo) {
     }
 
-    public record JobView(UUID id, ReportService.Status estado, String mensaje, String pdfUrl) {
+    public record JobView(UUID id, ReportService.Status estado, String mensaje, String pdfUrl, String datosUrl) {
 
         static JobView of(ReportService.Job job) {
+            boolean ready = job.status() == ReportService.Status.LISTO;
             return new JobView(job.id(), job.status(), job.message(),
-                    job.status() == ReportService.Status.LISTO ? "/api/informes/" + job.id() + "/pdf" : null);
+                    ready ? "/api/informes/" + job.id() + "/pdf" : null,
+                    ready ? "/api/informes/" + job.id() + "/datos.json" : null);
         }
     }
 
@@ -78,6 +81,19 @@ public class ApiController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.inline().filename("informe-ejemplo-mad-sports.pdf").build().toString())
                 .body(sample.pdf());
+    }
+
+    /** Todas las cifras del informe en JSON, para analizarlas con cualquier IA (ver docs/prompts). */
+    @GetMapping("/informes/{id}/datos.json")
+    public ResponseEntity<ReportData> datos(@PathVariable UUID id) {
+        return reports.find(id)
+                .filter(j -> j.status() == ReportService.Status.LISTO && j.data() != null)
+                .map(j -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                                .filename(j.fileName().replaceAll("\\.pdf$", ".json")).build().toString())
+                        .body(j.data()))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/informes/{id}/pdf")
