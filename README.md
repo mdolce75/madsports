@@ -115,6 +115,11 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
+- **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
+  ingresar: el login avisa y ofrece reenviar el mail.
+- **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
+  (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
+  un mail por minuto como mucho, y en la base queda solo el hash del token.
 - **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.
 - **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
@@ -159,6 +164,9 @@ Abrir http://localhost:8080.
 | `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
 | `FPP_DB_URL` | `jdbc:h2:file:./data/fpp-stats` | Base de usuarios |
 | `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
+| `MAIL_FROM` | `Mad Sports <no-responder@madsports.com.ar>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
+| `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
 
 **API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.
 En el plan gratuito Google puede usar el contenido enviado para mejorar sus productos (son datos deportivos
@@ -177,6 +185,9 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
 - `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)
+- `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
+  `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
+- `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP)
 - `GET /api/catalogo?anio=2026` — clubes con sus categorías y ramas del año (sin `anio`: el más reciente con datos);
   `available: false` y `message` si el año no tiene datos

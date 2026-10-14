@@ -36,6 +36,7 @@
 
         <button class="go" id="go" type="submit">Ingresar</button>
         <div id="status" role="status" aria-live="polite"></div>
+        <p class="alt"><a href="/olvido.html">¿Olvidaste tu clave?</a></p>
         <p class="alt">¿No tenés usuario? <a href="/registro.html">Registrate</a> · <a href="/">Volver al inicio</a></p>
     </form>
 
@@ -47,9 +48,39 @@
 <script>
     $("brand").outerHTML = BRAND;
 
-    if (location.search.includes("sinPerfil")) {
-        $("notice").hidden = false;
-        $("notice").textContent = "Tu usuario no tiene un perfil habilitado en esta web.";
+    const AVISOS = {
+        sinPerfil: ["Tu usuario no tiene un perfil habilitado en esta web.", false],
+        verificado: ["Tu email quedó confirmado: ya podés ingresar.", true],
+        "verificacion=invalida": ["El enlace para confirmar el email venció o ya se usó. Ingresá con tu usuario y clave "
+            + "para pedir uno nuevo.", false],
+        clave: ["Tu clave quedó cambiada: ingresá con la nueva.", true]
+    };
+    for (const [k, [texto, ok]] of Object.entries(AVISOS)) {
+        if (location.search.includes(k)) {
+            $("notice").hidden = false;
+            $("notice").className = ok ? "notice ok" : "notice";
+            $("notice").textContent = texto;
+        }
+    }
+
+    // Email sin confirmar: ofrece reenviar el mail.
+    function ofrecerReenvio(usuario) {
+        const link = document.createElement("a");
+        link.href = "#";
+        link.textContent = "Reenviar el mail de confirmación";
+        link.addEventListener("click", async ev => {
+            ev.preventDefault();
+            try {
+                const r = await postJson("/api/verificacion/reenviar", {usuario});
+                status(r.detail);
+            } catch (e) {
+                status(e.message, true);
+            }
+        });
+        const p = document.createElement("p");
+        p.className = "alt";
+        p.append(link);
+        $("status").append(p);
     }
 
     // Si ya hay sesión, directo a la pantalla de su perfil.
@@ -72,7 +103,12 @@
                 body: new URLSearchParams({usuario: $("usuario").value.trim(), clave: $("clave").value})
             });
             const body = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(body.detail || "No se pudo ingresar.");
+            if (!res.ok) {
+                status(body.detail || "No se pudo ingresar.", true);
+                if (body.code === "EMAIL_NO_VERIFICADO") ofrecerReenvio($("usuario").value.trim());
+                $("go").disabled = false;
+                return;
+            }
             location.replace(body.inicio);
         } catch (e) {
             status(e.message, true);

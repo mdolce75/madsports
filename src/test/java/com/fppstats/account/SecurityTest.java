@@ -17,7 +17,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import org.mockito.ArgumentCaptor;
+
 import java.time.Instant;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +31,11 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -54,6 +63,7 @@ class SecurityTest {
     @MockitoBean CatalogService catalog;
     @MockitoBean RosterService roster;
     @MockitoBean ReportService reports;
+    @MockitoBean Mailer mailer;
 
     @BeforeEach
     void setUp() {
@@ -90,6 +100,22 @@ class SecurityTest {
         return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", clave));
     }
 
+    /** Token del último mail enviado a esa dirección con un enlace a {@code path}. */
+    String token(String email, String path) {
+        ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
+        verify(mailer, atLeastOnce()).send(eq(email), anyString(), text.capture());
+        String last = text.getAllValues().getLast();
+        Matcher m = Pattern.compile(Pattern.quote(path) + "\\?token=([A-Za-z0-9_-]+)").matcher(last);
+        assertThat(m.find()).as("enlace en el mail:\n%s", last).isTrue();
+        return m.group(1);
+    }
+
+    /** Confirma el email con el enlace del mail. */
+    void confirmar(String email) throws Exception {
+        mvc.perform(get("/api/verificar").param("token", token(email, "/api/verificar")))
+                .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/login.html?verificado"));
+    }
+
     Usuario saved(String usuario, Perfil perfil) {
         return usuarios.save(new Usuario(usuario, encoder.encode("clave-segura"), usuario + "@example.com", "Ana",
                 "Pérez", 74, "VELEZ", "CAVS", EnumSet.of(perfil), Instant.now()));
@@ -120,6 +146,11 @@ class SecurityTest {
         assertThat(u.getClubNombre()).isEqualTo("VELEZ");
         assertThat(u.getNombre()).isNull();   // el registro no pide nombre ni apellido
 
+        // Sin confirmar el email no se ingresa (con la clave correcta se avisa por qué).
+        login("ana.club", "clave-segura").andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("EMAIL_NO_VERIFICADO"));
+        confirmar("Ana.Club@example.com");
+        assertThat(usuarios.findByUsuario("ana.club").orElseThrow().isEmailVerificado()).isTrue();
         login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/club.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Usuario o clave incorrectos."));
@@ -150,6 +181,7 @@ class SecurityTest {
         Map<String, Object> mismoJugador = player("juan2");
         register(mismoJugador).andExpect(status().isConflict());
 
+        confirmar("juan@example.com");
         login("juan", "clave-segura").andExpect(jsonPath("$.inicio").value("/jugador.html"));
     }
 
@@ -167,6 +199,59 @@ class SecurityTest {
         clubInexistente.put("clubId", 99);
         register(clubInexistente).andExpect(status().isBadRequest());
         assertThat(usuarios.count()).isZero();
+    }
+
+    @Test
+    void elEnlaceDeConfirmacionSirveUnaSolaVez() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        String token = token("ana@example.com", "/api/verificar");
+        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/login.html?verificado"));
+        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
+        mvc.perform(get("/api/verificar").param("token", "inventado")).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
+    }
+
+    @Test
+    void reenviarLaConfirmacionPorUsuarioOEmail() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        // Un mail por minuto como mucho: el reenvío inmediato no manda otro.
+        mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuario\":\"ana\"}")).andExpect(status().isOk());
+        verify(mailer, times(1)).send(eq("ana@example.com"), anyString(), anyString());
+        // Email inexistente: misma respuesta, sin mail.
+        mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Si hay una cuenta")));
+        verify(mailer, never()).send(eq("nadie@example.com"), anyString(), anyString());
+    }
+
+    @Test
+    void recuperarLaClave() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        confirmar("ana@example.com");
+
+        String olvido = "{\"email\":\"ANA@example.com\"}";
+        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(olvido))
+                .andExpect(status().isOk());
+        String token = token("ana@example.com", "/restablecer.html");
+
+        String corta = "{\"token\":\"%s\",\"clave\":\"corta\"}".formatted(token);
+        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corta))
+                .andExpect(status().isBadRequest());
+        String nueva = "{\"token\":\"%s\",\"clave\":\"otra-clave-segura\"}".formatted(token);
+        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(nueva))
+                .andExpect(status().isOk());
+
+        login("ana", "clave-segura").andExpect(status().isUnauthorized());
+        login("ana", "otra-clave-segura").andExpect(status().isOk());
+        // El enlace no se puede volver a usar.
+        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(nueva))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("El enlace venció o ya se usó")));
+
+        // Email inexistente: misma respuesta y ningún mail.
+        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk());
+        verify(mailer, never()).send(eq("nadie@example.com"), anyString(), anyString());
     }
 
     @Test

@@ -169,3 +169,5 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .go-link:hover { filter: brightness(1.08); }
 .go-link::after { content: " ►"; font-size: .85em; }
 @media (max-width: 560px) { .examples { grid-template-columns: 1fr; } }
+.notice.ok { border-left-color: var(--lime); background: rgba(200, 241, 53, .08); }
+.notice p { margin: 6px 0 0; font-weight: 400; }

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clave nueva · Mad Sports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5a1f'/%3E%3Cpath d='M16 14l20 30h10' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M48 14L28 44H18' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='52' r='5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+    <div id="brand"></div>
+
+    <section class="hero">
+        <span class="tag">Recuperar clave</span>
+        <h1>Tu clave<br><em>nueva.</em></h1>
+        <p class="lead">Elegí una clave nueva para tu usuario de Mad Sports.</p>
+    </section>
+
+    <form class="sheet" id="form" novalidate>
+        <div class="sheet-head"><span>Clave nueva</span><span></span></div>
+        <div class="field">
+            <label for="clave">Clave nueva</label>
+            <input type="password" id="clave" autocomplete="new-password" required minlength="8" maxlength="72" autofocus>
+        </div>
+        <div class="field">
+            <label for="clave2">Repetí la clave</label>
+            <input type="password" id="clave2" autocomplete="new-password" required minlength="8" maxlength="72">
+        </div>
+        <button class="go" id="go" type="submit">Guardar clave</button>
+        <div id="status" role="status" aria-live="polite"></div>
+        <p class="alt"><a href="/olvido.html">Pedir otro enlace</a> · <a href="/login.html">Ingresar</a></p>
+    </form>
+
+    <footer><b>Mad Sports</b> · Informes elaborados por Mad Sports. Fuente de los datos: Federación Porteña de Patín
+        (buenosaires.sidgad.com).</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+    session();   // deja la cookie CSRF
+    const token = new URLSearchParams(location.search).get("token") || "";
+    if (!token) status("Falta el enlace: abrí esta página desde el mail que te mandamos.", true);
+    $("form").addEventListener("submit", async ev => {
+        ev.preventDefault();
+        const clave = $("clave").value;
+        if (clave.length < 8) {
+            status("La clave lleva al menos 8 caracteres.", true);
+            return;
+        }
+        if (clave !== $("clave2").value) {
+            status("Las dos claves no coinciden.", true);
+            return;
+        }
+        $("go").disabled = true;
+        try {
+            await postJson("/api/clave/restablecer", {token, clave});
+            location.replace("/login.html?clave=nueva");
+        } catch (e) {
+            status(e.message, true);
+            $("go").disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

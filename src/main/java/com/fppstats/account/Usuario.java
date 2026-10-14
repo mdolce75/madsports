@@ -39,6 +39,7 @@ public class Usuario {
     /** Categoría y rama del jugador (definen en qué categorías puede jugar; ver Eligibility). */
     private String categoria;
     private String rama;
+    private boolean emailVerificado;
     private Instant creado;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -86,6 +87,16 @@ public class Usuario {
     public String getCategoria() { return categoria; }
     public String getRama() { return rama; }
     public Instant getCreado() { return creado; }
+    public boolean isEmailVerificado() { return emailVerificado; }
+
+    public void verificarEmail() {
+        this.emailVerificado = true;
+    }
+
+    /** @param hash clave ya codificada (BCrypt) */
+    public void cambiarClave(String hash) {
+        this.clave = hash;
+    }
     public Set<Perfil> getPerfiles() { return Set.copyOf(perfiles); }
 
     public boolean tiene(Perfil perfil) {

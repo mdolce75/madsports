@@ -16,6 +16,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -65,20 +67,59 @@ public class AccountController {
     private final UsuarioRepository usuarios;
     private final RosterService roster;
     private final CatalogService catalog;
+    private final CuentaService cuenta;
 
     public AccountController(RegistroService registro, UsuarioRepository usuarios, RosterService roster,
-                             CatalogService catalog) {
+                             CatalogService catalog, CuentaService cuenta) {
+        this.cuenta = cuenta;
         this.registro = registro;
         this.usuarios = usuarios;
         this.roster = roster;
         this.catalog = catalog;
     }
 
+    /** Alta: la cuenta queda sin confirmar y se manda el mail con el enlace para confirmarla. */
     @PostMapping("/registro")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> registrar(@Valid @RequestBody RegistroRequest req) {
-        Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(), req.clubId(), req.categoria(), req.rama(), req.jugadorId()));
-        return Map.of("usuario", u.getUsuario());
+        Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(),
+                req.clubId(), req.categoria(), req.rama(), req.jugadorId()));
+        cuenta.enviarVerificacion(u);
+        return Map.of("usuario", u.getUsuario(), "email", u.getEmail());
+    }
+
+    /** @param usuario alternativa al email (para reenviar la confirmación desde el ingreso) */
+    public record EmailRequest(String email, String usuario) {
+    }
+
+    public record RestablecerRequest(String token, String clave) {
+    }
+
+    /** Enlace del mail de confirmación: confirma y lleva al ingreso. */
+    @GetMapping("/verificar")
+    public ResponseEntity<Void> verificar(@RequestParam(required = false) String token) {
+        String destino = cuenta.verificar(token) ? "/login.html?verificado" : "/login.html?verificacion=invalida";
+        return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(destino)).build();
+    }
+
+    /** Siempre responde lo mismo, exista o no una cuenta con ese email. */
+    @PostMapping("/verificacion/reenviar")
+    public Map<String, String> reenviar(@RequestBody EmailRequest req) {
+        cuenta.reenviarVerificacion(req.email(), req.usuario());
+        return Map.of("detail", "Si hay una cuenta sin confirmar con ese email, te mandamos el enlace de nuevo.");
+    }
+
+    /** Siempre responde lo mismo, exista o no una cuenta con ese email. */
+    @PostMapping("/clave/olvido")
+    public Map<String, String> olvido(@RequestBody EmailRequest req) {
+        cuenta.olvideClave(req.email());
+        return Map.of("detail", "Si hay una cuenta con ese email, te mandamos un enlace para elegir una clave nueva.");
+    }
+
+    @PostMapping("/clave/restablecer")
+    public Map<String, String> restablecer(@RequestBody RestablecerRequest req) {
+        cuenta.restablecerClave(req.token(), req.clave());
+        return Map.of("detail", "Listo: ya podés ingresar con tu clave nueva.");
     }
 
     /**

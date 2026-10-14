@@ -205,15 +205,15 @@
         $("go").disabled = true;
         status("Registrando…");
         try {
-            await postJson("/api/registro", data);
-            // Alta correcta: se ingresa directo.
-            const res = await api("/api/login", {
-                method: "POST",
-                headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                body: new URLSearchParams({usuario: data.usuario, clave: data.clave})
-            });
-            const body = await res.json().catch(() => ({}));
-            location.replace(res.ok ? body.inicio : "/login.html");
+            const alta = await postJson("/api/registro", data);
+            // Alta correcta: hay que confirmar el email antes de ingresar.
+            $("form").innerHTML = "";
+            const done = document.createElement("div");
+            done.className = "notice ok";
+            done.innerHTML = "<b>¡Listo! Revisá tu correo.</b><p></p><p class=\"alt\"><a href=\"/login.html\">Ir a ingresar</a></p>";
+            done.querySelector("p").textContent = `Te mandamos un mail a ${alta.email} con un enlace para confirmar `
+                + "tu cuenta (vale 48 horas). Después de confirmarla, ya podés ingresar.";
+            $("form").append(done);
         } catch (e) {
             status(e.message, true);
             $("go").disabled = false;
