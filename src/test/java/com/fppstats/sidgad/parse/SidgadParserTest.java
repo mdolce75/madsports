@@ -3,6 +3,7 @@ package com.fppstats.sidgad.parse;
 import com.fppstats.Fixtures;
 import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Models.EventType;
+import com.fppstats.sidgad.model.Models.LineupPlayer;
 import com.fppstats.sidgad.model.Models.Match;
 import com.fppstats.sidgad.model.Models.MatchEvent;
 import com.fppstats.sidgad.model.Models.PlayerStats;
@@ -140,6 +141,36 @@ class SidgadParserTest {
             assertThat(e.minute()).isZero();
         });
         assertThat(reds).extracting(MatchEvent::teamId).containsExactlyInAnyOrder(4806, 4805);
+    }
+
+    @Test
+    void planillaDeJugadoresDeCadaEquipo() {
+        List<LineupPlayer> players = SidgadParser.lineups(Fixtures.read("gr_26390.html"));
+
+        // Vélez (local) 2-4 Argentinos Juniors: 9 citados por equipo; primero la planilla del local.
+        assertThat(players).hasSize(18);
+        assertThat(players).filteredOn(LineupPlayer::home).hasSize(9).allMatch(p -> p.team().equals("VELEZ"));
+        assertThat(players).filteredOn(p -> !p.home()).allMatch(p -> p.team().equals("ARGENTINOS JUNIORS"));
+        assertThat(players).filteredOn(p -> p.playerId() == 3851).singleElement()
+                .isEqualTo(new LineupPlayer(3851, "VELEZ", true, "07", "Ignacio J Graiño", true, 2, 0, 0, 0));
+        // Suplente que no jugó de entrada, y la marca de capitán fuera del nombre.
+        assertThat(players).filteredOn(p -> p.playerId() == 4156).singleElement()
+                .satisfies(p -> assertThat(p.starter()).isFalse());
+        assertThat(players).filteredOn(p -> p.playerId() == 2292).singleElement()
+                .satisfies(p -> assertThat(p.name()).isEqualTo("Agustin Caruso"));
+        // Amarilla del arquero de Argentinos.
+        assertThat(players).filteredOn(p -> p.playerId() == 2698).singleElement()
+                .satisfies(p -> assertThat(p.yellowCards()).isEqualTo(1));
+    }
+
+    @Test
+    void planillaConAzulYRoja() {
+        List<LineupPlayer> players = SidgadParser.lineups(Fixtures.read("gr_21496.html"));
+        assertThat(players).filteredOn(p -> p.playerId() == 2292).singleElement()
+                .satisfies(p -> assertThat(p.blueCards()).isEqualTo(1));
+        assertThat(players).filteredOn(p -> p.playerId() == 5311).singleElement()
+                .satisfies(p -> assertThat(p.redCards()).isEqualTo(1));
+        assertThat(SidgadParser.lineups("File not found.\n")).isEmpty();
     }
 
     @Test

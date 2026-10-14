@@ -48,10 +48,35 @@ public final class Models {
      *
      * @param period  1 o 2 (0 si el acta trae otro período)
      * @param minute  minuto transcurrido dentro del período
-     * @param teamId  equipo al que se atribuye (0 si el acta no lo indica; ver {@code clubId}/{@code teamCode})
+     * @param teamId   equipo al que se atribuye (0 si el acta no lo indica; ver {@code clubId}/{@code teamCode})
+     * @param playerId id_player del jugador (0 si el evento no lo trae)
      */
     public record MatchEvent(int period, int minute, int second, EventType type,
-                             int teamId, int clubId, String teamCode, String player) {
+                             int teamId, int clubId, String teamCode, String player, int playerId) {
+
+        public MatchEvent(int period, int minute, int second, EventType type,
+                          int teamId, int clubId, String teamCode, String player) {
+            this(period, minute, second, type, teamId, clubId, teamCode, player, 0);
+        }
+    }
+
+    /**
+     * Fila de un jugador en la planilla de un partido (tabla de jugadores de cada equipo en el acta).
+     *
+     * @param team    nombre del equipo como figura en el acta ("VELEZ", "GEBA B")
+     * @param home    planilla del local (en el acta va primero la del local y después la del visitante)
+     * @param starter figura en el cinco inicial
+     * @param penaltiesScored  penales convertidos (columna PE del acta: "convertidos/tirados")
+     * @param directFreeScored libres directos convertidos (columna FD)
+     */
+    public record LineupPlayer(int playerId, String team, boolean home, String number, String name, boolean starter,
+                               int goals, int yellowCards, int blueCards, int redCards,
+                               int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken) {
+
+        public LineupPlayer(int playerId, String team, boolean home, String number, String name, boolean starter,
+                            int goals, int yellowCards, int blueCards, int redCards) {
+            this(playerId, team, home, number, name, starter, goals, yellowCards, blueCards, redCards, 0, 0, 0, 0);
+        }
     }
 
     public record PlayerStats(int playerId, int teamId, String teamCode, int clubId, String name,
