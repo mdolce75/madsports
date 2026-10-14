@@ -69,15 +69,13 @@ class SecurityTest {
 
     Map<String, Object> club(String usuario) {
         Map<String, Object> m = new HashMap<>(Map.of("perfil", "CLUBFPP", "usuario", usuario, "clave", "clave-segura",
-                "email", usuario + "@example.com", "nombre", "Ana", "apellido", "Pérez", "clubId", 74));
+                "email", usuario + "@example.com", "clubId", 74));
         return m;
     }
 
     /** El jugador no manda nombre ni apellido: se toman del jugador elegido. */
     Map<String, Object> player(String usuario) {
         Map<String, Object> m = club(usuario);
-        m.remove("nombre");
-        m.remove("apellido");
         m.putAll(Map.of("perfil", "PLAYERFPP", "categoria", "PRIMERA", "rama", "MASCULINO",
                 "jugadorId", 3851));
         return m;
@@ -120,6 +118,7 @@ class SecurityTest {
         assertThat(u.getPerfiles()).containsExactly(Perfil.CLUBFPP);
         assertThat(u.getClave()).isNotEqualTo("clave-segura").startsWith("$2");
         assertThat(u.getClubNombre()).isEqualTo("VELEZ");
+        assertThat(u.getNombre()).isNull();   // el registro no pide nombre ni apellido
 
         login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/club.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
@@ -163,11 +162,6 @@ class SecurityTest {
         Map<String, Object> clave = club("pedro");
         clave.put("clave", "corta");
         register(clave).andExpect(status().isBadRequest());
-
-        Map<String, Object> sinNombre = club("pedro");
-        sinNombre.remove("apellido");
-        register(sinNombre).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("El nombre y el apellido son obligatorios."));
 
         Map<String, Object> clubInexistente = club("pedro");
         clubInexistente.put("clubId", 99);

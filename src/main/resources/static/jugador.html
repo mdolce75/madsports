@@ -131,7 +131,7 @@
     requireProfile("PLAYERFPP").then(s => {
         if (!s) return;
         $("club").value = s.club.nombre;
-        $("nombre").value = `${s.nombre} ${s.apellido}`;
+        $("nombre").value = s.nombre ? `${s.nombre} ${s.apellido}` : "";
         $("jugador").value = s.jugador ? s.jugador.nombre : "Sin jugador vinculado";
         if (s.jugador && s.jugador.categoria) {
             const cap = w => w.charAt(0) + w.slice(1).toLowerCase();

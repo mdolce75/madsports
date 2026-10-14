@@ -27,7 +27,7 @@ public class RegistroService {
         }
     }
 
-    public record Registro(Perfil perfil, String usuario, String clave, String email, String nombre, String apellido,
+    public record Registro(Perfil perfil, String usuario, String clave, String email,
                            int clubId, String categoria, String rama, Integer jugadorId) {
     }
 
@@ -65,11 +65,9 @@ public class RegistroService {
         if (r.perfil().player()) {
             return registrarJugador(r, usuario, email, club, year);
         }
-        if (r.nombre() == null || r.nombre().isBlank() || r.apellido() == null || r.apellido().isBlank()) {
-            throw new IllegalArgumentException("El nombre y el apellido son obligatorios.");
-        }
-        return usuarios.save(new Usuario(usuario, encoder.encode(r.clave()), email, r.nombre().trim(),
-                r.apellido().trim(), club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant()));
+        // Club: sin nombre ni apellido (el registro no los pide).
+        return usuarios.save(new Usuario(usuario, encoder.encode(r.clave()), email, null, null,
+                club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant()));
     }
 
     /** Jugador: el nombre y el apellido son los de la FPP (el jugador elegido de la planilla de su equipo). */

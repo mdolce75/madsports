@@ -47,8 +47,6 @@ public class AccountController {
             String clave,
             @NotBlank(message = "El email es obligatorio.") @Email(message = "El email no es válido.")
             @Size(max = 120) String email,
-            @Size(max = 60) String nombre,      // obligatorios para clubes; el jugador los toma de la FPP
-            @Size(max = 60) String apellido,
             @Positive(message = "Elegí el club.") int clubId,
             String categoria,
             String rama,
@@ -79,8 +77,7 @@ public class AccountController {
     @PostMapping("/registro")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> registrar(@Valid @RequestBody RegistroRequest req) {
-        Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(), req.nombre(),
-                req.apellido(), req.clubId(), req.categoria(), req.rama(), req.jugadorId()));
+        Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(), req.clubId(), req.categoria(), req.rama(), req.jugadorId()));
         return Map.of("usuario", u.getUsuario());
     }
 

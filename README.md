@@ -111,8 +111,8 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 `PLAYERCNT`. Por ahora el registro ofrece solo **Club FPP** o **Jugador FPP**, y uno excluye al otro.
 
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
-  Club FPP carga además nombre y apellido. Jugador FPP no los carga (se toman del jugador que elige, tal como los
-  separa el acta); en cambio es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
+  No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
+  Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
 - **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.

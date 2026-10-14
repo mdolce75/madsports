@@ -52,16 +52,6 @@
             <label for="email">Email <span class="req">*</span></label>
             <input type="email" id="email" autocomplete="email" required maxlength="120">
         </div>
-        <div class="grid2" id="name-fields">
-            <div class="field">
-                <label for="nombre">Nombre <span class="req">*</span></label>
-                <input type="text" id="nombre" autocomplete="given-name" required maxlength="60">
-            </div>
-            <div class="field">
-                <label for="apellido">Apellido <span class="req">*</span></label>
-                <input type="text" id="apellido" autocomplete="family-name" required maxlength="60">
-            </div>
-        </div>
         <div class="field">
             <label for="club">Club <span class="req">*</span></label>
             <select id="club" required disabled><option value="">Cargando clubes…</option></select>
@@ -77,8 +67,7 @@
             <div class="field">
                 <label for="jugador">Jugador <span class="req">*</span></label>
                 <select id="jugador" disabled><option value="">Elegí la categoría</option></select>
-                <p class="hint">Tu nombre tal como figura en las actas de partido de la FPP: se usa como nombre y
-                    apellido de tu usuario.</p>
+                <p class="hint">Tu nombre tal como figura en las actas de partido de la FPP.</p>
             </div>
         </div>
 
@@ -176,8 +165,6 @@
 
     function toggleProfile() {
         $("player-fields").hidden = !isPlayer();
-        // El jugador no carga nombre y apellido: se toman del jugador que elige de la lista.
-        $("name-fields").hidden = isPlayer();
         loadPlayers();
     }
 
@@ -194,12 +181,7 @@
             email: $("email").value.trim(),
             clubId: Number($("club").value) || 0
         };
-        if (!isPlayer()) {
-            data.nombre = $("nombre").value.trim();
-            data.apellido = $("apellido").value.trim();
-        }
-        const missing = ["usuario", "clave", "email"].concat(isPlayer() ? [] : ["nombre", "apellido"])
-            .filter(k => !data[k]);
+        const missing = ["usuario", "clave", "email"].filter(k => !data[k]);
         if (missing.length || !data.clubId) {
             status("Completá todos los campos obligatorios.", true);
             return;
