@@ -20,7 +20,7 @@ goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no public
 
 ```
 Web (index.html) → POST /api/informes → job en segundo plano
-  1. Extracción   SidgadClient: POST a server2.sidgad.es (cache + 400 ms entre pedidos)
+  1. Extracción   SidgadClient: POST a server2.sidgad.es, en paralelo (hasta 6 a la vez, máx. 10/s) + cache
   2. Cálculo      StatsEngine: todas las cifras, en código
   3. Análisis     GeminiAnalyst: un pedido a Gemini con todas las cifras → JSON con esquema fijo
                   (sin API key o ante cualquier falla: RuleBasedAnalyst)
@@ -61,7 +61,7 @@ disciplina, cara a cara con cada rival, y **goles a favor/en contra y tarjetas p
 
 **Faltas:** faltas de equipo (eventos "FALTA" de las fichas; "FALTA DIRECTA PARA" no cuenta) por partido del
 equipo, de sus rivales en esos mismos partidos y promedio de la liga (todas las fichas de las competiciones del
-informe: la primera vez se leen unas 120 fichas, ~1 minuto; después quedan en cache 24 h). Por tramo de 5′: faltas
+informe: la primera vez se leen unas 120 fichas, ~20 s en paralelo; después quedan en cache 24 h). Por tramo de 5′: faltas
 propias y rivales, y cómo iba el equipo al empezar el tramo (diferencia de gol promedio y % de partidos ganando,
 empatando o perdiendo, según el minuto de los goles).
 

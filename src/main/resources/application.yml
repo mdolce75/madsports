@@ -17,7 +17,9 @@ fpp:
     base-url: https://www.server2.sidgad.es/cap/
     origin: https://www.buenosaires.sidgad.com
     federation-id: 3          # FPP
-    min-interval: 400ms       # espera entre pedidos al sitio
+    # Pedidos en paralelo, sin sobrecargar el sitio: hasta 6 a la vez y como mucho 10 por segundo
+    max-concurrency: 6
+    min-interval: 100ms
     data-ttl: 15m
     catalog-ttl: 6h
     timeout: 20s

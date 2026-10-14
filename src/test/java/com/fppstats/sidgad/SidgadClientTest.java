@@ -24,6 +24,8 @@ class SidgadClientTest {
     HttpServer server;
     final Map<String, AtomicInteger> hits = new ConcurrentHashMap<>();
     SidgadClient client;
+    final AtomicInteger inFlight = new AtomicInteger();
+    final AtomicInteger maxInFlight = new AtomicInteger();
 
     @BeforeEach
     void start() throws Exception {
@@ -31,16 +33,33 @@ class SidgadClientTest {
         server.createContext("/cap/", ex -> {
             String file = ex.getRequestURI().getPath().substring("/cap/".length());
             hits.computeIfAbsent(file, k -> new AtomicInteger()).incrementAndGet();
+            if (file.startsWith("cap_gr_10")) {
+                // Ficha lenta: mide cuántos pedidos hay en curso a la vez.
+                int now = inFlight.incrementAndGet();
+                maxInFlight.accumulateAndGet(now, Math::max);
+                try {
+                    Thread.sleep(150);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+                inFlight.decrementAndGet();
+                byte[] body = "<html></html>".getBytes(StandardCharsets.UTF_8);
+                ex.sendResponseHeaders(200, body.length);
+                ex.getResponseBody().write(body);
+                ex.close();
+                return;
+            }
             int status = file.startsWith("cap_clasif") ? 200 : file.startsWith("cap_stats") ? 500 : 404;
             byte[] body = (status == 200 ? "<table></table>" : "File not found.\n").getBytes(StandardCharsets.UTF_8);
             ex.sendResponseHeaders(status, body.length);
             ex.getResponseBody().write(body);
             ex.close();
         });
+        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.start();
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/";
         client = new SidgadClient(new FppProperties(
-                new FppProperties.Sidgad(base, "http://localhost", 3, Duration.ZERO, Duration.ofMinutes(5),
+                new FppProperties.Sidgad(base, "http://localhost", 3, Duration.ZERO, 3, Duration.ofMinutes(5),
                         Duration.ofMinutes(5), Duration.ofSeconds(5), List.of("PRIMERA"), List.of(2026)),
                 new FppProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1))));
     }
@@ -71,5 +90,21 @@ class SidgadClientTest {
         assertThatThrownBy(() -> client.playerStats(1))
                 .isInstanceOf(SidgadException.class)
                 .hasMessageContaining("500");
+    }
+
+    @Test
+    void pedidosEnParaleloConTope() throws Exception {
+        // Tope de 3 pedidos simultáneos (configuración del test): 12 fichas lentas pedidas a la vez.
+        try (var pool = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            List<java.util.concurrent.Future<String>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < 12; i++) {
+                int idp = 1000 + i;
+                futures.add(pool.submit(() -> client.gameSheet(1, idp)));
+            }
+            for (var f : futures) {
+                assertThat(f.get()).isEqualTo("<html></html>");
+            }
+        }
+        assertThat(maxInFlight.get()).isGreaterThan(1).isLessThanOrEqualTo(3);
     }
 }

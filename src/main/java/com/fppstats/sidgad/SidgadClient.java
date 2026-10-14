@@ -14,6 +14,7 @@ import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.Semaphore;
 
 /**
  * Pide fragmentos HTML a server2.sidgad.es. Es un sitio de terceros sin API pública:
@@ -30,6 +31,8 @@ public class SidgadClient {
     private final Cache<String, String> catalogCache;
     private final Cache<Integer, String> sheetCache;
     private final Object throttle = new Object();
+    /** Pedidos simultáneos a SIDGAD como máximo ({@code fpp.sidgad.max-concurrency}). */
+    private final Semaphore concurrency;
     private long lastRequestNanos;
 
     public SidgadClient(FppProperties props) {
@@ -37,6 +40,7 @@ public class SidgadClient {
         this.dataCache = Caffeine.newBuilder().expireAfterWrite(this.props.dataTtl()).maximumSize(500).build();
         this.catalogCache = Caffeine.newBuilder().expireAfterWrite(this.props.catalogTtl()).maximumSize(4).build();
         this.sheetCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(3000).build();
+        this.concurrency = new Semaphore(Math.max(1, this.props.maxConcurrency()), true);
     }
 
     /** Contenido que se devuelve cuando SIDGAD responde 404: el dato no está publicado. */
@@ -106,6 +110,20 @@ public class SidgadClient {
     }
 
     private String fetch(String url, Connection.Method method, Map<String, String> params, String file) {
+        try {
+            concurrency.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SidgadException("Interrumpido esperando turno", e);
+        }
+        try {
+            return doFetch(url, method, params, file);
+        } finally {
+            concurrency.release();
+        }
+    }
+
+    private String doFetch(String url, Connection.Method method, Map<String, String> params, String file) {
         waitTurn();
         try {
             Connection.Response res = Jsoup.connect(url)

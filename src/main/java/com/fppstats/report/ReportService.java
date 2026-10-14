@@ -11,6 +11,7 @@ import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Competition.Category;
 import com.fppstats.sidgad.model.Competition.Torneo;
 import com.fppstats.sidgad.model.Models.Match;
+import com.fppstats.sidgad.model.Models.MatchEvent;
 import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.sidgad.parse.SidgadParser;
 import com.fppstats.stats.ReportData;
@@ -34,8 +35,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -193,46 +197,65 @@ public class ReportService {
         List<CompetitionData> data = new ArrayList<>();
         List<String> notPublished = new ArrayList<>();
         Map<Competition, List<Match>> clubMatches = new LinkedHashMap<>();
-        for (Competition c : comps) {
-            job.update(Status.EXTRAYENDO, "Leyendo " + c.name());
-            String torneo = c.torneoLabel();
-            String standings = published(sidgad.standings(c.id()), "Tabla de posiciones (" + torneo + ")", notPublished);
-            String calendar = published(sidgad.calendar(c.id()), "Calendario y resultados (" + torneo + ")", notPublished);
-            String players = published(sidgad.playerStats(c.id()), "Estadísticas por jugador (" + torneo + ")", notPublished);
-            List<Match> matches = SidgadParser.calendar(calendar);
-            clubMatches.put(c, sheetsToRead(c, matches, club.id(), scope.lastMatches()));
-            data.add(new CompetitionData(c,
-                    SidgadParser.standings(standings), SidgadParser.reportDate(standings), matches,
-                    SidgadParser.playerStats(players), new HashMap<>()));
-        }
-        // Actas: una por partido jugado del club (minuto de goles y tarjetas).
-        int total = clubMatches.values().stream().mapToInt(List::size).sum();
-        int done = 0;
-        for (CompetitionData cd : data) {
-            for (Match m : clubMatches.get(cd.competition())) {
-                job.update(Status.EXTRAYENDO, "Leyendo actas de partido (" + (++done) + "/" + total + ")");
-                cd.sheets().put(m.idp(), SidgadParser.gameEvents(sidgad.gameSheet(cd.competition().id(), m.idp())));
+        int clubSheets;
+        // Los pedidos a SIDGAD van en paralelo (cada uno tarda ~1,5 s, casi todo latencia del sitio). El límite de
+        // pedidos simultáneos y por segundo lo pone SidgadClient, para no sobrecargar el sitio.
+        try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
+            job.update(Status.EXTRAYENDO, "Leyendo tablas, calendarios y estadísticas");
+            Map<Competition, List<Future<String>>> pages = new LinkedHashMap<>();
+            for (Competition c : comps) {
+                pages.put(c, List.of(
+                        io.submit(() -> sidgad.standings(c.id())),
+                        io.submit(() -> sidgad.calendar(c.id())),
+                        io.submit(() -> sidgad.playerStats(c.id()))));
+            }
+            for (Competition c : comps) {
+                String torneo = c.torneoLabel();
+                List<Future<String>> f = pages.get(c);
+                String standings = published(await(f.get(0)), "Tabla de posiciones (" + torneo + ")", notPublished);
+                String calendar = published(await(f.get(1)), "Calendario y resultados (" + torneo + ")", notPublished);
+                String players = published(await(f.get(2)), "Estadísticas por jugador (" + torneo + ")", notPublished);
+                List<Match> matches = SidgadParser.calendar(calendar);
+                clubMatches.put(c, sheetsToRead(c, matches, club.id(), scope.lastMatches()));
+                data.add(new CompetitionData(c,
+                        SidgadParser.standings(standings), SidgadParser.reportDate(standings), matches,
+                        SidgadParser.playerStats(players), new HashMap<>()));
+            }
+
+            // Fichas: las de los partidos del club (minuto de goles, tarjetas y faltas) y las del resto de la liga
+            // (solo para el promedio de faltas por equipo y partido). Quedan en cache 24 h.
+            List<Map.Entry<CompetitionData, Match>> sheets = new ArrayList<>();
+            for (CompetitionData cd : data) {
+                clubMatches.get(cd.competition()).forEach(m -> sheets.add(Map.entry(cd, m)));
+            }
+            clubSheets = sheets.size();
+            for (CompetitionData cd : data) {
+                List<Match> own = clubMatches.get(cd.competition());
+                cd.matches().stream()
+                        .filter(m -> m.played() && m.idp() > 0 && !own.contains(m))
+                        .forEach(m -> sheets.add(Map.entry(cd, m)));
+            }
+            AtomicInteger done = new AtomicInteger();
+            job.update(Status.EXTRAYENDO, "Leyendo actas de partido (0/" + sheets.size() + ")");
+            List<Future<List<MatchEvent>>> events = sheets.stream()
+                    .map(e -> io.submit(() -> {
+                        List<MatchEvent> ev = SidgadParser.gameEvents(
+                                sidgad.gameSheet(e.getKey().competition().id(), e.getValue().idp()));
+                        job.update(Status.EXTRAYENDO,
+                                "Leyendo actas de partido (" + done.incrementAndGet() + "/" + sheets.size() + ")");
+                        return ev;
+                    }))
+                    .toList();
+            for (int i = 0; i < sheets.size(); i++) {
+                sheets.get(i).getKey().sheets().put(sheets.get(i).getValue().idp(), await(events.get(i)));
             }
         }
-        // Las actas faltantes ya se informan en el PDF ("N actas de M partidos"); acá solo se resume.
-        long missingSheets = data.stream().flatMap(cd -> cd.sheets().values().stream()).filter(List::isEmpty).count();
+        // Las actas faltantes del club ya se informan en el PDF ("N actas de M partidos"); acá solo se resume.
+        long missingSheets = data.stream()
+                .flatMap(cd -> clubMatches.get(cd.competition()).stream().map(m -> cd.sheets().get(m.idp())))
+                .filter(List::isEmpty).count();
         if (missingSheets > 0) {
-            notPublished.add("Actas de partido: " + missingSheets + " de " + total);
-        }
-        // Actas del resto de la liga: solo para el promedio de faltas por equipo y partido. Quedan en cache 24 h.
-        List<Map.Entry<CompetitionData, Match>> league = new ArrayList<>();
-        for (CompetitionData cd : data) {
-            cd.matches().stream()
-                    .filter(m -> m.played() && m.idp() > 0 && !cd.sheets().containsKey(m.idp()))
-                    .forEach(m -> league.add(Map.entry(cd, m)));
-        }
-        int leagueDone = 0;
-        for (Map.Entry<CompetitionData, Match> e : league) {
-            job.update(Status.EXTRAYENDO, "Leyendo actas de la liga para el promedio de faltas ("
-                    + (++leagueDone) + "/" + league.size() + ")");
-            CompetitionData cd = e.getKey();
-            cd.sheets().put(e.getValue().idp(),
-                    SidgadParser.gameEvents(sidgad.gameSheet(cd.competition().id(), e.getValue().idp())));
+            notPublished.add("Actas de partido: " + missingSheets + " de " + clubSheets);
         }
         String torneos = comps.stream().map(Competition::torneoLabel).distinct().collect(Collectors.joining(" + "));
         String label = scope == Scope.ULTIMOS_5
@@ -241,6 +264,21 @@ public class ReportService {
         return StatsEngine.build(club, label(category, option), label, data, LocalDate.now(clock), scope.lastMatches(),
                         option.teamKey(club.code()))
                 .withNotPublished(notPublished);
+    }
+
+    /** Espera el resultado de un pedido en paralelo; si falló, relanza el error original (p. ej. SidgadException). */
+    private static <T> T await(Future<T> future) {
+        try {
+            return future.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrumpido leyendo SIDGAD", e);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new IllegalStateException(e.getCause());
+        }
     }
 
     /** Si SIDGAD no publicó el fragmento (404), se anota para el PDF y se sigue con contenido vacío. */

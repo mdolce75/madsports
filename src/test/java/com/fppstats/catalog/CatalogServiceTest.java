@@ -63,7 +63,7 @@ class CatalogServiceTest {
     static CatalogService serviceWithFixtures() {
         FppProperties props = new FppProperties(
                 new FppProperties.Sidgad("http://localhost/", "http://localhost", 3,
-                        Duration.ZERO, Duration.ofMinutes(1), Duration.ofMinutes(1),
+                        Duration.ZERO, 1, Duration.ofMinutes(1), Duration.ofMinutes(1),
                         Duration.ofSeconds(1), LEVELS, List.of(2026, 2027)),
                 new FppProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1)));
         SidgadClient client = new SidgadClient(props) {
