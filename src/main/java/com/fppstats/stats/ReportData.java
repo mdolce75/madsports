@@ -41,6 +41,35 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     }
 
     /**
+     * Faltas propias según cómo iba el partido en el minuto de la falta, y tiempo jugado en cada situación
+     * (para comparar en faltas cada 10 minutos: un equipo que pasa mucho tiempo ganando acumula más faltas "ganando").
+     */
+    public record FoulSituation(int whenAhead, int whenLevel, int whenBehind,
+                                int secondsAhead, int secondsLevel, int secondsBehind) {
+
+        public static final FoulSituation EMPTY = new FoulSituation(0, 0, 0, 0, 0, 0);
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double per10Ahead() {
+            return per10(whenAhead, secondsAhead);
+        }
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double per10Level() {
+            return per10(whenLevel, secondsLevel);
+        }
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double per10Behind() {
+            return per10(whenBehind, secondsBehind);
+        }
+
+        private static double per10(int fouls, int seconds) {
+            return seconds == 0 ? 0 : fouls * 600.0 / seconds;
+        }
+    }
+
+    /**
      * Faltas de equipo según las fichas de partido.
      *
      * @param matches         partidos con ficha sobre los que se cuentan
@@ -106,7 +135,7 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      */
     public record TimeProfile(int periodMinutes, int matchesPlayed, int matchesWithSheet, int goalMismatches,
                               List<TimeBucket> buckets, List<TimeBucket> byPeriod, TimeBucket unrecorded,
-                              int shortHandedSeconds, int powerPlaySeconds) {
+                              int shortHandedSeconds, int powerPlaySeconds, FoulSituation foulSituation) {
 
         /** Minutos por partido con uno menos (promedio sobre los partidos con ficha). */
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)

@@ -62,8 +62,14 @@ public class GeminiAnalyst {
             - Escribí en español rioplatense, claro y concreto, sin relleno.
             - Si el club tiene más de un equipo en la categoría (p. ej. CAVS A y CAVS B), distinguilos.
             - En jugadores_destacados usá el nombre exacto como figura en players.
+            - analisis_faltas: 3 a 5 párrafos sobre las faltas del equipo: volumen por partido contra la liga y contra
+              sus rivales (set_pieces_discipline.faltas), en qué tiempo y tramos comete más (time_profile.buckets,
+              foulsOwn y foulsRival), cómo cambia su ritmo según el marcador (time_profile.foulSituation: faltas cada
+              10 minutos ganando, empatando y perdiendo; solo situaciones de 5 minutos o más) y la relación con las
+              tarjetas azules. Interpretá qué dice eso del equipo, con las cifras de los datos.
             - Respondé solo con el JSON pedido (resumen, fortalezas, debilidades, jugadores_destacados,
-              previa_proximo_rival, tendencia). previa_proximo_rival vacío si no hay partidos programados.
+              previa_proximo_rival, tendencia, analisis_faltas). previa_proximo_rival vacío si no hay partidos
+              programados.
             """;
 
     private final FppProperties.Ai props;
@@ -169,9 +175,10 @@ public class GeminiAnalyst {
                                 "properties", Map.of("nombre", str, "motivo", str),
                                 "required", List.of("nombre", "motivo"))),
                         "previa_proximo_rival", str,
-                        "tendencia", str),
+                        "tendencia", str,
+                        "analisis_faltas", strArray),
                 "required", List.of("resumen", "fortalezas", "debilidades", "jugadores_destacados",
-                        "previa_proximo_rival", "tendencia"));
+                        "previa_proximo_rival", "tendencia", "analisis_faltas"));
     }
 
     private Duration retryAfter(HttpResponse<String> res) {

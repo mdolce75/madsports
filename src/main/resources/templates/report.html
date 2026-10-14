@@ -320,6 +320,29 @@
         <p class="muted" th:text="|Faltas de equipo según ${tp.matchesWithSheet} fichas. Al empezar cada tramo: diferencia de gol promedio del equipo y % de partidos en que iba ganando, empatando o perdiendo, según el minuto de los goles.|"></p>
     </div>
 
+    <div class="nobreak" th:if="${t.fouls.matches > 0}" th:with="s=${t.timeProfile.foulSituation}">
+        <h3>Análisis de faltas</h3>
+        <table class="two">
+            <tr>
+                <td style="width: 40%">
+                    <table>
+                        <tr><th class="l">Según el marcador</th><th>Faltas</th><th>Tiempo</th><th>Cada 10'</th></tr>
+                        <tr><td class="l">Ganando</td><td th:text="${s.whenAhead}"></td><td th:text="${f.clock(s.secondsAhead / 60.0)}"></td><td th:text="${s.secondsAhead > 0 ? f.dec(s.per10Ahead()) : '-'}"></td></tr>
+                        <tr><td class="l">Empatando</td><td th:text="${s.whenLevel}"></td><td th:text="${f.clock(s.secondsLevel / 60.0)}"></td><td th:text="${s.secondsLevel > 0 ? f.dec(s.per10Level()) : '-'}"></td></tr>
+                        <tr><td class="l">Perdiendo</td><td th:text="${s.whenBehind}"></td><td th:text="${f.clock(s.secondsBehind / 60.0)}"></td><td th:text="${s.secondsBehind > 0 ? f.dec(s.per10Behind()) : '-'}"></td></tr>
+                    </table>
+                    <p class="muted">Faltas propias según cómo iba el partido en el minuto de la falta, y tiempo jugado en
+                        cada situación (mm:ss), en los partidos con ficha.</p>
+                </td>
+                <td>
+                    <div class="analysis" style="margin-top: 0">
+                        <p th:each="par : ${a.foulsAnalysis}" th:text="${par}"></p>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
     <p class="muted" th:if="${d.partial()}">Pelota parada: acumulado del torneo completo.</p>
     <table class="two nobreak">
         <tr>

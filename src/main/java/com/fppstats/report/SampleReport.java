@@ -43,6 +43,7 @@ public class SampleReport {
     AnalysisResult analysis(ReportData data) {
         AnalysisResult a = rules.analyze(data);
         return new AnalysisResult("texto de ejemplo — en los informes reales lo redacta la IA (Gemini)",
-                a.summary(), a.strengths(), a.weaknesses(), a.keyPlayers(), a.nextOpponentPreview(), a.trend());
+                a.summary(), a.strengths(), a.weaknesses(), a.keyPlayers(), a.nextOpponentPreview(), a.trend(),
+                a.foulsAnalysis());
     }
 }

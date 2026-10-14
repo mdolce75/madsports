@@ -43,7 +43,8 @@ final class AnalysisValidator {
             }
         }
         return new AnalysisResult(source, summary, strengths, weaknesses, players,
-                in.path("previa_proximo_rival").asText("").trim(), in.path("tendencia").asText("").trim());
+                in.path("previa_proximo_rival").asText("").trim(), in.path("tendencia").asText("").trim(),
+                strings(in.path("analisis_faltas")));
     }
 
     private static List<String> strings(JsonNode array) {

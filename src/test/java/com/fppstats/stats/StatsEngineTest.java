@@ -260,6 +260,26 @@ public class StatsEngineTest {
     }
 
     @Test
+    void faltasSegunElMarcador() {
+        ReportData.FoulSituation s = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY),
+                "CAVS").timeProfile().foulSituation();
+
+        // Vélez 2-4 Argentinos y 7-0 Comunicaciones: 16 faltas propias, 12 perdiendo y 4 ganando (calculado aparte).
+        assertThat(s).isEqualTo(new ReportData.FoulSituation(4, 0, 12, 2411, 869, 2720));
+        assertThat(s.secondsAhead() + s.secondsLevel() + s.secondsBehind()).isEqualTo(2 * 50 * 60);
+        assertThat(s.per10Behind()).isCloseTo(12 * 600.0 / 2720, within(1e-9));
+        assertThat(s.per10Level()).isZero();
+    }
+
+    @Test
+    void segundosGanandoEmpatandoYPerdiendo() {
+        int[] seconds = new int[3];
+        // Gol propio al 10', del rival al 20' y al 30', partido de 50'.
+        StatsEngine.accumulateSituationSeconds(List.of(600), List.of(1200, 1800), 3000, seconds);
+        assertThat(seconds).containsExactly(600, 600 + 600, 1200);
+    }
+
+    @Test
     void promedioDeFaltasDeLaLigaConTodasLasFichas() {
         ReportData d = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY);
 

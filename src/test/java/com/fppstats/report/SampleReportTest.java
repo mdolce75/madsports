@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.List;
+import com.fppstats.stats.StatsEngine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -76,10 +78,26 @@ class SampleReportTest {
     }
 
     @Test
+    void analisisEscritoDeLasFaltas() {
+        ReportData d = StatsEngine.build(com.fppstats.stats.StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
+                List.of(com.fppstats.stats.StatsEngineTest.data(779)), HOY);
+        List<String> text = rules.foulsAnalysis(d);
+
+        assertThat(text).hasSize(4);
+        assertThat(text.get(0)).contains("8,00 faltas por partido (16 en 2 partidos con ficha)", "6,00 por partido",
+                "comete más faltas que sus rivales");
+        assertThat(text.get(1)).contains("1er tiempo", "2do");
+        assertThat(text.get(2)).contains("perdiendo", "Comete faltas más seguido cuando va perdiendo");
+        assertThat(text.get(3)).isEqualTo("No recibió tarjetas azules en esos partidos.");
+        assertThat(rules.analyze(d).foulsAnalysis()).isEqualTo(text);
+    }
+
+    @Test
     void elPdfLlevaLaMarcaDeDatosFicticios() throws Exception {
         ReportData d = SampleData.build(HOY);
         String html = renderer.html(d, sample.analysis(d), true);
 
+        assertThat(html).contains("Análisis de faltas", "Según el marcador");
         assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.",
                 "CLUB EJEMPLO (CEJ)", "texto de ejemplo", "Sin minuto registrado");
         assertThat(renderer.html(d, rules.analyze(d), false)).doesNotContain("DATOS FICTICIOS");

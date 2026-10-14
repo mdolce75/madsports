@@ -180,6 +180,9 @@ public class ReportService {
             ReportData data = extract(job, club, category, option);
             job.update(Status.ANALIZANDO, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
             AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
+            if (analysis.foulsAnalysis().isEmpty()) {
+                analysis = analysis.withFoulsAnalysis(rules.foulsAnalysis(data));
+            }
             job.update(Status.GENERANDO_PDF, "Generando el PDF");
             job.pdf = renderer.pdf(data, analysis);
             job.fileName = fileName(club, category, option, job.request().scope());

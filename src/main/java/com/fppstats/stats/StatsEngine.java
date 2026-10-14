@@ -9,6 +9,7 @@ import com.fppstats.sidgad.model.Models.PlayerStats;
 import com.fppstats.sidgad.model.Models.StandingRow;
 import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.stats.ReportData.Discipline;
+import com.fppstats.stats.ReportData.FoulSituation;
 import com.fppstats.stats.ReportData.Fouls;
 import com.fppstats.stats.ReportData.LeagueContext;
 import com.fppstats.stats.ReportData.MatchLine;
@@ -256,6 +257,9 @@ public final class StatsEngine {
         int shortHanded = 0;
         int powerPlay = 0;
         int[] unrecordedCards = new int[COLS];
+        // Faltas propias según el marcador en el minuto de la falta, y segundos en cada situación.
+        int[] foulsBySituation = new int[3];
+        int[] secondsBySituation = new int[3];
 
         for (Entry e : entries) {
             TeamRef own = e.team();
@@ -285,6 +289,7 @@ public final class StatsEngine {
                 List<int[]> rivalSanctions = new ArrayList<>();
                 List<Integer> ownGoalTimes = new ArrayList<>();
                 List<Integer> rivalGoalTimes = new ArrayList<>();
+                List<Integer> ownFoulTimes = new ArrayList<>();
                 for (MatchEvent ev : events) {
                     boolean ours = isOwn(ev, own, rivalTeamId, rivalClubId);
                     int column = switch (ev.type()) {
@@ -313,6 +318,9 @@ public final class StatsEngine {
                     if (seconds > 0) {
                         (ours ? ownSanctions : rivalSanctions).add(new int[]{start, start + seconds});
                     }
+                    if (ev.type() == EventType.FOUL && ours) {
+                        ownFoulTimes.add(start);
+                    }
                     if (ev.type() == EventType.GOAL) {
                         goalsInSheet++;
                         if (ours) {
@@ -335,6 +343,13 @@ public final class StatsEngine {
                     diffSum[i] += diff;
                     situation[i][diff > 0 ? 0 : diff == 0 ? 1 : 2]++;
                 }
+                // Faltas según el marcador y tiempo ganando / empatando / perdiendo.
+                for (int t : ownFoulTimes) {
+                    int diff = (int) ownGoalTimes.stream().filter(g -> g < t).count()
+                            - (int) rivalGoalTimes.stream().filter(g -> g < t).count();
+                    foulsBySituation[situationIndex(diff)]++;
+                }
+                accumulateSituationSeconds(ownGoalTimes, rivalGoalTimes, 2 * matchPeriod * 60, secondsBySituation);
                 // Ficha incompleta: los goles del resultado que no figuran en ella quedan sin minuto.
                 unrecordedFor += Math.max(0, resultFor - ownGoalsInSheet);
                 unrecordedAgainst += Math.max(0, resultAgainst - rivalGoalsInSheet);
@@ -368,7 +383,30 @@ public final class StatsEngine {
         unrecordedCards[1] = unrecordedAgainst;
         TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0, unrecordedCards, 0, new int[3]);
         return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod, unrecorded,
-                shortHanded, powerPlay);
+                shortHanded, powerPlay, new FoulSituation(foulsBySituation[0], foulsBySituation[1], foulsBySituation[2],
+                        secondsBySituation[0], secondsBySituation[1], secondsBySituation[2]));
+    }
+
+    /** 0 = ganando, 1 = empatando, 2 = perdiendo. */
+    private static int situationIndex(int goalDiff) {
+        return goalDiff > 0 ? 0 : goalDiff == 0 ? 1 : 2;
+    }
+
+    /** Suma los segundos que el equipo estuvo ganando, empatando y perdiendo, según el minuto de los goles. */
+    static void accumulateSituationSeconds(List<Integer> ownGoals, List<Integer> rivalGoals, int matchSeconds,
+                                           int[] seconds) {
+        List<int[]> goals = new ArrayList<>();
+        ownGoals.forEach(t -> goals.add(new int[]{Math.min(t, matchSeconds), 1}));
+        rivalGoals.forEach(t -> goals.add(new int[]{Math.min(t, matchSeconds), -1}));
+        goals.sort(Comparator.comparingInt(g -> g[0]));
+        int diff = 0;
+        int prev = 0;
+        for (int[] g : goals) {
+            seconds[situationIndex(diff)] += g[0] - prev;
+            diff += g[1];
+            prev = g[0];
+        }
+        seconds[situationIndex(diff)] += matchSeconds - prev;
     }
 
     /**
