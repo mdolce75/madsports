@@ -50,7 +50,6 @@ public class AccountController {
             @Size(max = 60) String nombre,      // obligatorios para clubes; el jugador los toma de la FPP
             @Size(max = 60) String apellido,
             @Positive(message = "Elegí el club.") int clubId,
-            String dni,
             String categoria,
             String rama,
             Integer jugadorId) {
@@ -81,7 +80,7 @@ public class AccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> registrar(@Valid @RequestBody RegistroRequest req) {
         Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(), req.nombre(),
-                req.apellido(), req.clubId(), req.dni(), req.categoria(), req.rama(), req.jugadorId()));
+                req.apellido(), req.clubId(), req.categoria(), req.rama(), req.jugadorId()));
         return Map.of("usuario", u.getUsuario());
     }
 
@@ -132,6 +131,6 @@ public class AccountController {
     /** Dos altas simultáneas con el mismo dato: la base lo rechaza. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail duplicate(DataIntegrityViolationException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "El usuario, el email, el DNI o el jugador ya están registrados.");
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "El usuario, el email o el jugador ya están registrados.");
     }
 }

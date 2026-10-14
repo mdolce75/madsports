@@ -78,7 +78,7 @@ class SecurityTest {
         Map<String, Object> m = club(usuario);
         m.remove("nombre");
         m.remove("apellido");
-        m.putAll(Map.of("perfil", "PLAYERFPP", "dni", "30.123.456", "categoria", "PRIMERA", "rama", "MASCULINO",
+        m.putAll(Map.of("perfil", "PLAYERFPP", "categoria", "PRIMERA", "rama", "MASCULINO",
                 "jugadorId", 3851));
         return m;
     }
@@ -120,7 +120,6 @@ class SecurityTest {
         assertThat(u.getPerfiles()).containsExactly(Perfil.CLUBFPP);
         assertThat(u.getClave()).isNotEqualTo("clave-segura").startsWith("$2");
         assertThat(u.getClubNombre()).isEqualTo("VELEZ");
-        assertThat(u.getDni()).isNull();
 
         login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/club.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
@@ -128,11 +127,11 @@ class SecurityTest {
     }
 
     @Test
-    void registroDeJugadorConDniYJugadorDeLaFpp() throws Exception {
-        Map<String, Object> sinDni = player("juan");
-        sinDni.remove("dni");
-        register(sinDni).andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(
-                org.hamcrest.Matchers.containsString("DNI")));
+    void registroDeJugadorConElJugadorDeLaFpp() throws Exception {
+        Map<String, Object> sinJugador = player("juan");
+        sinJugador.remove("jugadorId");
+        register(sinJugador).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Elegí tu nombre en la lista de jugadores del club."));
 
         Map<String, Object> otroJugador = player("juan");
         otroJugador.put("jugadorId", 1);
@@ -141,7 +140,6 @@ class SecurityTest {
         register(player("juan")).andExpect(status().isCreated());
         Usuario u = usuarios.findByUsuario("juan").orElseThrow();
         assertThat(u.getPerfiles()).containsExactly(Perfil.PLAYERFPP);
-        assertThat(u.getDni()).isEqualTo("30123456");
         assertThat(u.getJugadorId()).isEqualTo(3851);
         assertThat(u.getJugadorNombre()).isEqualTo("Ignacio J Graiño");
         assertThat(u.getNombre()).isEqualTo("Ignacio J");
@@ -151,7 +149,6 @@ class SecurityTest {
 
         // Un jugador, un usuario.
         Map<String, Object> mismoJugador = player("juan2");
-        mismoJugador.put("dni", "40111222");
         register(mismoJugador).andExpect(status().isConflict());
 
         login("juan", "clave-segura").andExpect(jsonPath("$.inicio").value("/jugador.html"));

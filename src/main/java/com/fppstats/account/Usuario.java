@@ -33,7 +33,6 @@ public class Usuario {
     private int clubId;
     private String clubNombre;
     private String clubCodigo;
-    private String dni;
     /** id_player de SIDGAD (perfiles de jugador). */
     private Integer jugadorId;
     private String jugadorNombre;
@@ -66,8 +65,7 @@ public class Usuario {
     }
 
     /** Datos del jugador de SIDGAD vinculado (perfiles de jugador). */
-    public void vincularJugador(String dni, int jugadorId, String jugadorNombre, String categoria, String rama) {
-        this.dni = dni;
+    public void vincularJugador(int jugadorId, String jugadorNombre, String categoria, String rama) {
         this.jugadorId = jugadorId;
         this.jugadorNombre = jugadorNombre;
         this.categoria = categoria;
@@ -83,7 +81,6 @@ public class Usuario {
     public int getClubId() { return clubId; }
     public String getClubNombre() { return clubNombre; }
     public String getClubCodigo() { return clubCodigo; }
-    public String getDni() { return dni; }
     public Integer getJugadorId() { return jugadorId; }
     public String getJugadorNombre() { return jugadorNombre; }
     public String getCategoria() { return categoria; }

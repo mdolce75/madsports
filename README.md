@@ -112,9 +112,9 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
   Club FPP carga además nombre y apellido. Jugador FPP no los carga (se toman del jugador que elige, tal como los
-  separa el acta); en cambio son obligatorios el **DNI** y el **jugador**. El jugador se elige de la
-  planilla de un equipo del club (club → categoría → nombre): SIDGAD no publica el DNI, así que la cuenta queda
-  vinculada al `id_player` de la FPP. Un jugador y un DNI tienen un solo usuario.
+  separa el acta); en cambio es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
+  (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
+  usuario.
 - **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.
 - **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
@@ -173,7 +173,7 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide sesión con el perfil que corresponde
 (sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
 
-- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","nombre":"...","apellido":"...","clubId":22,"dni":"30123456","categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973}` → `201`
+- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973}` → `201`
 - `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
 - `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)

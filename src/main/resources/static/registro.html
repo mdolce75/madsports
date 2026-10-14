@@ -69,10 +69,6 @@
 
         <div id="player-fields" hidden>
             <div class="field">
-                <label for="dni">DNI <span class="req">*</span></label>
-                <input type="text" id="dni" inputmode="numeric" maxlength="11" placeholder="30123456">
-            </div>
-            <div class="field">
                 <label for="equipo">Categoría en que jugás <span class="req">*</span></label>
                 <select id="equipo" disabled><option value="">Elegí el club</option></select>
                 <p class="hint">Sirve para encontrarte en la planilla del equipo. El informe incluye todas las
@@ -213,13 +209,8 @@
             return;
         }
         if (isPlayer()) {
-            data.dni = $("dni").value.trim();
             [data.categoria, data.rama] = ($("equipo").value || "|").split("|");
             data.jugadorId = Number($("jugador").value) || null;
-            if (!/^\d{7,8}$/.test(data.dni.replace(/[.\s-]/g, ""))) {
-                status("El DNI es obligatorio para jugadores: 7 u 8 números.", true);
-                return;
-            }
             if (!data.categoria) {
                 status("Elegí la categoría en que jugás.", true);
                 return;
