@@ -124,8 +124,9 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 - **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
 - **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
-  período (Apertura, Clausura o Apertura + Clausura) y genera un PDF que trae, por cada categoría del club en que
-  jugó y en total: partidos jugados, ganados, empatados y perdidos; goles; tarjetas amarillas, azules y rojas por
+  período (Apertura, Clausura o Apertura + Clausura) y genera un PDF **agrupado por categoría**. Empieza con los
+  totales y una tabla que compara las categorías. Sigue un bloque por cada categoría en que jugó, con todas sus
+  estadísticas, y si jugó en más de una, cierra con la suma de todas. Cada bloque trae: partidos jugados, ganados, empatados y perdidos; goles; tarjetas amarillas, azules y rojas por
   separado, cada una con su promedio por partido; y penales y libres directos (convertidos, tirados y efectividad,
   con donas). Además, goles y tarjetas por tramos de 5 minutos (gráfico de columnas, con las tarjetas apiladas por
   color) y el detalle partido a partido.

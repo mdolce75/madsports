@@ -256,6 +256,16 @@ public class PlayerReportService {
                         : Competition.DEFAULT_PERIOD_MINUTES)
                 .max().orElse(Competition.DEFAULT_PERIOD_MINUTES));
         ShortHandedCalc shortHanded = new ShortHandedCalc();
+        // Lo mismo por categoría (cada una con la duración de sus tiempos).
+        Map<String, MinuteCounter> minutesByCategory = new LinkedHashMap<>();
+        Map<String, ShortHandedCalc> shortHandedByCategory = new LinkedHashMap<>();
+        for (TeamInput in : inputs) {
+            int period = in.competition().periodMinutes() > 0 ? in.competition().periodMinutes()
+                    : Competition.DEFAULT_PERIOD_MINUTES;
+            minutesByCategory.merge(in.category(), new MinuteCounter(period),
+                    (a, b) -> a.periodMinutes() >= b.periodMinutes() ? a : b);
+            shortHandedByCategory.putIfAbsent(in.category(), new ShortHandedCalc());
+        }
         for (TeamInput in : inputs) {
             int won = 0, drawn = 0, lost = 0, goals = 0, yellow = 0, blue = 0, red = 0, played = 0, withoutSheet = 0;
             int penScored = 0, penTaken = 0, fdScored = 0, fdTaken = 0;
@@ -289,8 +299,11 @@ public class PlayerReportService {
                 fdScored += p.directFreeScored();
                 fdTaken += p.directFreeTaken();
                 List<MatchEvent> matchEvents = in.events().getOrDefault(m.idp(), List.of());
-                minutes.add(p, matchEvents.stream().filter(e -> e.playerId() == q.playerId()).toList());
+                List<MatchEvent> mine = matchEvents.stream().filter(e -> e.playerId() == q.playerId()).toList();
+                minutes.add(p, mine);
+                minutesByCategory.get(in.category()).add(p, mine);
                 addShortHanded(shortHanded, q, in, m, home, matchEvents, gf, ga);
+                addShortHanded(shortHandedByCategory.get(in.category()), q, in, m, home, matchEvents, gf, ga);
                 rows.add(new MatchRow(m.date(), in.category(),
                         in.competition().torneo() == null ? "" : in.competition().torneo().label(),
                         home ? m.awayName() : m.homeName(), home, gf, ga, result,
@@ -325,8 +338,13 @@ public class PlayerReportService {
                         : " partidos del equipo no tienen acta publicada; si jugó, no están contados."));
             }
         }
+        List<PlayerReport.CategoryBlock> blocks = categories.stream()
+                .map(l -> new PlayerReport.CategoryBlock(l, minutesByCategory.get(l.category()).result(),
+                        shortHandedByCategory.get(l.category()).result(),
+                        rows.stream().filter(row -> row.category().equals(l.category())).toList()))
+                .toList();
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
-                categories, total, minutes.result(), shortHanded.result(), rows, notes);
+                categories, total, minutes.result(), shortHanded.result(), rows, notes, blocks);
     }
 
     /**
@@ -375,6 +393,10 @@ public class PlayerReportService {
         private final int perPeriod;
         private final int[][] counts;
         private final int[] unrecorded = new int[4];
+
+        int periodMinutes() {
+            return periodMinutes;
+        }
 
         MinuteCounter(int periodMinutes) {
             this.periodMinutes = periodMinutes;

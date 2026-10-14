@@ -50,6 +50,7 @@
         tr { page-break-inside: avoid; }
         tr.sep td { border-top: 2px solid #0a0e17; }
         tr.unrecorded td { color: #718096; font-style: italic; }
+        .category { page-break-before: always; }
     </style>
     <style th:if="${sample}">
         @page {
@@ -113,159 +114,176 @@
 </th:block>
 
 <th:block th:if="${!r.categories.isEmpty()}">
-    <h2>Partidos jugados</h2>
+    <h2>Resumen por categoría</h2>
     <table>
-        <tr><th class="l">Categoría</th><th>PJ</th><th>Ganados</th><th>Empatados</th><th>Perdidos</th></tr>
+        <tr><th class="l" rowspan="2">Categoría</th><th colspan="4">Partidos</th><th colspan="2">Goles</th>
+            <th colspan="4">Tarjetas</th><th colspan="2">Pelota parada</th></tr>
+        <tr><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Total</th><th>Por PJ</th>
+            <th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th>
+            <th>Por PJ</th><th>Penales</th><th>Libres</th></tr>
         <tr th:each="l : ${r.categories}">
-            <td class="l" th:text="${l.category}"></td><td th:text="${l.played}"></td><td th:text="${l.won}"></td>
-            <td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
+            <td class="l" th:text="${l.category}"></td>
+            <td th:text="${l.played}"></td><td th:text="${l.won}"></td><td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
+            <td th:text="${l.goals}"></td><td th:text="${f.dec(l.goalsPerGame())}"></td>
+            <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
+            <td th:text="${f.dec(l.cardsPerGame())}"></td>
+            <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+            <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
         </tr>
         <tr class="total" th:with="l=${r.total}">
-            <td class="l">Total</td><td th:text="${l.played}"></td><td th:text="${l.won}"></td>
-            <td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
+            <td class="l">Total</td>
+            <td th:text="${l.played}"></td><td th:text="${l.won}"></td><td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
+            <td th:text="${l.goals}"></td><td th:text="${f.dec(l.goalsPerGame())}"></td>
+            <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
+            <td th:text="${f.dec(l.cardsPerGame())}"></td>
+            <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+            <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
         </tr>
     </table>
+    <p class="muted">Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es
+        el promedio por partido jugado. El detalle de cada categoría sigue a continuación.</p>
 
-    <h2>Goles</h2>
-    <table>
-        <tr><th class="l">Categoría</th><th>PJ</th><th>Goles</th><th>Promedio por partido</th></tr>
-        <tr th:each="l : ${r.categories}">
-            <td class="l" th:text="${l.category}"></td><td th:text="${l.played}"></td><td th:text="${l.goals}"></td>
-            <td th:text="${f.dec(l.goalsPerGame())}"></td>
-        </tr>
-        <tr class="total" th:with="l=${r.total}">
-            <td class="l">Total</td><td th:text="${l.played}"></td><td th:text="${l.goals}"></td>
-            <td th:text="${f.dec(l.goalsPerGame())}"></td>
-        </tr>
-    </table>
+    <!--/* Un bloque por categoría, con todas sus estadísticas. */-->
+    <div class="category" th:each="b : ${r.blocks}" th:with="l=${b.line}">
+        <h2 th:text="${l.category}">Categoría</h2>
+        <table class="kpis">
+            <tr>
+                <td><div class="kpi-v" th:text="${l.played}">0</div><div class="kpi-l">PJ</div></td>
+                <td><div class="kpi-v" th:text="${l.won}">0</div><div class="kpi-l">Ganados</div></td>
+                <td><div class="kpi-v" th:text="${l.drawn}">0</div><div class="kpi-l">Empatados</div></td>
+                <td><div class="kpi-v" th:text="${l.lost}">0</div><div class="kpi-l">Perdidos</div></td>
+                <td><div class="kpi-v" th:text="${l.goals}">0</div><div class="kpi-l">Goles</div></td>
+                <td><div class="kpi-v" th:text="${f.dec(l.goalsPerGame())}">0</div><div class="kpi-l">Goles por PJ</div></td>
+                <td><div class="kpi-v" th:text="${l.cards()}">0</div><div class="kpi-l">Tarjetas</div></td>
+                <td><div class="kpi-v" th:text="${f.dec(l.cardsPerGame())}">0</div><div class="kpi-l">Tarjetas por PJ</div></td>
+            </tr>
+        </table>
 
-    <h2>Tarjetas recibidas</h2>
-    <table>
-        <tr><th class="l" rowspan="2">Categoría</th><th rowspan="2">PJ</th>
-            <th colspan="2"><span class="card y"></span> Amarillas</th><th colspan="2"><span class="card b"></span> Azules</th>
-            <th colspan="2"><span class="card r"></span> Rojas</th><th colspan="2">Total</th></tr>
-        <tr><th>Cant.</th><th>Por PJ</th><th>Cant.</th><th>Por PJ</th><th>Cant.</th><th>Por PJ</th><th>Cant.</th><th>Por PJ</th></tr>
-        <tr th:each="l : ${r.categories}">
-            <td class="l" th:text="${l.category}"></td><td th:text="${l.played}"></td>
-            <td th:text="${l.yellowCards}"></td><td th:text="${f.dec(l.yellowPerGame())}"></td>
-            <td th:text="${l.blueCards}"></td><td th:text="${f.dec(l.bluePerGame())}"></td>
-            <td th:text="${l.redCards}"></td><td th:text="${f.dec(l.redPerGame())}"></td>
-            <td th:text="${l.cards()}"></td><td th:text="${f.dec(l.cardsPerGame())}"></td>
-        </tr>
-        <tr class="total" th:with="l=${r.total}">
-            <td class="l">Total</td><td th:text="${l.played}"></td>
-            <td th:text="${l.yellowCards}"></td><td th:text="${f.dec(l.yellowPerGame())}"></td>
-            <td th:text="${l.blueCards}"></td><td th:text="${f.dec(l.bluePerGame())}"></td>
-            <td th:text="${l.redCards}"></td><td th:text="${f.dec(l.redPerGame())}"></td>
-            <td th:text="${l.cards()}"></td><td th:text="${f.dec(l.cardsPerGame())}"></td>
-        </tr>
-    </table>
-    <p class="muted">Amarilla, azul y roja se cuentan por separado; "por PJ" es el promedio por partido jugado.</p>
+        <table class="two nobreak">
+            <tr>
+                <td>
+                    <h3>Resultados</h3>
+                    <img class="chart" th:src="${c.resultsDonut(l.won, l.drawn, l.lost)}" alt="Ganados, empatados y perdidos"/>
+                </td>
+                <td th:with="cd=${c.cardsDonut(l.yellowCards, l.blueCards, l.redCards)}">
+                    <h3>Tarjetas</h3>
+                    <img class="chart" th:if="${cd != null}" th:src="${cd}" alt="Tarjetas por color"/>
+                    <p class="muted" th:if="${cd == null}">No recibió tarjetas en esta categoría.</p>
+                    <table th:if="${cd != null}">
+                        <tr><th></th><th><span class="card y"></span> Amarillas</th><th><span class="card b"></span> Azules</th>
+                            <th><span class="card r"></span> Rojas</th></tr>
+                        <tr><td class="l">Cantidad</td><td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td>
+                            <td th:text="${l.redCards}"></td></tr>
+                        <tr><td class="l">Por PJ</td><td th:text="${f.dec(l.yellowPerGame())}"></td>
+                            <td th:text="${f.dec(l.bluePerGame())}"></td><td th:text="${f.dec(l.redPerGame())}"></td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
 
-    <h2>Goles con uno menos por sus sanciones</h2>
-    <div th:replace="~{fragments/short-handed :: shortHanded(${r.shortHanded}, 'el jugador')}"></div>
-
-    <div class="nobreak">
-        <h2>Penales y libres directos</h2>
-        <th:block th:if="${r.total.hasSetPieces()}" th:with="t=${r.total}">
-            <table class="two">
+        <div class="nobreak">
+            <h3>Penales y libres directos</h3>
+            <table class="two" th:if="${l.hasSetPieces()}">
                 <tr>
-                    <td th:with="pd=${c.setPieceDonut(t.penaltiesScored, t.penaltiesTaken, 'penales')}">
-                        <h3>Penales</h3>
+                    <td th:with="pd=${c.setPieceDonut(l.penaltiesScored, l.penaltiesTaken, 'penales')}">
                         <img class="chart" th:if="${pd != null}" th:src="${pd}" alt="Penales convertidos y errados"/>
                         <p class="muted" th:if="${pd == null}">No tiró penales.</p>
                     </td>
-                    <td th:with="fd=${c.setPieceDonut(t.directFreeScored, t.directFreeTaken, 'libres')}">
-                        <h3>Libres directos</h3>
+                    <td th:with="fd=${c.setPieceDonut(l.directFreeScored, l.directFreeTaken, 'libres')}">
                         <img class="chart" th:if="${fd != null}" th:src="${fd}" alt="Libres directos convertidos y errados"/>
                         <p class="muted" th:if="${fd == null}">No tiró libres directos.</p>
                     </td>
                 </tr>
             </table>
-            <table>
-                <tr><th class="l" rowspan="2">Categoría</th><th colspan="3">Penales</th><th colspan="3">Libres directos</th></tr>
-                <tr><th>Convertidos</th><th>Tirados</th><th>Efectividad</th><th>Convertidos</th><th>Tirados</th><th>Efectividad</th></tr>
-                <tr th:each="l : ${r.categories}">
-                    <td class="l" th:text="${l.category}"></td>
-                    <td th:text="${l.penaltiesScored}"></td><td th:text="${l.penaltiesTaken}"></td>
-                    <td th:text="${l.penaltiesTaken > 0 ? f.pct(l.penaltyRate() * 100) : '-'}"></td>
-                    <td th:text="${l.directFreeScored}"></td><td th:text="${l.directFreeTaken}"></td>
-                    <td th:text="${l.directFreeTaken > 0 ? f.pct(l.directFreeRate() * 100) : '-'}"></td>
+            <p class="muted" th:if="${!l.hasSetPieces()}">No tiró penales ni libres directos en esta categoría.</p>
+        </div>
+
+        <th:block th:if="${b.minutes.hasData()}" th:with="mn=${b.minutes}">
+            <h3 th:text="|Goles y tarjetas por tramos de 5 minutos (tiempos de ${mn.periodMinutes}')|">Tramos</h3>
+            <div class="nobreak" th:with="gc=${c.playerGoalsByBucket(mn.buckets)}" th:if="${c.playerGoalsByBucket(mn.buckets) != null}">
+                <img class="chart wide" th:src="${gc}" alt="Goles por tramo de 5 minutos"/>
+            </div>
+            <div class="nobreak" th:with="cc=${c.playerCardsByBucket(mn.buckets)}" th:if="${c.playerCardsByBucket(mn.buckets) != null}">
+                <img class="chart wide" th:src="${cc}" alt="Tarjetas por tramo de 5 minutos, por color"/>
+            </div>
+            <table class="nobreak">
+                <tr><th class="l">Tramo</th><th>Goles</th><th><span class="card y"></span> Amarillas</th>
+                    <th><span class="card b"></span> Azules</th><th><span class="card r"></span> Rojas</th></tr>
+                <tr th:each="bk, it : ${mn.buckets}" th:class="${it.index == mn.buckets.size() / 2 ? 'sep' : ''}">
+                    <td class="l" th:text="${bk.label}"></td><td th:text="${bk.goals}"></td>
+                    <td th:text="${bk.yellowCards}"></td><td th:text="${bk.blueCards}"></td><td th:text="${bk.redCards}"></td>
                 </tr>
-                <tr class="total">
-                    <td class="l">Total</td>
-                    <td th:text="${t.penaltiesScored}"></td><td th:text="${t.penaltiesTaken}"></td>
-                    <td th:text="${t.penaltiesTaken > 0 ? f.pct(t.penaltyRate() * 100) : '-'}"></td>
-                    <td th:text="${t.directFreeScored}"></td><td th:text="${t.directFreeTaken}"></td>
-                    <td th:text="${t.directFreeTaken > 0 ? f.pct(t.directFreeRate() * 100) : '-'}"></td>
+                <tr class="unrecorded" th:if="${mn.unrecorded.goals + mn.unrecorded.cards() > 0}" th:with="u=${mn.unrecorded}">
+                    <td class="l">Sin minuto registrado *</td><td th:text="${u.goals}"></td>
+                    <td th:text="${u.yellowCards}"></td><td th:text="${u.blueCards}"></td><td th:text="${u.redCards}"></td>
                 </tr>
             </table>
         </th:block>
-        <p class="muted" th:if="${!r.total.hasSetPieces()}">No tiró penales ni libres directos en estos partidos.</p>
+
+        <h3>Goles con uno menos por sus sanciones</h3>
+        <div th:replace="~{fragments/short-handed :: shortHanded(${b.shortHanded}, 'el jugador')}"></div>
+
+        <th:block th:if="${!b.matches.isEmpty()}">
+            <h3>Partido a partido</h3>
+            <table class="matches">
+                <thead>
+                <tr><th>Fecha</th><th>Torneo</th><th class="l">Rival</th><th>L/V</th><th>Resultado</th>
+                    <th></th><th>Goles</th><th>Tarjetas</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="m : ${b.matches}">
+                    <td th:text="${m.date == null ? '-' : f.date(m.date)}"></td>
+                    <td th:text="${m.torneo}"></td>
+                    <td class="l" th:text="${m.rival}"></td>
+                    <td th:text="${m.home ? 'L' : 'V'}"></td>
+                    <td th:text="|${m.goalsFor} - ${m.goalsAgainst}|"></td>
+                    <td><span th:class="|chip ${m.result}|" th:text="${m.result}">G</span></td>
+                    <td th:text="${m.goals > 0 ? m.goals : ''}"></td>
+                    <td>
+                        <th:block th:if="${m.yellowCards > 0}"><span th:each="i : ${#numbers.sequence(1, m.yellowCards)}" class="card y" style="margin-right: 2px"></span></th:block>
+                        <th:block th:if="${m.blueCards > 0}"><span th:each="i : ${#numbers.sequence(1, m.blueCards)}" class="card b" style="margin-right: 2px"></span></th:block>
+                        <th:block th:if="${m.redCards > 0}"><span th:each="i : ${#numbers.sequence(1, m.redCards)}" class="card r" style="margin-right: 2px"></span></th:block>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </th:block>
     </div>
 
-    <th:block th:if="${r.minutes.hasData()}" th:with="mn=${r.minutes}">
-        <h2>Goles y tarjetas por tramos de 5 minutos</h2>
-        <div class="nobreak" th:with="gc=${c.playerGoalsByBucket(mn.buckets)}">
-            <h3>Goles por tramo</h3>
-            <img class="chart wide" th:if="${gc != null}" th:src="${gc}" alt="Goles por tramo de 5 minutos"/>
-            <p class="muted" th:if="${gc == null}">Sin goles con minuto registrado.</p>
+    <!--/* Con más de una categoría: las mismas estadísticas sumadas. */-->
+    <div class="category" th:if="${r.blocks.size() > 1}" th:with="t=${r.total}, mn=${r.minutes}">
+        <h2>Todas las categorías</h2>
+        <div class="nobreak" th:if="${t.hasSetPieces()}">
+            <h3>Penales y libres directos</h3>
+            <table class="two">
+                <tr>
+                    <td th:with="pd=${c.setPieceDonut(t.penaltiesScored, t.penaltiesTaken, 'penales')}">
+                        <img class="chart" th:if="${pd != null}" th:src="${pd}" alt="Penales convertidos y errados"/>
+                        <p class="muted" th:if="${pd == null}">No tiró penales.</p>
+                    </td>
+                    <td th:with="fd=${c.setPieceDonut(t.directFreeScored, t.directFreeTaken, 'libres')}">
+                        <img class="chart" th:if="${fd != null}" th:src="${fd}" alt="Libres directos convertidos y errados"/>
+                        <p class="muted" th:if="${fd == null}">No tiró libres directos.</p>
+                    </td>
+                </tr>
+            </table>
         </div>
-        <div class="nobreak" th:with="cc=${c.playerCardsByBucket(mn.buckets)}">
-            <h3>Tarjetas por tramo (amarillas, azules y rojas)</h3>
-            <img class="chart wide" th:if="${cc != null}" th:src="${cc}" alt="Tarjetas por tramo de 5 minutos, por color"/>
-            <p class="muted" th:if="${cc == null}">Sin tarjetas con minuto registrado.</p>
-        </div>
-        <table class="nobreak">
-            <tr><th class="l">Tramo</th><th>Goles</th><th><span class="card y"></span> Amarillas</th>
-                <th><span class="card b"></span> Azules</th><th><span class="card r"></span> Rojas</th><th>Tarjetas</th></tr>
-            <tr th:each="b, it : ${mn.buckets}" th:class="${it.index == mn.buckets.size() / 2 ? 'sep' : ''}">
-                <td class="l" th:text="${b.label}"></td><td th:text="${b.goals}"></td>
-                <td th:text="${b.yellowCards}"></td><td th:text="${b.blueCards}"></td><td th:text="${b.redCards}"></td>
-                <td th:text="${b.cards()}"></td>
-            </tr>
-            <tr class="total" th:each="b : ${mn.byHalf()}">
-                <td class="l" th:text="${b.label}"></td><td th:text="${b.goals}"></td>
-                <td th:text="${b.yellowCards}"></td><td th:text="${b.blueCards}"></td><td th:text="${b.redCards}"></td>
-                <td th:text="${b.cards()}"></td>
-            </tr>
-            <tr class="unrecorded" th:if="${mn.unrecorded.goals + mn.unrecorded.cards() > 0}" th:with="u=${mn.unrecorded}">
-                <td class="l">Sin minuto registrado *</td><td th:text="${u.goals}"></td>
-                <td th:text="${u.yellowCards}"></td><td th:text="${u.blueCards}"></td><td th:text="${u.redCards}"></td>
-                <td th:text="${u.cards()}"></td>
-            </tr>
-        </table>
-        <p class="muted" th:text="|Tiempos de ${mn.periodMinutes}'. Minuto según los eventos del acta (el descanso cuenta como inicio del 2do tiempo).${mn.unrecorded.goals + mn.unrecorded.cards() > 0 ? ' * Goles o tarjetas que figuran en la planilla sin evento con minuto, o tarjetas fuera del juego.' : ''}|"></p>
-    </th:block>
+        <th:block th:if="${mn.hasData()}">
+            <h3>Goles y tarjetas por tramos de 5 minutos</h3>
+            <div class="nobreak" th:if="${c.playerGoalsByBucket(mn.buckets) != null}">
+                <img class="chart wide" th:src="${c.playerGoalsByBucket(mn.buckets)}" alt="Goles por tramo de 5 minutos"/>
+            </div>
+            <div class="nobreak" th:if="${c.playerCardsByBucket(mn.buckets) != null}">
+                <img class="chart wide" th:src="${c.playerCardsByBucket(mn.buckets)}" alt="Tarjetas por tramo de 5 minutos, por color"/>
+            </div>
+        </th:block>
+        <h3>Goles con uno menos por sus sanciones</h3>
+        <div th:replace="~{fragments/short-handed :: shortHanded(${r.shortHanded}, 'el jugador')}"></div>
+    </div>
 </th:block>
 
-<th:block th:if="${!r.matches.isEmpty()}">
-    <h2>Partido a partido</h2>
-    <table class="matches">
-        <thead>
-        <tr><th>Fecha</th><th class="l">Categoría</th><th>Torneo</th><th class="l">Rival</th><th>L/V</th><th>Resultado</th>
-            <th></th><th>Goles</th><th>Tarjetas</th></tr>
-        </thead>
-        <tbody>
-        <tr th:each="m : ${r.matches}">
-            <td th:text="${m.date == null ? '-' : f.date(m.date)}"></td>
-            <td class="l" th:text="${m.category}"></td>
-            <td th:text="${m.torneo}"></td>
-            <td class="l" th:text="${m.rival}"></td>
-            <td th:text="${m.home ? 'L' : 'V'}"></td>
-            <td th:text="|${m.goalsFor} - ${m.goalsAgainst}|"></td>
-            <td><span th:class="|chip ${m.result}|" th:text="${m.result}">G</span></td>
-            <td th:text="${m.goals > 0 ? m.goals : ''}"></td>
-            <td>
-                <th:block th:if="${m.yellowCards > 0}"><span th:each="i : ${#numbers.sequence(1, m.yellowCards)}" class="card y" style="margin-right: 2px"></span></th:block>
-                <th:block th:if="${m.blueCards > 0}"><span th:each="i : ${#numbers.sequence(1, m.blueCards)}" class="card b" style="margin-right: 2px"></span></th:block>
-                <th:block th:if="${m.redCards > 0}"><span th:each="i : ${#numbers.sequence(1, m.redCards)}" class="card r" style="margin-right: 2px"></span></th:block>
-            </td>
-        </tr>
-        </tbody>
-    </table>
-</th:block>
-
+<p class="muted" th:if="${!r.categories.isEmpty()}">* Goles o tarjetas que figuran en la planilla sin evento con
+    minuto en el acta, o tarjetas fuera del juego. El descanso cuenta como inicio del 2do tiempo.</p>
 <p class="muted">Partidos, resultados, goles y tarjetas según las actas de partido publicadas por la FPP
     (buenosaires.sidgad.com): cuenta cada partido en que el jugador figura en la planilla de su equipo.</p>
 

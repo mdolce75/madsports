@@ -60,24 +60,32 @@ class PdfRendererTest {
         }
         PlayerReport.Minutes minutes = new PlayerReport.Minutes(25, buckets,
                 new PlayerReport.Bucket("Sin minuto registrado", 1, 0, 0, 0));
+        ReportData.ShortHanded sh = new ReportData.ShortHanded(List.of(new ReportData.ShortHandedMatch(StatsEngineTest.HOY,
+                "ARGENTINOS JUNIORS", true, "1 azul", 120, 1, 0, 2, 4)), 2880, 3);
+        PlayerReport.MatchRow partido = new PlayerReport.MatchRow(StatsEngineTest.HOY, "Primera Masculino", "Clausura",
+                "ARGENTINOS JUNIORS", true, 2, 4, "P", true, 2, 1, 1, 0);
+        List<PlayerReport.CategoryBlock> blocks = List.of(
+                new PlayerReport.CategoryBlock(juniors, new PlayerReport.Minutes(25, buckets,
+                        new PlayerReport.Bucket("Sin minuto registrado", 0, 0, 0, 0)), ReportData.ShortHanded.EMPTY, List.of()),
+                new PlayerReport.CategoryBlock(primera, minutes, sh, List.of(partido)));
         PlayerReport report = new PlayerReport(3851, "Ignacio J Graiño", "Ignacio Graiño",
                 new ReportData.ClubInfo(74, "CAVS", "VELEZ", Crests.sample("CV")), 2026, "Apertura + Clausura",
                 StatsEngineTest.HOY, List.of(juniors, primera),
-                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1), minutes,
-                new ReportData.ShortHanded(List.of(new ReportData.ShortHandedMatch(StatsEngineTest.HOY,
-                        "ARGENTINOS JUNIORS", true, "1 azul", 120, 1, 0, 2, 4)), 2880, 3),
-                List.of(new PlayerReport.MatchRow(StatsEngineTest.HOY, "Primera Masculino", "Clausura",
-                        "ARGENTINOS JUNIORS", true, 2, 4, "P", true, 2, 1, 1, 0)),
-                List.of("Juniors Masculino: 1 partido del equipo no tiene acta publicada; si jugó, no está contado."));
+                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1), minutes, sh, List.of(partido),
+                List.of("Juniors Masculino: 1 partido del equipo no tiene acta publicada; si jugó, no está contado."),
+                blocks);
 
         String html = renderer.playerHtml(report);
         assertThat(html).contains("Ignacio J Graiño", "VELEZ · Temporada 2026 · Apertura + Clausura",
-                "Partidos jugados", "Goles", "Tarjetas recibidas", "Partido a partido", "Juniors Masculino",
+                "Resumen por categoría", "Partido a partido", "Juniors Masculino", "Primera Masculino",
                 "no tiene acta publicada", "Escudo de VELEZ", "Penales y libres directos",
                 "Goles y tarjetas por tramos de 5 minutos", "Sin minuto registrado", "2T 20-25",
-                "Goles con uno menos por sus sanciones", "Esos partidos terminaron 0 ganados, 0 empatados y 1 perdidos");
-        // Escudo, donas de resultados y tarjetas, donas de penales y libres, y goles y tarjetas por tramo.
-        assertThat(html.split("src=\"data:image/png;base64,", -1)).hasSize(7 + 1);
+                "Goles con uno menos por sus sanciones", "Esos partidos terminaron 0 ganados, 0 empatados y 1 perdidos",
+                "Todas las categorías");
+        // Agrupado por categoría: un bloque por cada una (Juniors antes que Primera) y después el total.
+        assertThat(html.indexOf(">Juniors Masculino</h2>")).isPositive()
+                .isLessThan(html.indexOf(">Primera Masculino</h2>"));
+        assertThat(html.indexOf(">Primera Masculino</h2>")).isLessThan(html.indexOf(">Todas las categorías</h2>"));
 
         byte[] pdf = renderer.playerPdf(report);
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");

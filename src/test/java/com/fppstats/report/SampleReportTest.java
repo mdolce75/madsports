@@ -116,6 +116,14 @@ class SampleReportTest {
         assertThat(r.notes()).anyMatch(n -> n.startsWith("Categorías revisadas: Juniors, Reserva y Primera Masculino"))
                 .anyMatch(n -> n.contains("no tiene acta publicada"));
 
+        // Un bloque por categoría con sus propias estadísticas, que suman el total.
+        assertThat(r.blocks()).extracting(b -> b.line().category()).containsExactly("Juniors Masculino", "Primera Masculino");
+        assertThat(r.blocks().stream().mapToInt(b -> b.matches().size()).sum()).isEqualTo(r.matches().size());
+        assertThat(r.blocks().stream().mapToInt(b -> b.minutes().buckets().stream()
+                .mapToInt(PlayerReport.Bucket::goals).sum() + b.minutes().unrecorded().goals()).sum()).isEqualTo(t.goals());
+        assertThat(r.blocks().stream().mapToInt(b -> b.shortHanded().matches().size()).sum())
+                .isEqualTo(r.shortHanded().matches().size());
+
         String html = renderer.playerHtml(r, true);
         assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.", "Tomás Ejemplo",
                 "CLUB EJEMPLO", "Penales y libres directos", "Goles y tarjetas por tramos de 5 minutos");

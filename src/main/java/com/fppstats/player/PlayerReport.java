@@ -16,7 +16,23 @@ import java.util.List;
 public record PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                            String period, LocalDate generatedOn, List<Line> categories, Line total,
                            Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
-                           List<String> notes) {
+                           List<String> notes, List<CategoryBlock> blocks) {
+
+    /** Sin bloques por categoría (informes armados a mano en los tests). */
+    public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
+                        String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
+                        ReportData.ShortHanded shortHanded, List<MatchRow> matches, List<String> notes) {
+        this(playerId, playerName, fullName, club, year, period, generatedOn, categories, total, minutes, shortHanded,
+                matches, notes, List.of());
+    }
+
+    /**
+     * Todas las estadísticas de una categoría: totales, goles y tarjetas por tramo, goles con uno menos por sus
+     * sanciones y sus partidos.
+     */
+    public record CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded,
+                                List<MatchRow> matches) {
+    }
 
     public boolean hasData() {
         return total.played() > 0;
