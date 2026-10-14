@@ -1,4 +1,4 @@
-# Prompt para Gemini: Informe Mad Sports — Huracán · Primera Masculino · Temporada 2026
+# Prompt para Gemini: Informe RinkMetrics — Huracán · Primera Masculino · Temporada 2026
 
 ## Cómo usarlo
 
@@ -27,7 +27,7 @@ Notas:
 
 ## Rol y objetivo
 
-Sos analista de datos deportivos de **Mad Sports**. Con el archivo JSON adjunto, armá el **informe estadístico
+Sos analista de datos deportivos de **RinkMetrics**. Con el archivo JSON adjunto, armá el **informe estadístico
 completo** del **Club Atlético Huracán** (código HURA) en **Primera Masculino**, **temporada 2026 (Apertura +
 Clausura)** de la Federación Porteña de Patín (FPP), hockey sobre patines. Escribilo como **documento en Canvas**,
 listo para exportar a Google Docs y PDF.
@@ -39,7 +39,7 @@ Reglas que no se negocian:
   decimales como reloj mm:ss (1,333 min → 1:20, redondeando los segundos).
 - **No inventes** jugadores, rivales, fechas ni resultados. Usá los nombres exactamente como figuran en el JSON.
 - **Amarilla, azul y roja son tarjetas distintas.** Nunca las sumes entre sí ni las confundas.
-- **El informe lo elabora Mad Sports.** La FPP es solo la fuente de los datos.
+- **El informe lo elabora RinkMetrics.** La FPP es solo la fuente de los datos.
 - Escribí en **español rioplatense**, claro y concreto, sin relleno.
 
 ## Qué hay en el JSON
@@ -84,7 +84,7 @@ Reglas que no se negocian:
 ## Estructura del documento
 
 1. **Encabezado:** "HURACAN (HURA)"; debajo, la categoría y el período (`category` · `torneo`) y "Informe elaborado
-   por Mad Sports · fecha" (`generatedOn` en dd/mm/aaaa).
+   por RinkMetrics · fecha" (`generatedOn` en dd/mm/aaaa).
 2. **Resumen** (3 a 5 oraciones con el panorama del período) y **Tendencia** (forma reciente, tramos con más goles a
    favor y en contra, comparación entre torneos, inferioridad numérica).
 3. **Fortalezas** y **Aspectos a mejorar**, en viñetas: salen de `indicators` con `verdict` FORTALEZA y DEBILIDAD
@@ -116,7 +116,7 @@ Reglas que no se negocian:
 14. **Fuentes:** cada elemento de `sources` (competición y URL), el contexto de liga (equipos y partidos jugados) y, si
     `notPublished` no está vacío, la lista de datos no publicados.
 
-Pie de página o línea final: "Informe elaborado por Mad Sports · Datos: FPP (buenosaires.sidgad.com)".
+Pie de página o línea final: "Informe elaborado por RinkMetrics · Datos: FPP (buenosaires.sidgad.com)".
 
 ## Cómo escribir el análisis
 

@@ -96,13 +96,8 @@ function showReady(job) {
     window.location.href = job.pdfUrl;
 }
 
-/** Marca de la barra superior (palos cruzados y bocha). */
+/** Marca de la barra superior (pista con barras de métricas). */
 const BRAND = `<header class="brand">
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-        <rect width="64" height="64" rx="14" fill="#ff5a1f"/>
-        <path d="M16 14l20 30h10" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M48 14L28 44H18" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="32" cy="52" r="5" fill="#fff"/>
-    </svg>
-    <div><b>Mad Sports</b><small>Hockey sobre patines · FPP</small></div>
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#22b8f0"/><rect x="8" y="15" width="48" height="34" rx="14" fill="none" stroke="#fff" stroke-width="4"/><rect x="20" y="33" width="6" height="9" rx="1.5" fill="#fff"/><rect x="29" y="27" width="6" height="15" rx="1.5" fill="#fff"/><rect x="38" y="21" width="6" height="21" rx="1.5" fill="#fff"/></svg>
+    <div><b>RinkMetrics</b><small>Hockey sobre patines · FPP</small></div>
 </header>`;

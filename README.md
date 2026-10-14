@@ -1,6 +1,6 @@
-# FPP Stats — Mad Sports
+# Rink Metrics — RinkMetrics
 
-Aplicación de **Mad Sports** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
+Aplicación de **RinkMetrics** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
 Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
 
 **Filtros:** Año (2026, 2027) · Club · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Rama
@@ -124,8 +124,9 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 - **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
 - **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
-  período (Apertura, Clausura o Apertura + Clausura) y genera un PDF que trae, por cada categoría del club en que
-  jugó y en total: partidos jugados, ganados, empatados y perdidos; goles; tarjetas amarillas, azules y rojas por
+  período (Apertura, Clausura o Apertura + Clausura) y genera un PDF **agrupado por categoría**. Empieza con los
+  totales y una tabla que compara las categorías. Sigue un bloque por cada categoría en que jugó, con todas sus
+  estadísticas, y si jugó en más de una, cierra con la suma de todas. Cada bloque trae: partidos jugados, ganados, empatados y perdidos; goles; tarjetas amarillas, azules y rojas por
   separado, cada una con su promedio por partido; y penales y libres directos (convertidos, tirados y efectividad,
   con donas). Además, goles y tarjetas por tramos de 5 minutos (gráfico de columnas, con las tarjetas apiladas por
   color) y el detalle partido a partido.
@@ -167,10 +168,10 @@ Abrir http://localhost:8080.
 | `GEMINI_API_KEY` | — | Habilita el análisis con Gemini |
 | `FPP_AI_MODEL` | `gemini-3.8-flash` | Modelo de Gemini (con plan gratuito) |
 | `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
-| `FPP_DB_URL` | `jdbc:h2:file:./data/fpp-stats` | Base de usuarios |
+| `FPP_DB_URL` | `jdbc:h2:file:./data/rink-metrics` | Base de usuarios |
 | `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
-| `MAIL_FROM` | `Mad Sports <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
+| `MAIL_FROM` | `RinkMetrics <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
 
 **API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.
