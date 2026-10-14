@@ -47,14 +47,14 @@ function renderUserBar(s) {
     bar.innerHTML = "";
     const who = document.createElement("span");
     who.innerHTML = "<b></b>";
-    who.querySelector("b").textContent = `${s.nombre} ${s.apellido}`;
+    who.querySelector("b").textContent = s.nombre ? `${s.nombre} ${s.apellido}` : s.usuario;
     who.append(" · " + s.club.nombre);
     const out = document.createElement("button");
     out.type = "button";
     out.textContent = "Salir";
     out.addEventListener("click", async () => {
         await api("/api/logout", {method: "POST"});
-        location.replace("/login.html");
+        location.replace("/");
     });
     bar.append(who, out);
 }

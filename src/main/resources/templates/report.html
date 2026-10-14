@@ -438,6 +438,11 @@
         </tr>
     </table>
 
+    <th:block th:if="${t.timeProfile.hasData()}">
+        <h3>Goles con uno menos</h3>
+        <div th:replace="~{fragments/short-handed :: shortHanded(${t.timeProfile.shortHanded}, 'el equipo')}"></div>
+    </th:block>
+
     <div th:if="${!t.rivals.isEmpty()}" class="nobreak">
         <h3>Cara a cara con cada rival</h3>
         <table>

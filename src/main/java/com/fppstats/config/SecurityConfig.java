@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -51,13 +52,16 @@ public class SecurityConfig {
     private static final RequestMatcher API = req -> req.getRequestURI().startsWith(req.getContextPath() + "/api/");
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper json) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper json, UsuarioRepository usuarios)
+            throws Exception {
         http
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/login.html", "/registro.html", "/css/**", "/js/**", "/error",
-                                "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf")
+                        .requestMatchers("/", "/index.html", "/login.html", "/registro.html", "/olvido.html",
+                                "/restablecer.html", "/css/**", "/js/**", "/error",
+                                "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
+                                "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**")
                         .permitAll()
-                        .requestMatchers("/", "/index.html", "/api/informes", "/api/informes/**")
+                        .requestMatchers("/club.html", "/api/informes", "/api/informes/**")
                         .hasAuthority(Perfil.CLUBFPP.name())
                         .requestMatchers("/jugador.html", "/api/jugador/**").hasAuthority(Perfil.PLAYERFPP.name())
                         .anyRequest().authenticated())
@@ -68,10 +72,22 @@ public class SecurityConfig {
                         .passwordParameter("clave")
                         .successHandler((req, res, auth) -> {
                             // Al ingresar, Spring cambia el token CSRF: se genera ya para que la cookie nueva
-                            // viaje en esta respuesta.
+                            // viaje en esta respuesta (también si se rechaza por email sin confirmar).
                             CsrfToken token = (CsrfToken) req.getAttribute(CsrfToken.class.getName());
                             if (token != null) {
                                 token.getToken();
+                            }
+                            // Clave correcta pero email sin confirmar: no se ingresa. Se chequea después de la clave
+                            // para no revelar a quien no la sabe si la cuenta existe.
+                            if (usuarios.findByUsuario(auth.getName()).filter(u -> !u.isEmailVerificado()).isPresent()) {
+                                SecurityContextHolder.clearContext();
+                                HttpSession session = req.getSession(false);
+                                if (session != null) {
+                                    session.invalidate();
+                                }
+                                write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "EMAIL_NO_VERIFICADO",
+                                        "detail", "Confirmá tu email para ingresar: te mandamos un enlace al registrarte."));
+                                return;
                             }
                             write(res, json, HttpStatus.OK, Map.of("inicio", home(auth.getAuthorities())));
                         })
@@ -106,7 +122,7 @@ public class SecurityConfig {
     /** Pantalla de inicio según el perfil del usuario. */
     public static String home(Collection<? extends GrantedAuthority> authorities) {
         if (has(authorities, Perfil.CLUBFPP)) {
-            return "/";
+            return "/club.html";
         }
         if (has(authorities, Perfil.PLAYERFPP)) {
             return "/jugador.html";

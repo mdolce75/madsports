@@ -2,6 +2,7 @@ package com.fppstats.report;
 
 import com.fppstats.analysis.AnalysisResult;
 import com.fppstats.analysis.RuleBasedAnalyst;
+import com.fppstats.player.SamplePlayerData;
 import com.fppstats.stats.ReportData;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,8 @@ public class SampleReport {
     private final Clock clock;
     private volatile LocalDate builtOn;
     private volatile byte[] pdf;
+    private volatile LocalDate playerBuiltOn;
+    private volatile byte[] playerPdf;
 
     public SampleReport(PdfRenderer renderer, RuleBasedAnalyst rules, Clock clock) {
         this.renderer = renderer;
@@ -37,6 +40,20 @@ public class SampleReport {
             }
         }
         return pdf;
+    }
+
+    /** Informe modelo de jugador ("Tomás Ejemplo", de Juniors, que también juega en Primera); uno por día. */
+    public byte[] playerPdf() {
+        LocalDate today = LocalDate.now(clock);
+        if (playerPdf == null || !today.equals(playerBuiltOn)) {
+            synchronized (this) {
+                if (playerPdf == null || !today.equals(playerBuiltOn)) {
+                    playerPdf = renderer.playerPdf(SamplePlayerData.build(today, Crests.sample("CE")), true);
+                    playerBuiltOn = today;
+                }
+            }
+        }
+        return playerPdf;
     }
 
     /** El texto de análisis sale del analista por reglas (no consume la API), con la fuente aclarada. */

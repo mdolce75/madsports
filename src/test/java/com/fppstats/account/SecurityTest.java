@@ -17,7 +17,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import org.mockito.ArgumentCaptor;
+
 import java.time.Instant;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +31,11 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -54,6 +63,16 @@ class SecurityTest {
     @MockitoBean CatalogService catalog;
     @MockitoBean RosterService roster;
     @MockitoBean ReportService reports;
+    @MockitoBean Mailer mailer;
+    @Autowired org.thymeleaf.ITemplateEngine templates;
+
+    /** Mailer de verdad (sin SMTP) para revisar el HTML; el de la app está simulado para capturar los envíos. */
+    Mailer realMailer;
+
+    @BeforeEach
+    void realMailer() {
+        realMailer = new Mailer(null, templates, "", "Mad Sports <info@madsportsapp.com>");
+    }
 
     @BeforeEach
     void setUp() {
@@ -63,18 +82,20 @@ class SecurityTest {
         when(catalog.club(74, 2026)).thenReturn(VELEZ);
         when(catalog.club(eq(99), eq(2026))).thenThrow(new IllegalArgumentException("El club 99 no juega en la FPP en 2026."));
         when(roster.find(74, 2026, "PRIMERA", "MASCULINO", 3851))
-                .thenReturn(Optional.of(new RosterPlayer(3851, "Ignacio J Graiño", "Primera Masculino")));
+                .thenReturn(Optional.of(new RosterPlayer(3851, "Ignacio J Graiño", "Ignacio J", "Graiño",
+                        "Primera Masculino")));
     }
 
     Map<String, Object> club(String usuario) {
         Map<String, Object> m = new HashMap<>(Map.of("perfil", "CLUBFPP", "usuario", usuario, "clave", "clave-segura",
-                "email", usuario + "@example.com", "nombre", "Ana", "apellido", "Pérez", "clubId", 74));
+                "email", usuario + "@example.com", "clubId", 74));
         return m;
     }
 
+    /** El jugador no manda nombre ni apellido: se toman del jugador elegido. */
     Map<String, Object> player(String usuario) {
         Map<String, Object> m = club(usuario);
-        m.putAll(Map.of("perfil", "PLAYERFPP", "dni", "30.123.456", "categoria", "PRIMERA", "rama", "MASCULINO",
+        m.putAll(Map.of("perfil", "PLAYERFPP", "categoria", "PRIMERA", "rama", "MASCULINO",
                 "jugadorId", 3851));
         return m;
     }
@@ -88,6 +109,23 @@ class SecurityTest {
         return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", clave));
     }
 
+    /** Token del último mail enviado a esa dirección con un enlace a {@code path}. */
+    String token(String email, String path) {
+        ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer, atLeastOnce()).send(mail.capture());
+        String last = mail.getAllValues().stream().filter(m -> m.to().equals(email)).reduce((a, b) -> b)
+                .orElseThrow().url();
+        Matcher m = Pattern.compile(Pattern.quote(path) + "\\?token=([A-Za-z0-9_-]+)").matcher(last);
+        assertThat(m.find()).as("enlace en el mail:\n%s", last).isTrue();
+        return m.group(1);
+    }
+
+    /** Confirma el email con el enlace del mail. */
+    void confirmar(String email) throws Exception {
+        mvc.perform(get("/api/verificar").param("token", token(email, "/api/verificar")))
+                .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/login.html?verificado"));
+    }
+
     Usuario saved(String usuario, Perfil perfil) {
         return usuarios.save(new Usuario(usuario, encoder.encode("clave-segura"), usuario + "@example.com", "Ana",
                 "Pérez", 74, "VELEZ", "CAVS", EnumSet.of(perfil), Instant.now()));
@@ -95,10 +133,14 @@ class SecurityTest {
 
     @Test
     void sinSesionLasPaginasVanAlLoginYLaApiResponde401() throws Exception {
-        mvc.perform(get("/")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login.html"));
+        // La home es pública (con los informes de ejemplo); la pantalla de club pide sesión.
+        mvc.perform(get("/")).andExpect(status().isOk());
+        mvc.perform(get("/api/ejemplo.pdf")).andExpect(status().isOk());
+        mvc.perform(get("/club.html")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login.html"));
         mvc.perform(get("/jugador.html")).andExpect(redirectedUrlPattern("**/login.html"));
         mvc.perform(get("/login.html")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());
+        mvc.perform(get("/api/ejemplo-jugador.pdf")).andExpect(status().isOk());
         mvc.perform(get("/api/informes/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/sesion")).andExpect(status().isOk()).andExpect(jsonPath("$.autenticado").value(false));
     }
@@ -112,19 +154,24 @@ class SecurityTest {
         assertThat(u.getPerfiles()).containsExactly(Perfil.CLUBFPP);
         assertThat(u.getClave()).isNotEqualTo("clave-segura").startsWith("$2");
         assertThat(u.getClubNombre()).isEqualTo("VELEZ");
-        assertThat(u.getDni()).isNull();
+        assertThat(u.getNombre()).isNull();   // el registro no pide nombre ni apellido
 
-        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/"));
+        // Sin confirmar el email no se ingresa (con la clave correcta se avisa por qué).
+        login("ana.club", "clave-segura").andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("EMAIL_NO_VERIFICADO"));
+        confirmar("Ana.Club@example.com");
+        assertThat(usuarios.findByUsuario("ana.club").orElseThrow().isEmailVerificado()).isTrue();
+        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/club.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Usuario o clave incorrectos."));
     }
 
     @Test
-    void registroDeJugadorConDniYJugadorDeLaFpp() throws Exception {
-        Map<String, Object> sinDni = player("juan");
-        sinDni.remove("dni");
-        register(sinDni).andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(
-                org.hamcrest.Matchers.containsString("DNI")));
+    void registroDeJugadorConElJugadorDeLaFpp() throws Exception {
+        Map<String, Object> sinJugador = player("juan");
+        sinJugador.remove("jugadorId");
+        register(sinJugador).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Elegí tu nombre en la lista de jugadores del club."));
 
         Map<String, Object> otroJugador = player("juan");
         otroJugador.put("jugadorId", 1);
@@ -133,17 +180,18 @@ class SecurityTest {
         register(player("juan")).andExpect(status().isCreated());
         Usuario u = usuarios.findByUsuario("juan").orElseThrow();
         assertThat(u.getPerfiles()).containsExactly(Perfil.PLAYERFPP);
-        assertThat(u.getDni()).isEqualTo("30123456");
         assertThat(u.getJugadorId()).isEqualTo(3851);
         assertThat(u.getJugadorNombre()).isEqualTo("Ignacio J Graiño");
+        assertThat(u.getNombre()).isEqualTo("Ignacio J");
+        assertThat(u.getApellido()).isEqualTo("Graiño");
         assertThat(u.getCategoria()).isEqualTo("PRIMERA");
         assertThat(u.getRama()).isEqualTo("MASCULINO");
 
         // Un jugador, un usuario.
         Map<String, Object> mismoJugador = player("juan2");
-        mismoJugador.put("dni", "40111222");
         register(mismoJugador).andExpect(status().isConflict());
 
+        confirmar("juan@example.com");
         login("juan", "clave-segura").andExpect(jsonPath("$.inicio").value("/jugador.html"));
     }
 
@@ -161,6 +209,85 @@ class SecurityTest {
         clubInexistente.put("clubId", 99);
         register(clubInexistente).andExpect(status().isBadRequest());
         assertThat(usuarios.count()).isZero();
+    }
+
+    @Test
+    void elEnlaceDeConfirmacionSirveUnaSolaVez() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        String token = token("ana@example.com", "/api/verificar");
+        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/login.html?verificado"));
+        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
+        mvc.perform(get("/api/verificar").param("token", "inventado")).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
+    }
+
+    @Test
+    void reenviarLaConfirmacionPorUsuarioOEmail() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        // Un mail por minuto como mucho: el reenvío inmediato no manda otro.
+        mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuario\":\"ana\"}")).andExpect(status().isOk());
+        verify(mailer, times(1)).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("ana@example.com")));
+        // Email inexistente: misma respuesta, sin mail.
+        mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Si hay una cuenta")));
+        verify(mailer, never()).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("nadie@example.com")));
+    }
+
+    @Test
+    void recuperarLaClave() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        confirmar("ana@example.com");
+
+        String olvido = "{\"email\":\"ANA@example.com\"}";
+        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(olvido))
+                .andExpect(status().isOk());
+        String token = token("ana@example.com", "/restablecer.html");
+
+        String corta = "{\"token\":\"%s\",\"clave\":\"corta\"}".formatted(token);
+        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corta))
+                .andExpect(status().isBadRequest());
+        String nueva = "{\"token\":\"%s\",\"clave\":\"otra-clave-segura\"}".formatted(token);
+        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(nueva))
+                .andExpect(status().isOk());
+
+        login("ana", "clave-segura").andExpect(status().isUnauthorized());
+        login("ana", "otra-clave-segura").andExpect(status().isOk());
+        // El enlace no se puede volver a usar.
+        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(nueva))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("El enlace venció o ya se usó")));
+
+        // Email inexistente: misma respuesta y ningún mail.
+        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk());
+        verify(mailer, never()).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("nadie@example.com")));
+    }
+
+    @Test
+    void elMailTieneElLookDeLaWeb() {
+        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de Mad Sports", "Un paso más",
+                "Tu cuenta", "Confirmá tu email", "ana", List.of("Gracias por sumarte."), "Confirmar mi email",
+                "http://localhost/api/verificar?token=abc", "El enlace vale 48 horas.");
+        String html = realMailer.html(m);
+        assertThat(html).contains("#0a0e17", "#ff5a1f", "cid:logo", "Confirmá tu email", "Hola ana:",
+                "href=\"http://localhost/api/verificar?token=abc\"", "Confirmar mi email ►", "Mad Sports");
+        assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verificar?token=abc");
+        assertThat(new String(Mailer.logo(), 1, 3)).isEqualTo("PNG");
+    }
+
+    @Test
+    void vistaPreviaDelMail() throws Exception {
+        // Copia para revisar a ojo en el navegador: target/mail-ejemplo.html (logo embebido en lugar de cid:).
+        MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de Mad Sports", "Un paso más",
+                "Tu cuenta", "Confirmá tu email", "ana",
+                List.of("Gracias por sumarte a Mad Sports. Para activar tu cuenta (usuario ana), confirmá tu email con el botón de abajo.",
+                        "Después ya podés ingresar y generar tus informes de hockey sobre patines."),
+                "Confirmar mi email", "http://localhost:8091/api/verificar?token=ejemplo",
+                "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.");
+        String preview = realMailer.html(m).replace("cid:logo",
+                "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(Mailer.logo()));
+        java.nio.file.Files.writeString(java.nio.file.Path.of("target", "mail-ejemplo.html"), preview);
     }
 
     @Test
@@ -190,10 +317,10 @@ class SecurityTest {
 
     @Test
     void cadaPerfilVaASuPantalla() throws Exception {
-        mvc.perform(get("/").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/jugador.html"));
+        mvc.perform(get("/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/jugador.html"));
         mvc.perform(get("/api/informes/" + UUID.randomUUID()).with(user("j").authorities(() -> "PLAYERFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/"));
+        mvc.perform(get("/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/club.html"));
         mvc.perform(get("/api/jugador/informes/" + UUID.randomUUID()).with(user("c").authorities(() -> "CLUBFPP")))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/jugador.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
@@ -207,6 +334,6 @@ class SecurityTest {
                 .andExpect(jsonPath("$.perfiles[0]").value("CLUBFPP"))
                 .andExpect(jsonPath("$.club.id").value(74))
                 .andExpect(jsonPath("$.club.nombre").value("VELEZ"))
-                .andExpect(jsonPath("$.inicio").value("/"));
+                .andExpect(jsonPath("$.inicio").value("/club.html"));
     }
 }

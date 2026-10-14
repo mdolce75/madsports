@@ -74,6 +74,16 @@ desde la sanción (las sanciones superpuestas se suman: dos azules a la vez = 4�
 en el 2T; se corta al final del partido; la sanción se cumple completa aunque el rival haga un gol). Período 10 de SIDGAD = descanso (la sanción arranca en el 2T); período 11 u otros =
 fuera del juego: la tarjeta se cuenta sin minuto ni inferioridad.
 
+**Goles con uno menos** (informe de club y de jugador): por cada partido con sanciones (del equipo; en el informe de
+jugador, las suyas) se informa:
+- cuántos goles recibió y cuántos hizo mientras duraba la sanción;
+- cómo terminó el partido;
+- en total: partidos, goles recibidos cada 10' con uno menos contra el resto del tiempo, y ganados, empatados y
+  perdidos.
+
+Un gol cuenta si cae dentro de una sanción. Cuando hay sanciones superpuestas, para contar los goles se toma el
+tiempo en que hubo al menos uno menos.
+
 **Gráficos:** el informe incluye 6 gráficos de barras y de dona, generados en el servidor con Java2D
 (`report/Charts.java`) como PNG embebidos en el PDF. Son: dona de resultados (G/E/P), barras de diferencia de gol
 partido a partido, dona de reparto del gol (top 5 y "Otros"), columnas de goles a favor y en contra por tramo de 5′,
@@ -100,11 +110,18 @@ La web pide registro e ingreso (Spring Security, sesión con cookie, CSRF con `X
 más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBCNT`, `PLAYERFPP`, `PLAYERFSP`,
 `PLAYERCNT`. Por ahora el registro ofrece solo **Club FPP** o **Jugador FPP**, y uno excluye al otro.
 
-- **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email, nombre, apellido y club,
-  todos obligatorios. Para Jugador FPP también son obligatorios el **DNI** y el **jugador**. El jugador se elige de la
-  planilla de un equipo del club (club → categoría → nombre): SIDGAD no publica el DNI, así que la cuenta queda
-  vinculada al `id_player` de la FPP. Un jugador y un DNI tienen un solo usuario.
-- **Club FPP** (`/`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
+- **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
+  No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
+  Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
+  (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
+  usuario.
+- **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
+  ingresar: el login avisa y ofrece reenviar el mail.
+- **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
+  (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
+  un mail por minuto como mucho, y en la base queda solo el hash del token.
+- **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.
+- **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
 - **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
   período (Apertura, Clausura o Apertura + Clausura) y genera un PDF que trae, por cada categoría del club en que
@@ -131,7 +148,12 @@ Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo
 
 ## Correr
 
-Requiere JDK 21.
+Requiere JDK 21. Los secretos locales (SMTP de Resend, Gemini) van en un `.env` junto al proyecto, fuera de git;
+ver `.env.example`. En producción se cargan como variables de entorno.
+
+Los mails (confirmar el email, elegir una clave nueva) salen en HTML con la identidad de la web (`templates/mail/`)
+y el logo embebido, más una versión en texto. Con Resend: host `smtp.resend.com`, usuario `resend` y la API key
+como clave (alcanza con permiso de solo envío).
 
 ```bash
 export GEMINI_API_KEY=...   # opcional: sin key se usa el análisis por reglas
@@ -147,6 +169,9 @@ Abrir http://localhost:8080.
 | `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
 | `FPP_DB_URL` | `jdbc:h2:file:./data/fpp-stats` | Base de usuarios |
 | `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
+| `MAIL_FROM` | `Mad Sports <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
+| `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
 
 **API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.
 En el plan gratuito Google puede usar el contenido enviado para mejorar sus productos (son datos deportivos
@@ -158,18 +183,24 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 
 ## API
 
-Públicos: registro, sesión, catálogo e informe de ejemplo. El resto pide sesión con el perfil que corresponde
+Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide sesión con el perfil que corresponde
 (sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
 
-- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","nombre":"...","apellido":"...","clubId":22,"dni":"30123456","categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973}` → `201`
+- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973}` → `201`
 - `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
 - `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)
+- `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
+  `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
+- `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP)
 - `GET /api/catalogo?anio=2026` — clubes con sus categorías y ramas del año (sin `anio`: el más reciente con datos);
   `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
   SIDGAD ni la API de Gemini. Enlazado desde la web.
+- `GET /api/ejemplo-jugador.pdf`: informe modelo de jugador con datos ficticios ("Tomás Ejemplo", de Juniors, que
+  también juega en Primera del "Club Ejemplo"). Se arma con el mismo motor que los informes reales. Enlazado desde
+  el login, el registro y la pantalla de jugador.
 - `POST /api/informes` (CLUBFPP, solo su club) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`

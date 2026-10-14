@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Olvidé mi clave · Mad Sports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5a1f'/%3E%3Cpath d='M16 14l20 30h10' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M48 14L28 44H18' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='52' r='5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+    <div id="brand"></div>
+
+    <section class="hero">
+        <span class="tag">Recuperar clave</span>
+        <h1>Elegí una<br><em>clave nueva.</em></h1>
+        <p class="lead">Escribí el email con el que te registraste y te mandamos un enlace para elegir una clave nueva.</p>
+    </section>
+
+    <form class="sheet" id="form" novalidate>
+        <div class="sheet-head"><span>Olvidé mi clave</span><span></span></div>
+        <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" autocomplete="email" required maxlength="120" autofocus>
+        </div>
+        <button class="go" id="go" type="submit">Enviarme el enlace</button>
+        <div id="status" role="status" aria-live="polite"></div>
+        <p class="alt"><a href="/login.html">Volver a ingresar</a></p>
+    </form>
+
+    <footer><b>Mad Sports</b> · Informes elaborados por Mad Sports. Fuente de los datos: Federación Porteña de Patín
+        (buenosaires.sidgad.com).</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+    session();   // deja la cookie CSRF
+    $("form").addEventListener("submit", async ev => {
+        ev.preventDefault();
+        const email = $("email").value.trim();
+        if (!email) {
+            status("Escribí tu email.", true);
+            return;
+        }
+        $("go").disabled = true;
+        try {
+            const r = await postJson("/api/clave/olvido", {email});
+            status(r.detail + " El enlace vale 1 hora.");
+        } catch (e) {
+            status(e.message, true);
+            $("go").disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

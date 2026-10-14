@@ -12,7 +12,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByEmailIgnoreCase(String email);
 
-    boolean existsByDni(String dni);
+    Optional<Usuario> findByEmailIgnoreCase(String email);
 
     boolean existsByJugadorId(int jugadorId);
 }

@@ -188,6 +188,29 @@ class PlayerReportServiceTest {
     }
 
     @Test
+    void golesRecibidosMientrasCumpliaSuSancion() {
+        // Bueno (GEBA B, visitante) recibió una azul en el 13-2 de Huracán (26389).
+        int gebaB = calendar.stream().filter(m -> m.idp() == 26389).findFirst().orElseThrow().awayTeamId();
+        PlayerReport r = PlayerReportService.assemble(query(3899, "Nicolas Bueno"), VELEZ, HOY, LEVELS,
+                List.of(team(gebaB, "Primera Masculino", Map.of(26389, Fixtures.read("gr_26389.html")))));
+
+        ReportData.ShortHanded sh = r.shortHanded();
+        assertThat(sh.matches()).singleElement().satisfies(m -> {
+            assertThat(m.rival()).isEqualTo("HURACAN");
+            assertThat(m.sanctions()).isEqualTo("1 azul");
+            assertThat(m.secondsShort()).isEqualTo(120);
+            assertThat(m.finalFor()).isEqualTo(2);
+            assertThat(m.finalAgainst()).isEqualTo(13);
+            assertThat(m.result()).isEqualTo("P");
+        });
+        // Todos los goles de Huracán caen dentro o fuera de su sanción.
+        assertThat(sh.goalsAgainst() + sh.otherGoalsAgainst()).isEqualTo(13);
+        // Graiño no tuvo sanciones.
+        assertThat(PlayerReportService.assemble(query(3851, "Ignacio J Graiño"), VELEZ, HOY, LEVELS,
+                List.of(team(5581, "Primera Masculino", velezSheets()))).shortHanded().hasData()).isFalse();
+    }
+
+    @Test
     void siNoFiguraLoInforma() {
         PlayerReport r = PlayerReportService.assemble(query(1, "Nadie"), VELEZ, HOY, LEVELS,
                 List.of(team(5581, "Primera Masculino", velezSheets())));
@@ -205,6 +228,11 @@ class PlayerReportServiceTest {
         // Los 9 citados de Vélez (la tabla de estadísticas solo lista a los goleadores).
         assertThat(roster).hasSize(9).extracting(RosterService.RosterPlayer::id).contains(3851, 4156, 5888);
         assertThat(roster).extracting(RosterService.RosterPlayer::name).isSortedAccordingTo(String.CASE_INSENSITIVE_ORDER);
+        // Nombre y apellido separados como en el acta (apellido compuesto incluido).
+        assertThat(roster).filteredOn(p -> p.id() == 5974).singleElement().satisfies(p -> {
+            assertThat(p.firstName()).isEqualTo("Juan Ignacio");
+            assertThat(p.lastName()).isEqualTo("Perez Barbosa");
+        });
     }
 
     @Test

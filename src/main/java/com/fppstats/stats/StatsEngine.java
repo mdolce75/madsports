@@ -260,6 +260,7 @@ public final class StatsEngine {
         // Faltas propias según el marcador en el minuto de la falta, y segundos en cada situación.
         int[] foulsBySituation = new int[3];
         int[] secondsBySituation = new int[3];
+        ShortHandedCalc shortHandedGoals = new ShortHandedCalc();
 
         for (Entry e : entries) {
             TeamRef own = e.team();
@@ -290,6 +291,8 @@ public final class StatsEngine {
                 List<Integer> ownGoalTimes = new ArrayList<>();
                 List<Integer> rivalGoalTimes = new ArrayList<>();
                 List<Integer> ownFoulTimes = new ArrayList<>();
+                int ownBlues = 0;
+                int ownReds = 0;
                 for (MatchEvent ev : events) {
                     boolean ours = isOwn(ev, own, rivalTeamId, rivalClubId);
                     int column = switch (ev.type()) {
@@ -317,6 +320,10 @@ public final class StatsEngine {
                             : ev.type() == EventType.RED_CARD ? RED_CARD_SECONDS : 0;
                     if (seconds > 0) {
                         (ours ? ownSanctions : rivalSanctions).add(new int[]{start, start + seconds});
+                        if (ours) {
+                            ownBlues += ev.type() == EventType.BLUE_CARD ? 1 : 0;
+                            ownReds += ev.type() == EventType.RED_CARD ? 1 : 0;
+                        }
                     }
                     if (ev.type() == EventType.FOUL && ours) {
                         ownFoulTimes.add(start);
@@ -354,6 +361,8 @@ public final class StatsEngine {
                 unrecordedFor += Math.max(0, resultFor - ownGoalsInSheet);
                 unrecordedAgainst += Math.max(0, resultAgainst - rivalGoalsInSheet);
                 shortHanded += sanctionSeconds(ownSanctions, 2 * matchPeriod * 60);
+                shortHandedGoals.add(m.date(), home ? m.awayName() : m.homeName(), home, ownSanctions, ownBlues, ownReds,
+                        ownGoalTimes, rivalGoalTimes, 2 * matchPeriod * 60, resultFor, resultAgainst);
                 powerPlay += sanctionSeconds(rivalSanctions, 2 * matchPeriod * 60);
             }
         }
@@ -384,7 +393,7 @@ public final class StatsEngine {
         TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0, unrecordedCards, 0, new int[3]);
         return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod, unrecorded,
                 shortHanded, powerPlay, new FoulSituation(foulsBySituation[0], foulsBySituation[1], foulsBySituation[2],
-                        secondsBySituation[0], secondsBySituation[1], secondsBySituation[2]));
+                        secondsBySituation[0], secondsBySituation[1], secondsBySituation[2]), shortHandedGoals.result());
     }
 
     /** 0 = ganando, 1 = empatando, 2 = perdiendo. */

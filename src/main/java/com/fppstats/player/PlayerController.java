@@ -54,7 +54,7 @@ public class PlayerController {
                 .filter(x -> x.tiene(Perfil.PLAYERFPP) && x.getJugadorId() != null)
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no tiene un jugador vinculado."));
         PlayerReportService.Job job = reports.submit(new PlayerReportService.Query(u.getJugadorId(), u.getJugadorNombre(),
-                u.getNombre() + " " + u.getApellido(), u.getClubId(), catalog.checkYear(req.anio()),
+                u.getNombre() == null ? u.getJugadorNombre() : u.getNombre() + " " + u.getApellido(), u.getClubId(), catalog.checkYear(req.anio()),
                 Scope.parse(req.periodo()), Eligibility.levels(u.getCategoria()), u.getRama()), u.getUsuario());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }

@@ -34,8 +34,20 @@ import java.util.stream.Collectors;
 @Service
 public class RosterService {
 
-    /** @param category equipo en que figura ("Infantil B Femenino") */
-    public record RosterPlayer(int id, String name, String category) {
+    /**
+     * @param name      nombre completo ("Juan Ignacio Perez Barbosa")
+     * @param firstName nombre(s) ("Juan Ignacio") y {@code lastName} apellido(s) ("Perez Barbosa"), como los separa el acta
+     * @param category  equipo en que figura ("Infantil B Femenino")
+     */
+    public record RosterPlayer(int id, String name, String firstName, String lastName, String category) {
+
+        /** Separa nombre y apellido sabiendo el apellido; sin apellido, la última palabra. */
+        static RosterPlayer of(int id, String name, String surname, String category) {
+            String last = surname == null || surname.isBlank() || !name.endsWith(surname)
+                    ? name.substring(name.lastIndexOf(' ') + 1) : surname;
+            String first = name.substring(0, name.length() - last.length()).trim();
+            return new RosterPlayer(id, name, first, last, category);
+        }
     }
 
     private final CatalogService catalog;
@@ -95,10 +107,10 @@ public class RosterService {
     }
 
     static List<RosterPlayer> roster(List<LineupPlayer> lineups, String category) {
-        Map<Integer, String> names = new LinkedHashMap<>();
-        lineups.forEach(p -> names.putIfAbsent(p.playerId(), p.name()));
-        return names.entrySet().stream()
-                .map(e -> new RosterPlayer(e.getKey(), e.getValue(), category))
+        Map<Integer, LineupPlayer> players = new LinkedHashMap<>();
+        lineups.forEach(p -> players.putIfAbsent(p.playerId(), p));
+        return players.values().stream()
+                .map(p -> RosterPlayer.of(p.playerId(), p.name(), p.surname(), category))
                 .sorted(Comparator.comparing(RosterPlayer::name, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }

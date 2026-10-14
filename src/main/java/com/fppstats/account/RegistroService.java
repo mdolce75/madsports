@@ -14,21 +14,21 @@ import java.util.Locale;
 
 /**
  * Alta de usuarios. Por ahora se ofrecen dos perfiles, excluyentes: CLUBFPP o PLAYERFPP. Para PLAYERFPP son
- * obligatorios el DNI y el jugador de SIDGAD, elegido de la planilla de un equipo del club (categoría y rama en que
+ * obligatorio el jugador de SIDGAD, elegido de la planilla de un equipo del club (categoría y rama en que
  * juega; solo sirve para encontrarlo: el informe busca al jugador en todas las categorías del club).
  */
 @Service
 public class RegistroService {
 
-    /** El dato ya está registrado (usuario, email, DNI o jugador). */
+    /** El dato ya está registrado (usuario, email o jugador). */
     public static class ConflictException extends RuntimeException {
         public ConflictException(String message) {
             super(message);
         }
     }
 
-    public record Registro(Perfil perfil, String usuario, String clave, String email, String nombre, String apellido,
-                           int clubId, String dni, String categoria, String rama, Integer jugadorId) {
+    public record Registro(Perfil perfil, String usuario, String clave, String email,
+                           int clubId, String categoria, String rama, Integer jugadorId) {
     }
 
     private final UsuarioRepository usuarios;
@@ -62,36 +62,31 @@ public class RegistroService {
         int year = catalog.defaultYear();
         ClubView club = catalog.club(r.clubId(), year);
 
-        Usuario u = new Usuario(usuario, encoder.encode(r.clave()), email, r.nombre().trim(), r.apellido().trim(),
-                club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant());
         if (r.perfil().player()) {
-            String dni = normalizarDni(r.dni());
-            if (r.jugadorId() == null || r.jugadorId() <= 0) {
-                throw new IllegalArgumentException("Elegí tu nombre en la lista de jugadores del club.");
-            }
-            if (usuarios.existsByDni(dni)) {
-                throw new ConflictException("Ya hay un usuario registrado con ese DNI.");
-            }
-            if (usuarios.existsByJugadorId(r.jugadorId())) {
-                throw new ConflictException("Ese jugador ya tiene un usuario registrado.");
-            }
-            if (r.categoria() == null || r.categoria().isBlank() || r.rama() == null || r.rama().isBlank()) {
-                throw new IllegalArgumentException("Elegí la categoría en que jugás.");
-            }
-            RosterPlayer jugador = roster.find(club.id(), year, r.categoria(), r.rama(), r.jugadorId())
-                    .orElseThrow(() -> new IllegalArgumentException("El jugador elegido no figura en " + club.name() + "."));
-            u.vincularJugador(dni, jugador.id(), jugador.name(),
-                    CatalogService.CategoryOption.parse(r.categoria()).level(), r.rama().trim().toUpperCase(Locale.ROOT));
+            return registrarJugador(r, usuario, email, club, year);
         }
-        return usuarios.save(u);
+        // Club: sin nombre ni apellido (el registro no los pide).
+        return usuarios.save(new Usuario(usuario, encoder.encode(r.clave()), email, null, null,
+                club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant()));
     }
 
-    /** "30.123.456" o "30123456" -> "30123456". Obligatorio para jugadores: 7 u 8 dígitos. */
-    static String normalizarDni(String dni) {
-        String digits = dni == null ? "" : dni.replaceAll("[.\\s-]", "");
-        if (!digits.matches("\\d{7,8}")) {
-            throw new IllegalArgumentException("El DNI es obligatorio para jugadores: 7 u 8 números.");
+    /** Jugador: el nombre y el apellido son los de la FPP (el jugador elegido de la planilla de su equipo). */
+    private Usuario registrarJugador(Registro r, String usuario, String email, ClubView club, int year) {
+        if (r.jugadorId() == null || r.jugadorId() <= 0) {
+            throw new IllegalArgumentException("Elegí tu nombre en la lista de jugadores del club.");
         }
-        return digits;
+        if (usuarios.existsByJugadorId(r.jugadorId())) {
+            throw new ConflictException("Ese jugador ya tiene un usuario registrado.");
+        }
+        if (r.categoria() == null || r.categoria().isBlank() || r.rama() == null || r.rama().isBlank()) {
+            throw new IllegalArgumentException("Elegí la categoría en que jugás.");
+        }
+        RosterPlayer jugador = roster.find(club.id(), year, r.categoria(), r.rama(), r.jugadorId())
+                .orElseThrow(() -> new IllegalArgumentException("El jugador elegido no figura en " + club.name() + "."));
+        Usuario u = new Usuario(usuario, encoder.encode(r.clave()), email, jugador.firstName(), jugador.lastName(),
+                club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant());
+        u.vincularJugador(jugador.id(), jugador.name(),
+                CatalogService.CategoryOption.parse(r.categoria()).level(), r.rama().trim().toUpperCase(Locale.ROOT));
+        return usuarios.save(u);
     }
 }

@@ -161,7 +161,7 @@ public final class SidgadParser {
                         "5".equals(clean(tds.get(3).text())),
                         parseInt(clean(tds.get(6).text())), parseInt(clean(tds.get(12).text())),
                         parseInt(clean(tds.get(13).text())), parseInt(clean(tds.get(14).text())),
-                        pen[0], pen[1], fd[0], fd[1]));
+                        pen[0], pen[1], fd[0], fd[1], playerName(link.ownText().replace("(C)", ""))));
             }
         }
         return players;

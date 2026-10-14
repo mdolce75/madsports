@@ -33,13 +33,13 @@ public class Usuario {
     private int clubId;
     private String clubNombre;
     private String clubCodigo;
-    private String dni;
     /** id_player de SIDGAD (perfiles de jugador). */
     private Integer jugadorId;
     private String jugadorNombre;
     /** Categoría y rama del jugador (definen en qué categorías puede jugar; ver Eligibility). */
     private String categoria;
     private String rama;
+    private boolean emailVerificado;
     private Instant creado;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -66,8 +66,7 @@ public class Usuario {
     }
 
     /** Datos del jugador de SIDGAD vinculado (perfiles de jugador). */
-    public void vincularJugador(String dni, int jugadorId, String jugadorNombre, String categoria, String rama) {
-        this.dni = dni;
+    public void vincularJugador(int jugadorId, String jugadorNombre, String categoria, String rama) {
         this.jugadorId = jugadorId;
         this.jugadorNombre = jugadorNombre;
         this.categoria = categoria;
@@ -83,12 +82,21 @@ public class Usuario {
     public int getClubId() { return clubId; }
     public String getClubNombre() { return clubNombre; }
     public String getClubCodigo() { return clubCodigo; }
-    public String getDni() { return dni; }
     public Integer getJugadorId() { return jugadorId; }
     public String getJugadorNombre() { return jugadorNombre; }
     public String getCategoria() { return categoria; }
     public String getRama() { return rama; }
     public Instant getCreado() { return creado; }
+    public boolean isEmailVerificado() { return emailVerificado; }
+
+    public void verificarEmail() {
+        this.emailVerificado = true;
+    }
+
+    /** @param hash clave ya codificada (BCrypt) */
+    public void cambiarClave(String hash) {
+        this.clave = hash;
+    }
     public Set<Perfil> getPerfiles() { return Set.copyOf(perfiles); }
 
     public boolean tiene(Perfil perfil) {

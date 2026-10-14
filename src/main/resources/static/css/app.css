@@ -150,3 +150,24 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .alt a { color: var(--accent); }
 [hidden] { display: none !important; }
 @media (max-width: 480px) { .profiles { grid-template-columns: 1fr; } }
+.hint a { color: var(--accent); }
+
+/* ---- Home: ejemplos y llamada a registrarse ---- */
+.section-title { margin: 30px 0 4px; font: 700 1.35rem/1.1 var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.examples { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.example { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: linear-gradient(180deg, var(--panel-2), var(--panel));
+           border: 1px solid var(--line); border-top: 3px solid var(--accent); }
+.example h3 { margin: 0; font: 700 1.2rem/1.1 var(--display); letter-spacing: .04em; text-transform: uppercase; }
+.example ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: .9rem; flex: 1; }
+.example li { margin: 3px 0; }
+.example .tag { align-self: flex-start; }
+.example .btn { text-align: center; }
+.cta { margin-top: 26px; text-align: center; }
+.go-link { display: block; padding: 15px 18px; background: var(--accent); color: var(--accent-ink); text-decoration: none;
+           font: 700 1.25rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase;
+           clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+.go-link:hover { filter: brightness(1.08); }
+.go-link::after { content: " ►"; font-size: .85em; }
+@media (max-width: 560px) { .examples { grid-template-columns: 1fr; } }
+.notice.ok { border-left-color: var(--lime); background: rgba(200, 241, 53, .08); }
+.notice p { margin: 6px 0 0; font-weight: 400; }

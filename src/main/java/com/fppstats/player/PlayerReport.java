@@ -15,7 +15,8 @@ import java.util.List;
  */
 public record PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                            String period, LocalDate generatedOn, List<Line> categories, Line total,
-                           Minutes minutes, List<MatchRow> matches, List<String> notes) {
+                           Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
+                           List<String> notes) {
 
     public boolean hasData() {
         return total.played() > 0;
