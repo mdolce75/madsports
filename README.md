@@ -1,7 +1,9 @@
-# Rink Metrics — RinkMetrics
+# RinkMetrics
 
-Aplicación de **RinkMetrics** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
-Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
+Aplicación web de **RinkMetrics** que genera **informes estadísticos en PDF** de hockey sobre patines a partir de los
+datos de la Federación Porteña de Patín (FPP): un informe por **equipo** de un club, con análisis redactado por IA
+(Google Gemini, plan gratuito), y un informe por **jugador**. Los usuarios se registran con un perfil de club o de
+jugador.
 
 **Filtros:** Año (2026, 2027) · Club · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Rama
 (solo las que tiene el club) · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera; solo las del club
@@ -15,6 +17,27 @@ no se cuenta como del club (ver `TeamKeys`).
 
 En "Últimos 5 partidos", récord, resultados, rivales y el análisis por minuto usan solo esos partidos;
 goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no publica estadísticas por partido).
+
+## Stack tecnológico
+
+| Capa | Tecnología | Para qué |
+|---|---|---|
+| Lenguaje y build | **Java 21**, **Maven 3.10** (wrapper `./mvnw`) | Compilación, tests y empaquetado en un jar ejecutable |
+| Framework | **Spring Boot 3.5.7** (Spring Framework 6.2, Tomcat 10.1 embebido) | Aplicación web, configuración e inyección de dependencias |
+| API web | Spring Web MVC, Bean Validation, Jackson 2.19 | API REST en JSON (`/api/...`) |
+| Seguridad | **Spring Security 6.5** | Registro y login con sesión, perfiles por pantalla, CSRF con cookie `XSRF-TOKEN`, claves con BCrypt |
+| Persistencia | **Spring Data JPA** con Hibernate 6.6, **Flyway 11.7** | Usuarios, perfiles y enlaces de los mails; esquema versionado en `db/migration` |
+| Base de datos | **H2 2.3** en archivo (`./data`) | Desarrollo. En producción se configura otra base con `FPP_DB_URL` (por ejemplo PostgreSQL) |
+| Extracción de datos | **jsoup 1.23** | Pedidos a server2.sidgad.es (tablas, calendarios, estadísticas y actas) y lectura del HTML |
+| Cache | **Caffeine 3.2** | Datos de SIDGAD (15 min, catálogo 6 h, actas 24 h), escudos, planteles e informes en curso |
+| Concurrencia | Hilos virtuales de Java 21 + semáforo | Pedidos a SIDGAD en paralelo (hasta 6 a la vez), sin sobrecargar el sitio |
+| Análisis con IA | **Google Gemini** (API `generateContent`, `gemini-3.8-flash`) con `java.net.http` | Texto del informe de equipo. Sin clave, un analista por reglas hace el mismo trabajo |
+| PDF | **Thymeleaf 3.1** + **openhtmltopdf 1.1.97** (Apache PDFBox 3.0) | Plantillas HTML que se convierten en PDF |
+| Gráficos | **Java2D** (AWT) | Barras y donas en PNG, embebidos en el PDF; también el logo de los mails y la placa de los escudos |
+| Mails | **Spring Mail** (Jakarta Mail 2.0) por SMTP, con **Resend** | Confirmación de email y recuperación de clave, en HTML con la identidad de la web |
+| Web | HTML, CSS y JavaScript sin frameworks, fuentes Oswald e Inter (Google Fonts) | Home pública, registro, login, pantallas de club y de jugador |
+| Tests | **JUnit 5.12**, AssertJ 3.27, Mockito 5.17, Spring Boot Test, MockMvc, Spring Security Test | Unitarios contra HTML real de SIDGAD (`src/test/resources/fixtures`) e integración de seguridad con H2 en memoria |
+| Repositorio | Git + GitHub (`gh` CLI) | Ramas y pull requests |
 
 ## Cómo funciona
 
