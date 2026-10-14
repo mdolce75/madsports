@@ -1,5 +1,7 @@
 package com.fppstats.report;
 
+import com.fppstats.account.Usuario;
+import com.fppstats.account.UsuarioRepository;
 import com.fppstats.catalog.CatalogService;
 import com.fppstats.catalog.CatalogService.CatalogView;
 import com.fppstats.sidgad.SidgadClient.SidgadException;
@@ -12,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -48,11 +52,13 @@ public class ApiController {
     private final CatalogService catalog;
     private final ReportService reports;
     private final SampleReport sample;
+    private final UsuarioRepository usuarios;
 
-    public ApiController(CatalogService catalog, ReportService reports, SampleReport sample) {
+    public ApiController(CatalogService catalog, ReportService reports, SampleReport sample, UsuarioRepository usuarios) {
         this.catalog = catalog;
         this.reports = reports;
         this.sample = sample;
+        this.usuarios = usuarios;
     }
 
     /** Catálogo del año pedido (o del más reciente con datos). Si el año no tiene datos, {@code available} es false. */
@@ -61,16 +67,22 @@ public class ApiController {
         return catalog.view(catalog.checkYear(anio));
     }
 
+    /** Un usuario CLUBFPP pide informes solo de su club (el que eligió al registrarse). */
     @PostMapping("/informes")
-    public ResponseEntity<JobView> crear(@Valid @RequestBody ReportRequest req) {
+    public ResponseEntity<JobView> crear(@Valid @RequestBody ReportRequest req, Authentication auth) {
+        Usuario u = usuarios.findByUsuario(auth.getName())
+                .orElseThrow(() -> new AccessDeniedException("Sesión inválida."));
+        if (u.getClubId() != req.clubId()) {
+            throw new AccessDeniedException("Solo podés pedir informes de tu club (" + u.getClubNombre() + ").");
+        }
         ReportService.Job job = reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(),
-                ReportService.Scope.parse(req.periodo()), catalog.checkYear(req.anio())));
+                ReportService.Scope.parse(req.periodo()), catalog.checkYear(req.anio())), u.getUsuario());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 
     @GetMapping("/informes/{id}")
-    public ResponseEntity<JobView> estado(@PathVariable UUID id) {
-        return reports.find(id).map(JobView::of).map(ResponseEntity::ok)
+    public ResponseEntity<JobView> estado(@PathVariable UUID id, Authentication auth) {
+        return reports.find(id, auth.getName()).map(JobView::of).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -85,8 +97,8 @@ public class ApiController {
     }
 
     @GetMapping("/informes/{id}/pdf")
-    public ResponseEntity<byte[]> pdf(@PathVariable UUID id) {
-        return reports.find(id)
+    public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
+        return reports.find(id, auth.getName())
                 .filter(j -> j.status() == ReportService.Status.LISTO)
                 .map(j -> ResponseEntity.ok()
                         .contentType(MediaType.APPLICATION_PDF)

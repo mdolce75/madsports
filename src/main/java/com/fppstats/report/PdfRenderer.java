@@ -1,6 +1,7 @@
 package com.fppstats.report;
 
 import com.fppstats.analysis.AnalysisResult;
+import com.fppstats.player.PlayerReport;
 import com.fppstats.stats.ReportData;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import org.jsoup.Jsoup;
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-/** Arma el PDF desde la plantilla {@code templates/report.html}. */
+/** Arma los PDF desde las plantillas {@code templates/report.html} y {@code templates/player-report.html}. */
 @Component
 public class PdfRenderer {
 
@@ -46,8 +47,25 @@ public class PdfRenderer {
     }
 
     public byte[] pdf(ReportData data, AnalysisResult analysis, boolean sample) {
+        return toPdf(html(data, analysis, sample));
+    }
+
+    /** Informe de un jugador (perfil PLAYERFPP), plantilla {@code templates/player-report.html}. */
+    public String playerHtml(PlayerReport report) {
+        Context ctx = new Context(Locale.forLanguageTag("es-AR"));
+        ctx.setVariable("r", report);
+        ctx.setVariable("f", new Format());
+        ctx.setVariable("c", new Charts());
+        return templates.process("player-report", ctx);
+    }
+
+    public byte[] playerPdf(PlayerReport report) {
+        return toPdf(playerHtml(report));
+    }
+
+    private static byte[] toPdf(String html) {
         // openhtmltopdf exige XML bien formado: jsoup normaliza el HTML5 de Thymeleaf a un DOM W3C.
-        org.w3c.dom.Document dom = new W3CDom().fromJsoup(Jsoup.parse(html(data, analysis, sample)));
+        org.w3c.dom.Document dom = new W3CDom().fromJsoup(Jsoup.parse(html));
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             new PdfRendererBuilder()
                     .useFastMode()
