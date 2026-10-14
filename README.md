@@ -3,8 +3,9 @@
 Aplicación de **Mad Sports** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
 Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
 
-**Filtros:** Club · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera) · Rama (Masculino/Femenino)
-· Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos). Si el club tiene equipo A y B en la
+**Filtros:** Año (2026, 2027) · Club · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera) · Rama
+(Masculino/Femenino) · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos). Si SIDGAD todavía no
+tiene un año, la web lo informa y no deja generar el informe. Si el club tiene equipo A y B en la
 categoría y rama, cada uno tiene su sección.
 
 En "Últimos 5 partidos", récord, resultados, rivales y el análisis por minuto usan solo esos partidos;
@@ -39,7 +40,9 @@ espera y reintenta una vez.
 | `cap_stats_1_<idc>.php` | Estadísticas por jugador |
 | `cap_gr_<idp>_1.php` | Acta del partido: goles y tarjetas con período y minuto |
 
-FPP = `id_fede_3`; la temporada activa es la de mayor `temp_N`. La tabla de posiciones de SIDGAD puede
+FPP = `id_fede_3`. El año se traduce a la temporada de SIDGAD (`temp_N`) con el selector de temporadas de la página
+principal del portal (`a.select_temporada[id_temp][temp_name]`, p. ej. 40 = 2026). Años ofrecidos:
+`fpp.sidgad.years` en `application.yml`. La tabla de posiciones de SIDGAD puede
 quedar congelada (ej.: Apertura 2026 publicada el 03/05): el informe la muestra con su fecha y la marca
 como desactualizada; el récord se calcula siempre desde el calendario.
 
@@ -93,10 +96,11 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 
 ## API
 
-- `GET /api/catalogo` — clubes con sus categorías y ramas
+- `GET /api/catalogo?anio=2026` — clubes con sus categorías y ramas del año (sin `anio`: el más reciente con datos);
+  `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
   SIDGAD ni la API de Gemini. Enlazado desde la web.
-- `POST /api/informes` `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA"}` → `202 {id, estado}`
+- `POST /api/informes` `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
 - `GET /api/informes/{id}/pdf`

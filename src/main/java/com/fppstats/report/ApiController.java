@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -30,8 +31,10 @@ public class ApiController {
      * @param categoria INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA o PRIMERA
      * @param rama      MASCULINO o FEMENINO
      * @param periodo   APERTURA, CLAUSURA, TEMPORADA (Apertura + Clausura, por defecto) o ULTIMOS_5
+     * @param anio      año (p. ej. 2026); si falta, el más reciente con datos
      */
-    public record ReportRequest(@Positive int clubId, @NotBlank String categoria, @NotBlank String rama, String periodo) {
+    public record ReportRequest(@Positive int clubId, @NotBlank String categoria, @NotBlank String rama, String periodo,
+                                Integer anio) {
     }
 
     public record JobView(UUID id, ReportService.Status estado, String mensaje, String pdfUrl) {
@@ -52,15 +55,16 @@ public class ApiController {
         this.sample = sample;
     }
 
+    /** Catálogo del año pedido (o del más reciente con datos). Si el año no tiene datos, {@code available} es false. */
     @GetMapping("/catalogo")
-    public CatalogView catalogo() {
-        return catalog.view();
+    public CatalogView catalogo(@RequestParam(required = false) Integer anio) {
+        return catalog.view(catalog.checkYear(anio));
     }
 
     @PostMapping("/informes")
     public ResponseEntity<JobView> crear(@Valid @RequestBody ReportRequest req) {
         ReportService.Job job = reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(),
-                ReportService.Scope.parse(req.periodo())));
+                ReportService.Scope.parse(req.periodo()), catalog.checkYear(req.anio())));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 

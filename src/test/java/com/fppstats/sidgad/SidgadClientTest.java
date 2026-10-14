@@ -41,7 +41,7 @@ class SidgadClientTest {
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/";
         client = new SidgadClient(new FppProperties(
                 new FppProperties.Sidgad(base, "http://localhost", 3, Duration.ZERO, Duration.ofMinutes(5),
-                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of("PRIMERA")),
+                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of("PRIMERA"), List.of(2026)),
                 new FppProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1))));
     }
 

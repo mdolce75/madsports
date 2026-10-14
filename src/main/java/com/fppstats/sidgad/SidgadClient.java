@@ -52,6 +52,19 @@ public class SidgadClient {
         return cachedIn(catalogCache, "ls", "cap_ls_1.php", Map.of("idm", "1"));
     }
 
+    /** Página principal del portal (GET): trae la lista de temporadas con su año (selector "Temporada"). */
+    public String portal() {
+        String hit = catalogCache.getIfPresent("portal");
+        if (hit != null) {
+            return hit;
+        }
+        String body = fetch(props.origin() + "/", Connection.Method.GET, Map.of(), "portal");
+        if (!body.equals(NOT_PUBLISHED)) {
+            catalogCache.put("portal", body);
+        }
+        return body;
+    }
+
     public String standings(int idc) {
         return cached("cap_clasif_idc_" + idc + "_1.php", Map.of("idc", String.valueOf(idc)));
     }
@@ -89,15 +102,18 @@ public class SidgadClient {
     }
 
     private String post(String file, Map<String, String> params) {
+        return fetch(props.baseUrl() + file, Connection.Method.POST, params, file);
+    }
+
+    private String fetch(String url, Connection.Method method, Map<String, String> params, String file) {
         waitTurn();
-        String url = props.baseUrl() + file;
         try {
             Connection.Response res = Jsoup.connect(url)
                     .userAgent(USER_AGENT)
                     .header("Origin", props.origin())
                     .referrer(props.origin() + "/")
                     .data(params)
-                    .method(Connection.Method.POST)
+                    .method(method)
                     .ignoreContentType(true)
                     .ignoreHttpErrors(true)
                     .timeout((int) props.timeout().toMillis())

@@ -83,7 +83,8 @@ public class ReportService {
     }
 
     /** Parámetros del informe: club, categoría (nivel), rama y período. */
-    public record Request(int clubId, String category, String branch, Scope scope) {
+    /** @param year año (temporada) ya validado contra los ofrecidos */
+    public record Request(int clubId, String category, String branch, Scope scope, int year) {
     }
 
     public static final class Job {
@@ -132,12 +133,15 @@ public class ReportService {
 
     /** Valida los parámetros (falla rápido) y encola el informe. */
     public Job submit(Request request) {
-        ClubView club = catalog.club(request.clubId());
+        if (!catalog.available(request.year())) {
+            throw new IllegalArgumentException(CatalogService.unavailableMessage(request.year()));
+        }
+        ClubView club = catalog.club(request.clubId(), request.year());
         Category category = catalog.category(request.category(), request.branch());
         Torneo torneo = request.scope().torneo();
-        if (catalog.competitionsFor(club.id(), category, torneo).isEmpty()) {
+        if (catalog.competitionsFor(club.id(), category, torneo, request.year()).isEmpty()) {
             throw new IllegalArgumentException(club.name() + " no participa en " + category.label()
-                    + (torneo == null ? "" : " - " + torneo.label()) + " esta temporada.");
+                    + (torneo == null ? "" : " - " + torneo.label()) + " en " + request.year() + ".");
         }
         Job job = new Job(request);
         jobs.put(job.id(), job);
@@ -166,7 +170,8 @@ public class ReportService {
 
     ReportData extract(Job job, ClubView club, Category category) {
         Scope scope = job.request().scope();
-        List<Competition> comps = catalog.competitionsFor(club.id(), category, scope.torneo());
+        int year = job.request().year();
+        List<Competition> comps = catalog.competitionsFor(club.id(), category, scope.torneo(), year);
         List<CompetitionData> data = new ArrayList<>();
         List<String> notPublished = new ArrayList<>();
         Map<Competition, List<Match>> clubMatches = new LinkedHashMap<>();
@@ -199,7 +204,7 @@ public class ReportService {
         String torneos = comps.stream().map(Competition::torneoLabel).distinct().collect(Collectors.joining(" + "));
         String label = scope == Scope.ULTIMOS_5
                 ? "Últimos 5 partidos (" + torneos + ")"
-                : "Temporada " + LocalDate.now(clock).getYear() + " · " + torneos;
+                : "Temporada " + year + " · " + torneos;
         return StatsEngine.build(club, category.label(), label, data, LocalDate.now(clock), scope.lastMatches())
                 .withNotPublished(notPublished);
     }

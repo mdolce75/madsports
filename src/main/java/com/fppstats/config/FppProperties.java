@@ -16,9 +16,11 @@ public record FppProperties(Sidgad sidgad, Ai ai) {
      * @param dataTtl         vigencia del cache de clasificaciones/calendario/estadísticas
      * @param catalogTtl      vigencia del cache del catálogo de competiciones
      * @param levels          categorías relevadas, en orden (de Infantil para arriba)
+     * @param years           años que se ofrecen (p. ej. 2026, 2027)
      */
     public record Sidgad(String baseUrl, String origin, int federationId, Duration minInterval,
-                         Duration dataTtl, Duration catalogTtl, Duration timeout, List<String> levels) {
+                         Duration dataTtl, Duration catalogTtl, Duration timeout, List<String> levels,
+                         List<Integer> years) {
     }
 
     /**

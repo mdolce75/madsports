@@ -17,6 +17,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,6 +35,22 @@ public final class SidgadParser {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private SidgadParser() {
+    }
+
+    /**
+     * Portal (página principal): selector de temporadas {@code a.select_temporada[id_temp][temp_name]},
+     * p. ej. {@code id_temp="40" temp_name="2026"}. Devuelve año → id de temporada.
+     */
+    public static Map<Integer, Integer> seasons(String html) {
+        Map<Integer, Integer> byYear = new java.util.TreeMap<>();
+        for (Element a : Jsoup.parse(html).select("a.select_temporada[id_temp][temp_name]")) {
+            int year = parseInt(a.attr("temp_name"));
+            int id = parseInt(a.attr("id_temp"));
+            if (year > 0 && id > 0) {
+                byYear.put(year, id);
+            }
+        }
+        return byYear;
     }
 
     /** {@code cap_ls_1.php}: anclas {@code a.idc_master} + inputs {@code teams_array_<idc>}. */

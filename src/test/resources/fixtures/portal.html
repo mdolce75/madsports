@@ -1,0 +1,287 @@
+
+<head>
+<title>PORTEÑA - HOCKEY PATINES</title>
+<script src="https://www.server2.sidgad.es/js/jquery.min.js"></script>
+<script src="https://www.server2.sidgad.es/js/jquery-ui.js"></script>
+<script src="https://www.server2.sidgad.es/portales.js?v=1791992187"></script>
+<link href='https://fonts.googleapis.com/css?family=Lato:400,700,900,400italic' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300,700' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Roboto+Condensed:400,700italic,700,400italic,300italic,300' rel='stylesheet' type='text/css'>
+<link rel="stylesheet" href="https://www.server2.sidgad.es/css/portales.css?v=1791992187">
+<link rel="stylesheet" href="/fonts/css/font-awesome.min.css">
+<link rel="stylesheet" href="/custom.css?v=1791992187">
+<link rel="shortcut icon" href="/favicon.png" />
+</head>
+
+
+<body>
+<style>
+/*::-webkit-scrollbar { 
+    display: none; 
+}
+html {
+	overflow: -moz-scrollbars-none;	
+}*/
+
+
+#sidgad_thickbox {
+	overflow: -moz-scrollbars-none;
+}
+#sidgad_thickbox_right {
+	overflow: -moz-scrollbars-none;
+}
+	
+
+#sidgad_thickbox {
+	width: 1000px;
+    background-color: #FFF;
+    z-index: 10000;
+    height: 98vh;
+    /* position: absolute; */
+    /* display: inline-block; */
+    /* position: static; */
+    /* position: fixed; */
+    overflow-y: scroll;
+    margin: 10px 0px 10px 0px;
+    display: none;
+}	
+
+#sidgad_thickbox_right {
+    width: 450px;
+    background-color: #FFF;
+    z-index: 100000;
+    height: 95vh;
+    position: absolute;
+    /* display: inline-block; */
+    /* position: static; */
+    position: fixed;
+    overflow-y: scroll;
+    /* margin: 10px 0px 10px 0px; */
+    right: 5px;
+    display: none;
+    top: 5vh;
+    border: 1px solid #CCC;
+    box-shadow: -4px -3px 8px 0px #666;
+}
+</style>
+<input type="hidden" id="cliente" value="cap">	
+<input type="hidden" value="1" id="id_modal_input">	
+<input type="hidden" value="modalidad" id="mode_input">
+<input type="hidden" value="" id="params_url">
+<input type="hidden" value="hockey" id="slug_url">
+<input type="hidden" id="t_url">
+<input type="hidden" id="l_url">
+
+<div style="position: absolute; display: none;">
+	<input type="text" id="temp_activa" value="40" style="width: 30px;">
+	<input type="text" id="temp_activa_name" value="2026" style="width: 30px;">
+	<input type="text" id="temp_selected_name" value="2026" style="width: 30px;">
+	<input type="text" id="temp" value="40" style="width: 30px;">
+	<input type="text" id="idm" value="1" style="width: 20px;">
+	<input type="text" id="idc" value="" style="width: 40px;">
+</div>
+
+
+<div id="selector_temporadas" class="selector_temporadas" style="display: none;">
+	<div class="select_temporada_box">
+				<a href="#" id="temp_40" id_temp="40" temp_name="2026" class="select_temporada">Temporada <span class="nomb_temp_menu">2026</span></a>
+			</div>
+	<div class="select_temporada_box">
+				<a href="#" id="temp_38" id_temp="38" temp_name="2025" class="select_temporada">Temporada <span class="nomb_temp_menu">2025</span></a>
+			</div>
+	<div class="select_temporada_box">
+				<a href="#" id="temp_35" id_temp="35" temp_name="2024" class="select_temporada">Temporada <span class="nomb_temp_menu">2024</span></a>
+			</div>
+	<div class="select_temporada_box">
+				<a href="#" id="temp_33" id_temp="33" temp_name="2023" class="select_temporada">Temporada <span class="nomb_temp_menu">2023</span></a>
+			</div>
+	<div class="select_temporada_box">
+				<a href="#" id="temp_31" id_temp="31" temp_name="2022" class="select_temporada">Temporada <span class="nomb_temp_menu">2022</span></a>
+			</div>
+	<div class="select_temporada_box">
+				<div style="color: #888; font-size: 13px;">Temporada <span class="nomb_temp_menu"></span></div>
+			</div>
+</div>
+
+
+
+
+
+
+<div class="loading_portal">
+	<img src="https://www.sidgad.com/shared/images/loading_portal.gif" width="60px">
+</div>
+
+<div id="sidgad_thickbox">
+	<div id="sidgad_thickbox_topbar">
+		<div id="sidgad_thickbox_topbar_content"></div>
+		<div class="close_sidgad_thickbox" id="close_sidgad_thickbox">x</div>
+	</div>
+	<div id="sidgad_thickbox_content"></div>
+</div>
+
+<div id="sidgad_thickbox_right">
+	<div class="loading_thickbox_right">
+		<img src="https://www.sidgad.com/shared/images/loading_portal.gif" width="60px">
+	</div>
+	<div id="sidgad_thickbox_right_topbar">
+		<div id="sidgad_thickbox_right_topbar_content"></div>
+		<div class="close_sidgad_thickbox" id="close_sidgad_right_thickbox">x</div>
+	</div>
+	<div id="sidgad_thickbox_right_content"></div>
+</div>
+
+
+<div id="sidgad_portal">
+	<div class="container_portal">
+		<a href="/" class="header_portal"></a>
+		<div class="content_portal" id="content_portal">
+			<div class="header_content_portal"></div>
+				<div class="tabs_modals" style="background-color: red;">
+					<!--
+					<a class="tab_modal" href="https://comitehockeypatin.ar/">
+						<div class="tab_icon">
+						<i class="fa fa-home" aria-hidden="true" style="font-size: 30px;"></i>
+						</div>
+						<div class="tab_modal_text">
+							WEB<br>Comite
+						</div>
+					</a>	
+					
+				
+					
+						<a class="tab_modal" href="https://www.competiciones.comitehockeypatin.ar/" id="tab_modal_" id_modal="" modal_temp="">
+						<div class="tab_icon">
+						<img src="https://www.sidgad.com/shared/portales_files/images/icon_hp_45.png" width="30">
+						</div>
+						<div class="tab_modal_text">
+							CNTHsP - CAP
+						</div>
+					</a>
+						<a class="tab_modal" href="https://www.sanjuan.comitehockeypatin.ar/">
+						<div class="tab_icon">
+						<img src="https://www.sidgad.com/shared/portales_files/images/icon_hp_45.png" width="30">						</div>
+						<div class="tab_modal_text">
+							SAN JUAN
+						</div>
+					</a>
+					-->
+					<a class="tab_modal_selected" href="/">
+						<div class="tab_icon">
+						<img src="https://www.sidgad.com/shared/portales_files/images/icon_hp_45.png" width="30">						</div>
+						<div class="tab_modal_text">
+							PORTEÑA
+						</div>
+					</a>
+					<!--
+					<a class="tab_modal" href="https://entrerios.comitehockeypatin.ar/" id="tab_modal_" id_modal="" modal_temp="">
+						<div class="tab_icon">
+						<img src="https://www.sidgad.com/shared/portales_files/images/icon_hp_45.png" width="30">
+						</div>
+						<div class="tab_modal_text">
+							ENTRE RIOS
+						</div>
+					</a>
+					-->
+					<a class="tab_modal" href="https://www.mendoza.sidgad.com/" id="tab_modal_" id_modal="" modal_temp="">
+						<div class="tab_icon">
+						<img src="https://www.sidgad.com/shared/portales_files/images/icon_hp_45.png" width="30">
+						</div>
+						<div class="tab_modal_text">
+						MENDOZA
+						</div>
+					</a>
+	
+										</div>			
+			
+			<div class="tab_modal_contenido" id="tab_modal_contenido">
+
+				<div id="tab_options_header" class="tabs_options_header" style="line-height: 30px;"><span class="tabs_options_subheader" style="margin-right: 10px;">COMPETICIONES</span> <a href="#" class="header_temp_selected" id="header_temp_selected"></a></div>
+				<div class="left_container_competiciones">
+					<div id="listado_competiciones"></div>
+				</div>
+				
+				<div class="right_container_competiciones" id="right_container_competiciones">
+					<!--<div id="competiciones_left"></div>-->
+					<div id="scorer_competiciones"></div>
+				</div>
+				
+			</div> <!-- tab_modal_contenido -->
+			
+			
+			
+						<div class="tab_modal_container" id="tab_modal_container" style="display: none;">
+				<!--<div class="tabs_modals" style="background-color: red;">tabs_modals</div>-->
+				<div id="tab_options_header_competicion" class="tabs_options_header">
+					<div id="titulo_competicion_header">
+						<span id="titulo_competicion_header_text"></span>
+						<span class="tabs_options_subheader" id="titulo_competicion_subheader">2018</span>
+					</div>
+					
+					<a class="header_competicion_btn btn_header volver_competiciones" style="float: right;" href="#"><span class="fa fa-arrow-circle-left icon_boton"></span>VOLVER A COMPETICIONES</a>	
+					
+				</div>
+				
+				<div id="selector_temporadas" style="display: none;"></div>
+				<div id="tabs_options" class="tabs_options" style="background-color: #FFF; border-bottom: 10px solid #FFF;">			
+				</div>	
+				<div class="tab_modal_contenido" id="tab_modal_contenido_competicion"></div>
+			</div> <!--tab_modal_container-->	
+			
+				
+		</div>
+		
+		
+	</div>
+	<div class="footer_portal" style="padding: 4px 0px 0px 20px;">
+	
+	</div>
+</div>
+
+
+
+</body>
+
+<script>
+var $j = jQuery.noConflict();
+	$j(document).ready(function() {	
+	
+		$j(".listado_competiciones_fila").hide();
+		var scorer_file = 'https://www.server2.sidgad.es/cap/cap_ls_1.php';
+		var temp = $j("#temp_activa").val();
+	$j('#listado_competiciones').load(scorer_file,
+		function( response, status, xhr ) {
+			if (status == 'success') {
+			  	$j(".listado_competiciones_fila").hide();
+			  	
+			  	$j(".temp_"+temp).show();
+			  	$j(".id_fede_2").hide();
+				$j(".id_fede_1").hide();
+				$j(".id_fede_4").hide();
+				$j(".id_fede_5").hide();
+				setInterval(function(){
+				  	$j(".id_fede_2").hide();
+				  	$j(".id_fede_1").hide();
+				  	$j(".id_fede_4").hide();
+				  	$j(".id_fede_5").hide();
+				  	},30000);
+
+			}
+		}	
+	);
+	
+		$j(document).on("click",".select_temporada",function(e){	
+	
+			e.preventDefault();
+	
+			setTimeout(function(){
+				  	$j(".id_fede_2").hide();
+				  	$j(".id_fede_1").hide();
+				  	$j(".id_fede_4").hide();
+				  	$j(".id_fede_5").hide();
+				},1000);
+	});
+	
+	});
+
+</script>

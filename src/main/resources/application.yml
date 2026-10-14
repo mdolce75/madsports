@@ -23,6 +23,8 @@ fpp:
     timeout: 20s
     # Categorías relevadas (Mini y Promo quedan afuera)
     levels: [INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA, PRIMERA]
+    # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa
+    years: [2026, 2027]
   # Análisis con Google Gemini (plan gratuito de Google AI Studio). Sin API key: análisis por reglas.
   ai:
     enabled: ${FPP_AI_ENABLED:true}
