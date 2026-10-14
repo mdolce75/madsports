@@ -84,7 +84,8 @@ class AnalysisContext {
                             "faltas_directas_pct", round(t.setPieces().directFreePct()),
                             "penales", t.setPieces().penaltiesScored() + "/" + t.setPieces().penaltiesTaken(),
                             "penales_pct", round(t.setPieces().penaltyPct())),
-                    "disciplina", t.discipline());
+                    "disciplina", t.discipline(),
+                    "faltas", t.fouls());
             case "rivals" -> t.rivals();
             case "time_profile" -> Map.of(
                     "perfil", t.timeProfile(),

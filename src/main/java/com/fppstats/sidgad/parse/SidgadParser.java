@@ -86,6 +86,8 @@ public final class SidgadParser {
      * {@code cap_gr_<idp>_1.php}: acta del partido. Cada evento es un {@code tr} con
      * {@code .game_view_indcidencias_period} (P1/P2), {@code .game_view_incidencias_time} (minuto transcurrido
      * en el período) y la descripción en {@code .evento_*} (texto en español en {@code .lang_es}).
+     * Se toman goles, tarjetas (amarilla, azul, roja) y faltas de equipo ("FALTA"); "FALTA DIRECTA PARA" es el
+     * tiro que se concede, no una falta, y no se cuenta.
      * Si SIDGAD no publicó el acta responde "File not found." y se devuelve una lista vacía.
      */
     public static List<MatchEvent> gameEvents(String html) {
@@ -124,6 +126,7 @@ public final class SidgadParser {
             case "TARJETA AMARILLA" -> EventType.YELLOW_CARD;
             case "TARJETA AZUL" -> EventType.BLUE_CARD;
             case "TARJETA ROJA" -> EventType.RED_CARD;
+            case "FALTA" -> EventType.FOUL;
             default -> null;
         };
     }

@@ -9,6 +9,7 @@ import com.fppstats.sidgad.model.Models.PlayerStats;
 import com.fppstats.sidgad.model.Models.StandingRow;
 import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.stats.ReportData.Discipline;
+import com.fppstats.stats.ReportData.Fouls;
 import com.fppstats.stats.ReportData.LeagueContext;
 import com.fppstats.stats.ReportData.MatchLine;
 import com.fppstats.stats.ReportData.PlayerLine;
@@ -192,11 +193,16 @@ public final class StatsEngine {
                 : new Discipline(-1, blue, red, seasonPlayed == 0 ? 0 : (double) (blue + red) / seasonPlayed,
                         seasonPlayed, false);
 
+        Fouls fouls = new Fouls(timeProfile.matchesWithSheet(),
+                timeProfile.byPeriod().stream().mapToInt(TimeBucket::foulsOwn).sum() + timeProfile.unrecorded().foulsOwn(),
+                timeProfile.byPeriod().stream().mapToInt(TimeBucket::foulsRival).sum() + timeProfile.unrecorded().foulsRival(),
+                league.foulsPerTeamGame());
         TeamReport base = new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
-                biggestWin, worstLoss, players, setPieces, discipline, rivals(results), byTorneo, timeProfile, List.of());
+                biggestWin, worstLoss, players, setPieces, discipline, rivals(results), byTorneo, timeProfile, List.of(),
+                fouls);
         return new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
                 biggestWin, worstLoss, players, setPieces, discipline, base.rivals(), byTorneo, timeProfile,
-                StrengthsAnalysis.evaluate(base, league));
+                StrengthsAnalysis.evaluate(base, league), fouls);
     }
 
     /**
@@ -228,11 +234,17 @@ public final class StatsEngine {
     }
 
     /** Suma, por tramo de 5', goles y tarjetas propias y de los rivales en todos los partidos con acta. */
+    /** Columnas por tramo: goles, tarjetas (amarilla, azul, roja) y faltas; propias y de los rivales. */
+    private static final int COLS = 10;
+
     private static TimeProfile timeProfile(List<Entry> entries, Set<Match> included) {
         int periodMinutes = entries.stream().mapToInt(e -> e.data().competition().periodMinutes()).max()
                 .orElse(Competition.DEFAULT_PERIOD_MINUTES);
         int perPeriod = (periodMinutes + BUCKET_MINUTES - 1) / BUCKET_MINUTES;
-        int[][] counts = new int[2 * perPeriod][8];
+        int[][] counts = new int[2 * perPeriod][COLS];
+        // Marcador al empezar cada tramo: suma de diferencias y partidos ganando / empatando / perdiendo.
+        double[] diffSum = new double[2 * perPeriod];
+        int[][] situation = new int[2 * perPeriod][3];
         int played = 0;
         int withSheet = 0;
         int mismatches = 0;
@@ -240,7 +252,7 @@ public final class StatsEngine {
         int unrecordedAgainst = 0;
         int shortHanded = 0;
         int powerPlay = 0;
-        int[] unrecordedCards = new int[8];
+        int[] unrecordedCards = new int[COLS];
 
         for (Entry e : entries) {
             TeamRef own = e.team();
@@ -268,6 +280,8 @@ public final class StatsEngine {
                 int matchPeriod = e.data().competition().periodMinutes();
                 List<int[]> ownSanctions = new ArrayList<>();
                 List<int[]> rivalSanctions = new ArrayList<>();
+                List<Integer> ownGoalTimes = new ArrayList<>();
+                List<Integer> rivalGoalTimes = new ArrayList<>();
                 for (MatchEvent ev : events) {
                     boolean ours = isOwn(ev, own, rivalTeamId, rivalClubId);
                     int column = switch (ev.type()) {
@@ -275,6 +289,7 @@ public final class StatsEngine {
                         case YELLOW_CARD -> ours ? 2 : 5;
                         case BLUE_CARD -> ours ? 3 : 6;
                         case RED_CARD -> ours ? 4 : 7;
+                        case FOUL -> ours ? 8 : 9;
                     };
                     // SIDGAD: período 10 = descanso (la sanción se cumple desde el inicio del 2T); 11 y otros = fuera
                     // del juego (p. ej. después del partido): la tarjeta cuenta, pero sin minuto ni inferioridad.
@@ -289,23 +304,33 @@ public final class StatsEngine {
                     }
                     int bucket = (period - 1) * perPeriod + Math.min(minute / BUCKET_MINUTES, perPeriod - 1);
                     counts[bucket][column]++;
+                    int start = (period - 1) * matchPeriod * 60 + minute * 60 + second;
                     int seconds = ev.type() == EventType.BLUE_CARD ? BLUE_CARD_SECONDS
                             : ev.type() == EventType.RED_CARD ? RED_CARD_SECONDS : 0;
                     if (seconds > 0) {
-                        int start = (period - 1) * matchPeriod * 60 + minute * 60 + second;
                         (ours ? ownSanctions : rivalSanctions).add(new int[]{start, start + seconds});
                     }
                     if (ev.type() == EventType.GOAL) {
                         goalsInSheet++;
                         if (ours) {
                             ownGoalsInSheet++;
+                            ownGoalTimes.add(start);
                         } else {
                             rivalGoalsInSheet++;
+                            rivalGoalTimes.add(start);
                         }
                     }
                 }
                 if (goalsInSheet != m.homeGoals() + m.awayGoals()) {
                     mismatches++;
+                }
+                // Cómo iba el partido al empezar cada tramo, según el minuto de los goles de la ficha.
+                for (int i = 0; i < 2 * perPeriod; i++) {
+                    int startOfBucket = (i / perPeriod) * matchPeriod * 60 + (i % perPeriod) * BUCKET_MINUTES * 60;
+                    int diff = (int) ownGoalTimes.stream().filter(t -> t < startOfBucket).count()
+                            - (int) rivalGoalTimes.stream().filter(t -> t < startOfBucket).count();
+                    diffSum[i] += diff;
+                    situation[i][diff > 0 ? 0 : diff == 0 ? 1 : 2]++;
                 }
                 // Ficha incompleta: los goles del resultado que no figuran en ella quedan sin minuto.
                 unrecordedFor += Math.max(0, resultFor - ownGoalsInSheet);
@@ -315,26 +340,30 @@ public final class StatsEngine {
             }
         }
 
+        double sheets = Math.max(1, withSheet);
         List<TimeBucket> buckets = new ArrayList<>();
         for (int i = 0; i < counts.length; i++) {
             int period = i / perPeriod + 1;
             int from = (i % perPeriod) * BUCKET_MINUTES;
             int to = Math.min(from + BUCKET_MINUTES, periodMinutes);
-            buckets.add(bucket(period + "T " + from + "-" + to + "'", period, from, to, counts[i]));
+            buckets.add(bucket(period + "T " + from + "-" + to + "'", period, from, to, counts[i],
+                    diffSum[i] / sheets, situation[i]));
         }
         List<TimeBucket> byPeriod = new ArrayList<>();
         for (int period = 1; period <= 2; period++) {
-            int[] sum = new int[8];
-            for (int i = (period - 1) * perPeriod; i < period * perPeriod; i++) {
-                for (int c = 0; c < 8; c++) {
+            int first = (period - 1) * perPeriod;
+            int[] sum = new int[COLS];
+            for (int i = first; i < period * perPeriod; i++) {
+                for (int c = 0; c < COLS; c++) {
                     sum[c] += counts[i][c];
                 }
             }
-            byPeriod.add(bucket(period == 1 ? "1er tiempo" : "2do tiempo", period, 0, periodMinutes, sum));
+            byPeriod.add(bucket(period == 1 ? "1er tiempo" : "2do tiempo", period, 0, periodMinutes, sum,
+                    diffSum[first] / sheets, situation[first]));
         }
         unrecordedCards[0] = unrecordedFor;
         unrecordedCards[1] = unrecordedAgainst;
-        TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0, unrecordedCards);
+        TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0, unrecordedCards, 0, new int[3]);
         return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod, unrecorded,
                 shortHanded, powerPlay);
     }
@@ -352,8 +381,10 @@ public final class StatsEngine {
         return total;
     }
 
-    private static TimeBucket bucket(String label, int period, int from, int to, int[] c) {
-        return new TimeBucket(label, period, from, to, c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]);
+    private static TimeBucket bucket(String label, int period, int from, int to, int[] c,
+                                     double avgGoalDiff, int[] situation) {
+        return new TimeBucket(label, period, from, to, c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9],
+                avgGoalDiff, situation[0], situation[1], situation[2]);
     }
 
     /**
@@ -458,10 +489,22 @@ public final class StatsEngine {
         int penT = all.stream().mapToInt(PlayerStats::penaltiesTaken).sum();
         int cards = all.stream().mapToInt(p -> p.blueCards() + p.redCards()).sum();
         int teamGames = matches * 2;
+        int sheets = 0;
+        int fouls = 0;
+        for (CompetitionData cd : data) {
+            for (Match m : cd.matches()) {
+                List<MatchEvent> events = cd.sheets().getOrDefault(m.idp(), List.of());
+                if (m.played() && !events.isEmpty()) {
+                    sheets++;
+                    fouls += (int) events.stream().filter(ev -> ev.type() == EventType.FOUL).count();
+                }
+            }
+        }
         return new LeagueContext(teams, matches,
                 teamGames == 0 ? 0 : (double) goals / teamGames, top3Gf,
                 ReportData.pct(fdS, fdT), ReportData.pct(penS, penT),
                 teamGames == 0 ? 0 : (double) cards / teamGames,
-                teamGames == 0 ? 0 : 100.0 * points / (teamGames * 3));
+                teamGames == 0 ? 0 : 100.0 * points / (teamGames * 3),
+                sheets == 0 ? 0 : (double) fouls / (2 * sheets), sheets);
     }
 }

@@ -151,6 +151,9 @@ final class SampleData {
             if (rnd.nextInt(3) == 0) {
                 ev.add(event(rnd.nextInt(2 * PERIOD_MINUTES), rnd, EventType.YELLOW_CARD, team, ""));
             }
+            for (int i = 0; i < 4 + rnd.nextInt(7); i++) {
+                ev.add(event(rnd.nextInt(2 * PERIOD_MINUTES), rnd, EventType.FOUL, team, ""));
+            }
             if (!ours && rnd.nextInt(8) == 0) {
                 ev.add(event(PERIOD_MINUTES + rnd.nextInt(PERIOD_MINUTES), rnd, EventType.RED_CARD, team, ""));
             }

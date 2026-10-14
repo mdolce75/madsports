@@ -46,6 +46,10 @@ public class GeminiAnalyst {
               solo de los partidos con acta publicada (matchesWithSheet de matchesPlayed): aclaralo si no son todos.
               Amarilla, azul y roja son tarjetas distintas: no las mezcles. También trae los minutos por partido
               con uno menos y con uno más por sanciones (azul 2', roja 4'): citá esos valores, no los recalcules.
+              Cada tramo trae además las faltas propias y de los rivales (foulsOwn, foulsRival) y cómo iba el equipo
+              al empezar el tramo (avgGoalDiff = diferencia de gol promedio; ahead/level/behind = partidos ganando,
+              empatando y perdiendo). set_pieces_discipline.faltas tiene las faltas por partido del equipo
+              (ownPerGame), de sus rivales en esos partidos (rivalPerGame) y el promedio de la liga.
             - Toda cifra que menciones tiene que salir textualmente de los datos que recibiste.
               No calcules ni estimes números nuevos; si un dato no está, no lo menciones.
             - Fortalezas y debilidades: basalas en overview.equipos[].fortalezas_debilidades, que ya clasifica cada

@@ -37,7 +37,28 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
                              MatchLine biggestWin, MatchLine worstLoss,
                              List<PlayerLine> players, SetPieces setPieces, Discipline discipline,
                              List<RivalLine> rivals, List<TorneoLine> byTorneo, TimeProfile timeProfile,
-                             List<Indicator> indicators) {
+                             List<Indicator> indicators, Fouls fouls) {
+    }
+
+    /**
+     * Faltas de equipo según las fichas de partido.
+     *
+     * @param matches         partidos con ficha sobre los que se cuentan
+     * @param own             faltas del equipo
+     * @param rival           faltas de los rivales en esos mismos partidos
+     * @param leaguePerTeamGame promedio de la liga: faltas por equipo y partido (todas las fichas de las competiciones)
+     */
+    public record Fouls(int matches, int own, int rival, double leaguePerTeamGame) {
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double ownPerGame() {
+            return matches == 0 ? 0 : (double) own / matches;
+        }
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double rivalPerGame() {
+            return matches == 0 ? 0 : (double) rival / matches;
+        }
     }
 
     /** Resultado de comparar un indicador del equipo con su referencia. */
@@ -128,11 +149,19 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
         }
     }
 
-    /** Un tramo (p. ej. "1T 5-10'") o un período completo. "Propias" = del equipo; "rival" = sacadas a los rivales. */
+    /**
+     * Un tramo (p. ej. "1T 5-10'") o un período completo. "Propias" = del equipo; "rival" = de los rivales.
+     *
+     * @param avgGoalDiff diferencia de gol promedio del equipo al empezar el tramo (cómo iba en ese momento)
+     * @param ahead       partidos en los que al empezar el tramo iba ganando ({@code level} empatando,
+     *                    {@code behind} perdiendo); suman los partidos con ficha
+     */
     public record TimeBucket(String label, int period, int fromMinute, int toMinute,
                              int goalsFor, int goalsAgainst,
                              int yellowOwn, int blueOwn, int redOwn,
-                             int yellowRival, int blueRival, int redRival) {
+                             int yellowRival, int blueRival, int redRival,
+                             int foulsOwn, int foulsRival,
+                             double avgGoalDiff, int ahead, int level, int behind) {
 
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public int cardsOwn() {
@@ -245,9 +274,14 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     }
 
     /** Promedios de todas las competiciones incluidas en el informe (todos los equipos). */
-    /** @param effectiveness % de puntos obtenidos por un equipo promedio (victoria 3, empate 1) */
+    /**
+     * @param effectiveness    % de puntos obtenidos por un equipo promedio (victoria 3, empate 1)
+     * @param foulsPerTeamGame faltas por equipo y partido, según las fichas publicadas
+     * @param matchesWithSheet partidos con ficha sobre los que se calcula {@code foulsPerTeamGame}
+     */
     public record LeagueContext(int teams, int matchesPlayed, double goalsPerTeamGame, double top3GoalsForPerGame,
-                                double directFreePct, double penaltyPct, double cardsPerTeamGame, double effectiveness) {
+                                double directFreePct, double penaltyPct, double cardsPerTeamGame, double effectiveness,
+                                double foulsPerTeamGame, int matchesWithSheet) {
     }
 
     static double pct(int part, int total) {

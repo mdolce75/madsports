@@ -287,6 +287,39 @@
         </p>
     </div>
 
+    <div class="nobreak" th:with="tp=${t.timeProfile}" th:if="${t.timeProfile.hasData()}">
+        <h3>Faltas y marcador por tramos de 5 minutos</h3>
+        <table class="minutes">
+            <tr>
+                <th rowspan="2" class="l">Tramo</th>
+                <th colspan="2">Faltas</th>
+                <th colspan="4">Cómo iba el equipo al empezar el tramo</th>
+            </tr>
+            <tr>
+                <th>Propias</th><th>Rivales</th><th>Dif. de gol promedio</th><th>Ganando</th><th>Empatando</th><th>Perdiendo</th>
+            </tr>
+            <tr th:each="b : ${tp.buckets}" th:class="${b.period == 2 and b.fromMinute == 0} ? 'sep' : ''">
+                <td class="l" th:text="${b.label}"></td>
+                <td th:text="${b.foulsOwn}"></td><td th:text="${b.foulsRival}"></td>
+                <td th:text="${f.signed(b.avgGoalDiff)}"></td>
+                <td th:text="${f.share(b.ahead, tp.matchesWithSheet)}"></td>
+                <td th:text="${f.share(b.level, tp.matchesWithSheet)}"></td>
+                <td th:text="${f.share(b.behind, tp.matchesWithSheet)}"></td>
+            </tr>
+            <tr th:each="b : ${tp.byPeriod}" class="hl">
+                <td class="l" th:text="${b.label}"></td>
+                <td th:text="${b.foulsOwn}"></td><td th:text="${b.foulsRival}"></td>
+                <td colspan="4"></td>
+            </tr>
+            <tr th:if="${tp.unrecorded.foulsOwn + tp.unrecorded.foulsRival > 0}" class="unrecorded">
+                <td class="l">Sin minuto registrado</td>
+                <td th:text="${tp.unrecorded.foulsOwn}"></td><td th:text="${tp.unrecorded.foulsRival}"></td>
+                <td colspan="4"></td>
+            </tr>
+        </table>
+        <p class="muted" th:text="|Faltas de equipo según ${tp.matchesWithSheet} fichas. Al empezar cada tramo: diferencia de gol promedio del equipo y % de partidos en que iba ganando, empatando o perdiendo, según el minuto de los goles.|"></p>
+    </div>
+
     <p class="muted" th:if="${d.partial()}">Pelota parada: acumulado del torneo completo.</p>
     <table class="two nobreak">
         <tr>
@@ -312,6 +345,16 @@
                         : 'Contadas en las fichas de esos ' + t.discipline.matches + ' partidos. El promedio de la liga es del torneo completo.'}"></p>
                 <p class="muted" th:unless="${t.discipline.fromSheets}">Las amarillas no figuran en las estadísticas del
                     torneo; por partido, ver la tabla de tramos de 5 minutos.</p>
+                <th:block th:if="${t.fouls.matches > 0}">
+                    <h3>Faltas</h3>
+                    <table>
+                        <tr><th></th><th>Por partido</th><th>Total</th></tr>
+                        <tr><td class="l">Equipo</td><td th:text="${f.dec(t.fouls.ownPerGame())}"></td><td th:text="${t.fouls.own}"></td></tr>
+                        <tr><td class="l">Rivales (mismos partidos)</td><td th:text="${f.dec(t.fouls.rivalPerGame())}"></td><td th:text="${t.fouls.rival}"></td></tr>
+                        <tr><td class="l">Promedio de la liga</td><td th:text="${d.league.matchesWithSheet > 0 ? f.dec(t.fouls.leaguePerTeamGame) : '-'}"></td><td></td></tr>
+                    </table>
+                    <p class="muted" th:text="|Según ${t.fouls.matches} fichas del equipo; liga: ${d.league.matchesWithSheet} fichas de todas las competiciones del informe.|"></p>
+                </th:block>
                 <th:block th:if="${t.timeProfile.hasData()}">
                     <h3>Inferioridad numérica</h3>
                     <table>

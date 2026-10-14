@@ -33,7 +33,7 @@ public final class Models {
     }
 
     /** Tipos de evento del acta que se analizan. Amarilla, azul y roja son tarjetas distintas. */
-    public enum EventType { GOAL, YELLOW_CARD, BLUE_CARD, RED_CARD }
+    public enum EventType { GOAL, YELLOW_CARD, BLUE_CARD, RED_CARD, FOUL }
 
     /**
      * Evento del acta de un partido.

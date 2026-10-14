@@ -201,6 +201,21 @@ public class ReportService {
         if (missingSheets > 0) {
             notPublished.add("Actas de partido: " + missingSheets + " de " + total);
         }
+        // Actas del resto de la liga: solo para el promedio de faltas por equipo y partido. Quedan en cache 24 h.
+        List<Map.Entry<CompetitionData, Match>> league = new ArrayList<>();
+        for (CompetitionData cd : data) {
+            cd.matches().stream()
+                    .filter(m -> m.played() && m.idp() > 0 && !cd.sheets().containsKey(m.idp()))
+                    .forEach(m -> league.add(Map.entry(cd, m)));
+        }
+        int leagueDone = 0;
+        for (Map.Entry<CompetitionData, Match> e : league) {
+            job.update(Status.EXTRAYENDO, "Leyendo actas de la liga para el promedio de faltas ("
+                    + (++leagueDone) + "/" + league.size() + ")");
+            CompetitionData cd = e.getKey();
+            cd.sheets().put(e.getValue().idp(),
+                    SidgadParser.gameEvents(sidgad.gameSheet(cd.competition().id(), e.getValue().idp())));
+        }
         String torneos = comps.stream().map(Competition::torneoLabel).distinct().collect(Collectors.joining(" + "));
         String label = scope == Scope.ULTIMOS_5
                 ? "Últimos 5 partidos (" + torneos + ")"

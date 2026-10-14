@@ -235,6 +235,45 @@ public class StatsEngineTest {
     }
 
     @Test
+    void faltasPorTramoYComoIbaElEquipo() {
+        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "CAVS");
+        TimeProfile tp = velez.timeProfile();
+
+        // Vélez 2-4 Argentinos (26390): 12 faltas propias y 7 rivales; Vélez 7-0 Comunicaciones (26396): 4 y 5.
+        assertThat(tp.buckets()).extracting(TimeBucket::foulsOwn).containsExactly(0, 1, 1, 1, 1, 4, 1, 2, 3, 2);
+        assertThat(tp.buckets()).extracting(TimeBucket::foulsRival).containsExactly(0, 1, 1, 2, 0, 3, 2, 1, 0, 2);
+        assertThat(velez.fouls().own()).isEqualTo(16);
+        assertThat(velez.fouls().rival()).isEqualTo(12);
+        assertThat(velez.fouls().ownPerGame()).isEqualTo(8.0);
+        assertThat(velez.fouls().rivalPerGame()).isEqualTo(6.0);
+
+        // Cómo iba al empezar cada tramo (26390: 0,-1,-1,-1,-2,-2,-2,-2,-2,-3; 26396: 0,0,1,1,1,1,3,4,6,7).
+        assertThat(tp.buckets()).extracting(TimeBucket::avgGoalDiff)
+                .containsExactly(0.0, -0.5, 0.0, 0.0, -0.5, -0.5, 0.5, 1.0, 2.0, 2.0);
+        TimeBucket start = tp.buckets().getFirst();
+        assertThat(start.level()).isEqualTo(2);
+        TimeBucket t2_20 = tp.buckets().getLast();
+        assertThat(t2_20.ahead()).isEqualTo(1);
+        assertThat(t2_20.behind()).isEqualTo(1);
+        // byPeriod: cómo iba al empezar cada tiempo.
+        assertThat(tp.byPeriod()).extracting(TimeBucket::avgGoalDiff).containsExactly(0.0, -0.5);
+    }
+
+    @Test
+    void promedioDeFaltasDeLaLigaConTodasLasFichas() {
+        ReportData d = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY);
+
+        // Fichas cargadas en el test: 26390 (19 faltas), 26396 (9) y 26389 (14) = 42 faltas en 3 partidos.
+        assertThat(d.league().matchesWithSheet()).isEqualTo(3);
+        assertThat(d.league().foulsPerTeamGame()).isEqualTo(42 / 6.0);
+        assertThat(team(d, "CAVS").fouls().leaguePerTeamGame()).isEqualTo(7.0);
+        assertThat(team(d, "CAVS").indicators()).anySatisfy(i -> {
+            assertThat(i.metric()).isEqualTo("Faltas por partido");
+            assertThat(i.value()).isEqualTo(8.0);
+        });
+    }
+
+    @Test
     void sinActasPublicadasNoHayPerfilPorMinuto() {
         TimeProfile tp = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A")
                 .timeProfile();

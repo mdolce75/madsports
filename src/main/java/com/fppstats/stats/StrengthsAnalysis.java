@@ -71,6 +71,10 @@ final class StrengthsAnalysis {
                 league.penaltyPct(), Unit.PERCENT, true, t.setPieces().penaltiesTaken(), "intentos"));
         out.add(relative("Disciplina", "Azules y rojas por partido", t.discipline().cardsPerGame(), "Liga",
                 league.cardsPerTeamGame(), Unit.PER_GAME, false, t.discipline().matches(), "partidos"));
+        if (t.fouls().matches() > 0 && league.matchesWithSheet() > 0) {
+            out.add(relative("Disciplina", "Faltas por partido", t.fouls().ownPerGame(), "Liga",
+                    t.fouls().leaguePerTeamGame(), Unit.PER_GAME, false, t.fouls().matches(), "fichas"));
+        }
         if (tp.hasData()) {
             out.add(relative("Inferioridad", "Minutos con uno menos por partido", tp.shortHandedMinutesPerGame(),
                     "Con uno más", tp.powerPlayMinutesPerGame(), Unit.MINUTES, false, tp.matchesWithSheet(), "fichas"));

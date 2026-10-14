@@ -101,6 +101,16 @@ public class PdfRenderer {
             };
         }
 
+        /** Número con signo: +1,50 / -0,50 / 0,00. */
+        public String signed(double v) {
+            return Math.abs(v) < 0.005 ? "0,00" : String.format(Locale.forLanguageTag("es-AR"), "%+.2f", v);
+        }
+
+        /** Porcentaje de partidos: 3 de 4 -> "75%". */
+        public String share(int part, int total) {
+            return total == 0 ? "-" : String.format(Locale.forLanguageTag("es-AR"), "%.0f%%", 100.0 * part / total);
+        }
+
         public String fraction(int scored, int taken) {
             return taken == 0 ? "-" : scored + "/" + taken;
         }

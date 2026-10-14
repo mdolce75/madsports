@@ -54,6 +54,12 @@ partidos, goleadores/asistidores con % de los goles del equipo, faltas directas 
 disciplina, cara a cara con cada rival, y **goles a favor/en contra y tarjetas propias/de los rivales
 (amarilla, azul y roja por separado) por tramos de 5 minutos**, según las actas.
 
+**Faltas:** faltas de equipo (eventos "FALTA" de las fichas; "FALTA DIRECTA PARA" no cuenta) por partido del
+equipo, de sus rivales en esos mismos partidos y promedio de la liga (todas las fichas de las competiciones del
+informe: la primera vez se leen unas 120 fichas, ~1 minuto; después quedan en cache 24 h). Por tramo de 5′: faltas
+propias y rivales, y cómo iba el equipo al empezar el tramo (diferencia de gol promedio y % de partidos ganando,
+empatando o perdiendo, según el minuto de los goles).
+
 **Inferioridad numérica:** minutos por partido con uno menos y con uno más, desde las fichas: azul = 2′ y roja = 4′
 desde la sanción (las sanciones superpuestas se suman: dos azules a la vez = 4′; una sanción del final del 1T sigue
 en el 2T; se corta al final del partido; la sanción se cumple completa aunque el rival haga un gol). Período 10 de SIDGAD = descanso (la sanción arranca en el 2T); período 11 u otros =

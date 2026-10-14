@@ -123,8 +123,9 @@ class SidgadParserTest {
         assertThat(events).filteredOn(e -> e.type() == EventType.BLUE_CARD).hasSize(4);
         assertThat(events).filteredOn(e -> e.type() == EventType.YELLOW_CARD).hasSize(2);
         assertThat(events).filteredOn(e -> e.type() == EventType.RED_CARD).isEmpty();
-        // Faltas, tiempos muertos y penales no son eventos analizados.
-        assertThat(events).hasSize(21);
+        // Faltas de equipo: 14 ("FALTA DIRECTA PARA" no es una falta). Tiempos muertos y penales no se analizan.
+        assertThat(events).filteredOn(e -> e.type() == EventType.FOUL).hasSize(14);
+        assertThat(events).hasSize(21 + 14);
     }
 
     @Test
