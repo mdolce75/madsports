@@ -62,27 +62,37 @@ public class RegistroService {
         int year = catalog.defaultYear();
         ClubView club = catalog.club(r.clubId(), year);
 
-        Usuario u = new Usuario(usuario, encoder.encode(r.clave()), email, r.nombre().trim(), r.apellido().trim(),
-                club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant());
         if (r.perfil().player()) {
-            String dni = normalizarDni(r.dni());
-            if (r.jugadorId() == null || r.jugadorId() <= 0) {
-                throw new IllegalArgumentException("Elegí tu nombre en la lista de jugadores del club.");
-            }
-            if (usuarios.existsByDni(dni)) {
-                throw new ConflictException("Ya hay un usuario registrado con ese DNI.");
-            }
-            if (usuarios.existsByJugadorId(r.jugadorId())) {
-                throw new ConflictException("Ese jugador ya tiene un usuario registrado.");
-            }
-            if (r.categoria() == null || r.categoria().isBlank() || r.rama() == null || r.rama().isBlank()) {
-                throw new IllegalArgumentException("Elegí la categoría en que jugás.");
-            }
-            RosterPlayer jugador = roster.find(club.id(), year, r.categoria(), r.rama(), r.jugadorId())
-                    .orElseThrow(() -> new IllegalArgumentException("El jugador elegido no figura en " + club.name() + "."));
-            u.vincularJugador(dni, jugador.id(), jugador.name(),
-                    CatalogService.CategoryOption.parse(r.categoria()).level(), r.rama().trim().toUpperCase(Locale.ROOT));
+            return registrarJugador(r, usuario, email, club, year);
         }
+        if (r.nombre() == null || r.nombre().isBlank() || r.apellido() == null || r.apellido().isBlank()) {
+            throw new IllegalArgumentException("El nombre y el apellido son obligatorios.");
+        }
+        return usuarios.save(new Usuario(usuario, encoder.encode(r.clave()), email, r.nombre().trim(),
+                r.apellido().trim(), club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant()));
+    }
+
+    /** Jugador: el nombre y el apellido son los de la FPP (el jugador elegido de la planilla de su equipo). */
+    private Usuario registrarJugador(Registro r, String usuario, String email, ClubView club, int year) {
+        String dni = normalizarDni(r.dni());
+        if (r.jugadorId() == null || r.jugadorId() <= 0) {
+            throw new IllegalArgumentException("Elegí tu nombre en la lista de jugadores del club.");
+        }
+        if (usuarios.existsByDni(dni)) {
+            throw new ConflictException("Ya hay un usuario registrado con ese DNI.");
+        }
+        if (usuarios.existsByJugadorId(r.jugadorId())) {
+            throw new ConflictException("Ese jugador ya tiene un usuario registrado.");
+        }
+        if (r.categoria() == null || r.categoria().isBlank() || r.rama() == null || r.rama().isBlank()) {
+            throw new IllegalArgumentException("Elegí la categoría en que jugás.");
+        }
+        RosterPlayer jugador = roster.find(club.id(), year, r.categoria(), r.rama(), r.jugadorId())
+                .orElseThrow(() -> new IllegalArgumentException("El jugador elegido no figura en " + club.name() + "."));
+        Usuario u = new Usuario(usuario, encoder.encode(r.clave()), email, jugador.firstName(), jugador.lastName(),
+                club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant());
+        u.vincularJugador(dni, jugador.id(), jugador.name(),
+                CatalogService.CategoryOption.parse(r.categoria()).level(), r.rama().trim().toUpperCase(Locale.ROOT));
         return usuarios.save(u);
     }
 

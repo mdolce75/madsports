@@ -68,10 +68,19 @@ public final class Models {
      * @param starter figura en el cinco inicial
      * @param penaltiesScored  penales convertidos (columna PE del acta: "convertidos/tirados")
      * @param directFreeScored libres directos convertidos (columna FD)
+     * @param surname          apellido(s), como figura separado en el acta ("Perez Barbosa"); {@code name} es completo
      */
     public record LineupPlayer(int playerId, String team, boolean home, String number, String name, boolean starter,
                                int goals, int yellowCards, int blueCards, int redCards,
-                               int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken) {
+                               int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken,
+                               String surname) {
+
+        public LineupPlayer(int playerId, String team, boolean home, String number, String name, boolean starter,
+                            int goals, int yellowCards, int blueCards, int redCards,
+                            int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken) {
+            this(playerId, team, home, number, name, starter, goals, yellowCards, blueCards, redCards,
+                    penaltiesScored, penaltiesTaken, directFreeScored, directFreeTaken, "");
+        }
 
         public LineupPlayer(int playerId, String team, boolean home, String number, String name, boolean starter,
                             int goals, int yellowCards, int blueCards, int redCards) {

@@ -152,7 +152,7 @@ class SidgadParserTest {
         assertThat(players).filteredOn(LineupPlayer::home).hasSize(9).allMatch(p -> p.team().equals("VELEZ"));
         assertThat(players).filteredOn(p -> !p.home()).allMatch(p -> p.team().equals("ARGENTINOS JUNIORS"));
         assertThat(players).filteredOn(p -> p.playerId() == 3851).singleElement()
-                .isEqualTo(new LineupPlayer(3851, "VELEZ", true, "07", "Ignacio J Graiño", true, 2, 0, 0, 0));
+                .isEqualTo(new LineupPlayer(3851, "VELEZ", true, "07", "Ignacio J Graiño", true, 2, 0, 0, 0, 0, 0, 0, 0, "Graiño"));
         // Suplente que no jugó de entrada, y la marca de capitán fuera del nombre.
         assertThat(players).filteredOn(p -> p.playerId() == 4156).singleElement()
                 .satisfies(p -> assertThat(p.starter()).isFalse());

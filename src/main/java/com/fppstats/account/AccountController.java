@@ -47,8 +47,8 @@ public class AccountController {
             String clave,
             @NotBlank(message = "El email es obligatorio.") @Email(message = "El email no es válido.")
             @Size(max = 120) String email,
-            @NotBlank(message = "El nombre es obligatorio.") @Size(max = 60) String nombre,
-            @NotBlank(message = "El apellido es obligatorio.") @Size(max = 60) String apellido,
+            @Size(max = 60) String nombre,      // obligatorios para clubes; el jugador los toma de la FPP
+            @Size(max = 60) String apellido,
             @Positive(message = "Elegí el club.") int clubId,
             String dni,
             String categoria,

@@ -100,8 +100,9 @@ La web pide registro e ingreso (Spring Security, sesión con cookie, CSRF con `X
 más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBCNT`, `PLAYERFPP`, `PLAYERFSP`,
 `PLAYERCNT`. Por ahora el registro ofrece solo **Club FPP** o **Jugador FPP**, y uno excluye al otro.
 
-- **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email, nombre, apellido y club,
-  todos obligatorios. Para Jugador FPP también son obligatorios el **DNI** y el **jugador**. El jugador se elige de la
+- **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
+  Club FPP carga además nombre y apellido. Jugador FPP no los carga (se toman del jugador que elige, tal como los
+  separa el acta); en cambio son obligatorios el **DNI** y el **jugador**. El jugador se elige de la
   planilla de un equipo del club (club → categoría → nombre): SIDGAD no publica el DNI, así que la cuenta queda
   vinculada al `id_player` de la FPP. Un jugador y un DNI tienen un solo usuario.
 - **Club FPP** (`/`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos

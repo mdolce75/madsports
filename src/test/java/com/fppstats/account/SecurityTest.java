@@ -63,7 +63,8 @@ class SecurityTest {
         when(catalog.club(74, 2026)).thenReturn(VELEZ);
         when(catalog.club(eq(99), eq(2026))).thenThrow(new IllegalArgumentException("El club 99 no juega en la FPP en 2026."));
         when(roster.find(74, 2026, "PRIMERA", "MASCULINO", 3851))
-                .thenReturn(Optional.of(new RosterPlayer(3851, "Ignacio J Graiño", "Primera Masculino")));
+                .thenReturn(Optional.of(new RosterPlayer(3851, "Ignacio J Graiño", "Ignacio J", "Graiño",
+                        "Primera Masculino")));
     }
 
     Map<String, Object> club(String usuario) {
@@ -72,8 +73,11 @@ class SecurityTest {
         return m;
     }
 
+    /** El jugador no manda nombre ni apellido: se toman del jugador elegido. */
     Map<String, Object> player(String usuario) {
         Map<String, Object> m = club(usuario);
+        m.remove("nombre");
+        m.remove("apellido");
         m.putAll(Map.of("perfil", "PLAYERFPP", "dni", "30.123.456", "categoria", "PRIMERA", "rama", "MASCULINO",
                 "jugadorId", 3851));
         return m;
@@ -136,6 +140,8 @@ class SecurityTest {
         assertThat(u.getDni()).isEqualTo("30123456");
         assertThat(u.getJugadorId()).isEqualTo(3851);
         assertThat(u.getJugadorNombre()).isEqualTo("Ignacio J Graiño");
+        assertThat(u.getNombre()).isEqualTo("Ignacio J");
+        assertThat(u.getApellido()).isEqualTo("Graiño");
         assertThat(u.getCategoria()).isEqualTo("PRIMERA");
         assertThat(u.getRama()).isEqualTo("MASCULINO");
 
@@ -156,6 +162,11 @@ class SecurityTest {
         Map<String, Object> clave = club("pedro");
         clave.put("clave", "corta");
         register(clave).andExpect(status().isBadRequest());
+
+        Map<String, Object> sinNombre = club("pedro");
+        sinNombre.remove("apellido");
+        register(sinNombre).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El nombre y el apellido son obligatorios."));
 
         Map<String, Object> clubInexistente = club("pedro");
         clubInexistente.put("clubId", 99);

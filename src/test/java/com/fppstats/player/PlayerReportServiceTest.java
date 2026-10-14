@@ -205,6 +205,11 @@ class PlayerReportServiceTest {
         // Los 9 citados de Vélez (la tabla de estadísticas solo lista a los goleadores).
         assertThat(roster).hasSize(9).extracting(RosterService.RosterPlayer::id).contains(3851, 4156, 5888);
         assertThat(roster).extracting(RosterService.RosterPlayer::name).isSortedAccordingTo(String.CASE_INSENSITIVE_ORDER);
+        // Nombre y apellido separados como en el acta (apellido compuesto incluido).
+        assertThat(roster).filteredOn(p -> p.id() == 5974).singleElement().satisfies(p -> {
+            assertThat(p.firstName()).isEqualTo("Juan Ignacio");
+            assertThat(p.lastName()).isEqualTo("Perez Barbosa");
+        });
     }
 
     @Test
