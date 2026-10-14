@@ -88,7 +88,10 @@ class AnalysisTools {
                             "penales_pct", round(t.setPieces().penaltyPct())),
                     "disciplina", t.discipline());
             case "rivals" -> t.rivals();
-            case "time_profile" -> t.timeProfile();
+            case "time_profile" -> Map.of(
+                    "perfil", t.timeProfile(),
+                    "minutos_con_uno_menos_por_partido", round(t.timeProfile().shortHandedMinutesPerGame()),
+                    "minutos_con_uno_mas_por_partido", round(t.timeProfile().powerPlayMinutesPerGame()));
             default -> throw new IllegalArgumentException("section inválida: " + section + ". Válidas: " + SECTIONS);
         };
     }

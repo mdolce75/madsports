@@ -85,6 +85,12 @@ public class PdfRenderer {
             return Math.max(a, b);
         }
 
+        /** Minutos con decimales como reloj: 3.25 -> "3:15". */
+        public String clock(double minutes) {
+            long seconds = Math.round(minutes * 60);
+            return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
+        }
+
         public String fraction(int scored, int taken) {
             return taken == 0 ? "-" : scored + "/" + taken;
         }

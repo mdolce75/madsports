@@ -118,6 +118,69 @@ public class StatsEngineTest {
     }
 
     @Test
+    void tiempoConUnoMenosYConUnoMasSegunLasFichas() {
+        // Huracán 13-2 GEBA B (26389): 4 azules a GEBA B (1T 18:21, 2T 01:05, 14:18, 22:37), sin superposición.
+        ClubView geba = new ClubView(76, "GEBA", "GEBA", List.of());
+        TimeProfile gebaB = team(StatsEngine.build(geba, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "GEBA B")
+                .timeProfile();
+        assertThat(gebaB.shortHandedSeconds()).isEqualTo(4 * 120);
+        assertThat(gebaB.powerPlaySeconds()).isZero();
+        assertThat(gebaB.shortHandedMinutesPerGame()).isEqualTo(8.0);
+
+        ClubView huracan = new ClubView(22, "HURA", "HURACAN", List.of());
+        TimeProfile hura = team(StatsEngine.build(huracan, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "HURA")
+                .timeProfile();
+        assertThat(hura.shortHandedSeconds()).isZero();
+        assertThat(hura.powerPlaySeconds()).isEqualTo(4 * 120);
+        // Las amarillas no dejan con uno menos.
+        assertThat(hura.byPeriod().stream().mapToInt(TimeBucket::yellowOwn).sum()).isEqualTo(1);
+    }
+
+    @Test
+    void tarjetasEnElDescansoYDespuesDelPartido() {
+        CompetitionData full = data(779);
+        // Vélez 7-0 Comunicaciones (26396; Vélez 5581, Comunicaciones 5586) más dos sanciones agregadas:
+        // azul a Comunicaciones en el descanso (P10) y roja a Vélez después del partido (P11).
+        List<MatchEvent> events = new java.util.ArrayList<>(full.sheets().get(26396));
+        events.add(new MatchEvent(10, 0, 0, Models.EventType.BLUE_CARD, 5586, 69, "COMU", ""));
+        events.add(new MatchEvent(11, 0, 0, Models.EventType.RED_CARD, 5581, 74, "CAVS", ""));
+        Map<Integer, List<MatchEvent>> sheets = new HashMap<>(full.sheets());
+        sheets.put(26396, events);
+        CompetitionData cd = new CompetitionData(full.competition(), full.standings(), full.standingsDate(),
+                full.matches(), full.players(), sheets);
+
+        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 5", List.of(cd), HOY, 5), "CAVS");
+        TimeProfile tp = velez.timeProfile();
+
+        // Descanso: cuenta en 2T 0-5' y da 2' con uno más desde el inicio del 2T.
+        assertThat(tp.buckets().get(5).blueRival()).isEqualTo(1);
+        assertThat(tp.powerPlaySeconds()).isEqualTo(120);
+        // Después del partido: la roja se cuenta (sin minuto) pero no deja con uno menos.
+        assertThat(tp.unrecorded().redOwn()).isEqualTo(1);
+        assertThat(tp.hasUnrecordedCards()).isTrue();
+        assertThat(tp.shortHandedSeconds()).isZero();
+        assertThat(velez.discipline().redCards()).isEqualTo(1);
+        // Los goles siguen cerrando con el récord.
+        assertThat(tp.totalGoalsFor()).isEqualTo(velez.total().goalsFor());
+    }
+
+    @Test
+    void sancionesSuperpuestasYAlFinalDelPartidoSeCuentanUnaVez() {
+        int match = 2 * 25 * 60;
+        // Dos azules simultáneas: 2' con uno menos (no 4').
+        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{600, 720}, new int[]{600, 720}), match)).isEqualTo(120);
+        // Superpuestas en parte: 10:00-12:00 y 11:00-13:00 = 3'.
+        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{600, 720}, new int[]{660, 780}), match)).isEqualTo(180);
+        // A 1' del final: solo cuenta ese minuto.
+        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{match - 60, match + 60}), match)).isEqualTo(60);
+        // Al final del 1T (24:30) la sanción sigue en el 2T: 2' completos.
+        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{1470, 1590}), match)).isEqualTo(120);
+        // Roja: 4'.
+        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{0, StatsEngine.RED_CARD_SECONDS}), match)).isEqualTo(240);
+        assertThat(StatsEngine.coveredSeconds(List.of(), match)).isZero();
+    }
+
+    @Test
     void ultimosPartidosLimitaElPerfilPorMinuto() {
         TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 1", List.of(data(779)), HOY, 1), "CAVS")
                 .timeProfile();

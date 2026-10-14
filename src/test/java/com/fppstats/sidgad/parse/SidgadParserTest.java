@@ -128,6 +128,19 @@ class SidgadParserTest {
     }
 
     @Test
+    void rojasCargadasFueraDelJuego() {
+        // Argentinos 4-1 Huracán (Apertura J2, 21496): una roja a cada equipo en "P11 00:00" (después del partido).
+        List<MatchEvent> reds = SidgadParser.gameEvents(Fixtures.read("gr_21496.html")).stream()
+                .filter(e -> e.type() == EventType.RED_CARD).toList();
+
+        assertThat(reds).hasSize(2).allSatisfy(e -> {
+            assertThat(e.period()).isEqualTo(11);
+            assertThat(e.minute()).isZero();
+        });
+        assertThat(reds).extracting(MatchEvent::teamId).containsExactlyInAnyOrder(4806, 4805);
+    }
+
+    @Test
     void actaNoPublicada() {
         assertThat(SidgadParser.gameEvents(Fixtures.read("gr_sin_acta.html"))).isEmpty();
     }

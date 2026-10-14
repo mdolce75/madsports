@@ -50,6 +50,11 @@ partidos, goleadores/asistidores con % de los goles del equipo, faltas directas 
 disciplina, cara a cara con cada rival, y **goles a favor/en contra y tarjetas propias/de los rivales
 (amarilla, azul y roja por separado) por tramos de 5 minutos**, según las actas.
 
+**Inferioridad numérica:** minutos por partido con uno menos y con uno más, desde las fichas: azul = 2′ y roja = 4′
+desde la sanción (unión de intervalos; una sanción del final del 1T sigue en el 2T; se corta al final del partido;
+se cuenta la sanción completa). Período 10 de SIDGAD = descanso (la sanción arranca en el 2T); período 11 u otros =
+fuera del juego: la tarjeta se cuenta sin minuto ni inferioridad.
+
 La duración de los períodos sale de `tpo_reg` en el catálogo (20' de Infantil a Juvenil, 25' de Juniors a
 Primera). SIDGAD no publica el acta de todos los partidos: el informe indica cuántas actas se usaron sobre el
 total de partidos jugados.

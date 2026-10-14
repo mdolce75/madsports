@@ -45,11 +45,32 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      * @param unrecorded goles sin minuto conocido: los de partidos sin ficha y los que faltan en fichas incompletas.
      *                   Con esta fila, los goles de la tabla suman lo mismo que el récord. Sus tarjetas no se conocen.
      */
+    /**
+     * @param shortHandedSeconds tiempo total jugado con al menos un jugador menos (azul 2', roja 4'), en los
+     *                           partidos con ficha
+     * @param powerPlaySeconds   tiempo total con al menos un jugador más (sanciones del rival)
+     */
     public record TimeProfile(int periodMinutes, int matchesPlayed, int matchesWithSheet, int goalMismatches,
-                              List<TimeBucket> buckets, List<TimeBucket> byPeriod, TimeBucket unrecorded) {
+                              List<TimeBucket> buckets, List<TimeBucket> byPeriod, TimeBucket unrecorded,
+                              int shortHandedSeconds, int powerPlaySeconds) {
+
+        /** Minutos por partido con uno menos (promedio sobre los partidos con ficha). */
+        public double shortHandedMinutesPerGame() {
+            return matchesWithSheet == 0 ? 0 : shortHandedSeconds / 60.0 / matchesWithSheet;
+        }
+
+        /** Minutos por partido con uno más (promedio sobre los partidos con ficha). */
+        public double powerPlayMinutesPerGame() {
+            return matchesWithSheet == 0 ? 0 : powerPlaySeconds / 60.0 / matchesWithSheet;
+        }
 
         public boolean hasUnrecordedGoals() {
             return unrecorded.goalsFor() + unrecorded.goalsAgainst() > 0;
+        }
+
+        /** Tarjetas cargadas en la ficha fuera del juego (p. ej. después del partido): sin minuto ni inferioridad. */
+        public boolean hasUnrecordedCards() {
+            return unrecorded.cardsOwn() + unrecorded.cardsRival() > 0;
         }
 
         public int totalGoalsFor() {

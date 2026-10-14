@@ -72,6 +72,9 @@ Calculá por torneo y para la temporada completa:
    - Fila **"Sin minuto registrado"**: goles de los partidos sin ficha más los goles del resultado que faltan en fichas incompletas. Sus tarjetas se muestran como "–" (no se conocen).
    - **Total de la tabla = GF y GC del récord** (verificalo).
    - Informá la cobertura: "N fichas de M partidos jugados", y cuántas fichas tienen un total de goles distinto del resultado oficial.
+   - **Período 10 = descanso:** una sanción ahí se cumple desde el inicio del 2T (cuenta en 2T 0-5′). **Período 11 u otro fuera de P1/P2** (p. ej. después del partido): la tarjeta se cuenta en la fila "Sin minuto registrado", sin minuto y sin tiempo con uno menos. En 2026 pasó en Argentinos 4-1 Huracán: una roja a cada equipo en "P11 00:00".
+   - "AMONESTACIÓN VERBAL" no es tarjeta: no se cuenta.
+10. **Inferioridad numérica** (desde las fichas): cada **azul deja al equipo con un jugador menos 2 minutos** y cada **roja 4 minutos**, desde el momento de la sanción; la amarilla no. Calculá, por partido con ficha, el tiempo con **al menos un jugador menos** (unión de intervalos: dos sanciones simultáneas cuentan una vez; una sanción del final del 1T sigue en el 2T; al final del partido se corta) y, con las sanciones del rival, el tiempo con **al menos uno más**. Mostrá el promedio por partido y el total en mm:ss. Se cuenta la sanción completa aunque haya un gol durante la superioridad.
 
 ## 3. Validaciones antes de redactar
 
@@ -105,7 +108,7 @@ Pie de cada página: "Informe elaborado por Mad Sports · Datos: FPP (buenosaire
 6. **Resultados** y **Próximos partidos**.
 7. **Goleadores y asistidores**, con una barra del % de los goles del equipo.
 8. **Goles y tarjetas por tramos de 5 minutos**: tabla con barras verdes (a favor) y rojas (en contra), íconos de tarjeta amarilla, azul y roja, totales por tiempo, fila "Sin minuto registrado", fila Total y la nota de cobertura de fichas.
-9. **Pelota parada** (equipo vs liga) y **Disciplina**.
+9. **Pelota parada** (equipo vs liga), **Disciplina** e **Inferioridad numérica** (minutos por partido y total con uno menos y con uno más).
 10. **Cara a cara con cada rival**.
 11. **Fuentes**: cada competición con su URL `https://www.buenosaires.sidgad.com/league/<idc>`, el contexto de liga (equipos y partidos jugados) y, si hubo 404, la lista de **datos no publicados**.
 

@@ -47,6 +47,13 @@ public final class StatsEngine {
 
     static final int BUCKET_MINUTES = 5;
 
+    /** Tiempo que el equipo juega con uno menos por cada sanción (reglamento de hockey sobre patines). */
+    static final int BLUE_CARD_SECONDS = 2 * 60;
+    static final int RED_CARD_SECONDS = 4 * 60;
+
+    /** Período que SIDGAD usa para el descanso (config_params: all_periods:1,10,2). */
+    static final int HALFTIME_PERIOD = 10;
+
     private static final Comparator<Match> CHRONO = Comparator
             .comparing(Match::date, Comparator.nullsLast(Comparator.naturalOrder()))
             .thenComparing(Match::round);
@@ -193,9 +200,11 @@ public final class StatsEngine {
      * los que tienen ficha.
      */
     private static Discipline disciplineFromSheets(TimeProfile tp) {
-        int yellow = tp.byPeriod().stream().mapToInt(TimeBucket::yellowOwn).sum();
-        int blue = tp.byPeriod().stream().mapToInt(TimeBucket::blueOwn).sum();
-        int red = tp.byPeriod().stream().mapToInt(TimeBucket::redOwn).sum();
+        List<TimeBucket> all = new ArrayList<>(tp.byPeriod());
+        all.add(tp.unrecorded());
+        int yellow = all.stream().mapToInt(TimeBucket::yellowOwn).sum();
+        int blue = all.stream().mapToInt(TimeBucket::blueOwn).sum();
+        int red = all.stream().mapToInt(TimeBucket::redOwn).sum();
         int matches = tp.matchesWithSheet();
         return new Discipline(yellow, blue, red, matches == 0 ? 0 : (double) (blue + red) / matches, matches, true);
     }
@@ -224,6 +233,9 @@ public final class StatsEngine {
         int mismatches = 0;
         int unrecordedFor = 0;
         int unrecordedAgainst = 0;
+        int shortHanded = 0;
+        int powerPlay = 0;
+        int[] unrecordedCards = new int[8];
 
         for (Entry e : entries) {
             TeamRef own = e.team();
@@ -248,19 +260,36 @@ public final class StatsEngine {
                 int goalsInSheet = 0;
                 int ownGoalsInSheet = 0;
                 int rivalGoalsInSheet = 0;
+                int matchPeriod = e.data().competition().periodMinutes();
+                List<int[]> ownSanctions = new ArrayList<>();
+                List<int[]> rivalSanctions = new ArrayList<>();
                 for (MatchEvent ev : events) {
-                    if (ev.period() < 1 || ev.period() > 2) {
-                        continue;
-                    }
                     boolean ours = isOwn(ev, own, rivalTeamId, rivalClubId);
-                    int bucket = (ev.period() - 1) * perPeriod + Math.min(ev.minute() / BUCKET_MINUTES, perPeriod - 1);
                     int column = switch (ev.type()) {
                         case GOAL -> ours ? 0 : 1;
                         case YELLOW_CARD -> ours ? 2 : 5;
                         case BLUE_CARD -> ours ? 3 : 6;
                         case RED_CARD -> ours ? 4 : 7;
                     };
+                    // SIDGAD: período 10 = descanso (la sanción se cumple desde el inicio del 2T); 11 y otros = fuera
+                    // del juego (p. ej. después del partido): la tarjeta cuenta, pero sin minuto ni inferioridad.
+                    int period = ev.period() == HALFTIME_PERIOD ? 2 : ev.period();
+                    int minute = ev.period() == HALFTIME_PERIOD ? 0 : ev.minute();
+                    int second = ev.period() == HALFTIME_PERIOD ? 0 : ev.second();
+                    if (period < 1 || period > 2) {
+                        if (ev.type() != EventType.GOAL) {
+                            unrecordedCards[column]++;
+                        }
+                        continue;
+                    }
+                    int bucket = (period - 1) * perPeriod + Math.min(minute / BUCKET_MINUTES, perPeriod - 1);
                     counts[bucket][column]++;
+                    int seconds = ev.type() == EventType.BLUE_CARD ? BLUE_CARD_SECONDS
+                            : ev.type() == EventType.RED_CARD ? RED_CARD_SECONDS : 0;
+                    if (seconds > 0) {
+                        int start = (period - 1) * matchPeriod * 60 + minute * 60 + second;
+                        (ours ? ownSanctions : rivalSanctions).add(new int[]{start, start + seconds});
+                    }
                     if (ev.type() == EventType.GOAL) {
                         goalsInSheet++;
                         if (ours) {
@@ -276,6 +305,8 @@ public final class StatsEngine {
                 // Ficha incompleta: los goles del resultado que no figuran en ella quedan sin minuto.
                 unrecordedFor += Math.max(0, resultFor - ownGoalsInSheet);
                 unrecordedAgainst += Math.max(0, resultAgainst - rivalGoalsInSheet);
+                shortHanded += coveredSeconds(ownSanctions, 2 * matchPeriod * 60);
+                powerPlay += coveredSeconds(rivalSanctions, 2 * matchPeriod * 60);
             }
         }
 
@@ -296,9 +327,30 @@ public final class StatsEngine {
             }
             byPeriod.add(bucket(period == 1 ? "1er tiempo" : "2do tiempo", period, 0, periodMinutes, sum));
         }
-        TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0,
-                new int[]{unrecordedFor, unrecordedAgainst, 0, 0, 0, 0, 0, 0});
-        return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod, unrecorded);
+        unrecordedCards[0] = unrecordedFor;
+        unrecordedCards[1] = unrecordedAgainst;
+        TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0, unrecordedCards);
+        return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod, unrecorded,
+                shortHanded, powerPlay);
+    }
+
+    /**
+     * Segundos cubiertos por al menos una sanción (unión de intervalos): dos azules a la vez cuentan una vez
+     * como "con uno menos". Una sanción del final del 1T sigue en el 2T; al final del partido se corta.
+     */
+    static int coveredSeconds(List<int[]> intervals, int matchSeconds) {
+        List<int[]> sorted = intervals.stream().sorted(Comparator.comparingInt(i -> i[0])).toList();
+        int total = 0;
+        int coveredUntil = 0;
+        for (int[] i : sorted) {
+            int start = Math.max(i[0], coveredUntil);
+            int end = Math.min(i[1], matchSeconds);
+            if (end > start) {
+                total += end - start;
+            }
+            coveredUntil = Math.max(coveredUntil, Math.min(i[1], matchSeconds));
+        }
+        return total;
     }
 
     private static TimeBucket bucket(String label, int period, int from, int to, int[] c) {

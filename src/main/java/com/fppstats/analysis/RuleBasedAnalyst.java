@@ -69,6 +69,8 @@ public class RuleBasedAnalyst {
                 tp.buckets().stream().max(Comparator.comparingInt(TimeBucket::goalsAgainst)).filter(b -> b.goalsAgainst() > 0)
                         .ifPresent(b -> trend.add(String.format(Locale.ROOT, "%sTramo con más goles en contra: %s (%d).",
                                 prefix, b.label(), b.goalsAgainst())));
+                trend.add(String.format(Locale.ROOT, "%sPor partido juega %.1f min con uno menos y %.1f min con uno más.",
+                        prefix, tp.shortHandedMinutesPerGame(), tp.powerPlayMinutesPerGame()));
             }
             if (!t.form().isEmpty()) {
                 trend.add(prefix + "Últimos resultados: " + String.join(" ", t.form()) + ".");

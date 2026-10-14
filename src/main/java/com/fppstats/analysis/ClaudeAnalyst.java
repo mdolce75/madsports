@@ -49,7 +49,8 @@ public class ClaudeAnalyst {
               minuto) que necesites.
             - time_profile tiene goles a favor/en contra y tarjetas propias/de los rivales por tramos de 5 minutos,
               solo de los partidos con acta publicada (matchesWithSheet de matchesPlayed): aclaralo si no son todos.
-              Amarilla, azul y roja son tarjetas distintas: no las mezcles.
+              Amarilla, azul y roja son tarjetas distintas: no las mezcles. También trae los minutos por partido
+              con uno menos y con uno más por sanciones (azul 2', roja 4'): citá esos valores, no los recalcules.
             - Toda cifra que menciones tiene que salir textualmente de lo que devolvieron las herramientas.
               No calcules ni estimes números nuevos; si un dato no está, no lo menciones.
             - Compará siempre contra el contexto de la liga (promedios) para decir si algo es fortaleza o debilidad.
@@ -240,7 +241,8 @@ public class ClaudeAnalyst {
                 tool(AnalysisTools.TEAM_DETAIL,
                         "Detalle de un equipo del club. section: results (partidos jugados), upcoming (próximos), "
                                 + "players (estadísticas por jugador), set_pieces_discipline, rivals (cara a cara), "
-                                + "time_profile (goles y tarjetas amarillas/azules/rojas por tramos de 5', propios y de rivales).",
+                                + "time_profile (goles y tarjetas amarillas/azules/rojas por tramos de 5', propios y de rivales, "
+                                + "y minutos por partido con uno menos y con uno más).",
                         Map.of("team_code", Map.of("type", "string", "description", "Código del equipo, p. ej. CAVS o CAVS B"),
                                 "section", Map.of("type", "string", "enum", AnalysisTools.SECTIONS)),
                         List.of("team_code", "section")),

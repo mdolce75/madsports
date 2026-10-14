@@ -236,10 +236,11 @@
                 <td th:text="${b.yellowOwn}"></td><td th:text="${b.blueOwn}"></td><td th:text="${b.redOwn}"></td>
                 <td th:text="${b.yellowRival}"></td><td th:text="${b.blueRival}"></td><td th:text="${b.redRival}"></td>
             </tr>
-            <tr th:if="${tp.hasUnrecordedGoals()}" class="unrecorded">
+            <tr th:if="${tp.hasUnrecordedGoals() or tp.hasUnrecordedCards()}" class="unrecorded" th:with="u=${tp.unrecorded}">
                 <td class="l">Sin minuto registrado *</td>
-                <td></td><td th:text="${tp.unrecorded.goalsFor}"></td><td></td><td th:text="${tp.unrecorded.goalsAgainst}"></td>
-                <td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td>
+                <td></td><td th:text="${u.goalsFor}"></td><td></td><td th:text="${u.goalsAgainst}"></td>
+                <td th:text="${u.yellowOwn > 0 ? u.yellowOwn : '–'}"></td><td th:text="${u.blueOwn > 0 ? u.blueOwn : '–'}"></td><td th:text="${u.redOwn > 0 ? u.redOwn : '–'}"></td>
+                <td th:text="${u.yellowRival > 0 ? u.yellowRival : '–'}"></td><td th:text="${u.blueRival > 0 ? u.blueRival : '–'}"></td><td th:text="${u.redRival > 0 ? u.redRival : '–'}"></td>
             </tr>
             <tr class="hl total">
                 <td class="l">Total</td>
@@ -253,6 +254,8 @@
             <span th:if="${tp.goalMismatches > 0}" th:text="|En ${tp.goalMismatches} acta(s) los goles cargados no coinciden con el resultado oficial.|"></span>
             <span th:if="${tp.hasUnrecordedGoals()}">* Goles de partidos sin ficha publicada o que faltan en fichas
                 incompletas: se conoce el resultado pero no el minuto. Las tarjetas de esos partidos no se conocen.</span>
+            <span th:if="${tp.hasUnrecordedCards()}">* Tarjetas cargadas en la ficha fuera del juego (por ejemplo, después
+                del partido): se cuentan, pero no tienen minuto ni generan tiempo con uno menos.</span>
             Tarjetas: <span class="card y"></span> amarilla · <span class="card b"></span> azul · <span class="card r"></span> roja.
         </p>
     </div>
@@ -282,6 +285,19 @@
                         : 'Contadas en las fichas de esos ' + t.discipline.matches + ' partidos. El promedio de la liga es del torneo completo.'}"></p>
                 <p class="muted" th:unless="${t.discipline.fromSheets}">Las amarillas no figuran en las estadísticas del
                     torneo; por partido, ver la tabla de tramos de 5 minutos.</p>
+                <th:block th:if="${t.timeProfile.hasData()}">
+                    <h3>Inferioridad numérica</h3>
+                    <table>
+                        <tr><th></th><th>Por partido</th><th>Total</th></tr>
+                        <tr><td class="l">Con uno menos</td>
+                            <td th:text="${f.clock(t.timeProfile.shortHandedMinutesPerGame())}"></td>
+                            <td th:text="${f.clock(t.timeProfile.shortHandedSeconds / 60.0)}"></td></tr>
+                        <tr><td class="l">Con uno más</td>
+                            <td th:text="${f.clock(t.timeProfile.powerPlayMinutesPerGame())}"></td>
+                            <td th:text="${f.clock(t.timeProfile.powerPlaySeconds / 60.0)}"></td></tr>
+                    </table>
+                    <p class="muted" th:text="|Minutos (mm:ss) con al menos un jugador menos o más por sanciones: azul 2', roja 4'. Según ${t.timeProfile.matchesWithSheet} fichas de ${t.timeProfile.matchesPlayed} partidos; se cuenta la sanción completa.|"></p>
+                </th:block>
             </td>
         </tr>
     </table>
