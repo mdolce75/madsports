@@ -272,6 +272,16 @@ public class StatsEngineTest {
     }
 
     @Test
+    void golesConUnoMenosCoincidenConLosMinutosDeSancion() {
+        ReportData.TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY),
+                "CAVS").timeProfile();
+        ReportData.ShortHanded sh = tp.shortHanded();
+        // Los segundos de sanción por partido suman lo mismo que el total con uno menos del informe.
+        assertThat(sh.seconds()).isEqualTo(tp.shortHandedSeconds());
+        assertThat(sh.matches()).allSatisfy(m -> assertThat(m.secondsShort()).isPositive());
+    }
+
+    @Test
     void segundosGanandoEmpatandoYPerdiendo() {
         int[] seconds = new int[3];
         // Gol propio al 10', del rival al 20' y al 30', partido de 50'.

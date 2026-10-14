@@ -13,24 +13,17 @@
 <body>
 <div class="wrap">
     <div class="topbar">
-        <header class="brand">
-            <!-- Palos de hockey cruzados y bocha -->
-            <svg viewBox="0 0 64 64" aria-hidden="true">
-                <rect width="64" height="64" rx="14" fill="#ff5a1f"/>
-                <path d="M16 14l20 30h10" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M48 14L28 44H18" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="32" cy="52" r="5" fill="#fff"/>
-            </svg>
-            <div><b>Mad Sports</b><small>Hockey sobre patines · FPP</small></div>
-        </header>
-        <div class="userbar" id="userbar"></div>
+        <div id="brand"></div>
+        <div class="userbar" id="userbar">
+            <a class="btn ghost" href="/login.html">Ingresar</a>
+        </div>
     </div>
 
     <section class="hero">
         <span class="tag">Informes de rendimiento</span>
         <h1>Tu equipo,<br><em>en números.</em></h1>
-        <p class="lead">Estadísticas de la Federación Porteña de Patín convertidas en un informe PDF: resultados,
-            goleadores, minuto a minuto, fortalezas y debilidades, con análisis de IA.</p>
+        <p class="lead">Estadísticas de la Federación Porteña de Patín convertidas en informes PDF, para clubes y para
+            jugadores: resultados, goles y tarjetas minuto a minuto, pelota parada, fortalezas y debilidades.</p>
     </section>
 
     <div class="board" aria-hidden="true">
@@ -39,58 +32,38 @@
         <div><strong>IA</strong><span>Análisis escrito</span></div>
     </div>
 
-    <p class="sample">
-        <a class="btn ghost" href="/api/ejemplo.pdf" target="_blank" rel="noopener">Ver informe de ejemplo</a>
-        <span>Datos ficticios, para ver el formato.</span>
-    </p>
+    <h2 class="section-title">Mirá un informe de ejemplo</h2>
+    <p class="hint">Con datos ficticios, para que veas el formato antes de registrarte.</p>
 
-    <form class="sheet" id="form">
-        <div class="sheet-head"><span>Planilla del informe</span><span id="season">Temporada</span></div>
+    <div class="examples">
+        <article class="example">
+            <span class="tag">Club FPP</span>
+            <h3>Informe de club</h3>
+            <ul>
+                <li>Resultados, posiciones, local y visitante</li>
+                <li>Goleadores y reparto del gol</li>
+                <li>Goles, tarjetas y faltas por tramos de 5'</li>
+                <li>Fortalezas y debilidades, con análisis escrito</li>
+            </ul>
+            <a class="btn primary" href="/api/ejemplo.pdf" target="_blank" rel="noopener">Ver ejemplo de club</a>
+        </article>
+        <article class="example">
+            <span class="tag">Jugador FPP</span>
+            <h3>Informe de jugador</h3>
+            <ul>
+                <li>Partidos jugados, ganados, empatados y perdidos</li>
+                <li>Goles y tarjetas por color, con promedios</li>
+                <li>Penales y libres directos</li>
+                <li>Por cada categoría en que jugó y en total</li>
+            </ul>
+            <a class="btn primary" href="/api/ejemplo-jugador.pdf" target="_blank" rel="noopener">Ver ejemplo de jugador</a>
+        </article>
+    </div>
 
-        <div class="field">
-            <label for="anio"><span class="num"><i>1</i></span>Año</label>
-            <select id="anio" required disabled></select>
-        </div>
-        <div class="notice" id="no-data" role="alert" hidden></div>
-
-        <div class="field">
-            <label for="club"><span class="num"><i>2</i></span>Club</label>
-            <select id="club" required disabled><option>Cargando catálogo…</option></select>
-            <p class="hint">Tu club: los informes son de sus equipos.</p>
-        </div>
-
-        <div class="field">
-            <label for="periodo"><span class="num"><i>3</i></span>Período</label>
-            <select id="periodo" required>
-                <option value="TEMPORADA" selected>Apertura + Clausura</option>
-                <option value="APERTURA">Apertura</option>
-                <option value="CLAUSURA">Clausura</option>
-                <option value="ULTIMOS_5">Últimos 5 partidos</option>
-            </select>
-            <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos: récord, resultados, tarjetas y análisis por
-                minuto de esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
-        </div>
-
-        <div class="grid2">
-            <div class="field">
-                <label for="rama"><span class="num"><i>4</i></span>Rama</label>
-                <select id="rama" required disabled></select>
-            </div>
-            <div class="field">
-                <label for="categoria"><span class="num"><i>5</i></span>Categoría</label>
-                <select id="categoria" required disabled></select>
-            </div>
-        </div>
-
-        <button class="go" id="go" type="submit" disabled>Generar informe</button>
-
-        <ul class="steps" id="steps" hidden>
-            <li data-s="EXTRAYENDO">Datos FPP</li>
-            <li data-s="ANALIZANDO">Análisis</li>
-            <li data-s="GENERANDO_PDF">PDF</li>
-        </ul>
-        <div id="status" role="status" aria-live="polite"></div>
-    </form>
+    <div class="cta" id="cta">
+        <a class="go-link" href="/registro.html">Registrarme</a>
+        <p class="alt">¿Ya tenés usuario? <a href="/login.html">Ingresá</a></p>
+    </div>
 
     <footer><b>Mad Sports</b> · Informes elaborados por Mad Sports. Fuente de los datos: Federación Porteña de Patín
         (buenosaires.sidgad.com).</footer>
@@ -98,110 +71,23 @@
 
 <script src="/js/app.js"></script>
 <script>
-    let catalog;
-    let me;
+    $("brand").outerHTML = BRAND;
 
-    const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
-
-    function selectedClub() {
-        return catalog.clubs.find(c => String(c.id) === $("club").value);
-    }
-
-    // Club → Rama → Categoría: solo se ofrecen las ramas en que el club tiene equipo y, dentro de la rama,
-    // sus categorías (con "Infantil A" / "Infantil B" si tiene dos equipos).
-    function fillBranches() {
-        const club = selectedClub();
-        const sel = $("rama");
-        sel.innerHTML = "";
-        const branches = club ? ["MASCULINO", "FEMENINO"].filter(b => club.categories.some(c => c.branches.includes(b))) : [];
-        branches.forEach(b => sel.add(new Option(BRANCH_LABEL[b] || b, b)));
-        sel.disabled = branches.length === 0;
-        fillCategories();
-    }
-
-    function fillCategories() {
-        const club = selectedClub();
-        const branch = $("rama").value;
-        const sel = $("categoria");
-        sel.innerHTML = "";
-        const options = club && branch ? club.categories.filter(c => c.branches.includes(branch)) : [];
-        options.forEach(c => sel.add(new Option(c.label, c.key)));
-        sel.disabled = options.length === 0;
-        $("go").disabled = options.length === 0;
-    }
-
-    // Carga el catálogo del año (sin año: el más reciente con datos) y arma los selectores.
-    async function loadCatalog(year) {
-        ["club", "categoria", "rama"].forEach(id => { $(id).disabled = true; });
-        $("go").disabled = true;
-        $("club").innerHTML = "<option>Cargando catálogo…</option>";
-        $("categoria").innerHTML = "";
-        $("rama").innerHTML = "";
-        try {
-            const res = await fetch("/api/catalogo" + (year ? "?anio=" + year : ""));
-            if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
-            catalog = await res.json();
-            fillYears();
-            $("season").textContent = "Temporada " + catalog.year;
-            const noData = $("no-data");
-            noData.hidden = catalog.available;
-            noData.textContent = catalog.available ? "" : catalog.message;
-            const sel = $("club");
-            sel.innerHTML = "";
-            if (!catalog.available || catalog.clubs.length === 0) {
-                sel.add(new Option("Sin información para " + catalog.year));
-                return;
-            }
-            // El usuario CLUBFPP saca informes solo de su club: el selector queda fijo.
-            const mine = catalog.clubs.find(c => c.id === me.club.id);
-            if (!mine) {
-                sel.add(new Option(me.club.nombre));
-                noData.hidden = false;
-                noData.textContent = `${me.club.nombre} no tiene equipos en la FPP en ${catalog.year}.`;
-                return;
-            }
-            sel.add(new Option(`${mine.name} (${mine.code})`, mine.id));
-            fillBranches();
-        } catch (e) {
-            status("No se pudo cargar el catálogo: " + e.message, true);
-        }
-    }
-
-    function fillYears() {
-        const sel = $("anio");
-        sel.innerHTML = "";
-        catalog.years.forEach(y => sel.add(new Option(y, y, false, y === catalog.year)));
-        sel.disabled = false;
-    }
-
-    $("anio").addEventListener("change", () => { status(""); loadCatalog($("anio").value); });
-    $("rama").addEventListener("change", fillCategories);
-    $("periodo").addEventListener("change", () => { $("periodo-hint").hidden = $("periodo").value !== "ULTIMOS_5"; });
-    $("form").addEventListener("submit", async ev => {
-        ev.preventDefault();
-        $("go").disabled = true;
-        $("steps").hidden = false;
-        showStep("PENDIENTE");
-        status("Enviando…");
-        try {
-            const body = await postJson("/api/informes", {
-                clubId: Number($("club").value),
-                categoria: $("categoria").value,
-                rama: $("rama").value,
-                periodo: $("periodo").value,
-                anio: Number($("anio").value)
-            });
-            showReady(await poll(`/api/informes/${body.id}`));
-        } catch (e) {
-            status(e.message, true);
-        } finally {
-            $("go").disabled = false;
-        }
-    });
-    requireProfile("CLUBFPP").then(s => {
-        if (!s) return;
-        me = s;
-        loadCatalog();
+    // Con sesión: acceso directo a sus informes en lugar de ingresar/registrarse.
+    session().then(s => {
+        if (!s.autenticado || s.inicio.startsWith("/login.html")) return;
+        renderUserBar(s);
+        const go = document.createElement("a");
+        go.className = "btn primary";
+        go.href = s.inicio;
+        go.textContent = "Mis informes";
+        $("userbar").prepend(go);
+        $("cta").innerHTML = "";
+        const link = document.createElement("a");
+        link.className = "go-link";
+        link.href = s.inicio;
+        link.textContent = "Ir a mis informes";
+        $("cta").append(link);
     });
 </script>
 </body>

@@ -20,11 +20,6 @@
         <p class="lead">Ingresá para generar los informes de tu club o tus estadísticas como jugador.</p>
     </section>
 
-    <p class="sample">
-        <a class="btn ghost" href="/api/ejemplo.pdf" target="_blank" rel="noopener">Ejemplo de club</a>
-        <a class="btn ghost" href="/api/ejemplo-jugador.pdf" target="_blank" rel="noopener">Ejemplo de jugador</a>
-        <span>Datos ficticios, para ver el formato.</span>
-    </p>
 
     <form class="sheet" id="form" novalidate>
         <div class="sheet-head"><span>Ingresar</span><span></span></div>
@@ -41,7 +36,7 @@
 
         <button class="go" id="go" type="submit">Ingresar</button>
         <div id="status" role="status" aria-live="polite"></div>
-        <p class="alt">¿No tenés usuario? <a href="/registro.html">Registrate</a></p>
+        <p class="alt">¿No tenés usuario? <a href="/registro.html">Registrate</a> · <a href="/">Volver al inicio</a></p>
     </form>
 
     <footer><b>Mad Sports</b> · Informes elaborados por Mad Sports. Fuente de los datos: Federación Porteña de Patín
@@ -59,7 +54,7 @@
 
     // Si ya hay sesión, directo a la pantalla de su perfil.
     session().then(s => {
-        if (s.autenticado && s.inicio !== "/login.html?sinPerfil") location.replace(s.inicio);
+        if (s.autenticado && !s.inicio.startsWith("/login.html")) location.replace(s.inicio);
     });
 
     $("form").addEventListener("submit", async ev => {

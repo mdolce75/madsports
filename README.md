@@ -74,6 +74,16 @@ desde la sanción (las sanciones superpuestas se suman: dos azules a la vez = 4�
 en el 2T; se corta al final del partido; la sanción se cumple completa aunque el rival haga un gol). Período 10 de SIDGAD = descanso (la sanción arranca en el 2T); período 11 u otros =
 fuera del juego: la tarjeta se cuenta sin minuto ni inferioridad.
 
+**Goles con uno menos** (informe de club y de jugador): por cada partido con sanciones (del equipo; en el informe de
+jugador, las suyas) se informa:
+- cuántos goles recibió y cuántos hizo mientras duraba la sanción;
+- cómo terminó el partido;
+- en total: partidos, goles recibidos cada 10' con uno menos contra el resto del tiempo, y ganados, empatados y
+  perdidos.
+
+Un gol cuenta si cae dentro de una sanción. Cuando hay sanciones superpuestas, para contar los goles se toma el
+tiempo en que hubo al menos uno menos.
+
 **Gráficos:** el informe incluye 6 gráficos de barras y de dona, generados en el servidor con Java2D
 (`report/Charts.java`) como PNG embebidos en el PDF. Son: dona de resultados (G/E/P), barras de diferencia de gol
 partido a partido, dona de reparto del gol (top 5 y "Otros"), columnas de goles a favor y en contra por tramo de 5′,
@@ -105,7 +115,8 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   separa el acta); en cambio son obligatorios el **DNI** y el **jugador**. El jugador se elige de la
   planilla de un equipo del club (club → categoría → nombre): SIDGAD no publica el DNI, así que la cuenta queda
   vinculada al `id_player` de la FPP. Un jugador y un DNI tienen un solo usuario.
-- **Club FPP** (`/`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
+- **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.
+- **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
 - **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
   período (Apertura, Clausura o Apertura + Clausura) y genera un PDF que trae, por cada categoría del club en que

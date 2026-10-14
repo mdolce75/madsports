@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!--/* Goles con uno menos: lo usan el informe de club (sanciones del equipo) y el de jugador (sus sanciones).
+       sh = ReportData.ShortHanded; who = "el equipo" o "el jugador" para el texto. */-->
+<div th:fragment="shortHanded(sh, who)" class="nobreak">
+    <th:block th:if="${sh.hasData()}">
+        <p th:text="|Con uno menos ${sh.matches.size() == 1 ? 'en 1 partido' : 'en ' + sh.matches.size() + ' partidos'} (${f.clock(sh.seconds() / 60.0)} de sanción): recibió ${sh.goalsAgainst() == 1 ? '1 gol' : sh.goalsAgainst() + ' goles'}${sh.matchesConceding() > 0 ? ' en ' + sh.matchesConceding() + (sh.matchesConceding() == 1 ? ' partido' : ' partidos') : ''} e hizo ${sh.goalsFor() == 1 ? '1' : sh.goalsFor()}. Esos partidos terminaron ${sh.won()} ganados, ${sh.drawn()} empatados y ${sh.lost()} perdidos.|">Resumen</p>
+        <table>
+            <tr><th>Partidos con uno menos</th><th>Con goles en contra</th><th>Goles recibidos</th><th>Goles a favor</th>
+                <th>Recibidos cada 10' con uno menos</th><th>Con el equipo completo</th><th>G-E-P</th></tr>
+            <tr>
+                <td th:text="${sh.matches.size()}"></td>
+                <td th:text="${sh.matchesConceding()}"></td>
+                <td th:text="${sh.goalsAgainst()}"></td>
+                <td th:text="${sh.goalsFor()}"></td>
+                <td th:text="${f.dec(sh.againstPer10Short())}"></td>
+                <td th:text="${sh.otherSeconds > 0 ? f.dec(sh.againstPer10Rest()) : '-'}"></td>
+                <td th:text="|${sh.won()}-${sh.drawn()}-${sh.lost()}|"></td>
+            </tr>
+        </table>
+        <table>
+            <tr><th>Fecha</th><th class="l">Rival</th><th>L/V</th><th>Sanciones</th><th>Con uno menos</th>
+                <th>Goles recibidos</th><th>Goles a favor</th><th>Resultado final</th><th></th></tr>
+            <tr th:each="m : ${sh.matches}">
+                <td th:text="${m.date == null ? '-' : f.date(m.date)}"></td>
+                <td class="l" th:text="${m.rival}"></td>
+                <td th:text="${m.home ? 'L' : 'V'}"></td>
+                <td th:text="${m.sanctions}"></td>
+                <td th:text="${f.clock(m.secondsShort / 60.0)}"></td>
+                <td th:text="${m.goalsAgainst}"></td>
+                <td th:text="${m.goalsFor}"></td>
+                <td th:text="|${m.finalFor} - ${m.finalAgainst}|"></td>
+                <td><span th:class="|chip ${m.result()}|" th:text="${m.result()}">G</span></td>
+            </tr>
+        </table>
+        <p class="muted" th:text="|Azul 2', roja 4' desde el minuto de la tarjeta según el acta; la sanción se cumple completa aunque haya gol y las superpuestas se suman. Los goles se cuentan si caen dentro de la sanción. La comparación con el equipo completo es sobre el resto del tiempo de los partidos con acta${who == 'el jugador' ? ' que jugó' : ''}.|"></p>
+    </th:block>
+    <p class="muted" th:if="${!sh.hasData()}"
+       th:text="${who == 'el jugador' ? 'No cumplió sanciones (azul o roja) con minuto registrado en el acta.' : 'El equipo no quedó con uno menos en los partidos con acta.'}"></p>
+</div>
+</body>
+</html>

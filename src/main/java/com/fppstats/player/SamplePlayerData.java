@@ -122,6 +122,16 @@ public final class SamplePlayerData {
                     ev.add(event(rnd, EventType.RED_CARD, base));
                 }
             }
+            // Goles del rival y de los compañeros, con minuto (para "goles con uno menos").
+            for (int g = 0; g < against; g++) {
+                ev.add(new MatchEvent(1 + rnd.nextInt(2), rnd.nextInt(PERIOD_MINUTES), rnd.nextInt(60), EventType.GOAL,
+                        base + rival, rival + 1, TEAMS[rival][0], "", 0));
+            }
+            int teammates = own - lineup.stream().filter(p -> p.playerId() == PLAYER_ID).mapToInt(LineupPlayer::goals).sum();
+            for (int g = 0; g < teammates; g++) {
+                ev.add(new MatchEvent(1 + rnd.nextInt(2), rnd.nextInt(PERIOD_MINUTES), rnd.nextInt(60), EventType.GOAL,
+                        base, CLUB_ID, "CEJ", "", 2));
+            }
             sheets.put(idp, lineup);
             events.put(idp, ev);
         }

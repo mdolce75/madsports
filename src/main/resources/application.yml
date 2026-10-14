@@ -15,6 +15,9 @@ spring:
   web:
     resources:
       cache:
+        # Los archivos del jar tienen fecha fija (1980, build reproducible): validar por fecha haría que el navegador
+        # se quede con versiones viejas. Sin Last-Modified y con no-cache, cada visita baja la versión actual.
+        use-last-modified: false
         cachecontrol:
           no-cache: true   # la web se revalida en cada visita: los cambios se ven sin limpiar cache
 

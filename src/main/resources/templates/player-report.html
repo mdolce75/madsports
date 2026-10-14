@@ -162,6 +162,9 @@
     </table>
     <p class="muted">Amarilla, azul y roja se cuentan por separado; "por PJ" es el promedio por partido jugado.</p>
 
+    <h2>Goles con uno menos por sus sanciones</h2>
+    <div th:replace="~{fragments/short-handed :: shortHanded(${r.shortHanded}, 'el jugador')}"></div>
+
     <div class="nobreak">
         <h2>Penales y libres directos</h2>
         <th:block th:if="${r.total.hasSetPieces()}" th:with="t=${r.total}">

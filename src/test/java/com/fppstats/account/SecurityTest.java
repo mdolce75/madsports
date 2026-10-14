@@ -99,7 +99,10 @@ class SecurityTest {
 
     @Test
     void sinSesionLasPaginasVanAlLoginYLaApiResponde401() throws Exception {
-        mvc.perform(get("/")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login.html"));
+        // La home es pública (con los informes de ejemplo); la pantalla de club pide sesión.
+        mvc.perform(get("/")).andExpect(status().isOk());
+        mvc.perform(get("/api/ejemplo.pdf")).andExpect(status().isOk());
+        mvc.perform(get("/club.html")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login.html"));
         mvc.perform(get("/jugador.html")).andExpect(redirectedUrlPattern("**/login.html"));
         mvc.perform(get("/login.html")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());
@@ -119,7 +122,7 @@ class SecurityTest {
         assertThat(u.getClubNombre()).isEqualTo("VELEZ");
         assertThat(u.getDni()).isNull();
 
-        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/"));
+        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/club.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Usuario o clave incorrectos."));
     }
@@ -202,10 +205,10 @@ class SecurityTest {
 
     @Test
     void cadaPerfilVaASuPantalla() throws Exception {
-        mvc.perform(get("/").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/jugador.html"));
+        mvc.perform(get("/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/jugador.html"));
         mvc.perform(get("/api/informes/" + UUID.randomUUID()).with(user("j").authorities(() -> "PLAYERFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/"));
+        mvc.perform(get("/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/club.html"));
         mvc.perform(get("/api/jugador/informes/" + UUID.randomUUID()).with(user("c").authorities(() -> "CLUBFPP")))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/jugador.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
@@ -219,6 +222,6 @@ class SecurityTest {
                 .andExpect(jsonPath("$.perfiles[0]").value("CLUBFPP"))
                 .andExpect(jsonPath("$.club.id").value(74))
                 .andExpect(jsonPath("$.club.nombre").value("VELEZ"))
-                .andExpect(jsonPath("$.inicio").value("/"));
+                .andExpect(jsonPath("$.inicio").value("/club.html"));
     }
 }

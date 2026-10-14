@@ -54,7 +54,7 @@ function renderUserBar(s) {
     out.textContent = "Salir";
     out.addEventListener("click", async () => {
         await api("/api/logout", {method: "POST"});
-        location.replace("/login.html");
+        location.replace("/");
     });
     bar.append(who, out);
 }

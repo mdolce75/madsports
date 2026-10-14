@@ -54,11 +54,11 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper json) throws Exception {
         http
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/login.html", "/registro.html", "/css/**", "/js/**", "/error",
+                        .requestMatchers("/", "/index.html", "/login.html", "/registro.html", "/css/**", "/js/**", "/error",
                                 "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
                                 "/api/ejemplo-jugador.pdf")
                         .permitAll()
-                        .requestMatchers("/", "/index.html", "/api/informes", "/api/informes/**")
+                        .requestMatchers("/club.html", "/api/informes", "/api/informes/**")
                         .hasAuthority(Perfil.CLUBFPP.name())
                         .requestMatchers("/jugador.html", "/api/jugador/**").hasAuthority(Perfil.PLAYERFPP.name())
                         .anyRequest().authenticated())
@@ -107,7 +107,7 @@ public class SecurityConfig {
     /** Pantalla de inicio según el perfil del usuario. */
     public static String home(Collection<? extends GrantedAuthority> authorities) {
         if (has(authorities, Perfil.CLUBFPP)) {
-            return "/";
+            return "/club.html";
         }
         if (has(authorities, Perfil.PLAYERFPP)) {
             return "/jugador.html";

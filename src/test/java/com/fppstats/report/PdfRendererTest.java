@@ -32,6 +32,10 @@ class PdfRendererTest {
         AnalysisResult analysis = rules.analyze(data);
 
         String html = renderer.html(data, analysis);
+        // Con actas (Primera Masculino, Clausura): sección de goles con uno menos.
+        ReportData conActas = StatsEngine.build(StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
+                List.of(StatsEngineTest.data(779)), StatsEngineTest.HOY);
+        assertThat(renderer.html(conActas, rules.analyze(conActas))).contains("Goles con uno menos");
         assertThat(html).contains("VELEZ (CAVS)", "VELEZ A (CAVS A)", "VELEZ B (CAVS B)",
                 "Goleadores y asistidores", "Pelota parada", "Cara a cara", "Análisis: Reglas");
 
@@ -60,6 +64,8 @@ class PdfRendererTest {
                 new ReportData.ClubInfo(74, "CAVS", "VELEZ", Crests.sample("CV")), 2026, "Apertura + Clausura",
                 StatsEngineTest.HOY, List.of(juniors, primera),
                 new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1), minutes,
+                new ReportData.ShortHanded(List.of(new ReportData.ShortHandedMatch(StatsEngineTest.HOY,
+                        "ARGENTINOS JUNIORS", true, "1 azul", 120, 1, 0, 2, 4)), 2880, 3),
                 List.of(new PlayerReport.MatchRow(StatsEngineTest.HOY, "Primera Masculino", "Clausura",
                         "ARGENTINOS JUNIORS", true, 2, 4, "P", true, 2, 1, 1, 0)),
                 List.of("Juniors Masculino: 1 partido del equipo no tiene acta publicada; si jugó, no está contado."));
@@ -68,7 +74,8 @@ class PdfRendererTest {
         assertThat(html).contains("Ignacio J Graiño", "VELEZ · Temporada 2026 · Apertura + Clausura",
                 "Partidos jugados", "Goles", "Tarjetas recibidas", "Partido a partido", "Juniors Masculino",
                 "no tiene acta publicada", "Escudo de VELEZ", "Penales y libres directos",
-                "Goles y tarjetas por tramos de 5 minutos", "Sin minuto registrado", "2T 20-25");
+                "Goles y tarjetas por tramos de 5 minutos", "Sin minuto registrado", "2T 20-25",
+                "Goles con uno menos por sus sanciones", "Esos partidos terminaron 0 ganados, 0 empatados y 1 perdidos");
         // Escudo, donas de resultados y tarjetas, donas de penales y libres, y goles y tarjetas por tramo.
         assertThat(html.split("src=\"data:image/png;base64,", -1)).hasSize(7 + 1);
 

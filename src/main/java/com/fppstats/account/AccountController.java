@@ -61,7 +61,7 @@ public class AccountController {
                               String inicio) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
-                "/login.html");
+                "/");
     }
 
     private final RegistroService registro;

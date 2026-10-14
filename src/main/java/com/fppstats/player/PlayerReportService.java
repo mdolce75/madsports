@@ -15,6 +15,8 @@ import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Models.LineupPlayer;
 import com.fppstats.sidgad.model.Models.Match;
 import com.fppstats.sidgad.model.Models.MatchEvent;
+import com.fppstats.sidgad.model.Models.EventType;
+import com.fppstats.stats.ShortHandedCalc;
 import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.sidgad.parse.SidgadParser;
 import com.fppstats.stats.ReportData;
@@ -253,6 +255,7 @@ public class PlayerReportService {
                 .mapToInt(in -> in.competition().periodMinutes() > 0 ? in.competition().periodMinutes()
                         : Competition.DEFAULT_PERIOD_MINUTES)
                 .max().orElse(Competition.DEFAULT_PERIOD_MINUTES));
+        ShortHandedCalc shortHanded = new ShortHandedCalc();
         for (TeamInput in : inputs) {
             int won = 0, drawn = 0, lost = 0, goals = 0, yellow = 0, blue = 0, red = 0, played = 0, withoutSheet = 0;
             int penScored = 0, penTaken = 0, fdScored = 0, fdTaken = 0;
@@ -285,8 +288,9 @@ public class PlayerReportService {
                 penTaken += p.penaltiesTaken();
                 fdScored += p.directFreeScored();
                 fdTaken += p.directFreeTaken();
-                minutes.add(p, in.events().getOrDefault(m.idp(), List.of()).stream()
-                        .filter(e -> e.playerId() == q.playerId()).toList());
+                List<MatchEvent> matchEvents = in.events().getOrDefault(m.idp(), List.of());
+                minutes.add(p, matchEvents.stream().filter(e -> e.playerId() == q.playerId()).toList());
+                addShortHanded(shortHanded, q, in, m, home, matchEvents, gf, ga);
                 rows.add(new MatchRow(m.date(), in.category(),
                         in.competition().torneo() == null ? "" : in.competition().torneo().label(),
                         home ? m.awayName() : m.homeName(), home, gf, ga, result,
@@ -322,7 +326,44 @@ public class PlayerReportService {
             }
         }
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
-                categories, total, minutes.result(), rows, notes);
+                categories, total, minutes.result(), shortHanded.result(), rows, notes);
+    }
+
+    /**
+     * Sanciones del jugador (azul 2', roja 4') en el partido y goles de cada equipo mientras las cumplía. Solo con
+     * los eventos del acta: sin eventos no se conoce el minuto, y el partido no se cuenta.
+     */
+    private static void addShortHanded(ShortHandedCalc calc, Query q, TeamInput in, Match m, boolean home,
+                                       List<MatchEvent> events, int gf, int ga) {
+        if (events.isEmpty()) {
+            return;
+        }
+        int period = in.competition().periodMinutes() > 0 ? in.competition().periodMinutes()
+                : Competition.DEFAULT_PERIOD_MINUTES;
+        List<int[]> sanctions = new ArrayList<>();
+        List<Integer> own = new ArrayList<>();
+        List<Integer> rival = new ArrayList<>();
+        int blues = 0;
+        int reds = 0;
+        for (MatchEvent e : events) {
+            int p = e.period() == HALFTIME_PERIOD ? 2 : e.period();
+            if (p < 1 || p > 2) {
+                continue;
+            }
+            int t = (p - 1) * period * 60 + (e.period() == HALFTIME_PERIOD ? 0 : e.minute() * 60 + e.second());
+            if (e.type() == EventType.GOAL) {
+                boolean ours = e.teamId() > 0 ? e.teamId() == in.teamId() : e.clubId() == q.clubId();
+                (ours ? own : rival).add(t);
+            } else if (e.playerId() == q.playerId()
+                    && (e.type() == EventType.BLUE_CARD || e.type() == EventType.RED_CARD)) {
+                boolean blue = e.type() == EventType.BLUE_CARD;
+                sanctions.add(new int[]{t, t + (blue ? 120 : 240)});
+                blues += blue ? 1 : 0;
+                reds += blue ? 0 : 1;
+            }
+        }
+        calc.add(m.date(), home ? m.awayName() : m.homeName(), home, sanctions, blues, reds, own, rival,
+                2 * period * 60, gf, ga);
     }
 
     /**

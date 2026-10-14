@@ -52,6 +52,83 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     }
 
     /**
+     * Un partido en que el equipo quedó con uno menos (en el informe de jugador: por sus propias sanciones).
+     *
+     * @param sanctions     "1 azul", "2 azules", "1 azul y 1 roja"
+     * @param secondsShort  segundos de sanción (las superpuestas se suman)
+     * @param goalsAgainst  goles recibidos mientras duraba la sanción
+     * @param goalsFor      goles a favor mientras duraba la sanción
+     * @param finalFor      resultado final del partido (a favor / en contra)
+     */
+    public record ShortHandedMatch(LocalDate date, String rival, boolean home, String sanctions, int secondsShort,
+                                   int goalsAgainst, int goalsFor, int finalFor, int finalAgainst) {
+
+        /** G, E o P: cómo terminó el partido. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public String result() {
+            return finalFor > finalAgainst ? "G" : finalFor == finalAgainst ? "E" : "P";
+        }
+    }
+
+    /**
+     * Goles recibidos con uno menos y cómo terminaron esos partidos.
+     *
+     * @param otherSeconds      tiempo jugado sin inferioridad en los partidos con acta (para comparar)
+     * @param otherGoalsAgainst goles recibidos en ese tiempo
+     */
+    public record ShortHanded(List<ShortHandedMatch> matches, int otherSeconds, int otherGoalsAgainst) {
+
+        public static final ShortHanded EMPTY = new ShortHanded(List.of(), 0, 0);
+
+        public boolean hasData() {
+            return !matches.isEmpty();
+        }
+
+        public int seconds() {
+            return matches.stream().mapToInt(ShortHandedMatch::secondsShort).sum();
+        }
+
+        public int goalsAgainst() {
+            return matches.stream().mapToInt(ShortHandedMatch::goalsAgainst).sum();
+        }
+
+        public int goalsFor() {
+            return matches.stream().mapToInt(ShortHandedMatch::goalsFor).sum();
+        }
+
+        /** Partidos en que recibió al menos un gol con uno menos. */
+        public int matchesConceding() {
+            return (int) matches.stream().filter(m -> m.goalsAgainst() > 0).count();
+        }
+
+        public int won() {
+            return count("G");
+        }
+
+        public int drawn() {
+            return count("E");
+        }
+
+        public int lost() {
+            return count("P");
+        }
+
+        /** Goles recibidos cada 10 minutos con uno menos, y con el equipo completo. */
+        public double againstPer10Short() {
+            int s = seconds();
+            return s == 0 ? 0 : goalsAgainst() * 600.0 / s;
+        }
+
+        public double againstPer10Rest() {
+            return otherSeconds == 0 ? 0 : otherGoalsAgainst * 600.0 / otherSeconds;
+        }
+
+        private int count(String result) {
+            return (int) matches.stream().filter(m -> m.result().equals(result)).count();
+        }
+    }
+
+    /**
      * Faltas propias según cómo iba el partido en el minuto de la falta, y tiempo jugado en cada situación
      * (para comparar en faltas cada 10 minutos: un equipo que pasa mucho tiempo ganando acumula más faltas "ganando").
      */
@@ -146,7 +223,8 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      */
     public record TimeProfile(int periodMinutes, int matchesPlayed, int matchesWithSheet, int goalMismatches,
                               List<TimeBucket> buckets, List<TimeBucket> byPeriod, TimeBucket unrecorded,
-                              int shortHandedSeconds, int powerPlaySeconds, FoulSituation foulSituation) {
+                              int shortHandedSeconds, int powerPlaySeconds, FoulSituation foulSituation,
+                              ShortHanded shortHanded) {
 
         /** Minutos por partido con uno menos (promedio sobre los partidos con ficha). */
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)
