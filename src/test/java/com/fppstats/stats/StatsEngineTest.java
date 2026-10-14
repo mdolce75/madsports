@@ -165,19 +165,19 @@ public class StatsEngineTest {
     }
 
     @Test
-    void sancionesSuperpuestasYAlFinalDelPartidoSeCuentanUnaVez() {
+    void sancionesSuperpuestasSeSumanYAlFinalDelPartidoSeCortan() {
         int match = 2 * 25 * 60;
-        // Dos azules simultáneas: 2' con uno menos (no 4').
-        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{600, 720}, new int[]{600, 720}), match)).isEqualTo(120);
-        // Superpuestas en parte: 10:00-12:00 y 11:00-13:00 = 3'.
-        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{600, 720}, new int[]{660, 780}), match)).isEqualTo(180);
+        // Dos azules simultáneas: se acumulan, 4'.
+        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{600, 720}, new int[]{600, 720}), match)).isEqualTo(240);
+        // Superpuestas en parte: 10:00-12:00 y 11:00-13:00 = 2' + 2'.
+        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{600, 720}, new int[]{660, 780}), match)).isEqualTo(240);
         // A 1' del final: solo cuenta ese minuto.
-        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{match - 60, match + 60}), match)).isEqualTo(60);
+        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{match - 60, match + 60}), match)).isEqualTo(60);
         // Al final del 1T (24:30) la sanción sigue en el 2T: 2' completos.
-        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{1470, 1590}), match)).isEqualTo(120);
+        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{1470, 1590}), match)).isEqualTo(120);
         // Roja: 4'.
-        assertThat(StatsEngine.coveredSeconds(List.of(new int[]{0, StatsEngine.RED_CARD_SECONDS}), match)).isEqualTo(240);
-        assertThat(StatsEngine.coveredSeconds(List.of(), match)).isZero();
+        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{0, StatsEngine.RED_CARD_SECONDS}), match)).isEqualTo(240);
+        assertThat(StatsEngine.sanctionSeconds(List.of(), match)).isZero();
     }
 
     @Test

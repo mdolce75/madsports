@@ -305,8 +305,8 @@ public final class StatsEngine {
                 // Ficha incompleta: los goles del resultado que no figuran en ella quedan sin minuto.
                 unrecordedFor += Math.max(0, resultFor - ownGoalsInSheet);
                 unrecordedAgainst += Math.max(0, resultAgainst - rivalGoalsInSheet);
-                shortHanded += coveredSeconds(ownSanctions, 2 * matchPeriod * 60);
-                powerPlay += coveredSeconds(rivalSanctions, 2 * matchPeriod * 60);
+                shortHanded += sanctionSeconds(ownSanctions, 2 * matchPeriod * 60);
+                powerPlay += sanctionSeconds(rivalSanctions, 2 * matchPeriod * 60);
             }
         }
 
@@ -335,20 +335,14 @@ public final class StatsEngine {
     }
 
     /**
-     * Segundos cubiertos por al menos una sanción (unión de intervalos): dos azules a la vez cuentan una vez
-     * como "con uno menos". Una sanción del final del 1T sigue en el 2T; al final del partido se corta.
+     * Segundos de sanción: se suma cada sanción, aunque se superponga con otra (dos azules a la vez = 4').
+     * La sanción se cumple completa aunque el rival haga un gol. Una sanción del final del 1T sigue en el 2T;
+     * al final del partido se corta.
      */
-    static int coveredSeconds(List<int[]> intervals, int matchSeconds) {
-        List<int[]> sorted = intervals.stream().sorted(Comparator.comparingInt(i -> i[0])).toList();
+    static int sanctionSeconds(List<int[]> intervals, int matchSeconds) {
         int total = 0;
-        int coveredUntil = 0;
-        for (int[] i : sorted) {
-            int start = Math.max(i[0], coveredUntil);
-            int end = Math.min(i[1], matchSeconds);
-            if (end > start) {
-                total += end - start;
-            }
-            coveredUntil = Math.max(coveredUntil, Math.min(i[1], matchSeconds));
+        for (int[] i : intervals) {
+            total += Math.max(0, Math.min(i[1], matchSeconds) - Math.max(i[0], 0));
         }
         return total;
     }

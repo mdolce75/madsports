@@ -46,9 +46,9 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      *                   Con esta fila, los goles de la tabla suman lo mismo que el récord. Sus tarjetas no se conocen.
      */
     /**
-     * @param shortHandedSeconds tiempo total jugado con al menos un jugador menos (azul 2', roja 4'), en los
-     *                           partidos con ficha
-     * @param powerPlaySeconds   tiempo total con al menos un jugador más (sanciones del rival)
+     * @param shortHandedSeconds tiempo total con jugadores de menos por sanciones (azul 2', roja 4'), en los
+     *                           partidos con ficha; las sanciones superpuestas se suman
+     * @param powerPlaySeconds   lo mismo con las sanciones del rival (tiempo con jugadores de más)
      */
     public record TimeProfile(int periodMinutes, int matchesPlayed, int matchesWithSheet, int goalMismatches,
                               List<TimeBucket> buckets, List<TimeBucket> byPeriod, TimeBucket unrecorded,

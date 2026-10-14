@@ -296,7 +296,7 @@
                             <td th:text="${f.clock(t.timeProfile.powerPlayMinutesPerGame())}"></td>
                             <td th:text="${f.clock(t.timeProfile.powerPlaySeconds / 60.0)}"></td></tr>
                     </table>
-                    <p class="muted" th:text="|Minutos (mm:ss) con al menos un jugador menos o más por sanciones: azul 2', roja 4'. Según ${t.timeProfile.matchesWithSheet} fichas de ${t.timeProfile.matchesPlayed} partidos; se cuenta la sanción completa.|"></p>
+                    <p class="muted" th:text="|Minutos (mm:ss) de sanción propios y de los rivales: azul 2', roja 4'; las sanciones superpuestas se suman y se cumplen completas aunque haya gol. Según ${t.timeProfile.matchesWithSheet} fichas de ${t.timeProfile.matchesPlayed} partidos.|"></p>
                 </th:block>
             </td>
         </tr>
