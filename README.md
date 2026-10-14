@@ -74,6 +74,12 @@ desde la sanción (las sanciones superpuestas se suman: dos azules a la vez = 4�
 en el 2T; se corta al final del partido; la sanción se cumple completa aunque el rival haga un gol). Período 10 de SIDGAD = descanso (la sanción arranca en el 2T); período 11 u otros =
 fuera del juego: la tarjeta se cuenta sin minuto ni inferioridad.
 
+**Gráficos:** el informe incluye 6 gráficos de barras y de dona, generados en el servidor con Java2D
+(`report/Charts.java`) como PNG embebidos en el PDF. Son: dona de resultados (G/E/P), barras de diferencia de gol
+partido a partido, dona de reparto del gol (top 5 y "Otros"), columnas de goles a favor y en contra por tramo de 5′,
+columnas de faltas propias y de los rivales por tramo, y dona del tiempo jugado ganando, empatando o perdiendo.
+Cada gráfico lleva leyenda y valores visibles.
+
 La duración de los períodos sale de `tpo_reg` en el catálogo (20' de Infantil a Juvenil, 25' de Juniors a
 Primera). SIDGAD no publica el acta de todos los partidos: el informe indica cuántas actas se usaron sobre el
 total de partidos jugados.
