@@ -7,7 +7,9 @@ import com.fppstats.player.PlayerReportService.TeamInput;
 import com.fppstats.report.ReportService.Scope;
 import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Models.LineupPlayer;
+import com.fppstats.sidgad.model.Models.EventType;
 import com.fppstats.sidgad.model.Models.Match;
+import com.fppstats.sidgad.model.Models.MatchEvent;
 import com.fppstats.sidgad.parse.SidgadParser;
 import com.fppstats.stats.ReportData;
 import org.junit.jupiter.api.Test;
@@ -35,11 +37,13 @@ class PlayerReportServiceTest {
     TeamInput team(int teamId, String category, Map<Integer, String> sheets) {
         List<Match> matches = PlayerReportService.teamMatches(calendar, teamId);
         Map<Integer, List<LineupPlayer>> lineups = new LinkedHashMap<>();
+        Map<Integer, List<MatchEvent>> events = new LinkedHashMap<>();
         for (Match m : matches) {
             String html = sheets.getOrDefault(m.idp(), "File not found.");
             lineups.put(m.idp(), RosterService.ownSide(SidgadParser.lineups(html), m, Set.of(teamId)));
+            events.put(m.idp(), SidgadParser.gameEvents(html));
         }
-        return new TeamInput(primera, category, teamId, matches, lineups);
+        return new TeamInput(primera, category, teamId, matches, lineups, events);
     }
 
     Map<Integer, String> velezSheets() {
@@ -56,8 +60,8 @@ class PlayerReportServiceTest {
                 List.of(team(5581, "Primera Masculino", velezSheets())));
 
         // Vélez 2-4 Argentinos (2 goles de Graiño) y 7-0 Comunicaciones (2 goles).
-        assertThat(r.categories()).containsExactly(new Line("Primera Masculino", 2, 1, 0, 1, 4, 0, 0, 0, 0));
-        assertThat(r.total()).isEqualTo(new Line("Total", 2, 1, 0, 1, 4, 0, 0, 0, 0));
+        assertThat(r.categories()).containsExactly(new Line("Primera Masculino", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0));
+        assertThat(r.total()).isEqualTo(new Line("Total", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0));
         assertThat(r.total().goalsPerGame()).isEqualTo(2.0);
         assertThat(r.matches()).extracting(PlayerReport.MatchRow::rival)
                 .containsExactly("ARGENTINOS JUNIORS", "COMUNICACIONES");
@@ -96,6 +100,91 @@ class PlayerReportServiceTest {
         assertThat(r.categories()).extracting(Line::category).containsExactly("Juniors Masculino", "Primera Masculino");
         assertThat(r.total().played()).isEqualTo(r.categories().stream().mapToInt(Line::played).sum());
         assertThat(r.total().goals()).isEqualTo(6);
+    }
+
+    @Test
+    void golesPorTramoDeCincoMinutos() {
+        PlayerReport r = PlayerReportService.assemble(query(3851, "Ignacio J Graiño"), VELEZ, HOY, LEVELS,
+                List.of(team(5581, "Primera Masculino", velezSheets())));
+        PlayerReport.Minutes mn = r.minutes();
+
+        // Primera: tiempos de 25' -> 5 tramos por tiempo.
+        assertThat(mn.periodMinutes()).isEqualTo(25);
+        assertThat(mn.buckets()).hasSize(10);
+        assertThat(mn.buckets().getFirst().label()).isEqualTo("1T 0-5'");
+        assertThat(mn.buckets().getLast().label()).isEqualTo("2T 20-25'");
+        // Los 4 goles de la planilla están en algún tramo o como "sin minuto".
+        int withMinute = mn.buckets().stream().mapToInt(PlayerReport.Bucket::goals).sum();
+        assertThat(withMinute + mn.unrecorded().goals()).isEqualTo(4);
+        assertThat(mn.byHalf().stream().mapToInt(PlayerReport.Bucket::goals).sum()).isEqualTo(withMinute);
+        assertThat(mn.hasData()).isTrue();
+    }
+
+    @Test
+    void tarjetasPorColorYTramo() {
+        PlayerReportService.MinuteCounter counter = new PlayerReportService.MinuteCounter(20);
+        LineupPlayer sheet = new LineupPlayer(7, "X", true, "7", "Jugador", true, 1, 1, 2, 1);
+        counter.add(sheet, List.of(
+                new MatchEvent(1, 3, 0, EventType.GOAL, 0, 0, "", "", 7),
+                new MatchEvent(1, 19, 59, EventType.YELLOW_CARD, 0, 0, "", "", 7),
+                new MatchEvent(10, 0, 0, EventType.BLUE_CARD, 0, 0, "", "", 7),   // descanso: inicio del 2T
+                new MatchEvent(2, 7, 0, EventType.BLUE_CARD, 0, 0, "", "", 7),
+                new MatchEvent(11, 0, 0, EventType.RED_CARD, 0, 0, "", "", 7)));  // fuera del juego
+        PlayerReport.Minutes mn = counter.result();
+
+        assertThat(mn.buckets()).hasSize(8);
+        assertThat(mn.buckets().get(0)).isEqualTo(new PlayerReport.Bucket("1T 0-5'", 1, 0, 0, 0));
+        assertThat(mn.buckets().get(3)).isEqualTo(new PlayerReport.Bucket("1T 15-20'", 0, 1, 0, 0));
+        assertThat(mn.buckets().get(4)).isEqualTo(new PlayerReport.Bucket("2T 0-5'", 0, 0, 1, 0));
+        assertThat(mn.buckets().get(5)).isEqualTo(new PlayerReport.Bucket("2T 5-10'", 0, 0, 1, 0));
+        assertThat(mn.unrecorded()).isEqualTo(new PlayerReport.Bucket("Sin minuto registrado", 0, 0, 0, 1));
+    }
+
+    @Test
+    void penalesYLibresDirectos() {
+        // Pérez Barbosa (Vélez) erró un penal en el 26390 (0/1).
+        PlayerReport r = PlayerReportService.assemble(query(5974, "Juan Ignacio Perez Barbosa"), VELEZ, HOY, LEVELS,
+                List.of(team(5581, "Primera Masculino", velezSheets())));
+        Line t = r.total();
+        assertThat(t.penaltiesScored()).isZero();
+        assertThat(t.penaltiesTaken()).isEqualTo(1);
+        assertThat(t.penaltyRate()).isZero();
+        assertThat(t.hasSetPieces()).isTrue();
+
+        // Costa (Huracán) convirtió un libre directo contra GEBA B (1/1).
+        List<LineupPlayer> huracan = SidgadParser.lineups(Fixtures.read("gr_26389.html")).stream()
+                .filter(LineupPlayer::home).toList();
+        assertThat(huracan).filteredOn(p -> p.playerId() == 5973).singleElement().satisfies(p -> {
+            assertThat(p.directFreeScored()).isEqualTo(1);
+            assertThat(p.directFreeTaken()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void categoriasEnQuePuedeJugar() {
+        assertThat(Eligibility.levels("INFANTIL")).containsExactly("INFANTIL", "PREJUVENIL", "JUVENIL");
+        assertThat(Eligibility.levels("PREJUVENIL")).containsExactly("PREJUVENIL", "JUVENIL", "JUNIORS");
+        assertThat(Eligibility.levels("JUVENIL")).containsExactly("JUVENIL", "JUNIORS", "RESERVA", "PRIMERA");
+        assertThat(Eligibility.levels("juniors")).containsExactly("JUNIORS", "RESERVA", "PRIMERA");
+        assertThat(Eligibility.levels("RESERVA")).containsExactly("RESERVA", "PRIMERA");
+        assertThat(Eligibility.levels("PRIMERA")).containsExactly("RESERVA", "PRIMERA");
+        assertThat(Eligibility.levels(null)).isEmpty();
+    }
+
+    @Test
+    void soloSeRevisanLasCategoriasHabilitadasDeSuRama() {
+        Query juvenil = new Query(1, "X", "Y", 74, 2026, Scope.TEMPORADA, Eligibility.levels("JUVENIL"), "MASCULINO");
+        assertThat(juvenil.eligible(primera)).isTrue();     // Primera Masculino
+        Query infantil = new Query(1, "X", "Y", 74, 2026, Scope.TEMPORADA, Eligibility.levels("INFANTIL"), "MASCULINO");
+        assertThat(infantil.eligible(primera)).isFalse();
+        Query femenino = new Query(1, "X", "Y", 74, 2026, Scope.TEMPORADA, Eligibility.levels("PRIMERA"), "FEMENINO");
+        assertThat(femenino.eligible(primera)).isFalse();
+        assertThat(query(1, "X").eligible(primera)).isTrue();   // sin categoría guardada: todas
+
+        assertThat(juvenil.eligibleLabel()).isEqualTo("Juvenil, Juniors, Reserva y Primera Masculino");
+        PlayerReport r = PlayerReportService.assemble(juvenil, VELEZ, HOY, LEVELS, List.of());
+        assertThat(r.notes().getFirst()).isEqualTo(
+                "Categorías revisadas: Juvenil, Juniors, Reserva y Primera Masculino, las que corresponden a su categoría.");
     }
 
     @Test

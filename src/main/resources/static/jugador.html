@@ -41,6 +41,11 @@
                 <input type="text" id="jugador" readonly>
             </div>
         </div>
+        <div class="field">
+            <label for="categoria">Categoría</label>
+            <input type="text" id="categoria" readonly>
+            <p class="hint">El informe incluye tu categoría y las superiores en que podés jugar.</p>
+        </div>
 
         <div class="grid2">
             <div class="field">
@@ -123,6 +128,10 @@
         $("club").value = s.club.nombre;
         $("nombre").value = `${s.nombre} ${s.apellido}`;
         $("jugador").value = s.jugador ? s.jugador.nombre : "Sin jugador vinculado";
+        if (s.jugador && s.jugador.categoria) {
+            const cap = w => w.charAt(0) + w.slice(1).toLowerCase();
+            $("categoria").value = `${cap(s.jugador.categoria)} ${cap(s.jugador.rama)}`;
+        }
         loadYears();
     });
 </script>

@@ -118,7 +118,8 @@ public final class SidgadParser {
                     Integer.parseInt(clock.group(1)), Integer.parseInt(clock.group(2)), type,
                     player == null ? 0 : parseInt(player.attr("team_id")), clubId(tr),
                     code == null ? "" : clean(code.text()),
-                    player == null ? "" : clean(player.text())));
+                    player == null ? "" : clean(player.text()),
+                    player == null ? 0 : parseInt(player.attr("id_player"))));
         }
         return events;
     }
@@ -151,13 +152,16 @@ public final class SidgadParser {
                     continue;
                 }
                 int id = parseInt(link.attr("id_player"));
+                int[] pen = fraction(clean(tds.get(8).text()));
+                int[] fd = fraction(clean(tds.get(9).text()));
                 if (id <= 0 || !seen.add(team + "|" + id)) {
                     continue;
                 }
                 players.add(new LineupPlayer(id, team, home, clean(tds.get(0).text()), lineupName(link),
                         "5".equals(clean(tds.get(3).text())),
                         parseInt(clean(tds.get(6).text())), parseInt(clean(tds.get(12).text())),
-                        parseInt(clean(tds.get(13).text())), parseInt(clean(tds.get(14).text()))));
+                        parseInt(clean(tds.get(13).text())), parseInt(clean(tds.get(14).text())),
+                        pen[0], pen[1], fd[0], fd[1]));
             }
         }
         return players;

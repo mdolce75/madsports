@@ -80,7 +80,8 @@ public class RegistroService {
             }
             RosterPlayer jugador = roster.find(club.id(), year, r.categoria(), r.rama(), r.jugadorId())
                     .orElseThrow(() -> new IllegalArgumentException("El jugador elegido no figura en " + club.name() + "."));
-            u.vincularJugador(dni, jugador.id(), jugador.name());
+            u.vincularJugador(dni, jugador.id(), jugador.name(),
+                    CatalogService.CategoryOption.parse(r.categoria()).level(), r.rama().trim().toUpperCase(Locale.ROOT));
         }
         return usuarios.save(u);
     }

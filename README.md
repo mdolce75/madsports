@@ -107,14 +107,23 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 - **Club FPP** (`/`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
 - **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
-  período (Apertura, Clausura o Apertura + Clausura) y genera un PDF con partidos jugados, ganados, empatados y
-  perdidos, goles y tarjetas (amarilla, azul y roja), con sus promedios por partido, por cada categoría del club en
-  que jugó y en total, y el detalle partido a partido.
+  período (Apertura, Clausura o Apertura + Clausura) y genera un PDF que trae, por cada categoría del club en que
+  jugó y en total: partidos jugados, ganados, empatados y perdidos; goles; tarjetas amarillas, azules y rojas por
+  separado, cada una con su promedio por partido; y penales y libres directos (convertidos, tirados y efectividad,
+  con donas). Además, goles y tarjetas por tramos de 5 minutos (gráfico de columnas, con las tarjetas apiladas por
+  color) y el detalle partido a partido.
+- **Categorías en que puede jugar:** el jugador puede subir de categoría, nunca bajar. Infantil juega en Infantil,
+  Prejuvenil y Juvenil; Prejuvenil, en Prejuvenil, Juvenil y Juniors; Juvenil, en Juvenil, Juniors, Reserva y
+  Primera; Juniors, en Juniors, Reserva y Primera; Reserva y Primera, en Reserva y Primera. El informe lee solo las
+  actas de esas categorías, en la rama del jugador. La categoría y la rama son las del equipo que eligió al
+  registrarse.
 
 El informe del jugador sale de las **actas**: cada acta trae la planilla de jugadores de cada equipo (primero el local),
-con `id_player`, goles y tarjetas. Un partido cuenta si el jugador figura en la planilla de su equipo. La tabla de
+con `id_player`, goles, tarjetas, penales y libres directos. Un partido cuenta si el jugador figura en la planilla
+de su equipo. El minuto de goles y tarjetas sale de los eventos del acta. Si la planilla anota algo que no tiene
+evento (pasa con algunas actas), va a "Sin minuto registrado". La tabla de
 estadísticas de la FPP no alcanza, porque solo lista a los que hicieron goles. Se leen las actas de todos los equipos
-del club en el período (la primera vez tarda entre 20 y 30 s en un club grande; después quedan en cache 24 h). Los
+del club en el período y en esas categorías (la primera vez tarda unos 10 s; después quedan en cache 24 h). Los
 partidos sin acta publicada se informan aparte.
 
 Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo crea Flyway

@@ -1,5 +1,6 @@
 package com.fppstats.report;
 
+import com.fppstats.player.PlayerReport;
 import com.fppstats.stats.ReportData.FoulSituation;
 import com.fppstats.stats.ReportData.MatchLine;
 import com.fppstats.stats.ReportData.PlayerLine;
@@ -188,6 +189,42 @@ public class Charts {
                 OWN, RIVAL, "Faltas propias", "Faltas de los rivales");
     }
 
+    // ---------- Informe de jugador ----------
+
+    /** Goles del jugador por tramo de 5 minutos (una sola serie: el título del gráfico la nombra). */
+    public String playerGoalsByBucket(List<PlayerReport.Bucket> buckets) {
+        if (buckets == null || buckets.stream().mapToInt(PlayerReport.Bucket::goals).sum() == 0) {
+            return null;
+        }
+        return stackedColumns(buckets.stream().map(PlayerReport.Bucket::label).toList(),
+                new int[][]{buckets.stream().mapToInt(PlayerReport.Bucket::goals).toArray()},
+                new Color[]{WIN}, null);
+    }
+
+    /** Tarjetas del jugador por tramo, apiladas por color: amarilla, azul y roja. */
+    public String playerCardsByBucket(List<PlayerReport.Bucket> buckets) {
+        if (buckets == null || buckets.stream().mapToInt(PlayerReport.Bucket::cards).sum() == 0) {
+            return null;
+        }
+        return stackedColumns(buckets.stream().map(PlayerReport.Bucket::label).toList(), new int[][]{
+                        buckets.stream().mapToInt(PlayerReport.Bucket::yellowCards).toArray(),
+                        buckets.stream().mapToInt(PlayerReport.Bucket::blueCards).toArray(),
+                        buckets.stream().mapToInt(PlayerReport.Bucket::redCards).toArray()},
+                new Color[]{CARD_YELLOW, CARD_BLUE, CARD_RED}, new String[]{"Amarillas", "Azules", "Rojas"});
+    }
+
+    /** Dona de convertidos y errados de penales o libres directos, con "convertidos/tirados" al centro. */
+    public String setPieceDonut(int scored, int taken, String what) {
+        if (taken <= 0) {
+            return null;
+        }
+        int missed = Math.max(0, taken - scored);
+        return donut(List.of(
+                        new Slice("Convertidos", scored, String.valueOf(scored), WIN),
+                        new Slice("Errados", missed, String.valueOf(missed), LOSS)),
+                scored + "/" + taken, what);
+    }
+
     // ---------- Formas genéricas ----------
 
     String donut(List<Slice> slices, String centerBig, String centerSmall) {
@@ -315,6 +352,67 @@ public class Charts {
                         g.setColor(INK);
                         centered(g, String.valueOf(vals[k]), bx + bw / 2, bottom - vals[k] * unit - 3);
                     }
+                }
+            }
+            baseline(g, left, right, bottom);
+            xLabels(g, labels, left, slot, h - 8);
+            periodSeparator(g, labels.size(), left, slot, top, bottom);
+        });
+    }
+
+    /**
+     * Columnas apiladas por tramo (una serie por color), con el total arriba de cada columna. Entre segmentos queda una
+     * separación de 2px del color de fondo. Con una sola serie no lleva leyenda.
+     */
+    String stackedColumns(List<String> labels, int[][] series, Color[] colors, String[] names) {
+        int w = 520;
+        int h = 190;
+        int[] totals = new int[labels.size()];
+        for (int[] s : series) {
+            for (int i = 0; i < s.length; i++) {
+                totals[i] += s[i];
+            }
+        }
+        return render(w, h, g -> {
+            int max = Math.max(1, max(totals));
+            int top = names == null ? 18 : 30;
+            int bottom = h - 26;
+            int left = 30;
+            int right = w - 8;
+            double unit = (bottom - top - 12.0) / max;
+            if (names != null) {
+                legend(g, left, 14, names, colors);
+            }
+            yTicks(g, left, right, bottom, unit, max, false);
+            double slot = (double) (right - left) / labels.size();
+            double bw = Math.min(26, slot - 8);
+            g.setFont(font(Font.BOLD, 8));
+            for (int i = 0; i < labels.size(); i++) {
+                double x = left + i * slot + (slot - bw) / 2;
+                double y = bottom;
+                int last = -1;
+                for (int k = 0; k < series.length; k++) {
+                    if (series[k][i] > 0) {
+                        last = k;
+                    }
+                }
+                for (int k = 0; k < series.length; k++) {
+                    int v = series[k][i];
+                    if (v <= 0) {
+                        continue;
+                    }
+                    double hgt = v * unit;
+                    if (k == last) {
+                        bar(g, x, y - hgt, bw, hgt, colors[k], true);
+                    } else {
+                        g.setColor(colors[k]);
+                        g.fill(new Rectangle2D.Double(x, y - hgt + 2, bw, Math.max(0, hgt - 2)));
+                    }
+                    y -= hgt;
+                }
+                if (totals[i] > 0) {
+                    g.setColor(INK);
+                    centered(g, String.valueOf(totals[i]), x + bw / 2, y - 3);
                 }
             }
             baseline(g, left, right, bottom);

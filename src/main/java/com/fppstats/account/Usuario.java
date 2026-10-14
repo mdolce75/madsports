@@ -37,6 +37,9 @@ public class Usuario {
     /** id_player de SIDGAD (perfiles de jugador). */
     private Integer jugadorId;
     private String jugadorNombre;
+    /** Categoría y rama del jugador (definen en qué categorías puede jugar; ver Eligibility). */
+    private String categoria;
+    private String rama;
     private Instant creado;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -63,10 +66,12 @@ public class Usuario {
     }
 
     /** Datos del jugador de SIDGAD vinculado (perfiles de jugador). */
-    public void vincularJugador(String dni, int jugadorId, String jugadorNombre) {
+    public void vincularJugador(String dni, int jugadorId, String jugadorNombre, String categoria, String rama) {
         this.dni = dni;
         this.jugadorId = jugadorId;
         this.jugadorNombre = jugadorNombre;
+        this.categoria = categoria;
+        this.rama = rama;
     }
 
     public Long getId() { return id; }
@@ -81,6 +86,8 @@ public class Usuario {
     public String getDni() { return dni; }
     public Integer getJugadorId() { return jugadorId; }
     public String getJugadorNombre() { return jugadorNombre; }
+    public String getCategoria() { return categoria; }
+    public String getRama() { return rama; }
     public Instant getCreado() { return creado; }
     public Set<Perfil> getPerfiles() { return Set.copyOf(perfiles); }
 

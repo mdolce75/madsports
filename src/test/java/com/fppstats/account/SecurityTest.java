@@ -136,6 +136,8 @@ class SecurityTest {
         assertThat(u.getDni()).isEqualTo("30123456");
         assertThat(u.getJugadorId()).isEqualTo(3851);
         assertThat(u.getJugadorNombre()).isEqualTo("Ignacio J Graiño");
+        assertThat(u.getCategoria()).isEqualTo("PRIMERA");
+        assertThat(u.getRama()).isEqualTo("MASCULINO");
 
         // Un jugador, un usuario.
         Map<String, Object> mismoJugador = player("juan2");

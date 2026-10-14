@@ -38,6 +38,7 @@
         .card { display: inline-block; width: 7px; height: 10px; border-radius: 1px; vertical-align: middle; }
         .card.y { background: #ecc94b; } .card.b { background: #3182ce; } .card.r { background: #e53e3e; }
         img.chart { width: 100%; }
+        img.chart.wide { width: 80%; margin-left: 10%; }
         .two { width: 100%; }
         .two > tbody > tr > td { width: 50%; vertical-align: top; border: none; padding: 0 6px 0 0; text-align: left; }
         .notes { background: #f7fafc; border-left: 4px solid #ff5a1f; padding: 6px 10px; margin: 8px 0; }
@@ -47,6 +48,8 @@
         h2, h3 { page-break-after: avoid; }
         table.matches { -fs-table-paginate: paginate; }
         tr { page-break-inside: avoid; }
+        tr.sep td { border-top: 2px solid #0a0e17; }
+        tr.unrecorded td { color: #718096; font-style: italic; }
     </style>
 </head>
 <body>
@@ -127,21 +130,99 @@
 
     <h2>Tarjetas recibidas</h2>
     <table>
-        <tr><th class="l">Categoría</th><th>PJ</th>
-            <th><span class="card y"></span> Amarillas</th><th><span class="card b"></span> Azules</th>
-            <th><span class="card r"></span> Rojas</th><th>Total</th><th>Promedio por partido</th></tr>
+        <tr><th class="l" rowspan="2">Categoría</th><th rowspan="2">PJ</th>
+            <th colspan="2"><span class="card y"></span> Amarillas</th><th colspan="2"><span class="card b"></span> Azules</th>
+            <th colspan="2"><span class="card r"></span> Rojas</th><th colspan="2">Total</th></tr>
+        <tr><th>Cant.</th><th>Por PJ</th><th>Cant.</th><th>Por PJ</th><th>Cant.</th><th>Por PJ</th><th>Cant.</th><th>Por PJ</th></tr>
         <tr th:each="l : ${r.categories}">
             <td class="l" th:text="${l.category}"></td><td th:text="${l.played}"></td>
-            <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
+            <td th:text="${l.yellowCards}"></td><td th:text="${f.dec(l.yellowPerGame())}"></td>
+            <td th:text="${l.blueCards}"></td><td th:text="${f.dec(l.bluePerGame())}"></td>
+            <td th:text="${l.redCards}"></td><td th:text="${f.dec(l.redPerGame())}"></td>
             <td th:text="${l.cards()}"></td><td th:text="${f.dec(l.cardsPerGame())}"></td>
         </tr>
         <tr class="total" th:with="l=${r.total}">
             <td class="l">Total</td><td th:text="${l.played}"></td>
-            <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
+            <td th:text="${l.yellowCards}"></td><td th:text="${f.dec(l.yellowPerGame())}"></td>
+            <td th:text="${l.blueCards}"></td><td th:text="${f.dec(l.bluePerGame())}"></td>
+            <td th:text="${l.redCards}"></td><td th:text="${f.dec(l.redPerGame())}"></td>
             <td th:text="${l.cards()}"></td><td th:text="${f.dec(l.cardsPerGame())}"></td>
         </tr>
     </table>
-    <p class="muted">Promedios por partido jugado. Amarilla, azul y roja se cuentan por separado.</p>
+    <p class="muted">Amarilla, azul y roja se cuentan por separado; "por PJ" es el promedio por partido jugado.</p>
+
+    <div class="nobreak">
+        <h2>Penales y libres directos</h2>
+        <th:block th:if="${r.total.hasSetPieces()}" th:with="t=${r.total}">
+            <table class="two">
+                <tr>
+                    <td th:with="pd=${c.setPieceDonut(t.penaltiesScored, t.penaltiesTaken, 'penales')}">
+                        <h3>Penales</h3>
+                        <img class="chart" th:if="${pd != null}" th:src="${pd}" alt="Penales convertidos y errados"/>
+                        <p class="muted" th:if="${pd == null}">No tiró penales.</p>
+                    </td>
+                    <td th:with="fd=${c.setPieceDonut(t.directFreeScored, t.directFreeTaken, 'libres')}">
+                        <h3>Libres directos</h3>
+                        <img class="chart" th:if="${fd != null}" th:src="${fd}" alt="Libres directos convertidos y errados"/>
+                        <p class="muted" th:if="${fd == null}">No tiró libres directos.</p>
+                    </td>
+                </tr>
+            </table>
+            <table>
+                <tr><th class="l" rowspan="2">Categoría</th><th colspan="3">Penales</th><th colspan="3">Libres directos</th></tr>
+                <tr><th>Convertidos</th><th>Tirados</th><th>Efectividad</th><th>Convertidos</th><th>Tirados</th><th>Efectividad</th></tr>
+                <tr th:each="l : ${r.categories}">
+                    <td class="l" th:text="${l.category}"></td>
+                    <td th:text="${l.penaltiesScored}"></td><td th:text="${l.penaltiesTaken}"></td>
+                    <td th:text="${l.penaltiesTaken > 0 ? f.pct(l.penaltyRate() * 100) : '-'}"></td>
+                    <td th:text="${l.directFreeScored}"></td><td th:text="${l.directFreeTaken}"></td>
+                    <td th:text="${l.directFreeTaken > 0 ? f.pct(l.directFreeRate() * 100) : '-'}"></td>
+                </tr>
+                <tr class="total">
+                    <td class="l">Total</td>
+                    <td th:text="${t.penaltiesScored}"></td><td th:text="${t.penaltiesTaken}"></td>
+                    <td th:text="${t.penaltiesTaken > 0 ? f.pct(t.penaltyRate() * 100) : '-'}"></td>
+                    <td th:text="${t.directFreeScored}"></td><td th:text="${t.directFreeTaken}"></td>
+                    <td th:text="${t.directFreeTaken > 0 ? f.pct(t.directFreeRate() * 100) : '-'}"></td>
+                </tr>
+            </table>
+        </th:block>
+        <p class="muted" th:if="${!r.total.hasSetPieces()}">No tiró penales ni libres directos en estos partidos.</p>
+    </div>
+
+    <th:block th:if="${r.minutes.hasData()}" th:with="mn=${r.minutes}">
+        <h2>Goles y tarjetas por tramos de 5 minutos</h2>
+        <div class="nobreak" th:with="gc=${c.playerGoalsByBucket(mn.buckets)}">
+            <h3>Goles por tramo</h3>
+            <img class="chart wide" th:if="${gc != null}" th:src="${gc}" alt="Goles por tramo de 5 minutos"/>
+            <p class="muted" th:if="${gc == null}">Sin goles con minuto registrado.</p>
+        </div>
+        <div class="nobreak" th:with="cc=${c.playerCardsByBucket(mn.buckets)}">
+            <h3>Tarjetas por tramo (amarillas, azules y rojas)</h3>
+            <img class="chart wide" th:if="${cc != null}" th:src="${cc}" alt="Tarjetas por tramo de 5 minutos, por color"/>
+            <p class="muted" th:if="${cc == null}">Sin tarjetas con minuto registrado.</p>
+        </div>
+        <table class="nobreak">
+            <tr><th class="l">Tramo</th><th>Goles</th><th><span class="card y"></span> Amarillas</th>
+                <th><span class="card b"></span> Azules</th><th><span class="card r"></span> Rojas</th><th>Tarjetas</th></tr>
+            <tr th:each="b, it : ${mn.buckets}" th:class="${it.index == mn.buckets.size() / 2 ? 'sep' : ''}">
+                <td class="l" th:text="${b.label}"></td><td th:text="${b.goals}"></td>
+                <td th:text="${b.yellowCards}"></td><td th:text="${b.blueCards}"></td><td th:text="${b.redCards}"></td>
+                <td th:text="${b.cards()}"></td>
+            </tr>
+            <tr class="total" th:each="b : ${mn.byHalf()}">
+                <td class="l" th:text="${b.label}"></td><td th:text="${b.goals}"></td>
+                <td th:text="${b.yellowCards}"></td><td th:text="${b.blueCards}"></td><td th:text="${b.redCards}"></td>
+                <td th:text="${b.cards()}"></td>
+            </tr>
+            <tr class="unrecorded" th:if="${mn.unrecorded.goals + mn.unrecorded.cards() > 0}" th:with="u=${mn.unrecorded}">
+                <td class="l">Sin minuto registrado *</td><td th:text="${u.goals}"></td>
+                <td th:text="${u.yellowCards}"></td><td th:text="${u.blueCards}"></td><td th:text="${u.redCards}"></td>
+                <td th:text="${u.cards()}"></td>
+            </tr>
+        </table>
+        <p class="muted" th:text="|Tiempos de ${mn.periodMinutes}'. Minuto según los eventos del acta (el descanso cuenta como inicio del 2do tiempo).${mn.unrecorded.goals + mn.unrecorded.cards() > 0 ? ' * Goles o tarjetas que figuran en la planilla sin evento con minuto, o tarjetas fuera del juego.' : ''}|"></p>
+    </th:block>
 </th:block>
 
 <th:block th:if="${!r.matches.isEmpty()}">

@@ -14,6 +14,7 @@ import com.fppstats.sidgad.SidgadClient;
 import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Models.LineupPlayer;
 import com.fppstats.sidgad.model.Models.Match;
+import com.fppstats.sidgad.model.Models.MatchEvent;
 import com.fppstats.sidgad.model.Models.TeamRef;
 import com.fppstats.sidgad.parse.SidgadParser;
 import com.fppstats.stats.ReportData;
@@ -58,8 +59,32 @@ public class PlayerReportService {
      * @param playerName nombre del jugador en la FPP
      * @param fullName   nombre y apellido del usuario (como se registró)
      * @param scope      Apertura, Clausura o Apertura + Clausura
+     * @param levels     categorías en que puede jugar (ver {@link Eligibility}); vacía = todas
+     * @param branch     rama del jugador (MASCULINO o FEMENINO); null = ambas
      */
-    public record Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope) {
+    public record Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
+                        List<String> levels, String branch) {
+
+        public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope) {
+            this(playerId, playerName, fullName, clubId, year, scope, List.of(), null);
+        }
+
+        boolean eligible(Competition c) {
+            return (levels.isEmpty() || levels.contains(c.category().level()))
+                    && (branch == null || branch.isBlank() || branch.equals(c.category().branch()));
+        }
+
+        /** "Primera y Reserva Masculino" (las categorías revisadas), o null si se revisan todas. */
+        String eligibleLabel() {
+            if (levels.isEmpty()) {
+                return null;
+            }
+            List<String> names = levels.stream()
+                    .map(l -> new Competition.Category(l, branch == null ? "" : branch).levelLabel()).toList();
+            String joined = names.size() == 1 ? names.getFirst()
+                    : String.join(", ", names.subList(0, names.size() - 1)) + " y " + names.getLast();
+            return joined + (branch == null || branch.isBlank() ? "" : " " + new Competition.Category("", branch).branchLabel());
+        }
     }
 
     public static final class Job {
@@ -86,10 +111,22 @@ public class PlayerReportService {
         }
     }
 
-    /** Lo leído de SIDGAD para un equipo del club en una competición: sus partidos jugados y su planilla en cada uno. */
+    /**
+     * Lo leído de SIDGAD para un equipo del club en una competición: sus partidos jugados, su planilla en cada uno y
+     * los eventos del acta (goles y tarjetas con minuto e {@code id_player}).
+     */
     record TeamInput(Competition competition, String category, int teamId, List<Match> matches,
-                     Map<Integer, List<LineupPlayer>> sheets) {
+                     Map<Integer, List<LineupPlayer>> sheets, Map<Integer, List<MatchEvent>> events) {
+
+        TeamInput(Competition competition, String category, int teamId, List<Match> matches,
+                  Map<Integer, List<LineupPlayer>> sheets) {
+            this(competition, category, teamId, matches, sheets, Map.of());
+        }
     }
+
+    static final int BUCKET_MINUTES = 5;
+    /** Período 10 de SIDGAD = descanso: cuenta como inicio del 2do tiempo. */
+    static final int HALFTIME_PERIOD = 10;
 
     private final CatalogService catalog;
     private final SidgadClient sidgad;
@@ -147,8 +184,10 @@ public class PlayerReportService {
                 .toList();
         // Las letras A/B se deciden con todo el año (como en el informe de club); después se filtra el período.
         Map<Integer, String> keys = ClubTeams.keys(all, club);
+        // Solo las categorías en que puede jugar (puede subir de categoría, nunca bajar) y su rama.
         List<Competition> comps = all.stream()
                 .filter(c -> q.scope().torneo() == null || c.torneo() == q.scope().torneo())
+                .filter(q::eligible)
                 .toList();
         List<TeamInput> inputs = new ArrayList<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -179,12 +218,14 @@ public class PlayerReportService {
                 for (TeamRef t : ClubTeams.own(c, club)) {
                     List<Match> matches = teamMatches(calendar.get(c), t.teamId());
                     Map<Integer, List<LineupPlayer>> lineups = new LinkedHashMap<>();
+                    Map<Integer, List<MatchEvent>> events = new LinkedHashMap<>();
                     for (Match m : matches) {
-                        lineups.put(m.idp(), RosterService.ownSide(
-                                SidgadParser.lineups(ClubTeams.await(sheets.get(m.idp()))), m, Set.of(t.teamId())));
+                        String html = ClubTeams.await(sheets.get(m.idp()));
+                        lineups.put(m.idp(), RosterService.ownSide(SidgadParser.lineups(html), m, Set.of(t.teamId())));
+                        events.put(m.idp(), SidgadParser.gameEvents(html));
                     }
                     inputs.add(new TeamInput(c, ClubTeams.label(c, club, keys.getOrDefault(t.teamId(), club.code())),
-                            t.teamId(), matches, lineups));
+                            t.teamId(), matches, lineups, events));
                 }
             }
         }
@@ -205,8 +246,16 @@ public class PlayerReportService {
         Map<String, Line> lines = new LinkedHashMap<>();
         Map<String, Integer> order = new LinkedHashMap<>();
         List<MatchRow> rows = new ArrayList<>();
+        // Tramos según la duración de tiempo más larga entre las categorías en que jugó (20' o 25').
+        MinuteCounter minutes = new MinuteCounter(inputs.stream()
+                .filter(in -> in.sheets().values().stream()
+                        .anyMatch(sheet -> sheet.stream().anyMatch(p -> p.playerId() == q.playerId())))
+                .mapToInt(in -> in.competition().periodMinutes() > 0 ? in.competition().periodMinutes()
+                        : Competition.DEFAULT_PERIOD_MINUTES)
+                .max().orElse(Competition.DEFAULT_PERIOD_MINUTES));
         for (TeamInput in : inputs) {
             int won = 0, drawn = 0, lost = 0, goals = 0, yellow = 0, blue = 0, red = 0, played = 0, withoutSheet = 0;
+            int penScored = 0, penTaken = 0, fdScored = 0, fdTaken = 0;
             for (Match m : in.matches()) {
                 List<LineupPlayer> sheet = in.sheets().getOrDefault(m.idp(), List.of());
                 if (sheet.isEmpty()) {
@@ -232,6 +281,12 @@ public class PlayerReportService {
                 yellow += p.yellowCards();
                 blue += p.blueCards();
                 red += p.redCards();
+                penScored += p.penaltiesScored();
+                penTaken += p.penaltiesTaken();
+                fdScored += p.directFreeScored();
+                fdTaken += p.directFreeTaken();
+                minutes.add(p, in.events().getOrDefault(m.idp(), List.of()).stream()
+                        .filter(e -> e.playerId() == q.playerId()).toList());
                 rows.add(new MatchRow(m.date(), in.category(),
                         in.competition().torneo() == null ? "" : in.competition().torneo().label(),
                         home ? m.awayName() : m.homeName(), home, gf, ga, result,
@@ -240,7 +295,8 @@ public class PlayerReportService {
             if (played == 0) {
                 continue;               // el jugador no figura en este equipo
             }
-            Line line = new Line(in.category(), played, won, drawn, lost, goals, yellow, blue, red, withoutSheet);
+            Line line = new Line(in.category(), played, won, drawn, lost, goals, yellow, blue, red,
+                    penScored, penTaken, fdScored, fdTaken, withoutSheet);
             lines.merge(in.category(), line, (a, b) -> a.plus(b, a.category()));
             order.putIfAbsent(in.category(), levels.indexOf(in.competition().category().level()));
         }
@@ -251,6 +307,9 @@ public class PlayerReportService {
         rows.sort(Comparator.comparing(MatchRow::date, Comparator.nullsLast(Comparator.naturalOrder())));
 
         List<String> notes = new ArrayList<>();
+        if (q.eligibleLabel() != null) {
+            notes.add("Categorías revisadas: " + q.eligibleLabel() + ", las que corresponden a su categoría.");
+        }
         if (categories.isEmpty()) {
             notes.add(q.playerName() + " no figura en las actas publicadas de " + club.name() + " en " + q.year()
                     + " (" + q.scope().label() + ").");
@@ -263,7 +322,63 @@ public class PlayerReportService {
             }
         }
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
-                categories, total, rows, notes);
+                categories, total, minutes.result(), rows, notes);
+    }
+
+    /**
+     * Cuenta goles y tarjetas del jugador por tramo de 5 minutos con los eventos del acta. Lo que la planilla le anota
+     * y no tiene evento con minuto (o es de fuera del juego, período 11) va a "sin minuto registrado".
+     */
+    static final class MinuteCounter {
+        private final int periodMinutes;
+        private final int perPeriod;
+        private final int[][] counts;
+        private final int[] unrecorded = new int[4];
+
+        MinuteCounter(int periodMinutes) {
+            this.periodMinutes = periodMinutes;
+            this.perPeriod = (periodMinutes + BUCKET_MINUTES - 1) / BUCKET_MINUTES;
+            this.counts = new int[2 * perPeriod][4];
+        }
+
+        void add(LineupPlayer sheet, List<MatchEvent> events) {
+            int[] withMinute = new int[4];
+            for (MatchEvent e : events) {
+                int column = switch (e.type()) {
+                    case GOAL -> 0;
+                    case YELLOW_CARD -> 1;
+                    case BLUE_CARD -> 2;
+                    case RED_CARD -> 3;
+                    case FOUL -> -1;
+                };
+                if (column < 0) {
+                    continue;
+                }
+                int period = e.period() == HALFTIME_PERIOD ? 2 : e.period();
+                int minute = e.period() == HALFTIME_PERIOD ? 0 : e.minute();
+                if (period < 1 || period > 2) {
+                    continue;   // fuera del juego: queda como "sin minuto"
+                }
+                counts[(period - 1) * perPeriod + Math.min(minute / BUCKET_MINUTES, perPeriod - 1)][column]++;
+                withMinute[column]++;
+            }
+            int[] inSheet = {sheet.goals(), sheet.yellowCards(), sheet.blueCards(), sheet.redCards()};
+            for (int c = 0; c < 4; c++) {
+                unrecorded[c] += Math.max(0, inSheet[c] - withMinute[c]);
+            }
+        }
+
+        PlayerReport.Minutes result() {
+            List<PlayerReport.Bucket> buckets = new ArrayList<>();
+            for (int i = 0; i < counts.length; i++) {
+                int from = (i % perPeriod) * BUCKET_MINUTES;
+                int to = Math.min(from + BUCKET_MINUTES, periodMinutes);
+                String label = (i < perPeriod ? "1T " : "2T ") + from + "-" + to + "'";
+                buckets.add(new PlayerReport.Bucket(label, counts[i][0], counts[i][1], counts[i][2], counts[i][3]));
+            }
+            return new PlayerReport.Minutes(periodMinutes, buckets, new PlayerReport.Bucket("Sin minuto registrado",
+                    unrecorded[0], unrecorded[1], unrecorded[2], unrecorded[3]));
+        }
     }
 
     static String slug(String s) {

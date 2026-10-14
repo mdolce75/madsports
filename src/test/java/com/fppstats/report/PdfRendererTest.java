@@ -47,12 +47,19 @@ class PdfRendererTest {
 
     @Test
     void generaElPdfDelJugador() throws Exception {
-        PlayerReport.Line primera = new PlayerReport.Line("Primera Masculino", 2, 1, 0, 1, 4, 1, 1, 0, 0);
-        PlayerReport.Line juniors = new PlayerReport.Line("Juniors Masculino", 1, 1, 0, 0, 3, 0, 0, 0, 1);
+        PlayerReport.Line primera = new PlayerReport.Line("Primera Masculino", 2, 1, 0, 1, 4, 1, 1, 0, 1, 2, 1, 1, 0);
+        PlayerReport.Line juniors = new PlayerReport.Line("Juniors Masculino", 1, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1);
+        List<PlayerReport.Bucket> buckets = new java.util.ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            buckets.add(new PlayerReport.Bucket((i < 5 ? "1T " : "2T ") + (i % 5) * 5 + "-" + ((i % 5) * 5 + 5) + "'",
+                    i % 3, i == 4 ? 1 : 0, i == 7 ? 1 : 0, 0));
+        }
+        PlayerReport.Minutes minutes = new PlayerReport.Minutes(25, buckets,
+                new PlayerReport.Bucket("Sin minuto registrado", 1, 0, 0, 0));
         PlayerReport report = new PlayerReport(3851, "Ignacio J Graiño", "Ignacio Graiño",
                 new ReportData.ClubInfo(74, "CAVS", "VELEZ", Crests.sample("CV")), 2026, "Apertura + Clausura",
                 StatsEngineTest.HOY, List.of(juniors, primera),
-                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1),
+                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1), minutes,
                 List.of(new PlayerReport.MatchRow(StatsEngineTest.HOY, "Primera Masculino", "Clausura",
                         "ARGENTINOS JUNIORS", true, 2, 4, "P", true, 2, 1, 1, 0)),
                 List.of("Juniors Masculino: 1 partido del equipo no tiene acta publicada; si jugó, no está contado."));
@@ -60,9 +67,10 @@ class PdfRendererTest {
         String html = renderer.playerHtml(report);
         assertThat(html).contains("Ignacio J Graiño", "VELEZ · Temporada 2026 · Apertura + Clausura",
                 "Partidos jugados", "Goles", "Tarjetas recibidas", "Partido a partido", "Juniors Masculino",
-                "no tiene acta publicada", "Escudo de VELEZ");
-        // Dona de resultados, dona de tarjetas y el escudo.
-        assertThat(html.split("src=\"data:image/png;base64,", -1)).hasSize(3 + 1);
+                "no tiene acta publicada", "Escudo de VELEZ", "Penales y libres directos",
+                "Goles y tarjetas por tramos de 5 minutos", "Sin minuto registrado", "2T 20-25");
+        // Escudo, donas de resultados y tarjetas, donas de penales y libres, y goles y tarjetas por tramo.
+        assertThat(html.split("src=\"data:image/png;base64,", -1)).hasSize(7 + 1);
 
         byte[] pdf = renderer.playerPdf(report);
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");

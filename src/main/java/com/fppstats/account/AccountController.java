@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Registro, datos de la sesión y lista de jugadores de un club (para el registro de jugadores). */
 @RestController
@@ -105,7 +106,8 @@ public class AccountController {
                 .map(u -> new SessionView(true, u.getUsuario(), u.getNombre(), u.getApellido(), u.getEmail(),
                         u.getPerfiles().stream().map(Enum::name).sorted().toList(),
                         Map.of("id", u.getClubId(), "nombre", u.getClubNombre(), "codigo", u.getClubCodigo()),
-                        u.getJugadorId() == null ? null : Map.of("id", u.getJugadorId(), "nombre", u.getJugadorNombre()),
+                        u.getJugadorId() == null ? null : Map.of("id", u.getJugadorId(), "nombre", u.getJugadorNombre(),
+                                "categoria", Objects.toString(u.getCategoria(), ""), "rama", Objects.toString(u.getRama(), "")),
                         SecurityConfig.home(auth.getAuthorities())))
                 .orElse(SessionView.ANONYMOUS);
     }
