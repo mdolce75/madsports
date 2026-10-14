@@ -80,6 +80,10 @@ partido a partido, dona de reparto del gol (top 5 y "Otros"), columnas de goles 
 columnas de faltas propias y de los rivales por tramo, y dona del tiempo jugado ganando, empatando o perdiendo.
 Cada gráfico lleva leyenda y valores visibles.
 
+**Escudo del club:** la cabecera del informe y el título de cada equipo llevan el escudo del club. Sale de SIDGAD
+(`sidgad.cloud/cap/images/logos_clubes/`, el archivo que figura en `teams_array`) y se encaja en una placa blanca
+cuadrada. Queda en cache 24 h; si no se puede bajar, el informe sale sin escudo.
+
 La duración de los períodos sale de `tpo_reg` en el catálogo (20' de Infantil a Juvenil, 25' de Juniors a
 Primera). SIDGAD no publica el acta de todos los partidos: el informe indica cuántas actas se usaron sobre el
 total de partidos jugados.

@@ -30,6 +30,7 @@ public class SidgadClient {
     private final Cache<String, String> dataCache;
     private final Cache<String, String> catalogCache;
     private final Cache<Integer, String> sheetCache;
+    private final Cache<String, byte[]> logoCache;
     private final Object throttle = new Object();
     /** Pedidos simultáneos a SIDGAD como máximo ({@code fpp.sidgad.max-concurrency}). */
     private final Semaphore concurrency;
@@ -40,6 +41,7 @@ public class SidgadClient {
         this.dataCache = Caffeine.newBuilder().expireAfterWrite(this.props.dataTtl()).maximumSize(500).build();
         this.catalogCache = Caffeine.newBuilder().expireAfterWrite(this.props.catalogTtl()).maximumSize(4).build();
         this.sheetCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(3000).build();
+        this.logoCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(100).build();
         this.concurrency = new Semaphore(Math.max(1, this.props.maxConcurrency()), true);
     }
 
@@ -87,6 +89,58 @@ public class SidgadClient {
     public String gameSheet(int idc, int idp) {
         return cachedIn(sheetCache, idp, "cap_gr_" + idp + "_1.php", Map.of(
                 "idm", "1", "idc", String.valueOf(idc), "idp", String.valueOf(idp), "tab", "tab_ficha_resumen"));
+    }
+
+    /** Carpeta pública de escudos de SIDGAD (la misma que usan las tablas y el calendario del sitio). */
+    static final String LOGOS_URL = "https://sidgad.cloud/cap/images/logos_clubes/";
+    private static final java.util.regex.Pattern LOGO_FILE = java.util.regex.Pattern.compile("\\d+(?:_\\d+)?\\.png");
+
+    /**
+     * Escudo de un club ({@code file} como figura en teams_array, p. ej. "22_10.png"). El escudo es un adorno: si no
+     * está o falla la descarga se devuelve {@code null} y el informe sale sin él. Cache de 24 h.
+     */
+    public byte[] clubLogo(String file) {
+        if (file == null || !LOGO_FILE.matcher(file).matches()) {
+            return null;
+        }
+        byte[] hit = logoCache.getIfPresent(file);
+        if (hit != null) {
+            return hit;
+        }
+        try {
+            concurrency.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+        try {
+            waitTurn();
+            Connection.Response res = Jsoup.connect(logosUrl() + file)
+                    .userAgent(USER_AGENT)
+                    .referrer(props.origin() + "/")
+                    .ignoreContentType(true)
+                    .ignoreHttpErrors(true)
+                    .timeout((int) props.timeout().toMillis())
+                    .maxBodySize(2 * 1024 * 1024)
+                    .execute();
+            if (res.statusCode() != 200) {
+                log.info("Escudo {} no disponible ({})", file, res.statusCode());
+                return null;
+            }
+            byte[] body = res.bodyAsBytes();
+            logoCache.put(file, body);
+            return body;
+        } catch (IOException | RuntimeException e) {
+            log.info("No se pudo bajar el escudo {}: {}", file, e.getMessage());
+            return null;
+        } finally {
+            concurrency.release();
+        }
+    }
+
+    /** URL base de los escudos (los tests la reemplazan por un servidor local). */
+    protected String logosUrl() {
+        return LOGOS_URL;
     }
 
     private String cached(String file, Map<String, String> params) {

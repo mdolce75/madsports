@@ -142,7 +142,7 @@ public final class SidgadParser {
             int teamId = parseInt(p[1]);
             int clubId = parseInt(p[0].replaceAll("[^0-9].*$", ""));
             if (teamId > 0) {
-                teams.add(new TeamRef(teamId, clubId, clean(p[2]), clean(p[3])));
+                teams.add(new TeamRef(teamId, clubId, clean(p[2]), clean(p[3]), p[0].trim()));
             }
         }
         return teams;
