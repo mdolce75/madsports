@@ -9,7 +9,7 @@ import java.util.List;
  * Todas las cifras del informe. Las calcula {@link StatsEngine} en código; la IA solo las lee y escribe
  * el análisis, nunca produce números propios.
  * Los métodos derivados con {@code @JsonProperty} (puntos, efectividad, promedios, porcentajes, minutos por
- * partido) también van al JSON exportado, para que quien lo lea no tenga que hacer cuentas.
+ * partido) también van al JSON que recibe la IA, para que no tenga que hacer cuentas.
  */
 public record ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn,
                          int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league,

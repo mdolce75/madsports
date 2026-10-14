@@ -3,79 +3,213 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mad Sports · Estadísticas</title>
+    <title>Mad Sports · Estadísticas de hockey sobre patines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5a1f'/%3E%3Cpath d='M16 14l20 30h10' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M48 14L28 44H18' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='52' r='5' fill='%23fff'/%3E%3C/svg%3E">
     <style>
         :root {
-            --bg: #f4f6fa; --card: #ffffff; --ink: #1d2433; --muted: #64748b;
-            --brand: #0f2a52; --accent: #2b6cb0; --line: #dfe5ee; --ok: #2f855a; --err: #c53030;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root { --bg: #0f1520; --card: #182131; --ink: #e6ebf2; --muted: #94a3b8;
-                    --brand: #9cc3ff; --accent: #5aa0f2; --line: #2a3546; --ok: #48bb78; --err: #fc8181; }
+            --bg: #0a0e17;
+            --panel: #121a2a;
+            --panel-2: #18233a;
+            --line: #26334d;
+            --ink: #f3f6fb;
+            --muted: #93a1b8;
+            --accent: #ff5a1f;      /* naranja: energía, botón principal */
+            --accent-ink: #1a0a03;
+            --lime: #c8f135;        /* verde marcador: progreso y "listo" */
+            --err: #ff6b6b;
+            --display: "Oswald", "Arial Narrow", "Roboto Condensed", sans-serif;
+            --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
         }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-        main { max-width: 560px; margin: 0 auto; padding: 32px 16px; }
-        h1 { margin: 0; font-size: 1.6rem; color: var(--brand); }
-        p.lead { margin: 4px 0 24px; color: var(--muted); }
-        .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
-        label { display: block; font-weight: 600; margin: 14px 0 6px; }
-        label:first-child { margin-top: 0; }
-        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 1rem; }
+        html { background: var(--bg); }
+        body {
+            margin: 0; min-height: 100vh; color: var(--ink); font: 16px/1.55 var(--body);
+            background:
+                radial-gradient(1200px 500px at 85% -10%, rgba(255, 90, 31, .18), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(200, 241, 53, .08), transparent 60%),
+                var(--bg);
+        }
+        /* Pista de hockey sobre patines, apenas marcada, de fondo */
+        body::before {
+            content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .07;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.2'%3E%3Crect x='10' y='10' width='380' height='180' rx='36'/%3E%3Cline x1='200' y1='10' x2='200' y2='190'/%3E%3Ccircle cx='200' cy='100' r='26'/%3E%3Cpath d='M10 70h44a8 8 0 0 1 8 8v44a8 8 0 0 1-8 8H10'/%3E%3Cpath d='M390 70h-44a8 8 0 0 0-8 8v44a8 8 0 0 0 8 8h44'/%3E%3Ccircle cx='86' cy='100' r='2.5' fill='%23ffffff'/%3E%3Ccircle cx='314' cy='100' r='2.5' fill='%23ffffff'/%3E%3C/g%3E%3C/svg%3E") center / cover no-repeat;
+        }
+        .wrap { position: relative; max-width: 620px; margin: 0 auto; padding: 24px 16px 40px; }
+
+        /* Barra superior */
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand svg { width: 42px; height: 42px; flex: none; }
+        .brand b { font: 700 1.35rem/1 var(--display); letter-spacing: .06em; text-transform: uppercase; }
+        .brand small { display: block; margin-top: 4px; font: 600 .72rem/1 var(--display); letter-spacing: .18em;
+                       color: var(--muted); text-transform: uppercase; }
+
+        /* Portada */
+        .hero { margin: 34px 0 22px; }
+        .tag { display: inline-block; padding: 4px 12px 4px 10px; background: var(--accent); color: var(--accent-ink);
+               font: 700 .78rem/1.4 var(--display); letter-spacing: .14em; text-transform: uppercase;
+               clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+        h1 { margin: 12px 0 10px; font: 700 clamp(2.3rem, 9vw, 3.6rem)/1.05 var(--display); text-transform: uppercase;
+             letter-spacing: .01em; }
+        h1 em { font-style: normal; color: var(--accent); }
+        .lead { margin: 0; color: var(--muted); max-width: 520px; }
+
+        /* Marcador de características */
+        .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0 26px; }
+        .board div { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--lime);
+                     padding: 10px 12px; }
+        .board strong { display: block; font: 700 1.6rem/1 var(--display); color: var(--lime); }
+        .board span { font: 600 .7rem/1.3 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+        /* Planilla (formulario) */
+        .sheet { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line);
+                 border-left: 5px solid var(--accent); padding: 0 20px 22px; }
+        .sheet-head { display: flex; justify-content: space-between; align-items: center; margin: 0 -20px 6px;
+                      padding: 12px 20px; border-bottom: 1px solid var(--line);
+                      font: 700 .85rem/1 var(--display); letter-spacing: .16em; text-transform: uppercase; }
+        .sheet-head span:last-child { color: var(--muted); }
+        .field { margin-top: 16px; }
+        .field label { display: flex; align-items: center; gap: 10px; margin-bottom: 7px;
+                       font: 600 .8rem/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+        .num { display: inline-grid; place-items: center; width: 26px; height: 26px; background: var(--ink); color: var(--bg);
+               font: 700 .85rem/1 var(--display); letter-spacing: 0; transform: skewX(-10deg); }
+        .num > i { font-style: normal; transform: skewX(10deg); }
+        select { width: 100%; appearance: none; -webkit-appearance: none; padding: 12px 40px 12px 14px;
+                 background: #0d1422 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ff5a1f' stroke-width='2' fill='none'/%3E%3C/svg%3E") right 14px center / 12px no-repeat;
+                 color: var(--ink); border: 1px solid var(--line); border-radius: 0;
+                 font: 600 1.02rem/1.3 var(--body); }
+        select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+        select:disabled { opacity: .5; }
+        select option { background: #0d1422; color: var(--ink); }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
         .hint { margin: 8px 0 0; font-size: .85rem; color: var(--muted); }
-        p.sample { margin: -12px 0 20px; font-size: .95rem; }
-        p.sample a { color: var(--accent); font-weight: 600; }
-        p.sample span { color: var(--muted); font-size: .85rem; }
-        button { margin-top: 20px; width: 100%; padding: 12px; border: 0; border-radius: 8px; background: var(--accent);
-                 color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
-        button:disabled { opacity: .5; cursor: not-allowed; }
-        #status { margin-top: 16px; min-height: 24px; color: var(--muted); }
+
+        /* Botón principal */
+        button.go { position: relative; width: 100%; margin-top: 24px; padding: 15px 18px; border: 0; cursor: pointer;
+                    background: var(--accent); color: var(--accent-ink);
+                    font: 700 1.25rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase;
+                    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+                    transition: transform .12s ease, filter .12s ease; }
+        button.go:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+        button.go:disabled { opacity: .45; cursor: not-allowed; }
+        button.go::after { content: " ►"; font-size: .85em; }
+
+        /* Tablero de progreso */
+        .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; list-style: none; padding: 0; margin: 18px 0 0; }
+        .steps[hidden] { display: none; }
+        .steps li { font: 600 .72rem/1.2 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+        .steps li::before { content: ""; display: block; height: 6px; margin-bottom: 7px; background: var(--line); }
+        .steps li.done { color: var(--ink); }
+        .steps li.done::before { background: var(--lime); }
+        .steps li.now { color: var(--ink); }
+        .steps li.now::before { background: linear-gradient(90deg, var(--accent) 0 50%, var(--line) 50%);
+                                background-size: 200% 100%; animation: run 1s linear infinite; }
+        @keyframes run { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+        #status { margin-top: 14px; min-height: 24px; color: var(--muted); font-size: .95rem; }
         #status.err { color: var(--err); }
-        #status a { color: var(--ok); font-weight: 700; }
-        .steps { list-style: none; padding: 0; margin: 12px 0 0; font-size: .9rem; color: var(--muted); }
-        .steps li::before { content: "○ "; }
-        .steps li.done::before { content: "● "; color: var(--ok); }
-        .steps li.now { color: var(--ink); font-weight: 600; }
-        footer { margin-top: 20px; font-size: .8rem; color: var(--muted); }
+        .result { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+        .result b { flex-basis: 100%; font: 700 1rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--lime); }
+        .btn { display: inline-block; padding: 10px 16px; text-decoration: none;
+               font: 700 .9rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
+        .btn.primary { background: var(--lime); color: #12180a; }
+        .btn.ghost { border: 1px solid var(--line); color: var(--ink); }
+        .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+        .sample { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 22px; }
+        .sample span { color: var(--muted); font-size: .85rem; }
+
+        footer { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
+        footer b { font: 700 .8rem/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+
+        @media (max-width: 480px) {
+            .grid2 { grid-template-columns: 1fr; }
+            #season { display: none; }
+            .board strong { font-size: 1.3rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .steps li.now::before { animation: none; background: var(--accent); }
+            button.go { transition: none; }
+        }
     </style>
 </head>
 <body>
-<main>
-    <h1>Mad Sports</h1>
-    <p class="lead">Informes estadísticos de hockey sobre patines en PDF, con análisis de IA. Fuente de los datos: Federación Porteña de Patín (FPP).</p>
-    <p class="sample"><a href="/api/ejemplo.pdf" target="_blank" rel="noopener">Ver un informe de ejemplo</a>
-        <span>(con datos ficticios)</span></p>
+<div class="wrap">
+    <header class="brand">
+        <!-- Palos de hockey cruzados y bocha -->
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+            <rect width="64" height="64" rx="14" fill="#ff5a1f"/>
+            <path d="M16 14l20 30h10" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M48 14L28 44H18" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="32" cy="52" r="5" fill="#fff"/>
+        </svg>
+        <div><b>Mad Sports</b><small>Hockey sobre patines · FPP</small></div>
+    </header>
 
-    <form class="card" id="form">
-        <label for="club">Club</label>
-        <select id="club" required disabled><option>Cargando catálogo…</option></select>
+    <section class="hero">
+        <span class="tag">Informes de rendimiento</span>
+        <h1>Tu equipo,<br><em>en números.</em></h1>
+        <p class="lead">Estadísticas de la Federación Porteña de Patín convertidas en un informe PDF: resultados,
+            goleadores, minuto a minuto, fortalezas y debilidades, con análisis de IA.</p>
+    </section>
 
-        <label for="categoria">Categoría</label>
-        <select id="categoria" required disabled></select>
+    <div class="board" aria-hidden="true">
+        <div><strong>12</strong><span>Indicadores de juego</span></div>
+        <div><strong>5'</strong><span>Tramos de goles y tarjetas</span></div>
+        <div><strong>IA</strong><span>Análisis escrito</span></div>
+    </div>
 
-        <label for="rama">Rama</label>
-        <select id="rama" required disabled></select>
+    <p class="sample">
+        <a class="btn ghost" href="/api/ejemplo.pdf" target="_blank" rel="noopener">Ver informe de ejemplo</a>
+        <span>Datos ficticios, para ver el formato.</span>
+    </p>
 
-        <label for="periodo">Período</label>
-        <select id="periodo" required>
-            <option value="TEMPORADA" selected>Apertura + Clausura</option>
-            <option value="APERTURA">Apertura</option>
-            <option value="CLAUSURA">Clausura</option>
-            <option value="ULTIMOS_5">Últimos 5 partidos</option>
-        </select>
-        <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos: récord, resultados y análisis por minuto de esos
-            partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
+    <form class="sheet" id="form">
+        <div class="sheet-head"><span>Planilla del informe</span><span id="season">Temporada</span></div>
 
-        <button id="go" type="submit" disabled>Generar informe</button>
-        <div id="status" role="status" aria-live="polite"></div>
+        <div class="field">
+            <label for="club"><span class="num"><i>1</i></span>Club</label>
+            <select id="club" required disabled><option>Cargando catálogo…</option></select>
+        </div>
+
+        <div class="grid2">
+            <div class="field">
+                <label for="categoria"><span class="num"><i>2</i></span>Categoría</label>
+                <select id="categoria" required disabled></select>
+            </div>
+            <div class="field">
+                <label for="rama"><span class="num"><i>3</i></span>Rama</label>
+                <select id="rama" required disabled></select>
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="periodo"><span class="num"><i>4</i></span>Período</label>
+            <select id="periodo" required>
+                <option value="TEMPORADA" selected>Apertura + Clausura</option>
+                <option value="APERTURA">Apertura</option>
+                <option value="CLAUSURA">Clausura</option>
+                <option value="ULTIMOS_5">Últimos 5 partidos</option>
+            </select>
+            <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos: récord, resultados, tarjetas y análisis por
+                minuto de esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
+        </div>
+
+        <button class="go" id="go" type="submit" disabled>Generar informe</button>
+
         <ul class="steps" id="steps" hidden>
-            <li data-s="EXTRAYENDO">Extraer datos del sitio de la FPP</li>
-            <li data-s="ANALIZANDO">Analizar</li>
-            <li data-s="GENERANDO_PDF">Generar el PDF</li>
+            <li data-s="EXTRAYENDO">Datos FPP</li>
+            <li data-s="ANALIZANDO">Análisis</li>
+            <li data-s="GENERANDO_PDF">PDF</li>
         </ul>
+        <div id="status" role="status" aria-live="polite"></div>
     </form>
-    <footer>Fuente: buenosaires.sidgad.com. Informes elaborados por Mad Sports. Las cifras se calculan a partir de los datos publicados por la FPP; el texto de análisis lo redacta la IA.</footer>
-</main>
+
+    <footer><b>Mad Sports</b> · Informes elaborados por Mad Sports. Fuente de los datos: Federación Porteña de Patín
+        (buenosaires.sidgad.com).</footer>
+</div>
 
 <script>
     const $ = id => document.getElementById(id);
@@ -177,8 +311,8 @@
             if (!res.ok) throw new Error(body.detail || res.statusText);
             const job = await poll(body.id);
             $("status").className = "";
-            $("status").innerHTML = `Listo: <a href="${job.pdfUrl}">descargar el PDF</a>
-                · <a href="${job.datosUrl}">datos (JSON) para IA</a>`;
+            $("status").innerHTML = `<div class="result"><b>Informe listo</b>
+                <a class="btn primary" href="${job.pdfUrl}">Descargar PDF</a></div>`;
             window.location.href = job.pdfUrl;
         } catch (e) {
             status(e.message, true);
@@ -186,6 +320,7 @@
             $("go").disabled = false;
         }
     });
+    $("season").textContent = "Temporada " + new Date().getFullYear();
     loadCatalog();
 </script>
 </body>

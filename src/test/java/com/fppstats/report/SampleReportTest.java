@@ -58,7 +58,7 @@ class SampleReportTest {
     com.fasterxml.jackson.databind.ObjectMapper mapper;
 
     @Test
-    void elJsonExportadoTraeLasCifrasDerivadas() throws Exception {
+    void elJsonQueRecibeLaIaTraeLasCifrasDerivadas() throws Exception {
         ReportData d = SampleData.build(HOY);
         TeamReport t = d.teams().getFirst();
         com.fasterxml.jackson.databind.JsonNode json = mapper.readTree(mapper.writeValueAsString(d));

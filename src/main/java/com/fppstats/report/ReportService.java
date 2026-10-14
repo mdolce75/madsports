@@ -92,7 +92,6 @@ public class ReportService {
         private volatile Status status = Status.PENDIENTE;
         private volatile String message = "En cola";
         private volatile byte[] pdf;
-        private volatile ReportData data;
         private volatile String fileName;
 
         Job(Request request) {
@@ -104,8 +103,6 @@ public class ReportService {
         public Status status() { return status; }
         public String message() { return message; }
         public byte[] pdf() { return pdf; }
-        /** Cifras del informe, para exportarlas en JSON (p. ej. para pasarlas a una IA). */
-        public ReportData data() { return data; }
         public String fileName() { return fileName; }
 
         void update(Status status, String message) {
@@ -155,7 +152,6 @@ public class ReportService {
     private void run(Job job, ClubView club, Category category) {
         try {
             ReportData data = extract(job, club, category);
-            job.data = data;
             job.update(Status.ANALIZANDO, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
             AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
             job.update(Status.GENERANDO_PDF, "Generando el PDF");
