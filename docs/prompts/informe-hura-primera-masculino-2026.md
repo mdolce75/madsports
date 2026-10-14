@@ -66,6 +66,9 @@ Reglas que no se negocian:
   - `discipline`: `yellowCards` (-1 = no disponible), `blueCards`, `redCards`, `cardsPerGame` (azules + rojas por
     partido), `matches` y `fromSheets`.
   - `rivals`: cara a cara con cada rival.
+  - `indicators`: **análisis de fortalezas y debilidades ya evaluado**. Cada elemento tiene `area`, `metric`,
+    `value`, `referenceLabel` y `reference` (contra qué se compara), `unit` (PER_GAME, PERCENT, MINUTES o DIFF),
+    `verdict` (FORTALEZA, DEBILIDAD, EN_LINEA o MUESTRA_CHICA) y `explanation` (la frase con las cifras).
   - `timeProfile`: goles y tarjetas por tramos de 5 minutos, desde las fichas de partido:
     - `buckets`: un tramo por fila (`label`, p. ej. "2T 0-5'") con `goalsFor`, `goalsAgainst`, tarjetas propias
       (`yellowOwn`, `blueOwn`, `redOwn`) y tarjetas a los rivales (`yellowRival`, `blueRival`, `redRival`).
@@ -84,7 +87,11 @@ Reglas que no se negocian:
    por Mad Sports · fecha" (`generatedOn` en dd/mm/aaaa).
 2. **Resumen** (3 a 5 oraciones con el panorama del período) y **Tendencia** (forma reciente, tramos con más goles a
    favor y en contra, comparación entre torneos, inferioridad numérica).
-3. **Fortalezas** y **Aspectos a mejorar**, en viñetas, cada una con su cifra y la comparación con la liga (`league`).
+3. **Fortalezas** y **Aspectos a mejorar**, en viñetas: salen de `indicators` con `verdict` FORTALEZA y DEBILIDAD
+   (podés explicar el porqué con otras cifras del JSON, pero no cambies la clasificación).
+   Después, la tabla **Análisis de fortalezas y debilidades**: una fila por elemento de `indicators`, con Área |
+   Indicador | Equipo (`value`) | Referencia (`referenceLabel` y `reference`) | Evaluación (Fortaleza, Debilidad,
+   En línea o Muestra chica).
 4. **Jugadores destacados:** tabla Jugador | Motivo (con cifras de `players`).
 5. **Próximo rival:** el primer partido de `upcoming` (local o visitante, fecha y hora o "a confirmar") y el
    antecedente del período desde `rivals`.

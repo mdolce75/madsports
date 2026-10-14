@@ -36,7 +36,36 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
                              List<MatchLine> results, List<MatchLine> upcoming,
                              MatchLine biggestWin, MatchLine worstLoss,
                              List<PlayerLine> players, SetPieces setPieces, Discipline discipline,
-                             List<RivalLine> rivals, List<TorneoLine> byTorneo, TimeProfile timeProfile) {
+                             List<RivalLine> rivals, List<TorneoLine> byTorneo, TimeProfile timeProfile,
+                             List<Indicator> indicators) {
+    }
+
+    /** Resultado de comparar un indicador del equipo con su referencia. */
+    public enum Verdict {
+        FORTALEZA("Fortaleza"), DEBILIDAD("Debilidad"), EN_LINEA("En línea"), MUESTRA_CHICA("Muestra chica");
+
+        private final String label;
+
+        Verdict(String label) {
+            this.label = label;
+        }
+
+        public String label() {
+            return label;
+        }
+    }
+
+    /** Cómo mostrar el valor: goles o tarjetas por partido, porcentaje, minutos (mm:ss) o diferencia con signo. */
+    public enum Unit { PER_GAME, PERCENT, MINUTES, DIFF }
+
+    /**
+     * Un aspecto del juego evaluado contra una referencia (análisis de fortalezas y debilidades).
+     *
+     * @param referenceLabel qué es la referencia ("Liga", "Temporada", "Con uno más", "Umbral", "Equilibrio")
+     * @param explanation    por qué se clasifica así, en una frase
+     */
+    public record Indicator(String area, String metric, double value, String referenceLabel, double reference,
+                            Unit unit, Verdict verdict, String explanation) {
     }
 
     /**
@@ -216,8 +245,9 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     }
 
     /** Promedios de todas las competiciones incluidas en el informe (todos los equipos). */
+    /** @param effectiveness % de puntos obtenidos por un equipo promedio (victoria 3, empate 1) */
     public record LeagueContext(int teams, int matchesPlayed, double goalsPerTeamGame, double top3GoalsForPerGame,
-                                double directFreePct, double penaltyPct, double cardsPerTeamGame) {
+                                double directFreePct, double penaltyPct, double cardsPerTeamGame, double effectiveness) {
     }
 
     static double pct(int part, int total) {

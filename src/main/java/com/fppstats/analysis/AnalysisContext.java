@@ -64,6 +64,7 @@ class AnalysisContext {
             m.put("por_torneo", t.byTorneo());
             m.put("mayor_victoria", t.biggestWin());
             m.put("peor_derrota", t.worstLoss());
+            m.put("fortalezas_debilidades", t.indicators());
             return m;
         }).toList());
         return o;

@@ -360,7 +360,7 @@ public class StatsEngineTest {
         return new TeamRef(1, 1, code, code);
     }
 
-    static TeamReport team(ReportData r, String code) {
+    public static TeamReport team(ReportData r, String code) {
         return r.teams().stream().filter(t -> t.code().equals(code)).findFirst().orElseThrow();
     }
 }

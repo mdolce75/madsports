@@ -48,6 +48,9 @@ public class GeminiAnalyst {
               con uno menos y con uno más por sanciones (azul 2', roja 4'): citá esos valores, no los recalcules.
             - Toda cifra que menciones tiene que salir textualmente de los datos que recibiste.
               No calcules ni estimes números nuevos; si un dato no está, no lo menciones.
+            - Fortalezas y debilidades: basalas en overview.equipos[].fortalezas_debilidades, que ya clasifica cada
+              aspecto (FORTALEZA, DEBILIDAD, EN_LINEA, MUESTRA_CHICA) contra su referencia. No contradigas esa
+              clasificación; podés explicar el porqué y sumar matices con otras cifras de los datos.
             - Compará siempre contra el contexto de la liga (promedios) para decir si algo es fortaleza o debilidad.
             - Con pocos partidos jugados, decilo y sé prudente con las conclusiones.
             - En categorías formativas (Infantil, Prejuvenil) el tono es formativo y respetuoso:

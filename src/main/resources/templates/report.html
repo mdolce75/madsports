@@ -37,6 +37,11 @@
         .bar.ga { background: #c53030; }
         .minutes td { padding: 2px 4px; }
         tr.sep td { border-top: 2px solid #0f2a52; }
+        .verdict { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
+        .v-FORTALEZA { background: #c6f6d5; color: #22543d; }
+        .v-DEBILIDAD { background: #fed7d7; color: #822727; }
+        .v-EN_LINEA { background: #e2e8f0; color: #2d3748; }
+        .v-MUESTRA_CHICA { background: #f7fafc; color: #718096; font-weight: normal; }
         tr.unrecorded td { color: #718096; font-style: italic; }
         tr.total td { border-top: 2px solid #0f2a52; }
         .card { display: inline-block; width: 7px; height: 10px; border-radius: 1px; vertical-align: middle; }
@@ -122,6 +127,23 @@
     <p th:if="${!t.form.isEmpty()}"><b>Últimos resultados:</b>
         <span th:each="r : ${t.form}" th:class="|chip ${r}|" th:text="${r}">G</span>
     </p>
+
+    <div class="nobreak" th:if="${!t.indicators.isEmpty()}">
+        <h3>Análisis de fortalezas y debilidades</h3>
+        <table class="strengths">
+            <tr><th class="l">Área</th><th class="l">Indicador</th><th>Equipo</th><th>Referencia</th><th>Evaluación</th></tr>
+            <tr th:each="i : ${t.indicators}">
+                <td class="l" th:text="${i.area}"></td>
+                <td class="l" th:text="${i.metric}"></td>
+                <td th:text="${f.indicator(i.value, i.unit)}"></td>
+                <td th:text="${i.unit.name() == 'DIFF' ? i.referenceLabel : i.referenceLabel + ' ' + f.indicator(i.reference, i.unit)}"></td>
+                <td><span th:class="|verdict v-${i.verdict}|" th:text="${i.verdict.label()}"></span></td>
+            </tr>
+        </table>
+        <p class="muted">Fortaleza o debilidad: más de un 10% mejor o peor que la referencia (por tiempo, más de 0,25
+            goles por partido de diferencia; goleo: más del 35% de los goles en un jugador es dependencia, hasta 25% es
+            reparto). Con menos de 3 partidos o intentos, la muestra es chica para evaluar.</p>
+    </div>
 
     <h3>Posiciones</h3>
     <table th:if="${!t.standings.isEmpty()}">

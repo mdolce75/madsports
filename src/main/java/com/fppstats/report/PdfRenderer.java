@@ -91,6 +91,16 @@ public class PdfRenderer {
             return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
         }
 
+        /** Valor de un indicador del análisis de fortalezas y debilidades, según su unidad. */
+        public String indicator(double value, ReportData.Unit unit) {
+            return switch (unit) {
+                case PER_GAME -> dec(value);
+                case PERCENT -> pct(value);
+                case MINUTES -> clock(value);
+                case DIFF -> String.format(Locale.forLanguageTag("es-AR"), "%+.2f", value);
+            };
+        }
+
         public String fraction(int scored, int taken) {
             return taken == 0 ? "-" : scored + "/" + taken;
         }

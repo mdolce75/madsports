@@ -81,12 +81,13 @@ public final class StatsEngine {
                 byTeam.computeIfAbsent(teamKey(t, own.size(), club.code()), k -> new ArrayList<>()).add(new Entry(cd, t));
             }
         }
+        LeagueContext league = league(data);
         List<TeamReport> teams = byTeam.entrySet().stream()
-                .map(e -> team(e.getKey(), e.getValue(), today, lastMatches)).toList();
+                .map(e -> team(e.getKey(), e.getValue(), today, lastMatches, league)).toList();
         List<Source> sources = data.stream()
                 .map(cd -> new Source(cd.competition().name(), cd.competition().url())).toList();
         return new ReportData(new ReportData.ClubInfo(club.id(), club.code(), club.name()),
-                categoryLabel, torneoLabel, today, lastMatches, sources, teams, league(data), List.of());
+                categoryLabel, torneoLabel, today, lastMatches, sources, teams, league, List.of());
     }
 
     /** Partidos jugados del equipo en todas sus competiciones, en orden cronológico; los últimos N si N > 0. */
@@ -116,7 +117,8 @@ public final class StatsEngine {
         return clubTeamsInCompetition > 1 ? clubCode + " A" : clubCode;
     }
 
-    private static TeamReport team(String key, List<Entry> entries, LocalDate today, int lastMatches) {
+    private static TeamReport team(String key, List<Entry> entries, LocalDate today, int lastMatches,
+                                   LeagueContext league) {
         String name = entries.getLast().team().name();
         List<Match> allPlayed = entries.stream()
                 .flatMap(e -> e.data().matches().stream().filter(m -> m.played() && m.involves(e.team().teamId())))
@@ -190,8 +192,11 @@ public final class StatsEngine {
                 : new Discipline(-1, blue, red, seasonPlayed == 0 ? 0 : (double) (blue + red) / seasonPlayed,
                         seasonPlayed, false);
 
+        TeamReport base = new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
+                biggestWin, worstLoss, players, setPieces, discipline, rivals(results), byTorneo, timeProfile, List.of());
         return new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
-                biggestWin, worstLoss, players, setPieces, discipline, rivals(results), byTorneo, timeProfile);
+                biggestWin, worstLoss, players, setPieces, discipline, base.rivals(), byTorneo, timeProfile,
+                StrengthsAnalysis.evaluate(base, league));
     }
 
     /**
@@ -432,12 +437,14 @@ public final class StatsEngine {
         int matches = 0;
         int goals = 0;
         int teams = 0;
+        int points = 0;
         for (CompetitionData cd : data) {
             teams += cd.competition().teams().size();
             for (Match m : cd.matches()) {
                 if (m.played()) {
                     matches++;
                     goals += m.homeGoals() + m.awayGoals();
+                    points += m.homeGoals().equals(m.awayGoals()) ? 2 : 3;
                 }
             }
         }
@@ -454,6 +461,7 @@ public final class StatsEngine {
         return new LeagueContext(teams, matches,
                 teamGames == 0 ? 0 : (double) goals / teamGames, top3Gf,
                 ReportData.pct(fdS, fdT), ReportData.pct(penS, penT),
-                teamGames == 0 ? 0 : (double) cards / teamGames);
+                teamGames == 0 ? 0 : (double) cards / teamGames,
+                teamGames == 0 ? 0 : 100.0 * points / (teamGames * 3));
     }
 }
