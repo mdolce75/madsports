@@ -94,6 +94,32 @@ Si un fragmento de SIDGAD responde **404** (tabla, calendario, estadísticas o a
 **se genera igual** con lo disponible, sin error en la web, y el PDF lista al final qué datos faltaban. Un 404 no
 se cachea (se reintenta en el próximo informe). Cualquier otro error (5xx, timeout) sí corta el informe.
 
+## Usuarios y perfiles
+
+La web pide registro e ingreso (Spring Security, sesión con cookie, CSRF con `XSRF-TOKEN`). Cada usuario tiene uno o
+más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBCNT`, `PLAYERFPP`, `PLAYERFSP`,
+`PLAYERCNT`. Por ahora el registro ofrece solo **Club FPP** o **Jugador FPP**, y uno excluye al otro.
+
+- **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email, nombre, apellido y club,
+  todos obligatorios. Para Jugador FPP también son obligatorios el **DNI** y el **jugador**. El jugador se elige de la
+  planilla de un equipo del club (club → categoría → nombre): SIDGAD no publica el DNI, así que la cuenta queda
+  vinculada al `id_player` de la FPP. Un jugador y un DNI tienen un solo usuario.
+- **Club FPP** (`/`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
+  de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
+- **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
+  período (Apertura, Clausura o Apertura + Clausura) y genera un PDF con partidos jugados, ganados, empatados y
+  perdidos, goles y tarjetas (amarilla, azul y roja), con sus promedios por partido, por cada categoría del club en
+  que jugó y en total, y el detalle partido a partido.
+
+El informe del jugador sale de las **actas**: cada acta trae la planilla de jugadores de cada equipo (primero el local),
+con `id_player`, goles y tarjetas. Un partido cuenta si el jugador figura en la planilla de su equipo. La tabla de
+estadísticas de la FPP no alcanza, porque solo lista a los que hicieron goles. Se leen las actas de todos los equipos
+del club en el período (la primera vez tarda entre 20 y 30 s en un club grande; después quedan en cache 24 h). Los
+partidos sin acta publicada se informan aparte.
+
+Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo crea Flyway
+(`db/migration`). En producción, `FPP_DB_URL` apunta a otra base.
+
 ## Correr
 
 Requiere JDK 21.
@@ -110,6 +136,8 @@ Abrir http://localhost:8080.
 | `GEMINI_API_KEY` | — | Habilita el análisis con Gemini |
 | `FPP_AI_MODEL` | `gemini-3.8-flash` | Modelo de Gemini (con plan gratuito) |
 | `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
+| `FPP_DB_URL` | `jdbc:h2:file:./data/fpp-stats` | Base de usuarios |
+| `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 
 **API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.
 En el plan gratuito Google puede usar el contenido enviado para mejorar sus productos (son datos deportivos
@@ -121,11 +149,19 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 
 ## API
 
+Públicos: registro, sesión, catálogo e informe de ejemplo. El resto pide sesión con el perfil que corresponde
+(sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
+
+- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","nombre":"...","apellido":"...","clubId":22,"dni":"30123456","categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973}` → `201`
+- `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
+- `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
+- `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)
+- `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP)
 - `GET /api/catalogo?anio=2026` — clubes con sus categorías y ramas del año (sin `anio`: el más reciente con datos);
   `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
   SIDGAD ni la API de Gemini. Enlazado desde la web.
-- `POST /api/informes` `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
+- `POST /api/informes` (CLUBFPP, solo su club) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
 - `GET /api/informes/{id}/pdf`

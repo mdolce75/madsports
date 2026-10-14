@@ -48,6 +48,10 @@ public class Charts {
     static final Color[] CATEGORICAL = {new Color(0x2a78d6), new Color(0xeb6834), new Color(0x1baf7a),
             new Color(0xeda100), new Color(0xe87ba4)};
     static final Color OTHER = new Color(0xa0aec0);
+    // Colores de las tarjetas (los mismos de las tablas del informe)
+    static final Color CARD_YELLOW = new Color(0xecc94b);
+    static final Color CARD_BLUE = new Color(0x3182ce);
+    static final Color CARD_RED = new Color(0xe53e3e);
     static final Color OWN = new Color(0xff5a1f);
     static final Color RIVAL = new Color(0x121a2a);
     private static final Color INK = new Color(0x1d2433);
@@ -70,6 +74,24 @@ public class Charts {
                         new Slice("Empatados", r.drawn(), String.valueOf(r.drawn()), DRAW),
                         new Slice("Perdidos", r.lost(), String.valueOf(r.lost()), LOSS)),
                 String.valueOf(r.played()), "partidos");
+    }
+
+    /** Dona de ganados, empatados y perdidos a partir de los totales (informe de jugador). */
+    public String resultsDonut(int won, int drawn, int lost) {
+        return resultsDonut(new TeamRecord(won + drawn + lost, won, drawn, lost, 0, 0));
+    }
+
+    /** Dona de tarjetas por color (amarilla, azul, roja), con el color de cada tarjeta. */
+    public String cardsDonut(int yellow, int blue, int red) {
+        int total = yellow + blue + red;
+        if (total == 0) {
+            return null;
+        }
+        return donut(List.of(
+                        new Slice("Amarillas", yellow, String.valueOf(yellow), CARD_YELLOW),
+                        new Slice("Azules", blue, String.valueOf(blue), CARD_BLUE),
+                        new Slice("Rojas", red, String.valueOf(red), CARD_RED)),
+                String.valueOf(total), "tarjetas");
     }
 
     /** Dona del reparto del gol: los 5 goleadores y el resto en "Otros". */

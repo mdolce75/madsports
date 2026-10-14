@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registrarse · Mad Sports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5a1f'/%3E%3Cpath d='M16 14l20 30h10' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M48 14L28 44H18' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='52' r='5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+    <div id="brand"></div>
+
+    <section class="hero">
+        <span class="tag">Registro</span>
+        <h1>Sumate a<br><em>Mad Sports.</em></h1>
+        <p class="lead">Elegí tu perfil: club, para los informes de los equipos de tu club, o jugador, para tus
+            estadísticas en todas las categorías en que jugás.</p>
+    </section>
+
+    <form class="sheet" id="form" novalidate>
+        <div class="sheet-head"><span>Planilla de registro</span><span><span class="req">*</span> obligatorio</span></div>
+
+        <div class="field">
+            <label>Perfil <span class="req">*</span></label>
+            <div class="profiles" role="radiogroup" aria-label="Perfil">
+                <label><input type="radio" name="perfil" value="CLUBFPP" checked>Club FPP
+                    <small>Informes de los equipos de tu club.</small></label>
+                <label><input type="radio" name="perfil" value="PLAYERFPP">Jugador FPP
+                    <small>Tus partidos, goles y tarjetas.</small></label>
+            </div>
+        </div>
+
+        <div class="grid2">
+            <div class="field">
+                <label for="usuario">Usuario <span class="req">*</span></label>
+                <input type="text" id="usuario" autocomplete="username" required maxlength="30">
+            </div>
+            <div class="field">
+                <label for="clave">Clave <span class="req">*</span></label>
+                <input type="password" id="clave" autocomplete="new-password" required minlength="8" maxlength="72">
+            </div>
+        </div>
+        <div class="field">
+            <label for="email">Email <span class="req">*</span></label>
+            <input type="email" id="email" autocomplete="email" required maxlength="120">
+        </div>
+        <div class="grid2">
+            <div class="field">
+                <label for="nombre">Nombre <span class="req">*</span></label>
+                <input type="text" id="nombre" autocomplete="given-name" required maxlength="60">
+            </div>
+            <div class="field">
+                <label for="apellido">Apellido <span class="req">*</span></label>
+                <input type="text" id="apellido" autocomplete="family-name" required maxlength="60">
+            </div>
+        </div>
+        <div class="field">
+            <label for="club">Club <span class="req">*</span></label>
+            <select id="club" required disabled><option value="">Cargando clubes…</option></select>
+        </div>
+
+        <div id="player-fields" hidden>
+            <div class="field">
+                <label for="dni">DNI <span class="req">*</span></label>
+                <input type="text" id="dni" inputmode="numeric" maxlength="11" placeholder="30123456">
+            </div>
+            <div class="field">
+                <label for="equipo">Categoría en que jugás <span class="req">*</span></label>
+                <select id="equipo" disabled><option value="">Elegí el club</option></select>
+                <p class="hint">Sirve para encontrarte en la planilla del equipo. El informe incluye todas las
+                    categorías del club en que jugaste.</p>
+            </div>
+            <div class="field">
+                <label for="jugador">Jugador <span class="req">*</span></label>
+                <select id="jugador" disabled><option value="">Elegí la categoría</option></select>
+                <p class="hint">Tu nombre tal como figura en las actas de partido de la FPP.</p>
+            </div>
+        </div>
+
+        <button class="go" id="go" type="submit" disabled>Registrarme</button>
+        <div id="status" role="status" aria-live="polite"></div>
+        <p class="alt">¿Ya tenés usuario? <a href="/login.html">Ingresá</a></p>
+    </form>
+
+    <footer><b>Mad Sports</b> · Informes elaborados por Mad Sports. Fuente de los datos: Federación Porteña de Patín
+        (buenosaires.sidgad.com).</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+
+    const perfil = () => document.querySelector("input[name=perfil]:checked").value;
+    const isPlayer = () => perfil() === "PLAYERFPP";
+    const rosters = {};
+    const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
+    let catalog;
+
+    async function loadClubs() {
+        try {
+            const res = await fetch("/api/catalogo");
+            catalog = await res.json();
+            if (!res.ok) throw new Error(catalog.detail || res.statusText);
+            const sel = $("club");
+            sel.innerHTML = "";
+            sel.add(new Option("Elegí tu club", ""));
+            catalog.clubs.forEach(c => sel.add(new Option(`${c.name} (${c.code})`, c.id)));
+            sel.disabled = false;
+            $("go").disabled = false;
+        } catch (e) {
+            status("No se pudo cargar la lista de clubes: " + e.message, true);
+        }
+    }
+
+    // Equipos del club: cada categoría en cada rama ("Infantil B Femenino").
+    function loadTeams() {
+        const sel = $("equipo");
+        sel.innerHTML = "";
+        sel.disabled = true;
+        const club = catalog && catalog.clubs.find(c => String(c.id) === $("club").value);
+        if (!club) {
+            sel.add(new Option("Elegí el club", ""));
+        } else {
+            sel.add(new Option("Elegí la categoría", ""));
+            ["MASCULINO", "FEMENINO"].forEach(b => club.categories.filter(c => c.branches.includes(b))
+                .forEach(c => sel.add(new Option(`${c.label} ${BRANCH_LABEL[b]}`, `${c.key}|${b}`))));
+            sel.disabled = false;
+        }
+        loadPlayers();
+    }
+
+    // Jugadores del equipo según las actas de sus partidos (se piden una vez por equipo).
+    async function loadPlayers() {
+        const sel = $("jugador");
+        const clubId = $("club").value;
+        const team = $("equipo").value;
+        sel.innerHTML = "";
+        sel.disabled = true;
+        if (!isPlayer()) return;
+        if (!clubId || !team) {
+            sel.add(new Option("Elegí la categoría", ""));
+            return;
+        }
+        const [categoria, rama] = team.split("|");
+        const key = `${clubId}|${team}`;
+        sel.add(new Option("Leyendo las actas del equipo… (puede tardar unos segundos)", ""));
+        status("");
+        try {
+            if (!rosters[key]) {
+                const res = await fetch(`/api/registro/jugadores?clubId=${clubId}`
+                    + `&categoria=${encodeURIComponent(categoria)}&rama=${rama}`);
+                const body = await res.json();
+                if (!res.ok) throw new Error(body.detail || res.statusText);
+                rosters[key] = body;
+            }
+            if ($("club").value !== clubId || $("equipo").value !== team) return;
+            sel.innerHTML = "";
+            if (rosters[key].length === 0) {
+                sel.add(new Option("El equipo no tiene actas publicadas todavía", ""));
+                return;
+            }
+            sel.add(new Option("Elegí tu nombre", ""));
+            rosters[key].forEach(p => sel.add(new Option(p.name, p.id)));
+            sel.disabled = false;
+        } catch (e) {
+            sel.innerHTML = "";
+            sel.add(new Option("No se pudo cargar la lista", ""));
+            status("No se pudo cargar la lista de jugadores: " + e.message, true);
+        }
+    }
+
+    function toggleProfile() {
+        $("player-fields").hidden = !isPlayer();
+        loadPlayers();
+    }
+
+    document.querySelectorAll("input[name=perfil]").forEach(r => r.addEventListener("change", toggleProfile));
+    $("club").addEventListener("change", loadTeams);
+    $("equipo").addEventListener("change", loadPlayers);
+
+    $("form").addEventListener("submit", async ev => {
+        ev.preventDefault();
+        const data = {
+            perfil: perfil(),
+            usuario: $("usuario").value.trim(),
+            clave: $("clave").value,
+            email: $("email").value.trim(),
+            nombre: $("nombre").value.trim(),
+            apellido: $("apellido").value.trim(),
+            clubId: Number($("club").value) || 0
+        };
+        const missing = ["usuario", "clave", "email", "nombre", "apellido"].filter(k => !data[k]);
+        if (missing.length || !data.clubId) {
+            status("Completá todos los campos obligatorios.", true);
+            return;
+        }
+        if (data.clave.length < 8) {
+            status("La clave lleva al menos 8 caracteres.", true);
+            return;
+        }
+        if (isPlayer()) {
+            data.dni = $("dni").value.trim();
+            [data.categoria, data.rama] = ($("equipo").value || "|").split("|");
+            data.jugadorId = Number($("jugador").value) || null;
+            if (!/^\d{7,8}$/.test(data.dni.replace(/[.\s-]/g, ""))) {
+                status("El DNI es obligatorio para jugadores: 7 u 8 números.", true);
+                return;
+            }
+            if (!data.categoria) {
+                status("Elegí la categoría en que jugás.", true);
+                return;
+            }
+            if (!data.jugadorId) {
+                status("Elegí tu nombre en la lista de jugadores.", true);
+                return;
+            }
+        }
+        $("go").disabled = true;
+        status("Registrando…");
+        try {
+            await postJson("/api/registro", data);
+            // Alta correcta: se ingresa directo.
+            const res = await api("/api/login", {
+                method: "POST",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: new URLSearchParams({usuario: data.usuario, clave: data.clave})
+            });
+            const body = await res.json().catch(() => ({}));
+            location.replace(res.ok ? body.inicio : "/login.html");
+        } catch (e) {
+            status(e.message, true);
+            $("go").disabled = false;
+        }
+    });
+
+    session().then(() => loadClubs());
+</script>
+</body>
+</html>

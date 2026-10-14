@@ -3,6 +3,15 @@ spring:
     name: fpp-stats
   thymeleaf:
     cache: true
+  # Usuarios: H2 en archivo (./data). En producción, FPP_DB_URL apunta a la base que corresponda.
+  datasource:
+    url: ${FPP_DB_URL:jdbc:h2:file:./data/fpp-stats}
+    username: ${FPP_DB_USER:sa}
+    password: ${FPP_DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # el esquema lo crea Flyway (db/migration)
   web:
     resources:
       cache:

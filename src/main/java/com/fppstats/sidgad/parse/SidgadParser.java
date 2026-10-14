@@ -2,6 +2,7 @@ package com.fppstats.sidgad.parse;
 
 import com.fppstats.sidgad.model.Competition;
 import com.fppstats.sidgad.model.Models.EventType;
+import com.fppstats.sidgad.model.Models.LineupPlayer;
 import com.fppstats.sidgad.model.Models.Match;
 import com.fppstats.sidgad.model.Models.MatchEvent;
 import com.fppstats.sidgad.model.Models.PlayerStats;
@@ -16,8 +17,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -118,6 +121,53 @@ public final class SidgadParser {
                     player == null ? "" : clean(player.text())));
         }
         return events;
+    }
+
+    /**
+     * Jugadores de cada equipo en un partido ({@code cap_gr_<idp>_1.php}): una tabla
+     * {@code competiciones_tabla_basic} por equipo, con el nombre en {@code .nombre_equipo_thickbox_stats} y una fila
+     * por jugador citado con su {@code id_player}. Columnas: Nº, portero, titular, 5 inicial, bandera, nombre, goles,
+     * asistencias, penales, faltas directas, faltas cometidas, faltas recibidas, amarillas, azules y rojas.
+     * La primera planilla es la del local y la segunda la del visitante. Lista vacía si el acta no está publicada.
+     */
+    public static List<LineupPlayer> lineups(String html) {
+        List<LineupPlayer> players = new ArrayList<>();
+        if (html == null || html.isBlank() || html.startsWith("File not found")) {
+            return players;
+        }
+        Set<String> seen = new HashSet<>();
+        int side = 0;
+        for (Element table : Jsoup.parse(html).select("table.competiciones_tabla_basic")) {
+            Element teamName = table.selectFirst(".nombre_equipo_thickbox_stats");
+            if (teamName == null || side >= 2) {
+                continue;
+            }
+            boolean home = side++ == 0;
+            String team = clean(teamName.text());
+            for (Element tr : table.select("tbody > tr")) {
+                Element link = tr.selectFirst("[id_player]");
+                List<Element> tds = tr.children();
+                if (link == null || tds.size() < 15) {
+                    continue;
+                }
+                int id = parseInt(link.attr("id_player"));
+                if (id <= 0 || !seen.add(team + "|" + id)) {
+                    continue;
+                }
+                players.add(new LineupPlayer(id, team, home, clean(tds.get(0).text()), lineupName(link),
+                        "5".equals(clean(tds.get(3).text())),
+                        parseInt(clean(tds.get(6).text())), parseInt(clean(tds.get(12).text())),
+                        parseInt(clean(tds.get(13).text())), parseInt(clean(tds.get(14).text()))));
+            }
+        }
+        return players;
+    }
+
+    /** "PEREZ BARBOSA <span>JUAN IGNACIO</span>" -> "Juan Ignacio Perez Barbosa" (sin la marca de capitán). */
+    private static String lineupName(Element link) {
+        Element given = link.selectFirst(".texto_gris_11");
+        String g = given == null ? "" : given.text();
+        return playerName((link.ownText() + ", " + g).replace("(C)", ""));
     }
 
     private static EventType eventType(String label) {

@@ -54,6 +54,17 @@ public final class Models {
                              int teamId, int clubId, String teamCode, String player) {
     }
 
+    /**
+     * Fila de un jugador en la planilla de un partido (tabla de jugadores de cada equipo en el acta).
+     *
+     * @param team    nombre del equipo como figura en el acta ("VELEZ", "GEBA B")
+     * @param home    planilla del local (en el acta va primero la del local y después la del visitante)
+     * @param starter figura en el cinco inicial
+     */
+    public record LineupPlayer(int playerId, String team, boolean home, String number, String name, boolean starter,
+                               int goals, int yellowCards, int blueCards, int redCards) {
+    }
+
     public record PlayerStats(int playerId, int teamId, String teamCode, int clubId, String name,
                               int goals, int games, int assists,
                               int penaltiesScored, int penaltiesTaken,

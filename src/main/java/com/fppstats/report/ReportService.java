@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -95,13 +96,15 @@ public class ReportService {
     public static final class Job {
         private final UUID id = UUID.randomUUID();
         private final Request request;
+        private final String owner;
         private volatile Status status = Status.PENDIENTE;
         private volatile String message = "En cola";
         private volatile byte[] pdf;
         private volatile String fileName;
 
-        Job(Request request) {
+        Job(Request request, String owner) {
             this.request = request;
+            this.owner = owner;
         }
 
         public UUID id() { return id; }
@@ -137,7 +140,8 @@ public class ReportService {
     }
 
     /** Valida los parámetros (falla rápido) y encola el informe. */
-    public Job submit(Request request) {
+    /** @param owner usuario que pide el informe: solo él puede consultarlo y bajarlo */
+    public Job submit(Request request, String owner) {
         if (!catalog.available(request.year())) {
             throw new IllegalArgumentException(CatalogService.unavailableMessage(request.year()));
         }
@@ -160,7 +164,7 @@ public class ReportService {
             throw new IllegalArgumentException(club.name() + " no participa en " + label(category, option)
                     + (torneo == null ? "" : " - " + torneo.label()) + " en " + request.year() + ".");
         }
-        Job job = new Job(request);
+        Job job = new Job(request, owner);
         jobs.put(job.id(), job);
         executor.submit(() -> run(job, club, category, option));
         return job;
@@ -171,8 +175,8 @@ public class ReportService {
         return category.levelLabel() + (option.letter() == null ? "" : " " + option.letter()) + " " + category.branchLabel();
     }
 
-    public Optional<Job> find(UUID id) {
-        return Optional.ofNullable(jobs.getIfPresent(id));
+    public Optional<Job> find(UUID id, String owner) {
+        return Optional.ofNullable(jobs.getIfPresent(id)).filter(j -> Objects.equals(j.owner, owner));
     }
 
     private void run(Job job, ClubView club, Category category, CategoryOption option) {
@@ -274,7 +278,7 @@ public class ReportService {
      * Archivo del escudo del club según teams_array: el más usado entre sus equipos (SIDGAD a veces le pone a un
      * equipo el logo de otro club, pero nunca a la mayoría).
      */
-    static String logoFile(List<Competition> comps, int clubId) {
+    public static String logoFile(List<Competition> comps, int clubId) {
         return comps.stream()
                 .flatMap(c -> c.teams().stream())
                 .filter(t -> t.clubId() == clubId && !t.logo().isBlank())

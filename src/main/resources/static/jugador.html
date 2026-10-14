@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mi informe de jugador · Mad Sports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5a1f'/%3E%3Cpath d='M16 14l20 30h10' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M48 14L28 44H18' stroke='%23fff' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='52' r='5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar"></div>
+    </div>
+
+    <section class="hero">
+        <span class="tag">Informe de jugador</span>
+        <h1>Tu temporada,<br><em>en números.</em></h1>
+        <p class="lead">Partidos jugados, ganados, empatados y perdidos, goles y tarjetas, por cada categoría en que
+            jugaste y en total.</p>
+    </section>
+
+    <form class="sheet" id="form">
+        <div class="sheet-head"><span>Planilla del jugador</span><span id="season"></span></div>
+
+        <div class="field">
+            <label for="club">Club</label>
+            <input type="text" id="club" readonly>
+        </div>
+        <div class="grid2">
+            <div class="field">
+                <label for="nombre">Nombre y apellido</label>
+                <input type="text" id="nombre" readonly>
+            </div>
+            <div class="field">
+                <label for="jugador">Jugador en la FPP</label>
+                <input type="text" id="jugador" readonly>
+            </div>
+        </div>
+
+        <div class="grid2">
+            <div class="field">
+                <label for="anio"><span class="num"><i>1</i></span>Año</label>
+                <select id="anio" required disabled></select>
+            </div>
+            <div class="field">
+                <label for="periodo"><span class="num"><i>2</i></span>Período</label>
+                <select id="periodo" required>
+                    <option value="TEMPORADA" selected>Apertura + Clausura</option>
+                    <option value="APERTURA">Apertura</option>
+                    <option value="CLAUSURA">Clausura</option>
+                </select>
+            </div>
+        </div>
+        <div class="notice" id="no-data" role="alert" hidden></div>
+
+        <button class="go" id="go" type="submit" disabled>Generar informe</button>
+
+        <ul class="steps" id="steps" hidden>
+            <li data-s="EXTRAYENDO">Datos FPP</li>
+            <li data-s="GENERANDO_PDF">PDF</li>
+            <li data-s="LISTO">Listo</li>
+        </ul>
+        <div id="status" role="status" aria-live="polite"></div>
+    </form>
+
+    <footer><b>Mad Sports</b> · Informes elaborados por Mad Sports. Fuente de los datos: Federación Porteña de Patín
+        (buenosaires.sidgad.com).</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+
+    // Años ofrecidos; si el año elegido no tiene datos, se avisa y no se genera.
+    async function loadYears(year) {
+        $("go").disabled = true;
+        try {
+            const res = await fetch("/api/catalogo" + (year ? "?anio=" + year : ""));
+            const catalog = await res.json();
+            if (!res.ok) throw new Error(catalog.detail || res.statusText);
+            const sel = $("anio");
+            sel.innerHTML = "";
+            catalog.years.forEach(y => sel.add(new Option(y, y, false, y === catalog.year)));
+            sel.disabled = false;
+            $("season").textContent = "Temporada " + catalog.year;
+            $("no-data").hidden = catalog.available;
+            $("no-data").textContent = catalog.available ? "" : catalog.message;
+            $("go").disabled = !catalog.available;
+        } catch (e) {
+            status("No se pudieron cargar los años: " + e.message, true);
+        }
+    }
+
+    $("anio").addEventListener("change", () => { status(""); loadYears($("anio").value); });
+    $("form").addEventListener("submit", async ev => {
+        ev.preventDefault();
+        $("go").disabled = true;
+        $("steps").hidden = false;
+        showStep("PENDIENTE");
+        status("Enviando…");
+        try {
+            const body = await postJson("/api/jugador/informes", {
+                anio: Number($("anio").value),
+                periodo: $("periodo").value
+            });
+            showReady(await poll(`/api/jugador/informes/${body.id}`));
+            showStep("LISTO");
+            document.querySelector('#steps li[data-s="LISTO"]').className = "done";
+        } catch (e) {
+            status(e.message, true);
+        } finally {
+            $("go").disabled = false;
+        }
+    });
+
+    requireProfile("PLAYERFPP").then(s => {
+        if (!s) return;
+        $("club").value = s.club.nombre;
+        $("nombre").value = `${s.nombre} ${s.apellido}`;
+        $("jugador").value = s.jugador ? s.jugador.nombre : "Sin jugador vinculado";
+        loadYears();
+    });
+</script>
+</body>
+</html>
