@@ -22,12 +22,14 @@ public record FppProperties(Sidgad sidgad, Ai ai) {
     }
 
     /**
-     * @param enabled  si es false (o no hay API key) se usa el análisis por reglas
-     * @param model    modelo de Claude
-     * @param effort   low | medium | high | xhigh | max
-     * @param maxTurns tope de vueltas del loop de herramientas
+     * Análisis con Google Gemini (plan gratuito de Google AI Studio).
+     *
+     * @param enabled si es false (o no hay API key) se usa el análisis por reglas
+     * @param apiKey  API key de Google AI Studio
+     * @param model   modelo, p. ej. gemini-3.8-flash
+     * @param baseUrl raíz de la API ({@code https://generativelanguage.googleapis.com/v1beta})
      */
-    public record Ai(boolean enabled, String apiKey, String model, String effort, int maxTurns) {
+    public record Ai(boolean enabled, String apiKey, String model, String baseUrl, Duration timeout) {
 
         public boolean usable() {
             return enabled && apiKey != null && !apiKey.isBlank();

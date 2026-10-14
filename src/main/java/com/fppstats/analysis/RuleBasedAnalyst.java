@@ -15,7 +15,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-/** Análisis determinístico. Se usa sin API key de Claude o si el agente falla. */
+/** Análisis determinístico. Se usa sin API key de Gemini o si Gemini falla. */
 @Component
 public class RuleBasedAnalyst {
 

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.LocalDate;
 
-/** Informe modelo con datos ficticios, para mostrar el formato sin consultar SIDGAD ni la API de Claude. */
+/** Informe modelo con datos ficticios, para mostrar el formato sin consultar SIDGAD ni la API de Gemini. */
 @Component
 public class SampleReport {
 
@@ -42,7 +42,7 @@ public class SampleReport {
     /** El texto de análisis sale del analista por reglas (no consume la API), con la fuente aclarada. */
     AnalysisResult analysis(ReportData data) {
         AnalysisResult a = rules.analyze(data);
-        return new AnalysisResult("texto de ejemplo — en los informes reales lo redacta la IA (Claude)",
+        return new AnalysisResult("texto de ejemplo — en los informes reales lo redacta la IA (Gemini)",
                 a.summary(), a.strengths(), a.weaknesses(), a.keyPlayers(), a.nextOpponentPreview(), a.trend());
     }
 }

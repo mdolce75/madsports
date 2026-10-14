@@ -1,7 +1,7 @@
 # FPP Stats — Mad Sports
 
 Aplicación de **Mad Sports** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
-Federación Porteña de Patín (FPP), con análisis redactado por IA (Claude).
+Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
 
 **Filtros:** Club · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera) · Rama (Masculino/Femenino)
 · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos). Si el club tiene equipo A y B en la
@@ -16,14 +16,15 @@ goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no public
 Web (index.html) → POST /api/informes → job en segundo plano
   1. Extracción   SidgadClient: POST a server2.sidgad.es (cache + 400 ms entre pedidos)
   2. Cálculo      StatsEngine: todas las cifras, en código
-  3. Análisis     ClaudeAnalyst: agente con herramientas de solo lectura → submit_analysis
+  3. Análisis     GeminiAnalyst: un pedido a Gemini con todas las cifras → JSON con esquema fijo
                   (sin API key o ante cualquier falla: RuleBasedAnalyst)
   4. PDF          Thymeleaf (templates/report.html) → openhtmltopdf
 ```
 
-La IA **no calcula números**: consulta las cifras ya calculadas con herramientas (`get_overview`,
-`get_league_context`, `get_team_detail`) y devuelve el texto en un esquema validado. Los jugadores
-destacados que no existen en los datos se descartan.
+La IA **no calcula números**: recibe las cifras ya calculadas en un solo pedido (overview, contexto de liga y
+detalle por equipo) y devuelve el texto en un esquema JSON fijo, que se valida. Los jugadores destacados que no
+existen en los datos se descartan. Un solo pedido por informe respeta el límite del plan gratuito; ante un 429
+espera y reintenta una vez.
 
 ### Fuente de datos
 
@@ -70,7 +71,7 @@ se cachea (se reintenta en el próximo informe). Cualquier otro error (5xx, time
 Requiere JDK 21.
 
 ```bash
-export ANTHROPIC_API_KEY=...   # opcional: sin key se usa el análisis por reglas
+export GEMINI_API_KEY=...   # opcional: sin key se usa el análisis por reglas
 ./mvnw spring-boot:run
 ```
 
@@ -78,20 +79,23 @@ Abrir http://localhost:8080.
 
 | Variable | Default | |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | Habilita el análisis con Claude |
-| `FPP_AI_MODEL` | `claude-opus-5-5` | Modelo |
-| `FPP_AI_EFFORT` | `high` | `low`…`max` |
+| `GEMINI_API_KEY` | — | Habilita el análisis con Gemini |
+| `FPP_AI_MODEL` | `gemini-3.8-flash` | Modelo de Gemini (con plan gratuito) |
 | `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
+
+**API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.
+En el plan gratuito Google puede usar el contenido enviado para mejorar sus productos (son datos deportivos
+públicos de la FPP) y hay límites de pedidos por minuto y por día; los modelos y límites cambian seguido.
 
 Categorías relevadas: `fpp.sidgad.levels` en `application.yml`.
 
-Cada análisis con Claude deja en el log el consumo real de tokens (`Consumo de Claude para ...`).
+Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemini para ...`).
 
 ## API
 
 - `GET /api/catalogo` — clubes con sus categorías y ramas
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
-  SIDGAD ni la API de Claude. Enlazado desde la web.
+  SIDGAD ni la API de Gemini. Enlazado desde la web.
 - `POST /api/informes` `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA"}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`

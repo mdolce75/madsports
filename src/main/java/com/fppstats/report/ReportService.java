@@ -1,7 +1,7 @@
 package com.fppstats.report;
 
 import com.fppstats.analysis.AnalysisResult;
-import com.fppstats.analysis.ClaudeAnalyst;
+import com.fppstats.analysis.GeminiAnalyst;
 import com.fppstats.analysis.RuleBasedAnalyst;
 import com.fppstats.catalog.CatalogService;
 import com.fppstats.catalog.CatalogService.ClubView;
@@ -38,7 +38,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
- * Orquesta un informe: extracción (SIDGAD) → cálculo (StatsEngine) → análisis (Claude o reglas) → PDF.
+ * Orquesta un informe: extracción (SIDGAD) → cálculo (StatsEngine) → análisis (Gemini o reglas) → PDF.
  * Corre en segundo plano; el cliente consulta el estado del job y descarga el PDF al terminar.
  */
 @Service
@@ -113,18 +113,18 @@ public class ReportService {
 
     private final CatalogService catalog;
     private final SidgadClient sidgad;
-    private final ClaudeAnalyst claude;
+    private final GeminiAnalyst gemini;
     private final RuleBasedAnalyst rules;
     private final PdfRenderer renderer;
     private final Clock clock;
     private final Cache<UUID, Job> jobs = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build();
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
-    public ReportService(CatalogService catalog, SidgadClient sidgad, ClaudeAnalyst claude,
+    public ReportService(CatalogService catalog, SidgadClient sidgad, GeminiAnalyst gemini,
                          RuleBasedAnalyst rules, PdfRenderer renderer, Clock clock) {
         this.catalog = catalog;
         this.sidgad = sidgad;
-        this.claude = claude;
+        this.gemini = gemini;
         this.rules = rules;
         this.renderer = renderer;
         this.clock = clock;
@@ -152,8 +152,8 @@ public class ReportService {
     private void run(Job job, ClubView club, Category category) {
         try {
             ReportData data = extract(job, club, category);
-            job.update(Status.ANALIZANDO, claude.available() ? "Claude está analizando los datos" : "Analizando los datos");
-            AnalysisResult analysis = claude.analyze(data).orElseGet(() -> rules.analyze(data));
+            job.update(Status.ANALIZANDO, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
+            AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
             job.update(Status.GENERANDO_PDF, "Generando el PDF");
             job.pdf = renderer.pdf(data, analysis);
             job.fileName = fileName(club, category, job.request().scope());

@@ -42,7 +42,7 @@ class SidgadClientTest {
         client = new SidgadClient(new FppProperties(
                 new FppProperties.Sidgad(base, "http://localhost", 3, Duration.ZERO, Duration.ofMinutes(5),
                         Duration.ofMinutes(5), Duration.ofSeconds(5), List.of("PRIMERA")),
-                new FppProperties.Ai(false, null, "m", "low", 1)));
+                new FppProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1))));
     }
 
     @AfterEach

@@ -1,6 +1,5 @@
 package com.fppstats.analysis;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fppstats.stats.ReportData;
 import com.fppstats.stats.ReportData.TeamReport;
@@ -9,16 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Herramientas de solo lectura que el agente usa para consultar las cifras ya calculadas.
- * Devuelven JSON; un error de uso se informa como texto para que el modelo se corrija.
- */
-class AnalysisTools {
-
-    static final String OVERVIEW = "get_overview";
-    static final String TEAM_DETAIL = "get_team_detail";
-    static final String LEAGUE = "get_league_context";
-    static final String SUBMIT = "submit_analysis";
+/** Arma el JSON con las cifras ya calculadas que recibe la IA para redactar el análisis. */
+class AnalysisContext {
 
     static final List<String> SECTIONS = List.of("results", "upcoming", "players", "set_pieces_discipline", "rivals",
             "time_profile");
@@ -26,20 +17,26 @@ class AnalysisTools {
     private final ReportData data;
     private final ObjectMapper mapper;
 
-    AnalysisTools(ReportData data, ObjectMapper mapper) {
+    AnalysisContext(ReportData data, ObjectMapper mapper) {
         this.data = data;
         this.mapper = mapper;
     }
 
-    /** Ejecuta una herramienta de lectura. Lanza {@link IllegalArgumentException} si la entrada es inválida. */
-    String run(String name, JsonNode input) throws Exception {
-        return switch (name) {
-            case OVERVIEW -> mapper.writeValueAsString(overview());
-            case LEAGUE -> mapper.writeValueAsString(data.league());
-            case TEAM_DETAIL -> mapper.writeValueAsString(teamDetail(
-                    text(input, "team_code"), text(input, "section")));
-            default -> throw new IllegalArgumentException("Herramienta desconocida: " + name);
-        };
+    /** Todos los datos: overview, league_context y team_detail por equipo. */
+    String fullContext() throws Exception {
+        Map<String, Object> all = new LinkedHashMap<>();
+        all.put("overview", overview());
+        all.put("league_context", data.league());
+        Map<String, Object> teams = new LinkedHashMap<>();
+        for (TeamReport t : data.teams()) {
+            Map<String, Object> sections = new LinkedHashMap<>();
+            for (String section : SECTIONS) {
+                sections.put(section, teamDetail(t.code(), section));
+            }
+            teams.put(t.code(), sections);
+        }
+        all.put("team_detail", teams);
+        return mapper.writeValueAsString(all);
     }
 
     private Map<String, Object> overview() {
@@ -94,14 +91,6 @@ class AnalysisTools {
                     "minutos_con_uno_mas_por_partido", round(t.timeProfile().powerPlayMinutesPerGame()));
             default -> throw new IllegalArgumentException("section inválida: " + section + ". Válidas: " + SECTIONS);
         };
-    }
-
-    private static String text(JsonNode input, String field) {
-        JsonNode n = input == null ? null : input.get(field);
-        if (n == null || !n.isTextual()) {
-            throw new IllegalArgumentException("Falta el campo '" + field + "'");
-        }
-        return n.asText();
     }
 
     private static double round(double v) {
