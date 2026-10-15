@@ -219,8 +219,12 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   lo que equivale por mes, los informes por mes y los beneficios. Los planes de 3, 6 y 12 meses llevan un cintillo
   con cuánto más barato son que pagar el mensual esos meses. El plan es obligatorio y queda como suscripción del
   usuario desde el día del registro. Todavía no hay cobro ni límite de informes por mes.
+- **Precios en pesos:** el precio base de cada plan está en dólares y se muestra en pesos al dólar oficial del Banco
+  Nación (venta) del día, que publica [DolarAPI](https://dolarapi.com), redondeado hacia abajo a centenas. Se consulta como mucho
+  una vez por hora; si DolarAPI no responde se usa la última cotización o el respaldo (`DOLAR_RESPALDO`, $ 1.500).
+  La home de Mad Sports muestra el precio mensual de cada perfil con la misma conversión.
 
-  | Plan | Club | Jugador | Ahorro |
+  | Plan (precio base) | Club | Jugador | Ahorro |
   |---|---|---|---|
   | Mensual | U$S 30 · 8 informes/mes | U$S 15 · 4 informes/mes | — |
   | Trimestral | U$S 80 · 10 informes/mes | U$S 40 · 6 informes/mes | 11% |
@@ -325,7 +329,8 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 
 - `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973,"suscripcion":"PLAYER_ANUAL"}` → `201`
 - `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
-- `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`): planes con precio, precio por mes, informes por mes y % de ahorro
+- `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`): planes con precio y precio por mes en pesos (y el precio
+  base en dólares, la cotización usada y su fecha), informes por mes y % de ahorro
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
 - `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)
 - `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
