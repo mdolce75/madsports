@@ -77,6 +77,7 @@ public class ApiController {
         }
         ReportService.Job job = reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(),
                 ReportService.Scope.parse(req.periodo()), catalog.checkYear(req.anio())), u.getUsuario());
+        usuarios.contarInforme(u.getUsuario());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 

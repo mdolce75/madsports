@@ -63,6 +63,8 @@ class SecurityTest {
     @MockitoBean CatalogService catalog;
     @MockitoBean RosterService roster;
     @MockitoBean ReportService reports;
+    @MockitoBean com.rinkmetrics.player.PlayerReportService playerReports;
+    @Autowired SuscripcionTypeRepository suscripciones;
     @MockitoBean Mailer mailer;
     @Autowired org.thymeleaf.ITemplateEngine templates;
 
@@ -310,9 +312,70 @@ class SecurityTest {
                         .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(99)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.detail").value("Solo podés pedir informes de tu club (VELEZ)."));
+        assertThat(usuarios.findByUsuario("club").orElseThrow().getInformesPedidos()).isZero();   // el rechazado no cuenta
         mvc.perform(post("/api/informes").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(74)))
                 .andExpect(status().isAccepted());
+        mvc.perform(post("/api/informes").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(74)))
+                .andExpect(status().isAccepted());
+        assertThat(usuarios.findByUsuario("club").orElseThrow().getInformesPedidos()).isEqualTo(2);
+    }
+
+    @Test
+    void elJugadorTambienSumaInformesPedidos() throws Exception {
+        Usuario u = saved("jug", Perfil.PLAYERFPP);
+        u.vincularJugador(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
+        usuarios.save(u);
+        com.rinkmetrics.player.PlayerReportService.Job job = mock(com.rinkmetrics.player.PlayerReportService.Job.class);
+        when(job.id()).thenReturn(UUID.randomUUID());
+        when(job.status()).thenReturn(ReportService.Status.PENDIENTE);
+        when(playerReports.submit(any(), eq("jug"))).thenReturn(job);
+
+        mvc.perform(post("/api/jugador/informes").with(user("jug").authorities(() -> "PLAYERFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"anio\":2026,\"periodo\":\"TEMPORADA\"}"))
+                .andExpect(status().isAccepted());
+        assertThat(usuarios.findByUsuario("jug").orElseThrow().getInformesPedidos()).isEqualTo(1);
+        // Los informes de ejemplo no cuentan.
+        mvc.perform(get("/api/ejemplo-jugador.pdf").with(user("jug").authorities(() -> "PLAYERFPP")))
+                .andExpect(status().isOk());
+        assertThat(usuarios.findByUsuario("jug").orElseThrow().getInformesPedidos()).isEqualTo(1);
+    }
+
+    @Test
+    void tiposDeSuscripcionYVigencia() throws Exception {
+        assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getMeses,
+                        SuscripcionType::getTipoUsuario)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", 1, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_TRIMESTRAL", 3, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_SEMESTRAL", 6, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_ANUAL", 12, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", 1, "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_TRIMESTRAL", 3, "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_SEMESTRAL", 6, "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_ANUAL", 12, "CLUB"));
+
+        java.time.LocalDate desde = java.time.LocalDate.of(2026, 10, 15);
+        assertThat(suscripciones.findByCodigo("PLAYER_MENSUAL").orElseThrow().hasta(desde)).isEqualTo("2026-11-14");
+        assertThat(suscripciones.findByCodigo("CLUB_ANUAL").orElseThrow().hasta(desde)).isEqualTo("2027-10-14");
+
+        Usuario u = saved("club", Perfil.CLUBFPP);
+        // A un club no se le puede asignar una suscripción de jugador.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        u.suscribir(suscripciones.findByCodigo("PLAYER_TRIMESTRAL").orElseThrow(), desde))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("es para jugadores");
+        u.suscribir(suscripciones.findByCodigo("CLUB_TRIMESTRAL").orElseThrow(), desde);
+        usuarios.save(u);
+        Usuario leido = usuarios.findByUsuario("club").orElseThrow();
+        assertThat(leido.getSuscripcionType().getNombre()).isEqualTo("Club trimestral");
+        assertThat(leido.getSuscripcionDesde()).isEqualTo("2026-10-15");
+        assertThat(leido.getSuscripcionHasta()).isEqualTo("2027-01-14");
+        mvc.perform(get("/api/sesion").with(user("club").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.suscripcion.tipo").value("CLUB_TRIMESTRAL"))
+                .andExpect(jsonPath("$.suscripcion.tipoUsuario").value("CLUB"))
+                .andExpect(jsonPath("$.suscripcion.hasta").value("2027-01-14"))
+                .andExpect(jsonPath("$.informesPedidos").value(0));
     }
 
     @Test

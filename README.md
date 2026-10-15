@@ -1,7 +1,74 @@
-# Rink Metrics — RinkMetrics
+<div align="center">
 
-Aplicación de **RinkMetrics** que genera un **informe estadístico en PDF** de un club de hockey sobre patines de la
-Federación Porteña de Patín (FPP), con análisis redactado por IA (Google Gemini, plan gratuito).
+<img src="docs/img/logo.svg" width="96" alt="RinkMetrics">
+
+# RinkMetrics
+
+**Estadísticas de hockey sobre patines, convertidas en informes PDF.**
+
+Informes de equipo y de jugador a partir de los datos de la Federación Porteña de Patín (FPP),
+con gráficos, análisis minuto a minuto y texto redactado por IA.
+
+<img src="https://img.shields.io/badge/Java%2021-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21">
+<img src="https://img.shields.io/badge/Spring%20Boot%203.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot 3.5">
+<img src="https://img.shields.io/badge/Spring%20Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white" alt="Spring Security">
+<img src="https://img.shields.io/badge/Thymeleaf-005F0F?style=for-the-badge&logo=thymeleaf&logoColor=white" alt="Thymeleaf">
+<img src="https://img.shields.io/badge/Hibernate-59666C?style=for-the-badge&logo=hibernate&logoColor=white" alt="Hibernate">
+<img src="https://img.shields.io/badge/Flyway-CC0200?style=for-the-badge&logo=flyway&logoColor=white" alt="Flyway">
+<br>
+<img src="https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Google Gemini">
+<img src="https://img.shields.io/badge/Resend-000000?style=for-the-badge&logo=resend&logoColor=white" alt="Resend">
+<img src="https://img.shields.io/badge/Maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white" alt="Maven">
+<img src="https://img.shields.io/badge/JUnit%205-25A162?style=for-the-badge&logo=junit5&logoColor=white" alt="JUnit 5">
+<img src="https://img.shields.io/badge/HTML%20%C2%B7%20CSS%20%C2%B7%20JS-1572B6?style=for-the-badge&logo=html5&logoColor=white" alt="HTML · CSS · JS">
+
+</div>
+
+---
+
+## Índice
+
+- [Qué hace](#qué-hace)
+- [Capturas](#capturas)
+- [Stack tecnológico](#stack-tecnológico)
+- [Cómo funciona](#cómo-funciona)
+- [Usuarios y perfiles](#usuarios-y-perfiles)
+- [Correr](#correr)
+- [API](#api)
+- [Tests](#tests)
+
+## Qué hace
+
+| Función | Detalle |
+|---|---|
+| 🏒 **Informe de equipo** | Resultados, posiciones, goleadores, pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
+| 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, siempre con promedios por partido. |
+| ⏱️ **Minuto a minuto** | Goles, tarjetas y faltas por tramos de 5′, cómo iba el partido en cada tramo y goles recibidos con uno menos. |
+| 📊 **Gráficos** | Barras y donas en cada PDF, con el escudo del club en la cabecera. |
+| 🔐 **Usuarios** | Registro con perfil Club o Jugador, confirmación del email, recuperación de clave y suscripciones. |
+| 🌐 **Fuente** | Datos públicos de la FPP en SIDGAD (buenosaires.sidgad.com), leídos en paralelo y con cache. |
+
+## Capturas
+
+<table>
+  <tr>
+    <td align="center"><b>Informe de equipo</b></td>
+    <td align="center"><b>Informe de jugador</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/informe-club-2.png" alt="Informe de equipo: resultados, gráficos y fortalezas"></td>
+    <td><img src="docs/img/informe-jugador-1.png" alt="Informe de jugador: totales y resumen por categoría"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/informe-club-1.png" alt="Informe de equipo: portada con análisis"></td>
+    <td><img src="docs/img/informe-jugador-2.png" alt="Informe de jugador: bloque de una categoría"></td>
+  </tr>
+</table>
+
+<sub>Informes de ejemplo con datos ficticios ("Club Ejemplo", "Tomás Ejemplo"): `GET /api/ejemplo.pdf` y
+`GET /api/ejemplo-jugador.pdf`.</sub>
+
+### Informe de equipo: filtros
 
 **Filtros:** Año (2026, 2027) · Club · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Rama
 (solo las que tiene el club) · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera; solo las del club
@@ -15,6 +82,27 @@ no se cuenta como del club (ver `TeamKeys`).
 
 En "Últimos 5 partidos", récord, resultados, rivales y el análisis por minuto usan solo esos partidos;
 goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no publica estadísticas por partido).
+
+## Stack tecnológico
+
+| | Capa | Tecnología | Para qué |
+|---|---|---|---|
+| <img src="https://img.shields.io/badge/Java-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java"> | Lenguaje y build | **Java 21**, **Maven 3.10** (wrapper `./mvnw`) | Compilación, tests y empaquetado en un jar ejecutable |
+| <img src="https://img.shields.io/badge/Spring%20Boot-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot"> | Framework | **Spring Boot 3.5.7** (Spring Framework 6.2, Tomcat 10.1 embebido) | Aplicación web, configuración e inyección de dependencias |
+| <img src="https://img.shields.io/badge/Spring%20MVC-6DB33F?style=flat-square&logo=spring&logoColor=white" alt="Spring MVC"> | API web | Spring Web MVC, Bean Validation, Jackson 2.19 | API REST en JSON (`/api/...`) |
+| <img src="https://img.shields.io/badge/Security-6DB33F?style=flat-square&logo=springsecurity&logoColor=white" alt="Security"> | Seguridad | **Spring Security 6.5** | Registro y login con sesión, perfiles por pantalla, CSRF con cookie `XSRF-TOKEN`, claves con BCrypt |
+| <img src="https://img.shields.io/badge/Hibernate-59666C?style=flat-square&logo=hibernate&logoColor=white" alt="Hibernate"> | Persistencia | **Spring Data JPA** con Hibernate 6.6, **Flyway 11.7** | Usuarios, perfiles, suscripciones y enlaces de los mails; esquema versionado en `db/migration` |
+| <img src="https://img.shields.io/badge/H2-0000BB?style=flat-square" alt="H2"> | Base de datos | **H2 2.3** en archivo (`./data`) | Desarrollo. En producción se configura otra base con `FPP_DB_URL` (por ejemplo PostgreSQL) |
+| <img src="https://img.shields.io/badge/jsoup-263238?style=flat-square" alt="jsoup"> | Extracción de datos | **jsoup 1.23** | Pedidos a server2.sidgad.es (tablas, calendarios, estadísticas y actas) y lectura del HTML |
+| <img src="https://img.shields.io/badge/Caffeine-6F4E37?style=flat-square" alt="Caffeine"> | Cache | **Caffeine 3.2** | Datos de SIDGAD (15 min, catálogo 6 h, actas 24 h), escudos, planteles e informes en curso |
+| <img src="https://img.shields.io/badge/Virtual%20threads-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Virtual threads"> | Concurrencia | Hilos virtuales de Java 21 + semáforo | Pedidos a SIDGAD en paralelo (hasta 6 a la vez), sin sobrecargar el sitio |
+| <img src="https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini"> | Análisis con IA | **Google Gemini** (API `generateContent`, `gemini-3.8-flash`) con `java.net.http` | Texto del informe de equipo. Sin clave, un analista por reglas hace el mismo trabajo |
+| <img src="https://img.shields.io/badge/Thymeleaf-005F0F?style=flat-square&logo=thymeleaf&logoColor=white" alt="Thymeleaf"> | PDF | **Thymeleaf 3.1** + **openhtmltopdf 1.1.97** (Apache PDFBox 3.0) | Plantillas HTML que se convierten en PDF |
+| <img src="https://img.shields.io/badge/Java2D-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java2D"> | Gráficos | **Java2D** (AWT) | Barras y donas en PNG, embebidos en el PDF; también el logo de los mails y la placa de los escudos |
+| <img src="https://img.shields.io/badge/Resend-000000?style=flat-square&logo=resend&logoColor=white" alt="Resend"> | Mails | **Spring Mail** (Jakarta Mail 2.0) por SMTP, con **Resend** | Confirmación de email y recuperación de clave, en HTML con la identidad de la web |
+| <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white" alt="HTML5"> | Web | HTML, CSS y JavaScript sin frameworks, fuentes Oswald e Inter (Google Fonts) | Home pública, registro, login, pantallas de club y de jugador |
+| <img src="https://img.shields.io/badge/JUnit%205-25A162?style=flat-square&logo=junit5&logoColor=white" alt="JUnit 5"> | Tests | **JUnit 5.12**, AssertJ 3.27, Mockito 5.17, Spring Boot Test, MockMvc, Spring Security Test | Unitarios contra HTML real de SIDGAD (`src/test/resources/fixtures`) e integración de seguridad con H2 en memoria |
+| <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"> | Repositorio | Git + GitHub (`gh` CLI) | Ramas y pull requests |
 
 ## Cómo funciona
 
@@ -120,6 +208,12 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
   (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
   un mail por minuto como mucho, y en la base queda solo el hash del token.
+- **Suscripciones:** la tabla `suscripcion_type` tiene tipos para jugador (`PLAYER_MENSUAL`, `PLAYER_TRIMESTRAL`,
+  `PLAYER_SEMESTRAL`, `PLAYER_ANUAL`) y para club (`CLUB_MENSUAL` ... `CLUB_ANUAL`), con su duración en meses. A un
+  usuario solo se le asigna un tipo de su perfil. Cada usuario puede tener un tipo de suscripción con su fecha desde y su fecha hasta, que sale de
+  la duración del tipo. También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
+  jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
+  Todavía no hay reglas que limiten el uso según la suscripción.
 - **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.
 - **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.

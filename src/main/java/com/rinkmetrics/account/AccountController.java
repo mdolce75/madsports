@@ -57,10 +57,10 @@ public class AccountController {
 
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
                               List<String> perfiles, Map<String, Object> club, Map<String, Object> jugador,
-                              String inicio) {
+                              String inicio, Map<String, Object> suscripcion, int informesPedidos) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
-                "/");
+                "/", null, 0);
     }
 
     private final RegistroService registro;
@@ -145,7 +145,14 @@ public class AccountController {
                         Map.of("id", u.getClubId(), "nombre", u.getClubNombre(), "codigo", u.getClubCodigo()),
                         u.getJugadorId() == null ? null : Map.of("id", u.getJugadorId(), "nombre", u.getJugadorNombre(),
                                 "categoria", Objects.toString(u.getCategoria(), ""), "rama", Objects.toString(u.getRama(), "")),
-                        SecurityConfig.home(auth.getAuthorities())))
+                        SecurityConfig.home(auth.getAuthorities()),
+                        u.getSuscripcionType() == null ? null : Map.of(
+                                "tipo", u.getSuscripcionType().getCodigo(),
+                                "tipoUsuario", u.getSuscripcionType().getTipoUsuario(),
+                                "nombre", u.getSuscripcionType().getNombre(),
+                                "desde", u.getSuscripcionDesde().toString(),
+                                "hasta", u.getSuscripcionHasta().toString()),
+                        u.getInformesPedidos()))
                 .orElse(SessionView.ANONYMOUS);
     }
 
