@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,18 @@ public class AccountController {
             @Positive(message = "Elegí el club.") int clubId,
             String categoria,
             String rama,
-            Integer jugadorId) {
+            Integer jugadorId,
+            @NotBlank(message = "Elegí un plan de suscripción.") String suscripcion) {
+    }
+
+    /**
+     * Un plan para mostrar en el registro.
+     *
+     * @param precioPorMes precio equivalente por mes
+     * @param ahorroPct    cuánto más barato es que pagar el mensual esos meses (0 en el mensual)
+     */
+    public record PlanView(String codigo, String nombre, int meses, BigDecimal precioUsd, BigDecimal precioPorMes,
+                           int informesPorMes, int ahorroPct) {
     }
 
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
@@ -68,14 +80,25 @@ public class AccountController {
     private final RosterService roster;
     private final CatalogService catalog;
     private final CuentaService cuenta;
+    private final SuscripcionTypeRepository planes;
 
     public AccountController(RegistroService registro, UsuarioRepository usuarios, RosterService roster,
-                             CatalogService catalog, CuentaService cuenta) {
+                             CatalogService catalog, CuentaService cuenta, SuscripcionTypeRepository planes) {
         this.cuenta = cuenta;
+        this.planes = planes;
         this.registro = registro;
         this.usuarios = usuarios;
         this.roster = roster;
         this.catalog = catalog;
+    }
+
+    /** Planes de suscripción del perfil (CLUBFPP o PLAYERFPP), del mensual al anual, con su ahorro. */
+    @GetMapping("/suscripciones")
+    public List<PlanView> planes(@RequestParam Perfil perfil) {
+        List<SuscripcionType> lista = planes.findByTipoUsuarioOrderByMeses(perfil.player() ? "PLAYER" : "CLUB");
+        SuscripcionType mensual = lista.stream().filter(p -> p.getMeses() == 1).findFirst().orElse(null);
+        return lista.stream().map(p -> new PlanView(p.getCodigo(), p.getNombre(), p.getMeses(), p.getPrecioUsd(),
+                p.precioPorMes(), p.getInformesPorMes(), mensual == null ? 0 : p.ahorroPct(mensual))).toList();
     }
 
     /** Alta: la cuenta queda sin confirmar y se manda el mail con el enlace para confirmarla. */
@@ -83,7 +106,7 @@ public class AccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> registrar(@Valid @RequestBody RegistroRequest req) {
         Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(),
-                req.clubId(), req.categoria(), req.rama(), req.jugadorId()));
+                req.clubId(), req.categoria(), req.rama(), req.jugadorId(), req.suscripcion()));
         cuenta.enviarVerificacion(u);
         return Map.of("usuario", u.getUsuario(), "email", u.getEmail());
     }

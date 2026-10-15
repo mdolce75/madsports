@@ -208,7 +208,19 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
   (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
   un mail por minuto como mucho, y en la base queda solo el hash del token.
-- **Suscripciones:** la tabla `suscripcion_type` tiene tipos para jugador (`PLAYER_MENSUAL`, `PLAYER_TRIMESTRAL`,
+- **Planes en el registro:** al elegir el perfil se muestran sus cuatro planes en cajitas. Cada una trae el precio,
+  lo que equivale por mes, los informes por mes y los beneficios. Los planes de 3, 6 y 12 meses llevan un cintillo
+  con cuánto más barato son que pagar el mensual esos meses. El plan es obligatorio y queda como suscripción del
+  usuario desde el día del registro. Todavía no hay cobro ni límite de informes por mes.
+
+  | Plan | Club | Jugador | Ahorro |
+  |---|---|---|---|
+  | Mensual | U$S 30 · 8 informes/mes | U$S 15 · 4 informes/mes | — |
+  | Trimestral | U$S 80 · 10 informes/mes | U$S 40 · 6 informes/mes | 11% |
+  | Semestral | U$S 150 · 12 informes/mes | U$S 75 · 8 informes/mes | 17% |
+  | Anual | U$S 280 · 14 informes/mes | U$S 140 · 10 informes/mes | 22% |
+
+- **Suscripciones:** la tabla `suscripcion_type` (con `precio_usd` e `informes_por_mes`) tiene tipos para jugador (`PLAYER_MENSUAL`, `PLAYER_TRIMESTRAL`,
   `PLAYER_SEMESTRAL`, `PLAYER_ANUAL`) y para club (`CLUB_MENSUAL` ... `CLUB_ANUAL`), con su duración en meses. A un
   usuario solo se le asigna un tipo de su perfil. Cada usuario puede tener un tipo de suscripción con su fecha desde y su fecha hasta, que sale de
   la duración del tipo. También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
@@ -286,8 +298,9 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide sesión con el perfil que corresponde
 (sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
 
-- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973}` → `201`
+- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973,"suscripcion":"PLAYER_ANUAL"}` → `201`
 - `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
+- `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`): planes con precio, precio por mes, informes por mes y % de ahorro
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
 - `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)
 - `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.

@@ -38,6 +38,14 @@
                 (datos ficticios).</p>
         </div>
 
+        <div class="field">
+            <label>Elegí tu plan <span class="req">*</span></label>
+            <div class="plans" id="plans" role="radiogroup" aria-label="Plan de suscripción">
+                <p class="hint">Cargando planes…</p>
+            </div>
+            <p class="hint">Precios en dólares. Podés cambiar de plan más adelante.</p>
+        </div>
+
         <div class="grid2">
             <div class="field">
                 <label for="usuario">Usuario <span class="req">*</span></label>
@@ -163,8 +171,66 @@
         }
     }
 
+    // Beneficios de cada perfil (los planes cambian en informes por mes y precio).
+    const BENEFICIOS = {
+        CLUBFPP: ["Informes de todos los equipos de tu club", "Análisis escrito con IA",
+            "Goles, tarjetas y faltas por tramos de 5'", "Fortalezas y debilidades"],
+        PLAYERFPP: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
+            "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"]
+    };
+    // "U$S 80" o "U$S 12,50": con centavos, siempre dos decimales.
+    const usd = n => {
+        const d = Number.isInteger(Number(n)) ? 0 : 2;
+        return "U$S " + Number(n).toLocaleString("es-AR", {minimumFractionDigits: d, maximumFractionDigits: d});
+    };
+    const plazo = meses => meses === 1 ? "por mes" : `por ${meses} meses`;
+
+    // Planes del perfil elegido: una cajita por plan, con su cintillo de ahorro.
+    async function loadPlans() {
+        const box = $("plans");
+        const p = perfil();
+        try {
+            const res = await fetch("/api/suscripciones?perfil=" + p);
+            const planes = await res.json();
+            if (!res.ok) throw new Error(planes.detail || res.statusText);
+            if (perfil() !== p) return;
+            box.innerHTML = "";
+            planes.forEach((plan, i) => {
+                const card = document.createElement("label");
+                card.className = "plan";
+                card.innerHTML = `<input type="radio" name="plan">
+                    ${plan.ahorroPct > 0 ? '<span class="ribbon"></span>' : ""}
+                    <span class="plan-name"></span>
+                    <span class="plan-price"><b></b> <small></small></span>
+                    <span class="plan-month"></span>
+                    <span class="plan-quota"></span>
+                    <ul></ul>`;
+                card.querySelector("input").value = plan.codigo;
+                card.querySelector("input").checked = i === 0;
+                if (plan.ahorroPct > 0) card.querySelector(".ribbon").textContent = `${plan.ahorroPct}% más barato`;
+                card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador) /, "");
+                card.querySelector(".plan-price b").textContent = usd(plan.precioUsd);
+                card.querySelector(".plan-price small").textContent = plazo(plan.meses);
+                card.querySelector(".plan-month").textContent = plan.meses === 1 ? "Sin permanencia"
+                    : `Equivale a ${usd(plan.precioPorMes)} por mes`;
+                card.querySelector(".plan-quota").textContent = `Hasta ${plan.informesPorMes} informes por mes`;
+                const ul = card.querySelector("ul");
+                BENEFICIOS[p].forEach(b => {
+                    const li = document.createElement("li");
+                    li.textContent = b;
+                    ul.append(li);
+                });
+                box.append(card);
+            });
+        } catch (e) {
+            box.innerHTML = "";
+            status("No se pudieron cargar los planes: " + e.message, true);
+        }
+    }
+
     function toggleProfile() {
         $("player-fields").hidden = !isPlayer();
+        loadPlans();
         loadPlayers();
     }
 
@@ -179,8 +245,13 @@
             usuario: $("usuario").value.trim(),
             clave: $("clave").value,
             email: $("email").value.trim(),
-            clubId: Number($("club").value) || 0
+            clubId: Number($("club").value) || 0,
+            suscripcion: (document.querySelector("input[name=plan]:checked") || {}).value
         };
+        if (!data.suscripcion) {
+            status("Elegí un plan de suscripción.", true);
+            return;
+        }
         const missing = ["usuario", "clave", "email"].filter(k => !data[k]);
         if (missing.length || !data.clubId) {
             status("Completá todos los campos obligatorios.", true);
@@ -221,6 +292,7 @@
     });
 
     session().then(() => loadClubs());
+    loadPlans();
 </script>
 </body>
 </html>

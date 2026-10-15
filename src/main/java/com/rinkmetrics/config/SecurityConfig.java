@@ -59,7 +59,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/index.html", "/login.html", "/registro.html", "/olvido.html",
                                 "/restablecer.html", "/css/**", "/js/**", "/error",
                                 "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
-                                "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**")
+                                "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**", "/api/suscripciones")
                         .permitAll()
                         .requestMatchers("/club.html", "/api/informes", "/api/informes/**")
                         .hasAuthority(Perfil.CLUBFPP.name())
