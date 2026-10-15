@@ -71,14 +71,37 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     }
 
     /**
+     * Un gol que le hicieron al equipo mientras el jugador cumplía su sanción (informe de jugador).
+     *
+     * @param card       "Azul" o "Roja"
+     * @param cardMinute minuto de la tarjeta ("1T 12:30"); la sanción empieza ahí
+     * @param goalMinute minuto del gol en contra ("1T 13:40")
+     * @param finalFor   resultado final del partido (a favor / en contra)
+     */
+    public record ConcededGoal(LocalDate date, String rival, String card, String cardMinute, String goalMinute,
+                               int finalFor, int finalAgainst) {
+
+        /** G, E o P: cómo terminó el partido. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public String result() {
+            return finalFor > finalAgainst ? "G" : finalFor == finalAgainst ? "E" : "P";
+        }
+    }
+
+    /**
      * Goles recibidos con uno menos y cómo terminaron esos partidos.
      *
      * @param otherSeconds      tiempo jugado sin inferioridad en los partidos con acta (para comparar)
      * @param otherGoalsAgainst goles recibidos en ese tiempo
      */
-    public record ShortHanded(List<ShortHandedMatch> matches, int otherSeconds, int otherGoalsAgainst) {
+    public record ShortHanded(List<ShortHandedMatch> matches, int otherSeconds, int otherGoalsAgainst,
+                              List<ConcededGoal> conceded) {
 
-        public static final ShortHanded EMPTY = new ShortHanded(List.of(), 0, 0);
+        public static final ShortHanded EMPTY = new ShortHanded(List.of(), 0, 0, List.of());
+
+        public ShortHanded(List<ShortHandedMatch> matches, int otherSeconds, int otherGoalsAgainst) {
+            this(matches, otherSeconds, otherGoalsAgainst, List.of());
+        }
 
         public boolean hasData() {
             return !matches.isEmpty();

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!--/* Fortalezas y debilidades del jugador: por categoría (dentro de su bloque) y en general.
+       ind = lista de ReportData.Indicator; title = título de la sección. */-->
+<div th:fragment="strengths(ind, title)" class="nobreak" th:if="${!ind.isEmpty()}"
+     th:with="fs=${ind.?[verdict.name() == 'FORTALEZA']}, ds=${ind.?[verdict.name() == 'DEBILIDAD']}">
+    <h3 th:text="${title}">Fortalezas y debilidades</h3>
+    <table class="two">
+        <tr>
+            <td>
+                <p class="sw-title">Fortalezas</p>
+                <ul class="sw" th:if="${!fs.isEmpty()}"><li th:each="i : ${fs}"><b th:text="|${i.area}:|"></b> <span th:text="${i.explanation}"></span></li></ul>
+                <p class="muted" th:if="${fs.isEmpty()}">Ningún aspecto se destaca por encima de la referencia.</p>
+            </td>
+            <td>
+                <p class="sw-title">Aspectos a mejorar</p>
+                <ul class="sw" th:if="${!ds.isEmpty()}"><li th:each="i : ${ds}"><b th:text="|${i.area}:|"></b> <span th:text="${i.explanation}"></span></li></ul>
+                <p class="muted" th:if="${ds.isEmpty()}">Ningún aspecto queda por debajo de la referencia.</p>
+            </td>
+        </tr>
+    </table>
+    <table>
+        <tr><th class="l">Área</th><th class="l">Indicador</th><th>Jugador</th><th>Referencia</th><th>Evaluación</th></tr>
+        <tr th:each="i : ${ind}">
+            <td class="l" th:text="${i.area}"></td>
+            <td class="l" th:text="${i.metric}"></td>
+            <td th:text="${f.indicator(i.value, i.unit)}"></td>
+            <td th:text="|${i.referenceLabel} ${f.indicator(i.reference, i.unit)}|"></td>
+            <td><span th:class="|verdict v-${i.verdict}|" th:text="${i.verdict.label()}"></span></td>
+        </tr>
+    </table>
+</div>
+</body>
+</html>

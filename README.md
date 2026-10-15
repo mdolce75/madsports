@@ -169,7 +169,9 @@ jugador, las suyas) se informa:
 - en total: partidos, goles recibidos cada 10' con uno menos contra el resto del tiempo, y ganados, empatados y
   perdidos.
 
-Un gol cuenta si cae dentro de una sanción. Cuando hay sanciones superpuestas, para contar los goles se toma el
+En el informe de jugador, la sección enumera solo los goles que le hicieron a su equipo mientras cumplía su
+sanción. Cada gol trae la fecha, el rival, su tarjeta y su minuto, el minuto del gol y el resultado final. Un gol
+cuenta si cae dentro de una sanción. Cuando hay sanciones superpuestas, para contar los goles se toma el
 tiempo en que hubo al menos uno menos.
 
 **Gráficos:** el informe incluye 6 gráficos de barras y de dona, generados en el servidor con Java2D
@@ -236,7 +238,9 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   separado, cada una con su promedio por partido; y penales y libres directos (convertidos, tirados y efectividad,
   con donas). Además, goles y tarjetas por tramos de 5 minutos (gráfico de columnas, con las tarjetas apiladas por
   color) y el detalle partido a partido.
-- **Fortalezas y debilidades del jugador:** con el mismo criterio que el informe de equipo (±10% de la
+- **Fortalezas y debilidades del jugador:** van por cada categoría en que jugó, dentro de su bloque y contra sus
+  compañeros de esa categoría. Si jugó en más de una, al final aparecen las generales. Usan el mismo criterio que el
+  informe de equipo (±10% de la
   referencia es "en línea"; con menos de 3 casos, "muestra chica"). Compara contra sus compañeros en los mismos
   partidos, según las planillas: goles por partido, titularidad, tarjetas por partido, azules y rojas, penales y
   libres convertidos. También compara la efectividad del equipo con él y sin él, y los goles recibidos durante sus
