@@ -39,7 +39,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 
 ## Qué hace
 
-| | |
+| Función | Detalle |
 |---|---|
 | 🏒 **Informe de equipo** | Resultados, posiciones, goleadores, pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
 | 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, siempre con promedios por partido. |
