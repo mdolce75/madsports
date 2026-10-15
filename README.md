@@ -42,7 +42,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 | Función | Detalle |
 |---|---|
 | 🏒 **Informe de equipo** | Resultados, posiciones, goleadores, pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
-| 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, siempre con promedios por partido. |
+| 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, más fortalezas y debilidades contra sus compañeros. |
 | ⏱️ **Minuto a minuto** | Goles, tarjetas y faltas por tramos de 5′, cómo iba el partido en cada tramo y goles recibidos con uno menos. |
 | 📊 **Gráficos** | Barras y donas en cada PDF, con el escudo del club en la cabecera. |
 | 🔐 **Usuarios** | Registro con perfil Club o Jugador, confirmación del email, recuperación de clave y suscripciones. |
@@ -224,6 +224,11 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   separado, cada una con su promedio por partido; y penales y libres directos (convertidos, tirados y efectividad,
   con donas). Además, goles y tarjetas por tramos de 5 minutos (gráfico de columnas, con las tarjetas apiladas por
   color) y el detalle partido a partido.
+- **Fortalezas y debilidades del jugador:** con el mismo criterio que el informe de equipo (±10% de la
+  referencia es "en línea"; con menos de 3 casos, "muestra chica"). Compara contra sus compañeros en los mismos
+  partidos, según las planillas: goles por partido, titularidad, tarjetas por partido, azules y rojas, penales y
+  libres convertidos. También compara la efectividad del equipo con él y sin él, y los goles recibidos durante sus
+  sanciones contra el resto del tiempo.
 - **Categorías en que puede jugar:** el jugador puede subir de categoría, nunca bajar. Infantil juega en Infantil,
   Prejuvenil y Juvenil; Prejuvenil, en Prejuvenil, Juvenil y Juniors; Juvenil, en Juvenil, Juniors, Reserva y
   Primera; Juniors, en Juniors, Reserva y Primera; Reserva y Primera, en Reserva y Primera. El informe lee solo las

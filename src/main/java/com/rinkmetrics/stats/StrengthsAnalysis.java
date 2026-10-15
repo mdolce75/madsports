@@ -19,13 +19,13 @@ import java.util.Locale;
  * Análisis de fortalezas y debilidades: cada aspecto del juego se compara con una referencia y se clasifica.
  * Es determinístico; el texto de la IA y el análisis por reglas se apoyan en esta evaluación.
  */
-final class StrengthsAnalysis {
+public final class StrengthsAnalysis {
 
     /** Diferencia relativa con la referencia que se considera "en línea" (±10%). */
     static final double TOLERANCE = 0.10;
     private static final double EPSILON = 1e-9;
     /** Con menos partidos o intentos que esto, la evaluación es "muestra chica". */
-    static final int MIN_SAMPLE = 3;
+    public static final int MIN_SAMPLE = 3;
     /** Diferencia de gol por partido en un tiempo que se considera equilibrada (±0,25). */
     static final double BALANCE_THRESHOLD = 0.25;
     static final String BALANCE_LABEL = "Parejo (±0,25)";
@@ -85,7 +85,7 @@ final class StrengthsAnalysis {
     }
 
     /** Compara con una referencia: ±10% es "en línea"; mejor o peor según {@code higherIsBetter}. */
-    static Indicator relative(String area, String metric, double value, String refLabel, double reference,
+    public static Indicator relative(String area, String metric, double value, String refLabel, double reference,
                               Unit unit, boolean higherIsBetter, int sample, String sampleNoun) {
         if (sample < MIN_SAMPLE) {
             return new Indicator(area, metric, value, refLabel, reference, unit, Verdict.MUESTRA_CHICA,
@@ -140,7 +140,7 @@ final class StrengthsAnalysis {
     }
 
     /** Formato de un valor según su unidad, igual que en el PDF. */
-    static String format(double v, Unit unit) {
+    public static String format(double v, Unit unit) {
         return switch (unit) {
             case PER_GAME -> String.format(ES, "%.2f", v);
             case PERCENT -> String.format(ES, "%.0f%%", v);

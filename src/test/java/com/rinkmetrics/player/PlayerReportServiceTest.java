@@ -211,6 +211,33 @@ class PlayerReportServiceTest {
     }
 
     @Test
+    void fortalezasContraSusCompanerosEnLosMismosPartidos() {
+        PlayerReport r = PlayerReportService.assemble(query(3851, "Ignacio J Graiño"), VELEZ, HOY, LEVELS,
+                List.of(team(5581, "Primera Masculino", velezSheets())));
+        Map<String, ReportData.Indicator> byMetric = new LinkedHashMap<>();
+        r.indicators().forEach(i -> byMetric.put(i.metric(), i));
+
+        // 2-4 Argentinos (2 goles suyos, 0 de los 8 compañeros) y 7-0 Comunicaciones (2 suyos, 5 de los compañeros).
+        ReportData.Indicator goles = byMetric.get("Goles por partido");
+        assertThat(goles.value()).isEqualTo(2.0);
+        assertThat(goles.referenceLabel()).isEqualTo("Compañeros");
+        assertThat(goles.reference()).isEqualTo(5.0 / 16);
+        // Titular en los dos; de los compañeros, 4 de 8 en cada partido.
+        assertThat(byMetric.get("Partidos en el cinco inicial").value()).isEqualTo(100.0);
+        assertThat(byMetric.get("Partidos en el cinco inicial").reference()).isEqualTo(50.0);
+        // Con 2 partidos la muestra es chica: no se califica.
+        assertThat(r.indicators()).allMatch(i -> i.verdict() == ReportData.Verdict.MUESTRA_CHICA);
+        assertThat(byMetric).containsKeys("Tarjetas por partido", "Azules y rojas por partido", "Penales convertidos",
+                "Libres directos convertidos", "Efectividad del equipo con él");
+    }
+
+    @Test
+    void efectividadDelEquipo() {
+        assertThat(PlayerStrengths.effectiveness(new int[]{2, 1, 0})).isEqualTo(700.0 / 9);
+        assertThat(PlayerStrengths.effectiveness(new int[]{0, 0, 0})).isZero();
+    }
+
+    @Test
     void siNoFiguraLoInforma() {
         PlayerReport r = PlayerReportService.assemble(query(1, "Nadie"), VELEZ, HOY, LEVELS,
                 List.of(team(5581, "Primera Masculino", velezSheets())));
