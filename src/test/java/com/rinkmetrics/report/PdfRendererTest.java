@@ -61,7 +61,9 @@ class PdfRendererTest {
         PlayerReport.Minutes minutes = new PlayerReport.Minutes(25, buckets,
                 new PlayerReport.Bucket("Sin minuto registrado", 1, 0, 0, 0));
         ReportData.ShortHanded sh = new ReportData.ShortHanded(List.of(new ReportData.ShortHandedMatch(StatsEngineTest.HOY,
-                "ARGENTINOS JUNIORS", true, "1 azul", 120, 1, 0, 2, 4)), 2880, 3);
+                "ARGENTINOS JUNIORS", true, "1 azul", 120, 1, 0, 2, 4)), 2880, 3,
+                List.of(new ReportData.ConcededGoal(StatsEngineTest.HOY, "ARGENTINOS JUNIORS", "Azul", "1T 12:30",
+                        "1T 13:40", 2, 4)));
         PlayerReport.MatchRow partido = new PlayerReport.MatchRow(StatsEngineTest.HOY, "Primera Masculino", "Clausura",
                 "ARGENTINOS JUNIORS", true, 2, 4, "P", true, 2, 1, 1, 0);
         List<PlayerReport.CategoryBlock> blocks = List.of(
@@ -80,7 +82,9 @@ class PdfRendererTest {
                 "Resumen por categoría", "Partido a partido", "Juniors Masculino", "Primera Masculino",
                 "no tiene acta publicada", "Escudo de VELEZ", "Penales y libres directos",
                 "Goles y tarjetas por tramos de 5 minutos", "Sin minuto registrado", "2T 20-25",
-                "Goles con uno menos por sus sanciones", "Esos partidos terminaron 0 ganados, 0 empatados y 1 perdidos",
+                "Goles con uno menos por sus sanciones",
+                "Goles que le hicieron a su equipo mientras cumplía su sanción: 1.", "1T 12:30", "1T 13:40",
+                "No cumplió sanciones (azul o roja) con minuto registrado",
                 "Todas las categorías");
         // Agrupado por categoría: un bloque por cada una (Juniors antes que Primera) y después el total.
         assertThat(html.indexOf(">Juniors Masculino</h2>")).isPositive()

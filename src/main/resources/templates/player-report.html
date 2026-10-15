@@ -231,7 +231,7 @@
         </th:block>
 
         <h3>Goles con uno menos por sus sanciones</h3>
-        <div th:replace="~{fragments/short-handed :: shortHanded(${b.shortHanded}, 'el jugador')}"></div>
+        <div th:replace="~{fragments/player-short-handed :: concededGoals(${b.shortHanded})}"></div>
 
         <th:block th:if="${!b.matches.isEmpty()}">
             <h3>Partido a partido</h3>
@@ -289,7 +289,7 @@
             </div>
         </th:block>
         <h3>Goles con uno menos por sus sanciones</h3>
-        <div th:replace="~{fragments/short-handed :: shortHanded(${r.shortHanded}, 'el jugador')}"></div>
+        <div th:replace="~{fragments/player-short-handed :: concededGoals(${r.shortHanded})}"></div>
     </div>
 </th:block>
 

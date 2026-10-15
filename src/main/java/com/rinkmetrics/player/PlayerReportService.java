@@ -391,6 +391,7 @@ public class PlayerReportService {
         int period = in.competition().periodMinutes() > 0 ? in.competition().periodMinutes()
                 : Competition.DEFAULT_PERIOD_MINUTES;
         List<int[]> sanctions = new ArrayList<>();
+        List<String> sanctionCards = new ArrayList<>();
         List<Integer> own = new ArrayList<>();
         List<Integer> rival = new ArrayList<>();
         int blues = 0;
@@ -408,12 +409,32 @@ public class PlayerReportService {
                     && (e.type() == EventType.BLUE_CARD || e.type() == EventType.RED_CARD)) {
                 boolean blue = e.type() == EventType.BLUE_CARD;
                 sanctions.add(new int[]{t, t + (blue ? 120 : 240)});
+                sanctionCards.add(blue ? "Azul" : "Roja");
                 blues += blue ? 1 : 0;
                 reds += blue ? 0 : 1;
             }
         }
-        calc.add(m.date(), home ? m.awayName() : m.homeName(), home, sanctions, blues, reds, own, rival,
-                2 * period * 60, gf, ga);
+        String rivalName = home ? m.awayName() : m.homeName();
+        int end = 2 * period * 60;
+        calc.add(m.date(), rivalName, home, sanctions, blues, reds, own, rival, end, gf, ga);
+        // Cada gol en contra que cae dentro de una de sus sanciones (se cumple completa aunque haya gol).
+        for (int t : rival) {
+            for (int i = 0; i < sanctions.size(); i++) {
+                int[] s = sanctions.get(i);
+                if (t >= s[0] && t < Math.min(s[1], end)) {
+                    calc.conceded(new ReportData.ConcededGoal(m.date(), rivalName, sanctionCards.get(i),
+                            clock(s[0], period), clock(t, period), gf, ga));
+                    break;
+                }
+            }
+        }
+    }
+
+    /** "1T 12:30": tiempo y minuto dentro del tiempo, a partir de los segundos desde el inicio del partido. */
+    static String clock(int seconds, int periodMinutes) {
+        int half = seconds < periodMinutes * 60 ? 1 : 2;
+        int rel = seconds - (half - 1) * periodMinutes * 60;
+        return String.format(java.util.Locale.ROOT, "%dT %d:%02d", half, rel / 60, rel % 60);
     }
 
     /**

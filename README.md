@@ -169,7 +169,9 @@ jugador, las suyas) se informa:
 - en total: partidos, goles recibidos cada 10' con uno menos contra el resto del tiempo, y ganados, empatados y
   perdidos.
 
-Un gol cuenta si cae dentro de una sanción. Cuando hay sanciones superpuestas, para contar los goles se toma el
+En el informe de jugador, la sección enumera solo los goles que le hicieron a su equipo mientras cumplía su
+sanción. Cada gol trae la fecha, el rival, su tarjeta y su minuto, el minuto del gol y el resultado final. Un gol
+cuenta si cae dentro de una sanción. Cuando hay sanciones superpuestas, para contar los goles se toma el
 tiempo en que hubo al menos uno menos.
 
 **Gráficos:** el informe incluye 6 gráficos de barras y de dona, generados en el servidor con Java2D
