@@ -1,12 +1,13 @@
 package com.rinkmetrics.catalog;
 
 import com.rinkmetrics.Fixtures;
-import com.rinkmetrics.config.FppProperties;
+import com.rinkmetrics.config.RinkMetricsProperties;
 import com.rinkmetrics.sidgad.SidgadClient;
 import com.rinkmetrics.catalog.CatalogService.CatalogView;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
 import com.rinkmetrics.catalog.CatalogService.LevelView;
 import com.rinkmetrics.sidgad.model.Competition;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.parse.SidgadParser;
 import org.junit.jupiter.api.Test;
 
@@ -61,11 +62,11 @@ class CatalogServiceTest {
 
     /** Cliente con las páginas guardadas del portal y del catálogo (sin red). */
     static CatalogService serviceWithFixtures() {
-        FppProperties props = new FppProperties(
-                new FppProperties.Sidgad("http://localhost/", "http://localhost", 3,
+        RinkMetricsProperties props = new RinkMetricsProperties(
+                new RinkMetricsProperties.Sidgad("http://localhost/", "http://localhost",
                         Duration.ZERO, 1, Duration.ofMinutes(1), Duration.ofMinutes(1),
-                        Duration.ofSeconds(1), LEVELS, List.of(2026, 2027)),
-                new FppProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1)));
+                        Duration.ofSeconds(1), List.of(2026, 2027)),
+                new RinkMetricsProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1)));
         SidgadClient client = new SidgadClient(props) {
             @Override
             public String portal() {
@@ -111,7 +112,7 @@ class CatalogServiceTest {
     @Test
     void anioConDatos() {
         CatalogService catalog = serviceWithFixtures();
-        CatalogView v2026 = catalog.view(2026);
+        CatalogView v2026 = catalog.view(Federacion.FPP, 2026);
 
         assertThat(v2026.available()).isTrue();
         assertThat(v2026.year()).isEqualTo(2026);
@@ -123,13 +124,14 @@ class CatalogServiceTest {
     @Test
     void anioSinDatosSeInforma() {
         CatalogService catalog = serviceWithFixtures();
-        CatalogView v2027 = catalog.view(2027);
+        CatalogView v2027 = catalog.view(Federacion.FPP, 2027);
 
         assertThat(v2027.available()).isFalse();
         assertThat(v2027.message()).isEqualTo("No hay información de la FPP para el año 2027 todavía.");
         assertThat(v2027.clubs()).isEmpty();
-        assertThat(catalog.competitionsFor(74, new Competition.Category("PRIMERA", "MASCULINO"), null, 2027)).isEmpty();
-        assertThatThrownBy(() -> catalog.club(74, 2027))
+        assertThat(catalog.competitionsFor(Federacion.FPP, 74, new Competition.Category("PRIMERA", "MASCULINO"), null,
+                2027)).isEmpty();
+        assertThatThrownBy(() -> catalog.club(Federacion.FPP, 74, 2027))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("2027");
     }
 

@@ -41,8 +41,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/) CLUBFPP y la de jugador
- * (/jugador.html) PLAYERFPP. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
+ * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/club.html) CLUBFPP o CLUBAMP y la de
+ * jugador (/jugador.html) PLAYERFPP o PLAYERAMP; la federación sale del perfil del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
  */
 @Configuration
@@ -62,8 +62,9 @@ public class SecurityConfig {
                                 "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**", "/api/suscripciones")
                         .permitAll()
                         .requestMatchers("/club.html", "/api/informes", "/api/informes/**")
-                        .hasAuthority(Perfil.CLUBFPP.name())
-                        .requestMatchers("/jugador.html", "/api/jugador/**").hasAuthority(Perfil.PLAYERFPP.name())
+                        .hasAnyAuthority(Perfil.CLUBFPP.name(), Perfil.CLUBAMP.name())
+                        .requestMatchers("/jugador.html", "/api/jugador/**")
+                        .hasAnyAuthority(Perfil.PLAYERFPP.name(), Perfil.PLAYERAMP.name())
                         .anyRequest().authenticated())
                 .formLogin(f -> f
                         .loginPage("/login.html")
@@ -121,10 +122,10 @@ public class SecurityConfig {
 
     /** Pantalla de inicio según el perfil del usuario. */
     public static String home(Collection<? extends GrantedAuthority> authorities) {
-        if (has(authorities, Perfil.CLUBFPP)) {
+        if (has(authorities, Perfil.CLUBFPP) || has(authorities, Perfil.CLUBAMP)) {
             return "/club.html";
         }
-        if (has(authorities, Perfil.PLAYERFPP)) {
+        if (has(authorities, Perfil.PLAYERFPP) || has(authorities, Perfil.PLAYERAMP)) {
             return "/jugador.html";
         }
         return "/login.html?sinPerfil";

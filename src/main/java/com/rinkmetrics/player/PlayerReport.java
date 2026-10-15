@@ -1,5 +1,7 @@
 package com.rinkmetrics.player;
 
+import com.rinkmetrics.sidgad.model.Federacion;
+
 import com.rinkmetrics.stats.ReportData;
 
 import java.time.LocalDate;
@@ -16,7 +18,16 @@ import java.util.List;
 public record PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                            String period, LocalDate generatedOn, List<Line> categories, Line total,
                            Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
-                           List<String> notes, List<CategoryBlock> blocks, List<ReportData.Indicator> indicators) {
+                           List<String> notes, List<CategoryBlock> blocks, List<ReportData.Indicator> indicators,
+                           Federacion federacion) {
+
+    public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
+                        String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
+                        ReportData.ShortHanded shortHanded, List<MatchRow> matches, List<String> notes,
+                        List<CategoryBlock> blocks, List<ReportData.Indicator> indicators) {
+        this(playerId, playerName, fullName, club, year, period, generatedOn, categories, total, minutes, shortHanded,
+                matches, notes, blocks, indicators, Federacion.FPP);
+    }
 
     /** Sin bloques por categoría ni fortalezas (informes armados a mano en los tests). */
     public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,

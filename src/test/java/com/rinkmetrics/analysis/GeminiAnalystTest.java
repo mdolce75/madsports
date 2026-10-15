@@ -2,7 +2,7 @@ package com.rinkmetrics.analysis;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rinkmetrics.config.FppProperties;
+import com.rinkmetrics.config.RinkMetricsProperties;
 import com.rinkmetrics.stats.ReportData;
 import com.rinkmetrics.stats.StatsEngine;
 import com.rinkmetrics.stats.StatsEngineTest;
@@ -72,8 +72,8 @@ class GeminiAnalystTest {
 
     GeminiAnalyst analyst(String apiKey) {
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1beta";
-        return new GeminiAnalyst(new FppProperties(null,
-                new FppProperties.Ai(true, apiKey, "gemini-3.8-flash", base, Duration.ofSeconds(10))),
+        return new GeminiAnalyst(new RinkMetricsProperties(null,
+                new RinkMetricsProperties.Ai(true, apiKey, "gemini-3.8-flash", base, Duration.ofSeconds(10))),
                 MAPPER, Duration.ofMillis(10));
     }
 

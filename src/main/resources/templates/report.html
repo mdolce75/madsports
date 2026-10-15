@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8"/>
     <title th:text="|Informe ${d.club.name} - ${d.category}|">Informe</title>
-    <style>
+    <style th:inline="css">
         @page {
             size: A4;
             margin: 16mm 14mm 18mm 14mm;
-            @bottom-left { content: "Informe elaborado por RinkMetrics · Datos: FPP (buenosaires.sidgad.com)"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-left { content: "Informe elaborado por RinkMetrics · Datos: [(${d.federacion.name()})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
             @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
         }
         body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
@@ -77,7 +77,8 @@
 
 <div class="sample-banner" th:if="${sample}">
     <b>Informe de ejemplo.</b> Club, rivales, jugadores y resultados son ficticios: sirven solo para mostrar el
-    formato y las secciones de un informe de RinkMetrics. Los informes reales usan los datos publicados por la FPP.
+    formato y las secciones de un informe de RinkMetrics. Los informes reales usan los datos publicados por la
+    <span th:text="${d.federacion.name()}">FPP</span> en SIDGAD.
 </div>
 
 <div class="header">
@@ -98,7 +99,7 @@
 <div class="analysis">
     <p th:text="${a.summary}">Resumen</p>
     <p th:if="${!#strings.isEmpty(a.trend)}"><b>Tendencia:</b> <span th:text="${a.trend}"></span></p>
-    <p class="muted" th:text="|Análisis: ${a.source}. Las cifras provienen de los datos publicados por la FPP en SIDGAD.|"></p>
+    <p class="muted" th:text="|Análisis: ${a.source}. Las cifras provienen de los datos publicados por la ${d.federacion.name()} en SIDGAD.|"></p>
 </div>
 
 <table class="two">
@@ -190,7 +191,7 @@
             <td th:text="${s.publishedOn == null ? '-' : f.date(s.publishedOn)}"></td>
         </tr>
     </table>
-    <p class="muted" th:if="${t.standings.?[outdated].size() > 0}">* Tabla de posiciones tal como la publica la FPP, desactualizada respecto del
+    <p class="muted" th:if="${t.standings.?[outdated].size() > 0}">* Tabla de posiciones tal como la publica la <span th:text="${d.federacion.name()}">FPP</span>, desactualizada respecto del
         calendario. El récord, los resultados y el resto de las cifras del informe se calculan a partir de todos los partidos jugados.</p>
     <p class="muted" th:if="${t.standings.isEmpty()}">La tabla de posiciones no está publicada.</p>
 
@@ -263,7 +264,7 @@
             <h3>Reparto del gol</h3>
             <table class="two"><tr><td style="width: 62%"><img class="chart" th:src="${donut}" alt="Goles por jugador"/></td>
                 <td><p class="muted">Goles de los cinco máximos goleadores y del resto del plantel, sobre los goles con
-                    autor registrado en las estadísticas de la FPP.</p></td></tr></table>
+                    autor registrado en las estadísticas de la <span th:text="${d.federacion.name()}">FPP</span>.</p></td></tr></table>
         </th:block>
     </div>
 
@@ -458,7 +459,7 @@
 </ul>
 <p class="muted" th:text="|Contexto de liga: ${d.league.teams} equipos, ${d.league.matchesPlayed} partidos jugados en las competiciones incluidas.|"></p>
 <div th:if="${!d.notPublished.isEmpty()}">
-    <p class="muted">Datos que el sitio de la FPP no tenía publicados al generar el informe (las secciones
+    <p class="muted"><span th:text="|Datos que el sitio de la ${d.federacion.name()} no tenía publicados|">Datos que el sitio no tenía publicados</span> al generar el informe (las secciones
         correspondientes quedan vacías o parciales):</p>
     <ul class="muted"><li th:each="n : ${d.notPublished}" th:text="${n}"></li></ul>
 </div>

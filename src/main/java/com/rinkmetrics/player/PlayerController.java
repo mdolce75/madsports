@@ -4,6 +4,7 @@ import com.rinkmetrics.account.Perfil;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.catalog.CatalogService;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.report.ApiController.JobView;
 import com.rinkmetrics.report.ReportService.Scope;
 import com.rinkmetrics.report.ReportService.Status;
@@ -26,7 +27,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
-/** Informe del jugador logueado (perfil PLAYERFPP): solo elige año y período; el jugador y el club son los suyos. */
+/**
+ * Informe del jugador logueado (perfil PLAYERFPP o PLAYERAMP): solo elige año y período; el jugador, el club y la
+ * federación son los suyos.
+ */
 @RestController
 @RequestMapping("/api/jugador")
 public class PlayerController {
@@ -51,11 +55,13 @@ public class PlayerController {
     @PostMapping("/informes")
     public ResponseEntity<JobView> crear(@RequestBody PlayerReportRequest req, Authentication auth) {
         Usuario u = usuarios.findByUsuario(auth.getName())
-                .filter(x -> x.tiene(Perfil.PLAYERFPP) && x.getJugadorId() != null)
+                .filter(x -> x.esJugador() && x.getJugadorId() != null)
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no tiene un jugador vinculado."));
+        Federacion fed = u.federacion();
         PlayerReportService.Job job = reports.submit(new PlayerReportService.Query(u.getJugadorId(), u.getJugadorNombre(),
-                u.getNombre() == null ? u.getJugadorNombre() : u.getNombre() + " " + u.getApellido(), u.getClubId(), catalog.checkYear(req.anio()),
-                Scope.parse(req.periodo()), Eligibility.searchLevels(u.getCategoria()), u.getRama()), u.getUsuario());
+                u.getNombre() == null ? u.getJugadorNombre() : u.getNombre() + " " + u.getApellido(), u.getClubId(),
+                catalog.checkYear(req.anio()), Scope.parse(req.periodo()), Eligibility.searchLevels(fed, u.getCategoria()),
+                u.getRama(), fed), u.getUsuario());
         usuarios.contarInforme(u.getUsuario());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
@@ -90,6 +96,6 @@ public class PlayerController {
 
     @ExceptionHandler(SidgadException.class)
     ProblemDetail upstream(SidgadException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer el sitio de la FPP: " + e.getMessage());
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer SIDGAD: " + e.getMessage());
     }
 }

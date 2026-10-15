@@ -38,7 +38,7 @@ spring:
 server:
   port: ${PORT:8080}
 
-fpp:
+rinkmetrics:
   mail:
     from: ${MAIL_FROM:RinkMetrics <info@madsportsapp.com>}
     # Dirección pública de la web, para armar los enlaces de los mails
@@ -46,15 +46,13 @@ fpp:
   sidgad:
     base-url: https://www.server2.sidgad.es/cap/
     origin: https://www.buenosaires.sidgad.com
-    federation-id: 3          # FPP
     # Pedidos en paralelo, sin sobrecargar el sitio: hasta 6 a la vez y como mucho 10 por segundo
     max-concurrency: 6
     min-interval: 100ms
     data-ttl: 15m
     catalog-ttl: 6h
     timeout: 20s
-    # Categorías relevadas (Mini y Promo quedan afuera)
-    levels: [INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA, PRIMERA]
+    # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federacion (de Infantil para arriba)
     # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa
     years: [2026, 2027]
   # Análisis con Google Gemini (plan gratuito de Google AI Studio). Sin API key: análisis por reglas.

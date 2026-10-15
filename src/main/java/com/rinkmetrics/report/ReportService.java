@@ -10,6 +10,7 @@ import com.rinkmetrics.sidgad.SidgadClient;
 import com.rinkmetrics.sidgad.model.Competition;
 import com.rinkmetrics.sidgad.model.Competition.Category;
 import com.rinkmetrics.sidgad.model.Competition.Torneo;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.model.Models.MatchEvent;
@@ -93,9 +94,17 @@ public class ReportService {
         }
     }
 
-    /** Parámetros del informe: club, categoría (nivel), rama y período. */
-    /** @param year año (temporada) ya validado contra los ofrecidos */
-    public record Request(int clubId, String category, String branch, Scope scope, int year) {
+    /**
+     * Parámetros del informe: club, categoría (nivel), rama y período.
+     *
+     * @param year       año (temporada) ya validado contra los ofrecidos
+     * @param federacion federación del club (la del perfil del usuario)
+     */
+    public record Request(int clubId, String category, String branch, Scope scope, int year, Federacion federacion) {
+
+        public Request(int clubId, String category, String branch, Scope scope, int year) {
+            this(clubId, category, branch, scope, year, Federacion.FPP);
+        }
     }
 
     public static final class Job {
@@ -147,12 +156,13 @@ public class ReportService {
     /** Valida los parámetros (falla rápido) y encola el informe. */
     /** @param owner usuario que pide el informe: solo él puede consultarlo y bajarlo */
     public Job submit(Request request, String owner) {
-        if (!catalog.available(request.year())) {
-            throw new IllegalArgumentException(CatalogService.unavailableMessage(request.year()));
+        Federacion fed = request.federacion();
+        if (!catalog.available(fed, request.year())) {
+            throw new IllegalArgumentException(CatalogService.unavailableMessage(fed, request.year()));
         }
-        ClubView club = catalog.club(request.clubId(), request.year());
+        ClubView club = catalog.club(fed, request.clubId(), request.year());
         CategoryOption option = CategoryOption.parse(request.category());
-        Category category = catalog.category(option.level(), request.branch());
+        Category category = catalog.category(fed, option.level(), request.branch());
         // A y B son equipos distintos: la categoría elegida tiene que ser una de las opciones del club en esa rama.
         boolean exists = club.categories().stream()
                 .anyMatch(l -> l.key().equals(option.key()) && l.branches().contains(category.branch()));
@@ -165,7 +175,7 @@ public class ReportService {
                     + " en " + request.year() + "." + (valid.isEmpty() ? "" : " Opciones: " + String.join(", ", valid) + "."));
         }
         Torneo torneo = request.scope().torneo();
-        if (catalog.competitionsFor(club.id(), category, torneo, request.year()).isEmpty()) {
+        if (catalog.competitionsFor(fed, club.id(), category, torneo, request.year()).isEmpty()) {
             throw new IllegalArgumentException(club.name() + " no participa en " + label(category, option)
                     + (torneo == null ? "" : " - " + torneo.label()) + " en " + request.year() + ".");
         }
@@ -205,7 +215,8 @@ public class ReportService {
     ReportData extract(Job job, ClubView club, Category category, CategoryOption option) {
         Scope scope = job.request().scope();
         int year = job.request().year();
-        List<Competition> comps = catalog.competitionsFor(club.id(), category, scope.torneo(), year);
+        Federacion fed = job.request().federacion();
+        List<Competition> comps = catalog.competitionsFor(fed, club.id(), category, scope.torneo(), year);
         List<CompetitionData> data = new ArrayList<>();
         List<String> notPublished = new ArrayList<>();
         Map<Competition, List<Match>> clubMatches = new LinkedHashMap<>();
@@ -305,6 +316,7 @@ public class ReportService {
         return StatsEngine.build(club, label(category, option), label, data, LocalDate.now(clock), scope.lastMatches(),
                         option.teamKey(club.code()))
                 .withNotPublished(notPublished)
+                .withFederacion(fed)
                 .withLogo(Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))));
     }
 

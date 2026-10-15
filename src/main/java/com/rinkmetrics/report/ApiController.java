@@ -4,6 +4,7 @@ import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.catalog.CatalogService.CatalogView;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -61,13 +62,17 @@ public class ApiController {
         this.usuarios = usuarios;
     }
 
-    /** Catálogo del año pedido (o del más reciente con datos). Si el año no tiene datos, {@code available} es false. */
+    /**
+     * Catálogo de la federación (FPP por defecto, o AMP) del año pedido (o del más reciente con datos). Si el año no
+     * tiene datos, {@code available} es false.
+     */
     @GetMapping("/catalogo")
-    public CatalogView catalogo(@RequestParam(required = false) Integer anio) {
-        return catalog.view(catalog.checkYear(anio));
+    public CatalogView catalogo(@RequestParam(required = false) Integer anio,
+                                @RequestParam(required = false) String federacion) {
+        return catalog.view(Federacion.parse(federacion), catalog.checkYear(anio));
     }
 
-    /** Un usuario CLUBFPP pide informes solo de su club (el que eligió al registrarse). */
+    /** Un usuario de club (CLUBFPP o CLUBAMP) pide informes solo de su club, en su federación. */
     @PostMapping("/informes")
     public ResponseEntity<JobView> crear(@Valid @RequestBody ReportRequest req, Authentication auth) {
         Usuario u = usuarios.findByUsuario(auth.getName())
@@ -76,7 +81,8 @@ public class ApiController {
             throw new AccessDeniedException("Solo podés pedir informes de tu club (" + u.getClubNombre() + ").");
         }
         ReportService.Job job = reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(),
-                ReportService.Scope.parse(req.periodo()), catalog.checkYear(req.anio())), u.getUsuario());
+                ReportService.Scope.parse(req.periodo()), catalog.checkYear(req.anio()), u.federacion()),
+                u.getUsuario());
         usuarios.contarInforme(u.getUsuario());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }

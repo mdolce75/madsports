@@ -133,9 +133,12 @@ espera y reintenta una vez.
 | `cap_stats_1_<idc>.php` | Estadísticas por jugador |
 | `cap_gr_<idp>_1.php` | Acta del partido: goles y tarjetas con período y minuto |
 
-FPP = `id_fede_3`. El año se traduce a la temporada de SIDGAD (`temp_N`) con el selector de temporadas de la página
-principal del portal (`a.select_temporada[id_temp][temp_name]`, p. ej. 40 = 2026). Años ofrecidos:
-`fpp.sidgad.years` en `application.yml`. La tabla de posiciones de SIDGAD puede
+Federaciones (`Federacion`): **FPP** = `id_fede_3` (Federación Porteña de Patín) y **AMP** = `id_fede_4` (Asociación
+Mendocina de Patín). Los fragmentos son los mismos para las dos; los nombres de las competiciones de la AMP tienen otro
+formato (`AMP'26- CAMP MASC "APERTURA 26"-CATEGORIA SENIOR`, que se lee del texto visible porque las comillas cortan el
+atributo `name`). El año se traduce a la temporada de SIDGAD (`temp_N`) con el selector de temporadas de la página
+principal del portal (`a.select_temporada[id_temp][temp_name]`, p. ej. 40 = 2026), que es la misma para las dos
+federaciones. Años ofrecidos: `rinkmetrics.sidgad.years` en `application.yml`. La tabla de posiciones de SIDGAD puede
 quedar congelada (ej.: Apertura 2026 publicada el 03/05): el informe la muestra con su fecha y la marca
 como desactualizada; el récord se calcula siempre desde el calendario.
 
@@ -197,8 +200,10 @@ se cachea (se reintenta en el próximo informe). Cualquier otro error (5xx, time
 ## Usuarios y perfiles
 
 La web pide registro e ingreso (Spring Security, sesión con cookie, CSRF con `XSRF-TOKEN`). Cada usuario tiene uno o
-más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBCNT`, `PLAYERFPP`, `PLAYERFSP`,
-`PLAYERCNT`. Por ahora el registro ofrece solo **Club FPP** o **Jugador FPP**, y uno excluye al otro.
+más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBCNT`, `CLUBAMP`, `PLAYERFPP`,
+`PLAYERFSP`, `PLAYERCNT`, `PLAYERAMP`. El registro ofrece **Club** o **Jugador** de la **FPP** (Buenos Aires) o de la
+**AMP** (Mendoza): primero se elige la federación y después el perfil, y uno excluye a los demás. La federación del
+perfil decide de dónde salen los clubes, las categorías, los jugadores y los informes (que dicen FPP o AMP).
 
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
   No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
@@ -300,7 +305,16 @@ Abrir http://localhost:8080.
 En el plan gratuito Google puede usar el contenido enviado para mejorar sus productos (son datos deportivos
 públicos de la FPP) y hay límites de pedidos por minuto y por día; los modelos y límites cambian seguido.
 
-Categorías relevadas: `fpp.sidgad.levels` en `application.yml`.
+Categorías relevadas (de Infantil para arriba), en `Federacion`:
+
+| Federación | Categorías |
+|---|---|
+| FPP | Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera |
+| AMP | Infantil, Precadete, Cadete, Prejuvenil, Juvenil, Prejunior, Junior, Reserva, Senior (en femenino: Infantil, Cadete, Juvenil, Junior, Senior) |
+
+Las dos usan la misma regla para saber en qué categorías puede jugar cada jugador: la suya y las dos de arriba; desde
+Juvenil, hasta la mayor (Primera o Senior); Reserva y la mayor, entre sí. La categoría del jugador es la más baja en
+que jugó en el año.
 
 Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemini para ...`).
 

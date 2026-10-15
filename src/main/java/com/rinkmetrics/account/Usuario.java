@@ -1,5 +1,7 @@
 package com.rinkmetrics.account;
 
+import com.rinkmetrics.sidgad.model.Federacion;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -133,5 +135,16 @@ public class Usuario {
 
     public boolean tiene(Perfil perfil) {
         return perfiles.contains(perfil);
+    }
+
+    /** Federación de sus perfiles (FPP o AMP); FPP si no tiene ninguno de esas federaciones. */
+    public Federacion federacion() {
+        return perfiles.stream().map(Perfil::federacion).filter(java.util.Objects::nonNull).findFirst()
+                .orElse(Federacion.FPP);
+    }
+
+    /** ¿Tiene un perfil de jugador (PLAYERFPP, PLAYERAMP...)? */
+    public boolean esJugador() {
+        return perfiles.stream().anyMatch(Perfil::player);
     }
 }

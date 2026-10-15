@@ -48,20 +48,40 @@ public record Competition(int id, String name, int federationId, int seasonId,
         }
     }
 
+    /** FPP: "TORNEO CLAUSURA PRIMERA MASCULINO (FPP)", "TORNEO APERTURA JUNIORS FEMENINO 2 (FPP)". */
     private static final Pattern NAME = Pattern.compile(
             "TORNEO\\s+(APERTURA|CLAUSURA)\\s+(.+?)\\s+(MASCULINO|FEMENINO)(?:\\s+(\\d+))?\\b");
 
-    /** Interpreta el nombre de la competición; devuelve {@code null} si no es del formato FPP. */
+    /**
+     * AMP (Mendoza): {@code AMP'26- CAMP MASC "APERTURA 26"-CATEGORIA SENIOR}; el prefijo y los espacios varían
+     * ("C MASC", "CAMP MASC\"CLAUSURA 26\"CATEGORIA PREINFANTIL", "CAMP FEMEN").
+     */
+    private static final Pattern AMP_NAME = Pattern.compile(
+            "\\b(MASC|FEMEN)[A-Z]*\\W*(APERTURA|CLAUSURA)\\b.*?CATEGOR[IÍ]A\\s+([A-ZÑ]+)");
+
+    /** Interpreta el nombre de la competición; si no es de un formato conocido, la categoría queda {@code null}. */
     public static Competition of(int id, String name, int federationId, int seasonId, List<Models.TeamRef> teams,
                                  int periodMinutes) {
         int minutes = periodMinutes > 0 ? periodMinutes : DEFAULT_PERIOD_MINUTES;
-        Matcher m = NAME.matcher(name.toUpperCase());
-        if (!m.find()) {
-            return new Competition(id, name, federationId, seasonId, null, null, 1, teams, minutes);
+        String upper = name.toUpperCase();
+        Matcher m = NAME.matcher(upper);
+        if (m.find()) {
+            int division = m.group(4) == null ? 1 : Integer.parseInt(m.group(4));
+            return new Competition(id, name, federationId, seasonId, Torneo.valueOf(m.group(1)),
+                    new Category(m.group(2).trim(), m.group(3)), division, teams, minutes);
         }
-        int division = m.group(4) == null ? 1 : Integer.parseInt(m.group(4));
-        return new Competition(id, name, federationId, seasonId, Torneo.valueOf(m.group(1)),
-                new Category(m.group(2).trim(), m.group(3)), division, teams, minutes);
+        Matcher amp = AMP_NAME.matcher(upper);
+        if (amp.find()) {
+            String branch = amp.group(1).equals("MASC") ? "MASCULINO" : "FEMENINO";
+            return new Competition(id, name, federationId, seasonId, Torneo.valueOf(amp.group(2)),
+                    new Category(amp.group(3), branch), 1, teams, minutes);
+        }
+        return new Competition(id, name, federationId, seasonId, null, null, 1, teams, minutes);
+    }
+
+    /** La federación de la competición (null si no se releva). */
+    public Federacion federacion() {
+        return Federacion.of(federationId);
     }
 
     public String torneoLabel() {

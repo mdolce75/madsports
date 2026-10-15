@@ -2,7 +2,7 @@ package com.rinkmetrics.analysis;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rinkmetrics.config.FppProperties;
+import com.rinkmetrics.config.RinkMetricsProperties;
 import com.rinkmetrics.stats.ReportData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ public class GeminiAnalyst {
 
     static final String SYSTEM = """
             Sos un analista de hockey sobre patines de RinkMetrics. Vas a escribir el análisis de un informe
-            estadístico de un club en una categoría de la Federación Porteña de Patín (FPP), Argentina.
+            estadístico de un club en una categoría de una federación argentina de patín (la federación va en el pedido).
 
             Los datos ya calculados del informe están en el mensaje, en JSON: overview, league_context y, por
             equipo, team_detail (results, upcoming, players, set_pieces_discipline, rivals, time_profile).
@@ -57,7 +57,7 @@ public class GeminiAnalyst {
               clasificación; podés explicar el porqué y sumar matices con otras cifras de los datos.
             - Compará siempre contra el contexto de la liga (promedios) para decir si algo es fortaleza o debilidad.
             - Con pocos partidos jugados, decilo y sé prudente con las conclusiones.
-            - En categorías formativas (Infantil, Prejuvenil) el tono es formativo y respetuoso:
+            - En categorías formativas (Infantil, Prejuvenil; en la AMP también Precadete y Cadete) el tono es formativo y respetuoso:
               son menores, nada de críticas personales a jugadores.
             - Escribí en español rioplatense, claro y concreto, sin relleno.
             - Si el club tiene más de un equipo en la categoría (p. ej. CAVS A y CAVS B), distinguilos.
@@ -72,17 +72,17 @@ public class GeminiAnalyst {
               programados.
             """;
 
-    private final FppProperties.Ai props;
+    private final RinkMetricsProperties.Ai props;
     private final ObjectMapper mapper;
     private final HttpClient http;
     private final Duration retryWait;
 
     @Autowired
-    public GeminiAnalyst(FppProperties props, ObjectMapper mapper) {
+    public GeminiAnalyst(RinkMetricsProperties props, ObjectMapper mapper) {
         this(props, mapper, DEFAULT_RETRY_WAIT);
     }
 
-    GeminiAnalyst(FppProperties props, ObjectMapper mapper, Duration retryWait) {
+    GeminiAnalyst(RinkMetricsProperties props, ObjectMapper mapper, Duration retryWait) {
         this.props = props.ai();
         this.mapper = mapper;
         this.retryWait = retryWait;
@@ -149,7 +149,8 @@ public class GeminiAnalyst {
     Map<String, Object> request(ReportData data) throws Exception {
         String context = new AnalysisContext(data, mapper).fullContext();
         String ask = "Analizá el informe de " + data.club().name() + " (" + data.club().code() + "), categoría "
-                + data.category() + ", " + data.torneo() + ".";
+                + data.category() + ", " + data.torneo() + ", de la " + data.federacion().nombre() + " ("
+                + data.federacion().name() + ").";
         return Map.of(
                 "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM))),
                 "contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text",
