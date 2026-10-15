@@ -264,6 +264,7 @@ public class ReportService {
             // Jugadores de cada equipo del club por competición: los de sus planillas y los de la tabla de SIDGAD.
             Map<Competition, Map<Integer, Integer>> teamOf = new LinkedHashMap<>();
             Map<Integer, String> names = new HashMap<>();
+            Map<Integer, int[]> roles = new HashMap<>();   // jugador -> {actas como arquero, actas de jugador}
             for (int i = 0; i < sheets.size(); i++) {
                 CompetitionData cd = sheets.get(i).getKey();
                 Match m = sheets.get(i).getValue();
@@ -276,6 +277,7 @@ public class ReportService {
                         read.lineups().stream().filter(p -> p.home() == home).forEach(p -> {
                             own.putIfAbsent(p.playerId(), t.teamId());
                             names.putIfAbsent(p.playerId(), p.name());
+                            roles.computeIfAbsent(p.playerId(), k -> new int[2])[p.goalkeeper() ? 0 : 1]++;
                         });
                     }
                 }
@@ -290,6 +292,15 @@ public class ReportService {
                 });
             }
             replaceWithSeasonProfiles(job, io, club, data, teamOf, names, notPublished);
+            // Arqueros: figuran con "P" en al menos 2 planillas, o en la mayoría de las suyas (con pocas actas).
+            Set<Integer> goalkeepers = roles.entrySet().stream()
+                    .filter(e -> e.getValue()[0] >= 2 || (e.getValue()[0] > 0 && e.getValue()[0] >= e.getValue()[1]))
+                    .map(Map.Entry::getKey).collect(Collectors.toSet());
+            for (int i = 0; i < data.size(); i++) {
+                CompetitionData cd = data.get(i);
+                data.set(i, new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), cd.matches(),
+                        cd.players(), cd.sheets(), goalkeepers));
+            }
         }
         // Las actas faltantes del club ya se informan en el PDF ("N actas de M partidos"); acá solo se resume.
         long missingSheets = data.stream()

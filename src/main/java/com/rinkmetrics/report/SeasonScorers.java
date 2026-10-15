@@ -13,7 +13,7 @@ import java.util.Map;
  * <p>
  * La tabla de estadísticas de SIDGAD solo suma los partidos con acta publicada (y en algunas competiciones no se
  * publica): los goles de las goleadoras no llegan a los goles del equipo. La ficha de temporada lista todos los
- * partidos del jugador, también los que no tienen acta, con sus goles, asistencias, libres, penales, azules y rojas.
+ * partidos del jugador, también los que no tienen acta, con sus goles, libres, penales, azules y rojas.
  */
 final class SeasonScorers {
 

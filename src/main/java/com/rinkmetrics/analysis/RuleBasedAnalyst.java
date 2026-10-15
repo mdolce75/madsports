@@ -162,8 +162,8 @@ public class RuleBasedAnalyst {
     }
 
     private static String describe(PlayerLine p) {
-        return String.format(Locale.ROOT, "%d goles en %d partidos (%.0f%% de los goles del equipo)%s.",
-                p.goals(), p.games(), p.goalShare(), p.assists() > 0 ? ", " + p.assists() + (p.assists() == 1 ? " asistencia" : " asistencias") : "");
+        return String.format(Locale.ROOT, "%d goles en %d partidos (%.0f%% de los goles del equipo).",
+                p.goals(), p.games(), p.goalShare());
     }
 
     private static String previousMeeting(TeamReport t, String rival) {
