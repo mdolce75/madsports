@@ -205,6 +205,14 @@ class PlayerReportServiceTest {
         });
         // Todos los goles de Huracán caen dentro o fuera de su sanción.
         assertThat(sh.goalsAgainst() + sh.otherGoalsAgainst()).isEqualTo(13);
+        // El detalle enumera cada gol en contra durante su azul, con el minuto de la tarjeta y el del gol.
+        assertThat(sh.conceded()).hasSize(sh.goalsAgainst()).allSatisfy(g -> {
+            assertThat(g.rival()).isEqualTo("HURACAN");
+            assertThat(g.card()).isEqualTo("Azul");
+            assertThat(g.cardMinute()).matches("[12]T \\d{1,2}:\\d{2}");
+            assertThat(g.goalMinute()).matches("[12]T \\d{1,2}:\\d{2}");
+            assertThat(g.result()).isEqualTo("P");
+        });
         // Graiño no tuvo sanciones.
         assertThat(PlayerReportService.assemble(query(3851, "Ignacio J Graiño"), VELEZ, HOY, LEVELS,
                 List.of(team(5581, "Primera Masculino", velezSheets()))).shortHanded().hasData()).isFalse();
@@ -271,6 +279,14 @@ class PlayerReportServiceTest {
         assertThat(r.notes().getFirst()).isEqualTo("Su categoría es Juvenil (la más baja en que jugó en 2026). "
                 + "Categorías en que puede jugar: Juvenil, Juniors, Reserva y Primera Masculino.");
         assertThat(r.categories()).extracting(Line::category).containsExactly("Juvenil Masculino", "Primera Masculino");
+    }
+
+    @Test
+    void minutoDentroDeCadaTiempo() {
+        assertThat(PlayerReportService.clock(600, 25)).isEqualTo("1T 10:00");
+        assertThat(PlayerReportService.clock(1500, 25)).isEqualTo("2T 0:00");
+        assertThat(PlayerReportService.clock(1630, 25)).isEqualTo("2T 2:10");
+        assertThat(PlayerReportService.clock(1250, 20)).isEqualTo("2T 0:50");
     }
 
     @Test

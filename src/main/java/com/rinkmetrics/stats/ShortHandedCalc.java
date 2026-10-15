@@ -14,6 +14,7 @@ import java.util.List;
 public final class ShortHandedCalc {
 
     private final List<ShortHandedMatch> matches = new ArrayList<>();
+    private final List<ReportData.ConcededGoal> conceded = new ArrayList<>();
     private int otherSeconds;
     private int otherGoalsAgainst;
 
@@ -38,11 +39,19 @@ public final class ShortHandedCalc {
         }
     }
 
+    /** Un gol en contra durante una sanción del jugador (con el detalle de su tarjeta). */
+    public void conceded(ReportData.ConcededGoal goal) {
+        conceded.add(goal);
+    }
+
     public ReportData.ShortHanded result() {
         List<ShortHandedMatch> byDate = matches.stream()
                 .sorted(Comparator.comparing(ShortHandedMatch::date, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
-        return new ReportData.ShortHanded(byDate, otherSeconds, otherGoalsAgainst);
+        List<ReportData.ConcededGoal> goals = conceded.stream()
+                .sorted(Comparator.comparing(ReportData.ConcededGoal::date, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        return new ReportData.ShortHanded(byDate, otherSeconds, otherGoalsAgainst, goals);
     }
 
     /** Une los intervalos superpuestos y los corta al final del partido: el tiempo con al menos uno menos. */

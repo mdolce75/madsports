@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!--/* Informe de jugador: solo los goles que le hicieron a su equipo mientras cumplía su sanción (azul 2', roja 4').
+       sh = ReportData.ShortHanded del jugador (por categoría o general). */-->
+<div th:fragment="concededGoals(sh)" class="nobreak">
+    <p class="muted" th:if="${!sh.hasData()}">No cumplió sanciones (azul o roja) con minuto registrado en el acta.</p>
+    <p th:if="${sh.hasData() and sh.conceded.isEmpty()}"
+       th:text="|Mientras cumplía sus sanciones (${sh.matches.size() == 1 ? '1 partido' : sh.matches.size() + ' partidos'}, ${f.clock(sh.seconds() / 60.0)} con uno menos) no le hicieron goles a su equipo.|">Sin goles</p>
+    <th:block th:if="${!sh.conceded.isEmpty()}">
+        <p th:text="|Goles que le hicieron a su equipo mientras cumplía su sanción: ${sh.conceded.size()}.|">Goles</p>
+        <table>
+            <tr><th>Fecha</th><th class="l">Rival</th><th>Su tarjeta</th><th>Minuto de la tarjeta</th>
+                <th>Minuto del gol</th><th>Resultado final</th><th></th></tr>
+            <tr th:each="g : ${sh.conceded}">
+                <td th:text="${g.date == null ? '-' : f.date(g.date)}"></td>
+                <td class="l" th:text="${g.rival}"></td>
+                <td><span th:class="${g.card == 'Azul' ? 'card b' : 'card r'}"></span> <span th:text="${g.card}"></span></td>
+                <td th:text="${g.cardMinute}"></td>
+                <td th:text="${g.goalMinute}"></td>
+                <td th:text="|${g.finalFor} - ${g.finalAgainst}|"></td>
+                <td><span th:class="|chip ${g.result()}|" th:text="${g.result()}">G</span></td>
+            </tr>
+        </table>
+    </th:block>
+</div>
+</body>
+</html>
