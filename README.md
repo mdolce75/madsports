@@ -243,9 +243,14 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   sanciones contra el resto del tiempo.
 - **Categorías en que puede jugar:** el jugador puede subir de categoría, nunca bajar. Infantil juega en Infantil,
   Prejuvenil y Juvenil; Prejuvenil, en Prejuvenil, Juvenil y Juniors; Juvenil, en Juvenil, Juniors, Reserva y
-  Primera; Juniors, en Juniors, Reserva y Primera; Reserva y Primera, en Reserva y Primera. El informe lee solo las
-  actas de esas categorías, en la rama del jugador. La categoría y la rama son las del equipo que eligió al
-  registrarse.
+  Primera; Juniors, en Juniors, Reserva y Primera; Reserva y Primera, en Reserva y Primera.
+  - **Su categoría real** es la más baja en que jugó en el año. En el registro se lo elige de la planilla de
+    cualquier equipo en que figura, y esa categoría no tiene por qué ser la suya: un Juvenil que juega en Primera
+    puede aparecer en el plantel de Primera.
+  - **Cómo la busca el informe:** revisa todas las categorías a las que podría pertenecer. Por ejemplo, quien figura
+    en Primera puede ser Juvenil, Juniors, Reserva o Primera. Con eso determina su categoría real y se queda con las
+    categorías en que puede jugar, en su rama, y el informe lo aclara en una nota. Como se calcula cada año, también
+    lo sigue cuando cambia de categoría.
 
 El informe del jugador sale de las **actas**: cada acta trae la planilla de jugadores de cada equipo (primero el local),
 con `id_player`, goles, tarjetas, penales y libres directos. Un partido cuenta si el jugador figura en la planilla
