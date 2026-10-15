@@ -148,6 +148,7 @@ public class AccountController {
                         SecurityConfig.home(auth.getAuthorities()),
                         u.getSuscripcionType() == null ? null : Map.of(
                                 "tipo", u.getSuscripcionType().getCodigo(),
+                                "tipoUsuario", u.getSuscripcionType().getTipoUsuario(),
                                 "nombre", u.getSuscripcionType().getNombre(),
                                 "desde", u.getSuscripcionDesde().toString(),
                                 "hasta", u.getSuscripcionHasta().toString()),

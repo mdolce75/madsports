@@ -105,8 +105,17 @@ public class Usuario {
     public LocalDate getSuscripcionHasta() { return suscripcionHasta; }
     public int getInformesPedidos() { return informesPedidos; }
 
-    /** Asigna la suscripción desde una fecha; el fin sale de la duración del tipo. */
+    /**
+     * Asigna la suscripción desde una fecha; el fin sale de la duración del tipo.
+     *
+     * @throws IllegalArgumentException si el tipo no corresponde al usuario (PLAYER_* para jugadores, CLUB_* para clubes)
+     */
     public void suscribir(SuscripcionType tipo, LocalDate desde) {
+        boolean jugador = perfiles.stream().anyMatch(Perfil::player);
+        if (tipo.paraJugador() != jugador) {
+            throw new IllegalArgumentException("La suscripción " + tipo.getCodigo() + " es para "
+                    + (tipo.paraJugador() ? "jugadores" : "clubes") + ".");
+        }
         this.suscripcionType = tipo;
         this.suscripcionDesde = desde;
         this.suscripcionHasta = tipo.hasta(desde);

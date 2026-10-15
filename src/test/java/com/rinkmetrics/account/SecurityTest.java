@@ -344,25 +344,36 @@ class SecurityTest {
 
     @Test
     void tiposDeSuscripcionYVigencia() throws Exception {
-        assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getMeses)
-                .containsExactly(org.assertj.core.groups.Tuple.tuple("MENSUAL", 1),
-                        org.assertj.core.groups.Tuple.tuple("TRIMESTRAL", 3),
-                        org.assertj.core.groups.Tuple.tuple("SEMESTRAL", 6),
-                        org.assertj.core.groups.Tuple.tuple("ANUAL", 12));
+        assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getMeses,
+                        SuscripcionType::getTipoUsuario)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", 1, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_TRIMESTRAL", 3, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_SEMESTRAL", 6, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_ANUAL", 12, "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", 1, "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_TRIMESTRAL", 3, "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_SEMESTRAL", 6, "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_ANUAL", 12, "CLUB"));
 
         java.time.LocalDate desde = java.time.LocalDate.of(2026, 10, 15);
-        assertThat(suscripciones.findByCodigo("MENSUAL").orElseThrow().hasta(desde)).isEqualTo("2026-11-14");
-        assertThat(suscripciones.findByCodigo("ANUAL").orElseThrow().hasta(desde)).isEqualTo("2027-10-14");
+        assertThat(suscripciones.findByCodigo("PLAYER_MENSUAL").orElseThrow().hasta(desde)).isEqualTo("2026-11-14");
+        assertThat(suscripciones.findByCodigo("CLUB_ANUAL").orElseThrow().hasta(desde)).isEqualTo("2027-10-14");
 
         Usuario u = saved("club", Perfil.CLUBFPP);
-        u.suscribir(suscripciones.findByCodigo("TRIMESTRAL").orElseThrow(), desde);
+        // A un club no se le puede asignar una suscripción de jugador.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        u.suscribir(suscripciones.findByCodigo("PLAYER_TRIMESTRAL").orElseThrow(), desde))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("es para jugadores");
+        u.suscribir(suscripciones.findByCodigo("CLUB_TRIMESTRAL").orElseThrow(), desde);
         usuarios.save(u);
         Usuario leido = usuarios.findByUsuario("club").orElseThrow();
-        assertThat(leido.getSuscripcionType().getNombre()).isEqualTo("Trimestral");
+        assertThat(leido.getSuscripcionType().getNombre()).isEqualTo("Club trimestral");
         assertThat(leido.getSuscripcionDesde()).isEqualTo("2026-10-15");
         assertThat(leido.getSuscripcionHasta()).isEqualTo("2027-01-14");
         mvc.perform(get("/api/sesion").with(user("club").authorities(() -> "CLUBFPP")))
-                .andExpect(jsonPath("$.suscripcion.tipo").value("TRIMESTRAL"))
+                .andExpect(jsonPath("$.suscripcion.tipo").value("CLUB_TRIMESTRAL"))
+                .andExpect(jsonPath("$.suscripcion.tipoUsuario").value("CLUB"))
                 .andExpect(jsonPath("$.suscripcion.hasta").value("2027-01-14"))
                 .andExpect(jsonPath("$.informesPedidos").value(0));
     }

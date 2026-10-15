@@ -143,8 +143,9 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
   (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
   un mail por minuto como mucho, y en la base queda solo el hash del token.
-- **Suscripciones:** la tabla `suscripcion_type` tiene los tipos mensual, trimestral, semestral y anual (con su
-  duración en meses). Cada usuario puede tener un tipo de suscripción con su fecha desde y su fecha hasta, que sale de
+- **Suscripciones:** la tabla `suscripcion_type` tiene tipos para jugador (`PLAYER_MENSUAL`, `PLAYER_TRIMESTRAL`,
+  `PLAYER_SEMESTRAL`, `PLAYER_ANUAL`) y para club (`CLUB_MENSUAL` ... `CLUB_ANUAL`), con su duración en meses. A un
+  usuario solo se le asigna un tipo de su perfil. Cada usuario puede tener un tipo de suscripción con su fecha desde y su fecha hasta, que sale de
   la duración del tipo. También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
   jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
   Todavía no hay reglas que limiten el uso según la suscripción.
