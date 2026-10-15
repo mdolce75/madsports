@@ -10,8 +10,11 @@ import com.rinkmetrics.sidgad.SidgadClient;
 import com.rinkmetrics.sidgad.model.Competition;
 import com.rinkmetrics.sidgad.model.Competition.Category;
 import com.rinkmetrics.sidgad.model.Competition.Torneo;
+import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.model.Models.MatchEvent;
+import com.rinkmetrics.sidgad.model.Models.PlayerStats;
+import com.rinkmetrics.sidgad.model.Models.SeasonMatch;
 import com.rinkmetrics.sidgad.model.Models.TeamRef;
 import com.rinkmetrics.sidgad.parse.SidgadParser;
 import com.rinkmetrics.stats.ReportData;
@@ -30,11 +33,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -244,18 +249,47 @@ public class ReportService {
             }
             AtomicInteger done = new AtomicInteger();
             job.update(Status.EXTRAYENDO, "Leyendo actas de partido (0/" + sheets.size() + ")");
-            List<Future<List<MatchEvent>>> events = sheets.stream()
-                    .map(e -> io.submit(() -> {
-                        List<MatchEvent> ev = SidgadParser.gameEvents(
-                                sidgad.gameSheet(e.getKey().competition().id(), e.getValue().idp()));
-                        job.update(Status.EXTRAYENDO,
-                                "Leyendo actas de partido (" + done.incrementAndGet() + "/" + sheets.size() + ")");
-                        return ev;
-                    }))
-                    .toList();
+            int ownSheets = clubSheets;
+            List<Future<SheetRead>> reads = new ArrayList<>();
             for (int i = 0; i < sheets.size(); i++) {
-                sheets.get(i).getKey().sheets().put(sheets.get(i).getValue().idp(), await(events.get(i)));
+                Map.Entry<CompetitionData, Match> e = sheets.get(i);
+                boolean own = i < ownSheets;
+                reads.add(io.submit(() -> {
+                    String html = sidgad.gameSheet(e.getKey().competition().id(), e.getValue().idp());
+                    job.update(Status.EXTRAYENDO,
+                            "Leyendo actas de partido (" + done.incrementAndGet() + "/" + sheets.size() + ")");
+                    return new SheetRead(SidgadParser.gameEvents(html), own ? SidgadParser.lineups(html) : List.of());
+                }));
             }
+            // Jugadores de cada equipo del club por competición: los de sus planillas y los de la tabla de SIDGAD.
+            Map<Competition, Map<Integer, Integer>> teamOf = new LinkedHashMap<>();
+            Map<Integer, String> names = new HashMap<>();
+            for (int i = 0; i < sheets.size(); i++) {
+                CompetitionData cd = sheets.get(i).getKey();
+                Match m = sheets.get(i).getValue();
+                SheetRead read = await(reads.get(i));
+                cd.sheets().put(m.idp(), read.events());
+                Map<Integer, Integer> own = teamOf.computeIfAbsent(cd.competition(), k -> new LinkedHashMap<>());
+                for (TeamRef t : cd.competition().teams()) {
+                    if (t.clubId() == club.id() && m.involves(t.teamId())) {
+                        boolean home = m.homeTeamId() == t.teamId();
+                        read.lineups().stream().filter(p -> p.home() == home).forEach(p -> {
+                            own.putIfAbsent(p.playerId(), t.teamId());
+                            names.putIfAbsent(p.playerId(), p.name());
+                        });
+                    }
+                }
+            }
+            for (CompetitionData cd : data) {
+                Set<Integer> clubTeams = cd.competition().teams().stream()
+                        .filter(t -> t.clubId() == club.id()).map(TeamRef::teamId).collect(Collectors.toSet());
+                Map<Integer, Integer> own = teamOf.computeIfAbsent(cd.competition(), k -> new LinkedHashMap<>());
+                cd.players().stream().filter(p -> clubTeams.contains(p.teamId())).forEach(p -> {
+                    own.putIfAbsent(p.playerId(), p.teamId());
+                    names.putIfAbsent(p.playerId(), p.name());
+                });
+            }
+            replaceWithSeasonProfiles(job, io, club, data, teamOf, names, notPublished);
         }
         // Las actas faltantes del club ya se informan en el PDF ("N actas de M partidos"); acá solo se resume.
         long missingSheets = data.stream()
@@ -301,6 +335,58 @@ public class ReportService {
                 throw re;
             }
             throw new IllegalStateException(e.getCause());
+        }
+    }
+
+    /** Lo que se usa de un acta: sus eventos y, en los partidos del club, las planillas. */
+    private record SheetRead(List<MatchEvent> events, List<LineupPlayer> lineups) {
+    }
+
+    /**
+     * Las estadísticas por jugador del club salen de la ficha de temporada de cada jugador: la tabla de SIDGAD solo
+     * suma los partidos con acta (y a veces no se publica), así que sus goles no llegan a los del equipo. Quien no
+     * tenga ficha conserva su fila de la tabla. Los demás equipos de la liga siguen con la tabla de SIDGAD.
+     */
+    private void replaceWithSeasonProfiles(Job job, ExecutorService io, ClubView club, List<CompetitionData> data,
+                                           Map<Competition, Map<Integer, Integer>> teamOf, Map<Integer, String> names,
+                                           List<String> notPublished) {
+        Map<Integer, Set<Integer>> seasonsOf = new LinkedHashMap<>();
+        teamOf.forEach((c, players) -> players.keySet()
+                .forEach(id -> seasonsOf.computeIfAbsent(id, k -> new HashSet<>()).add(c.seasonId())));
+        if (seasonsOf.isEmpty()) {
+            return;
+        }
+        job.update(Status.EXTRAYENDO, "Leyendo las fichas de temporada de los jugadores del club");
+        Map<Integer, Future<List<SeasonMatch>>> pending = new LinkedHashMap<>();
+        seasonsOf.forEach((id, seasons) -> pending.put(id, io.submit(() -> {
+            List<SeasonMatch> rows = new ArrayList<>();
+            for (int season : seasons) {
+                try {
+                    rows.addAll(SidgadParser.seasonMatches(sidgad.playerSeason(id, season)));
+                } catch (SidgadClient.SidgadException e) {
+                    log.info("Sin ficha de temporada del jugador {}: {}", id, e.getMessage());
+                }
+            }
+            return rows;
+        })));
+        Map<Integer, List<SeasonMatch>> profiles = new HashMap<>();
+        pending.forEach((id, f) -> profiles.put(id, await(f)));
+        for (int i = 0; i < data.size(); i++) {
+            CompetitionData cd = data.get(i);
+            Set<Integer> clubTeams = cd.competition().teams().stream()
+                    .filter(t -> t.clubId() == club.id()).map(TeamRef::teamId).collect(Collectors.toSet());
+            List<PlayerStats> ours = SeasonScorers.forCompetition(cd.competition(), club.id(),
+                    teamOf.getOrDefault(cd.competition(), Map.of()), names, profiles, cd.players());
+            if (ours.isEmpty()) {
+                continue;
+            }
+            List<PlayerStats> players = new ArrayList<>(cd.players().stream()
+                    .filter(p -> !clubTeams.contains(p.teamId())).toList());
+            players.addAll(ours);
+            data.set(i, new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), cd.matches(),
+                    players, cd.sheets()));
+            // Con las fichas de temporada ya no falta: la tabla de SIDGAD de esa competición no hace falta.
+            notPublished.remove("Estadísticas por jugador (" + cd.competition().torneoLabel() + ")");
         }
     }
 
