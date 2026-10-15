@@ -6,6 +6,7 @@ import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.model.Models.MatchEvent;
 import com.rinkmetrics.sidgad.model.Models.PlayerStats;
+import com.rinkmetrics.sidgad.model.Models.SeasonMatch;
 import com.rinkmetrics.sidgad.model.Models.StandingRow;
 import com.rinkmetrics.sidgad.model.Models.TeamRef;
 import org.jsoup.Jsoup;
@@ -165,6 +166,43 @@ public final class SidgadParser {
             }
         }
         return players;
+    }
+
+    private static final Pattern PROFILE_SCORE = Pattern.compile("(\\d+)\\s*:\\s*(\\d+)");
+
+    /**
+     * {@code profiles/cap_profileseason_<id_player>_1_<id_temp>.php}: ficha de temporada del jugador. Cada competición
+     * abre con {@code .data_player_thickbox_right_header_apartado}; después viene una fila de totales y una por partido:
+     * fecha, local, resultado ("3:2"), visitante, enlace al partido ({@code [idp]}, a veces falta) y G, As, FD, PE
+     * ("convertidos/tirados"), Az y Rj (vacío = 0). Lista los partidos aunque no tengan acta publicada.
+     */
+    public static List<SeasonMatch> seasonMatches(String html) {
+        List<SeasonMatch> matches = new ArrayList<>();
+        if (html == null || html.isBlank() || html.startsWith("File not found")) {
+            return matches;
+        }
+        String competition = "";
+        for (Element el : Jsoup.parse(html).select("div.data_player_thickbox_right_header_apartado, tr")) {
+            if (el.hasClass("data_player_thickbox_right_header_apartado")) {
+                competition = clean(el.text());
+                continue;
+            }
+            List<Element> tds = el.children();
+            LocalDate date = tds.size() >= 11 ? parseDate(tds.get(0).text()) : null;
+            Matcher score = date == null ? null : PROFILE_SCORE.matcher(tds.get(2).text());
+            if (score == null || !score.find()) {
+                continue;
+            }
+            Element link = el.selectFirst("[idp]");
+            int[] fd = fraction(clean(tds.get(7).text()));
+            int[] pen = fraction(clean(tds.get(8).text()));
+            matches.add(new SeasonMatch(competition, date, clean(tds.get(1).text()), clean(tds.get(3).text()),
+                    Integer.parseInt(score.group(1)), Integer.parseInt(score.group(2)),
+                    link == null ? 0 : parseInt(link.attr("idp")),
+                    parseInt(clean(tds.get(5).text())), parseInt(clean(tds.get(6).text())), fd[0], fd[1], pen[0], pen[1],
+                    parseInt(clean(tds.get(9).text())), parseInt(clean(tds.get(10).text()))));
+        }
+        return matches;
     }
 
     /** "PEREZ BARBOSA <span>JUAN IGNACIO</span>" -> "Juan Ignacio Perez Barbosa" (sin la marca de capitán). */

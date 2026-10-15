@@ -148,9 +148,20 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
         }
     }
 
-    /** Un partido del jugador, según el acta. {@code result}: G, E o P. */
+    /**
+     * Un partido del jugador, según el acta. {@code result}: G, E o P.
+     *
+     * @param fromSummary el partido no tiene acta: sale de su ficha de temporada (sin amarillas ni titularidad)
+     */
     public record MatchRow(LocalDate date, String category, String torneo, String rival, boolean home,
                            int goalsFor, int goalsAgainst, String result, boolean starter, int goals,
-                           int yellowCards, int blueCards, int redCards) {
+                           int yellowCards, int blueCards, int redCards, boolean fromSummary) {
+
+        public MatchRow(LocalDate date, String category, String torneo, String rival, boolean home,
+                        int goalsFor, int goalsAgainst, String result, boolean starter, int goals,
+                        int yellowCards, int blueCards, int redCards) {
+            this(date, category, torneo, rival, home, goalsFor, goalsAgainst, result, starter, goals,
+                    yellowCards, blueCards, redCards, false);
+        }
     }
 }

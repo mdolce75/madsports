@@ -91,6 +91,15 @@ public class SidgadClient {
                 "idm", "1", "idc", String.valueOf(idc), "idp", String.valueOf(idp), "tab", "tab_ficha_resumen"));
     }
 
+    /**
+     * Ficha de temporada de un jugador ({@code seasonId} = id_temp): sus partidos de cada competición, incluidos los
+     * que no tienen acta publicada, con goles, libres, penales, azules y rojas.
+     */
+    public String playerSeason(int playerId, int seasonId) {
+        return cached("profiles/cap_profileseason_" + playerId + "_1_" + seasonId + ".php",
+                Map.of("idm", "1", "id_player", String.valueOf(playerId)));
+    }
+
     /** Carpeta pública de escudos de SIDGAD (la misma que usan las tablas y el calendario del sitio). */
     static final String LOGOS_URL = "https://sidgad.cloud/cap/images/logos_clubes/";
     private static final java.util.regex.Pattern LOGO_FILE = java.util.regex.Pattern.compile("\\d+(?:_\\d+)?\\.png");

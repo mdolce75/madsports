@@ -244,7 +244,7 @@
                 <tr th:each="m : ${b.matches}">
                     <td th:text="${m.date == null ? '-' : f.date(m.date)}"></td>
                     <td th:text="${m.torneo}"></td>
-                    <td class="l" th:text="${m.rival}"></td>
+                    <td class="l" th:text="${m.fromSummary ? m.rival + ' *' : m.rival}"></td>
                     <td th:text="${m.home ? 'L' : 'V'}"></td>
                     <td th:text="|${m.goalsFor} - ${m.goalsAgainst}|"></td>
                     <td><span th:class="|chip ${m.result}|" th:text="${m.result}">G</span></td>
@@ -257,6 +257,8 @@
                 </tr>
                 </tbody>
             </table>
+            <p class="muted" th:if="${b.matches.?[fromSummary].size() > 0}">* Partido sin acta publicada: los datos
+                salen de su ficha de temporada en SIDGAD (sin amarillas ni minutos).</p>
         </th:block>
     </div>
 

@@ -7,6 +7,7 @@ import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.model.Models.MatchEvent;
 import com.rinkmetrics.sidgad.model.Models.PlayerStats;
+import com.rinkmetrics.sidgad.model.Models.SeasonMatch;
 import com.rinkmetrics.sidgad.model.Models.StandingRow;
 import org.junit.jupiter.api.Test;
 
@@ -176,6 +177,7 @@ class SidgadParserTest {
     @Test
     void actaNoPublicada() {
         assertThat(SidgadParser.gameEvents(Fixtures.read("gr_sin_acta.html"))).isEmpty();
+        assertThat(SidgadParser.seasonMatches(Fixtures.read("gr_sin_acta.html"))).isEmpty();
     }
 
     @Test
@@ -192,5 +194,28 @@ class SidgadParserTest {
     void nombreDeJugadorQuedaNombreApellido() {
         assertThat(SidgadParser.playerName("GRAIÑO, IGNACIO J")).isEqualTo("Ignacio J Graiño");
         assertThat(SidgadParser.playerName("SOLO")).isEqualTo("Solo");
+    }
+
+    @Test
+    void fichaDeTemporadaDelJugador() {
+        // Juan Martín Marchegay (Vélez), 2026: Juvenil y Juniors, Apertura y Clausura. Incluye partidos sin acta.
+        List<SeasonMatch> all = SidgadParser.seasonMatches(Fixtures.read("profileseason_5037.html"));
+
+        List<SeasonMatch> juvenil = all.stream()
+                .filter(m -> m.competition().equals("TORNEO APERTURA JUVENIL MASCULINO (FPP)")).toList();
+        assertThat(juvenil).hasSize(19);
+        assertThat(juvenil.stream().mapToInt(SeasonMatch::goals).sum()).isEqualTo(14);
+        assertThat(all.stream().filter(m -> m.competition().contains("JUNIORS"))).hasSize(16);
+        assertThat(all).hasSize(37);
+        // Vélez 11-1 Municipalidad: sin acta publicada, 3 goles suyos.
+        assertThat(all).filteredOn(m -> m.idp() == 23758).singleElement().satisfies(m -> {
+            assertThat(m.date()).isEqualTo(LocalDate.of(2026, 5, 30));
+            assertThat(m.home()).isEqualTo("CAVS");
+            assertThat(m.away()).isEqualTo("MUNI");
+            assertThat(m.homeGoals()).isEqualTo(11);
+            assertThat(m.awayGoals()).isEqualTo(1);
+            assertThat(m.goals()).isEqualTo(3);
+            assertThat(m.blueCards()).isZero();
+        });
     }
 }

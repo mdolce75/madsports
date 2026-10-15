@@ -10,6 +10,7 @@ import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.EventType;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.model.Models.MatchEvent;
+import com.rinkmetrics.sidgad.model.Models.SeasonMatch;
 import com.rinkmetrics.sidgad.parse.SidgadParser;
 import com.rinkmetrics.stats.ReportData;
 import org.junit.jupiter.api.Test;
@@ -85,6 +86,62 @@ class PlayerReportServiceTest {
         if (l.withoutSheet() > 0) {
             assertThat(r.notes()).singleElement().asString().contains("no tiene", "acta publicada");
         }
+    }
+
+    /** Argentinos con el 26390 (acta en los fixtures) y otro partido jugado sin acta publicada. */
+    TeamInput argentinosConPartidoSinActa() {
+        int argentinos = calendar.stream().filter(m -> m.idp() == 26390).findFirst().orElseThrow().awayTeamId();
+        TeamInput conActa = team(argentinos, "Primera Masculino", velezSheets());
+        Match sinActa = new Match(99001, 3, LocalDate.of(2026, 10, 17), null, "", argentinos, 0, "ARGENTINOS JUNIORS",
+                1, 0, "RIVAL", 5, 1);
+        List<Match> matches = new java.util.ArrayList<>(conActa.matches());
+        matches.add(sinActa);
+        Map<Integer, List<LineupPlayer>> sheets = new LinkedHashMap<>(conActa.sheets());
+        sheets.put(sinActa.idp(), List.of());
+        return new TeamInput(primera, "Primera Masculino", argentinos, matches, sheets, conActa.events());
+    }
+
+    @Test
+    void partidosSinActaDesdeSuFichaDeTemporada() {
+        TeamInput base = argentinosConPartidoSinActa();
+        Match otro = base.matches().getLast();
+        // En su ficha de temporada figura en el partido sin acta: 2 goles, 1 azul, 1/1 libre y 0/1 penal.
+        TeamInput in = base.withSummaries(PlayerReportService.summaries(base, List.of(
+                new SeasonMatch(primera.name(), otro.date(), "", "", 0, 0, otro.idp(), 2, 0, 1, 1, 0, 1, 1, 0))));
+
+        PlayerReport r = PlayerReportService.assemble(query(2698, "Nicolas Ortin"), VELEZ, HOY, LEVELS, List.of(in));
+
+        Line l = r.categories().getFirst();
+        assertThat(l.played()).isEqualTo(2);
+        assertThat(l.withoutSheet()).isZero();     // los demás sin acta no figuran en su ficha: no los jugó
+        assertThat(l.goals()).isEqualTo(2);
+        assertThat(l.yellowCards()).isEqualTo(1);  // la amarilla sale del acta del 26390
+        assertThat(l.blueCards()).isEqualTo(1);
+        assertThat(l.directFreeScored()).isEqualTo(1);
+        assertThat(l.penaltiesTaken()).isEqualTo(1);
+        assertThat(r.matches()).filteredOn(PlayerReport.MatchRow::fromSummary).singleElement()
+                .extracting(PlayerReport.MatchRow::goals).isEqualTo(2);
+        // Sin minuto: sus goles y la azul van a "sin minuto registrado".
+        assertThat(r.minutes().unrecorded().goals()).isEqualTo(2);
+        assertThat(r.minutes().unrecorded().blueCards()).isEqualTo(1);
+        assertThat(r.notes()).singleElement().asString().contains("1 partido sin acta publicada se tomó",
+                "ficha de temporada");
+    }
+
+    @Test
+    void sinIdpSeBuscaPorFechaEnLaMismaCompeticion() {
+        TeamInput base = argentinosConPartidoSinActa();
+        Match otro = base.matches().getLast();
+
+        assertThat(PlayerReportService.summaries(base, List.of(
+                new SeasonMatch(primera.name(), otro.date(), "", "", 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0))))
+                .containsOnlyKeys(otro.idp());
+        assertThat(PlayerReportService.summaries(base, List.of(
+                new SeasonMatch("TORNEO CLAUSURA JUNIORS MASCULINO (FPP)", otro.date(), "", "", 0, 0, 0, 1, 0, 0, 0, 0,
+                        0, 0, 0)))).isEmpty();
+        // El partido con acta nunca se toma de la ficha.
+        assertThat(PlayerReportService.summaries(base, List.of(
+                new SeasonMatch(primera.name(), null, "", "", 0, 0, 26390, 1, 0, 0, 0, 0, 0, 0, 0)))).isEmpty();
     }
 
     @Test
