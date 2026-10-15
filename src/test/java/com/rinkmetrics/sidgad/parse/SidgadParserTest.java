@@ -159,9 +159,12 @@ class SidgadParserTest {
                 .satisfies(p -> assertThat(p.starter()).isFalse());
         assertThat(players).filteredOn(p -> p.playerId() == 2292).singleElement()
                 .satisfies(p -> assertThat(p.name()).isEqualTo("Agustin Caruso"));
-        // Amarilla del arquero de Argentinos.
+        // Amarilla de Ortin (Argentinos).
         assertThat(players).filteredOn(p -> p.playerId() == 2698).singleElement()
                 .satisfies(p -> assertThat(p.yellowCards()).isEqualTo(1));
+        // Un arquero por equipo, marcado con "P" en la planilla.
+        assertThat(players).filteredOn(LineupPlayer::goalkeeper).extracting(LineupPlayer::playerId)
+                .containsExactlyInAnyOrder(5888, 2684);
     }
 
     @Test

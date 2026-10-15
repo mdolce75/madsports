@@ -338,6 +338,23 @@ public class StatsEngineTest {
     }
 
     @Test
+    void losArquerosNoEntranEnLosGoleadores() {
+        CompetitionData full = data(765);
+        TeamReport sin = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(full), HOY), "CAVS A");
+        ReportData.PlayerLine arquera = sin.players().getLast();
+        CompetitionData conArquera = new CompetitionData(full.competition(), full.standings(), full.standingsDate(),
+                full.matches(), full.players(), full.sheets(), java.util.Set.of(arquera.playerId()));
+
+        TeamReport con = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(conArquera), HOY), "CAVS A");
+
+        assertThat(con.players()).hasSize(sin.players().size() - 1)
+                .noneMatch(p -> p.playerId() == arquera.playerId());
+        // Sus tarjetas y su pelota parada siguen contando para el equipo.
+        assertThat(con.discipline()).isEqualTo(sin.discipline());
+        assertThat(con.setPieces()).isEqualTo(sin.setPieces());
+    }
+
+    @Test
     void fichaPosicionesYJugadores() {
         TeamReport a = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A");
 

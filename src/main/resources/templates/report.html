@@ -248,13 +248,13 @@
         </table>
     </div>
 
-    <h3>Goleadores y asistidores</h3>
+    <h3>Goleadores</h3>
     <p class="muted" th:if="${d.partial()}">Acumulado del torneo completo: SIDGAD no publica estadísticas individuales por partido.</p>
     <table th:if="${!t.players.isEmpty()}" th:with="maxShare=${t.players[0].goalShare}">
-        <tr><th class="l">Jugador</th><th>PJ</th><th>Goles</th><th>G/PJ</th><th>As</th><th class="l" style="width: 28%">% de los goles del equipo</th></tr>
+        <tr><th class="l">Jugador</th><th>PJ</th><th>Goles</th><th>G/PJ</th><th class="l" style="width: 28%">% de los goles del equipo</th></tr>
         <tr th:each="p : ${t.players}">
             <td class="l" th:text="${p.name}"></td><td th:text="${p.games}"></td><td th:text="${p.goals}"></td>
-            <td th:text="${f.dec(p.goalsPerGame)}"></td><td th:text="${p.assists}"></td>
+            <td th:text="${f.dec(p.goalsPerGame)}"></td>
             <td class="l"><div class="bar-bg"><div class="bar" th:style="${f.bar(p.goalShare, 100)}"></div></div><span class="muted" th:text="${f.pct(p.goalShare)}"></span></td>
         </tr>
     </table>

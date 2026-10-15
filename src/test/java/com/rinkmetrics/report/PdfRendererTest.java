@@ -37,7 +37,7 @@ class PdfRendererTest {
                 List.of(StatsEngineTest.data(779)), StatsEngineTest.HOY);
         assertThat(renderer.html(conActas, rules.analyze(conActas))).contains("Goles con uno menos");
         assertThat(html).contains("VELEZ (CAVS)", "VELEZ A (CAVS A)", "VELEZ B (CAVS B)",
-                "Goleadores y asistidores", "Pelota parada", "Cara a cara", "Análisis: Reglas");
+                "Goleadores", "Pelota parada", "Cara a cara", "Análisis: Reglas");
 
         assertThat(html).doesNotContain("no tenía publicados");
         assertThat(renderer.html(data.withNotPublished(List.of("Actas de partido: 9 de 9")), analysis))

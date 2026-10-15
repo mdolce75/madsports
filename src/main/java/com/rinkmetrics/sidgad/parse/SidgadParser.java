@@ -133,7 +133,8 @@ public final class SidgadParser {
      * Jugadores de cada equipo en un partido ({@code cap_gr_<idp>_1.php}): una tabla
      * {@code competiciones_tabla_basic} por equipo, con el nombre en {@code .nombre_equipo_thickbox_stats} y una fila
      * por jugador citado con su {@code id_player}. Columnas: Nº, portero, titular, 5 inicial, bandera, nombre, goles,
-     * asistencias, penales, faltas directas, faltas cometidas, faltas recibidas, amarillas, azules y rojas.
+     * asistencias, penales, faltas directas, faltas cometidas, faltas recibidas, amarillas, azules y rojas. El arquero
+     * lleva una "P" en la columna de portero.
      * La primera planilla es la del local y la segunda la del visitante. Lista vacía si el acta no está publicada.
      */
     public static List<LineupPlayer> lineups(String html) {
@@ -166,7 +167,8 @@ public final class SidgadParser {
                         "5".equals(clean(tds.get(3).text())),
                         parseInt(clean(tds.get(6).text())), parseInt(clean(tds.get(12).text())),
                         parseInt(clean(tds.get(13).text())), parseInt(clean(tds.get(14).text())),
-                        pen[0], pen[1], fd[0], fd[1], playerName(link.ownText().replace("(C)", ""))));
+                        pen[0], pen[1], fd[0], fd[1], playerName(link.ownText().replace("(C)", "")),
+                        "P".equals(clean(tds.get(1).text()))));
             }
         }
         return players;

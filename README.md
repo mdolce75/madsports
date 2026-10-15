@@ -146,7 +146,7 @@ como desactualizada; el récord se calcula siempre desde el calendario.
 
 Ficha (PJ/G/E/P/GF/GC/puntos/efectividad), últimos 5, posiciones por torneo, local/visitante,
 Apertura vs Clausura, comparativa de goles por partido contra la liga y el top 3, resultados y próximos
-partidos, goleadores/asistidores con % de los goles del equipo, faltas directas y penales vs liga,
+partidos, goleadores con % de los goles del equipo, faltas directas y penales vs liga,
 disciplina, cara a cara con cada rival, y **goles a favor/en contra y tarjetas propias/de los rivales
 (amarilla, azul y roja por separado) por tramos de 5 minutos**, según las actas.
 

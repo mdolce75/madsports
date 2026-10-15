@@ -43,8 +43,17 @@ public final class StatsEngine {
      * @param standingsDate fecha de generación de la tabla en SIDGAD (puede quedar atrasada respecto del calendario)
      * @param sheets        eventos del acta por idp, para los partidos del club (lista vacía = acta no publicada)
      */
+    /**
+     * @param goalkeepers arqueros de los equipos del club (por id_player): no entran en los goleadores
+     */
     public record CompetitionData(Competition competition, List<StandingRow> standings, LocalDate standingsDate,
-                                  List<Match> matches, List<PlayerStats> players, Map<Integer, List<MatchEvent>> sheets) {
+                                  List<Match> matches, List<PlayerStats> players, Map<Integer, List<MatchEvent>> sheets,
+                                  Set<Integer> goalkeepers) {
+
+        public CompetitionData(Competition competition, List<StandingRow> standings, LocalDate standingsDate,
+                               List<Match> matches, List<PlayerStats> players, Map<Integer, List<MatchEvent>> sheets) {
+            this(competition, standings, standingsDate, matches, players, sheets, Set.of());
+        }
     }
 
     static final int BUCKET_MINUTES = 5;
@@ -201,11 +210,15 @@ public final class StatsEngine {
                 timeProfile.byPeriod().stream().mapToInt(TimeBucket::foulsOwn).sum() + timeProfile.unrecorded().foulsOwn(),
                 timeProfile.byPeriod().stream().mapToInt(TimeBucket::foulsRival).sum() + timeProfile.unrecorded().foulsRival(),
                 league.foulsPerTeamGame());
+        // Los arqueros no entran en las métricas de goles (goleadores, % de los goles, análisis); sus tarjetas y su
+        // pelota parada sí cuentan arriba, en las del equipo.
+        Set<Integer> goalkeepers = entries.stream().flatMap(e -> e.data().goalkeepers().stream()).collect(Collectors.toSet());
+        List<PlayerLine> scorers = players.stream().filter(p -> !goalkeepers.contains(p.playerId())).toList();
         TeamReport base = new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
-                biggestWin, worstLoss, players, setPieces, discipline, rivals(results), byTorneo, timeProfile, List.of(),
+                biggestWin, worstLoss, scorers, setPieces, discipline, rivals(results), byTorneo, timeProfile, List.of(),
                 fouls);
         return new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
-                biggestWin, worstLoss, players, setPieces, discipline, base.rivals(), byTorneo, timeProfile,
+                biggestWin, worstLoss, scorers, setPieces, discipline, base.rivals(), byTorneo, timeProfile,
                 StrengthsAnalysis.evaluate(base, league), fouls);
     }
 
@@ -482,7 +495,6 @@ public final class StatsEngine {
             int games = ps.stream().mapToInt(PlayerStats::games).sum();
             int goals = ps.stream().mapToInt(PlayerStats::goals).sum();
             lines.add(new PlayerLine(first.playerId(), first.name(), games, goals,
-                    ps.stream().mapToInt(PlayerStats::assists).sum(),
                     games == 0 ? 0 : (double) goals / games,
                     teamGoals == 0 ? 0 : Math.min(100.0, 100.0 * goals / teamGoals),
                     ps.stream().mapToInt(PlayerStats::penaltiesScored).sum(),
@@ -493,7 +505,7 @@ public final class StatsEngine {
                     ps.stream().mapToInt(PlayerStats::redCards).sum()));
         }
         lines.sort(Comparator.comparingInt(PlayerLine::goals).reversed()
-                .thenComparing(Comparator.comparingInt(PlayerLine::assists).reversed())
+                .thenComparing(Comparator.comparingDouble(PlayerLine::goalsPerGame).reversed())
                 .thenComparing(PlayerLine::name));
         return lines;
     }
