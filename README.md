@@ -228,6 +228,8 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   la duración del tipo. También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
   jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
   Todavía no hay reglas que limiten el uso según la suscripción.
+- **Mad Sports** (`/madsports`): pública. Es la home de Mad Sports, la empresa dueña de RinkMetrics, y enlaza a la app
+  y al registro. La home de RinkMetrics la enlaza desde el pie ("Un producto de Mad Sports").
 - **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.
 - **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.

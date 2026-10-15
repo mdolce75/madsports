@@ -138,6 +138,10 @@ class SecurityTest {
         // La home es pública (con los informes de ejemplo); la pantalla de club pide sesión.
         mvc.perform(get("/")).andExpect(status().isOk());
         mvc.perform(get("/api/ejemplo.pdf")).andExpect(status().isOk());
+        // Home de Mad Sports (la empresa dueña de RinkMetrics), pública.
+        mvc.perform(get("/madsports")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/madsports.html"));
+        mvc.perform(get("/madsports.html")).andExpect(status().isOk());
         mvc.perform(get("/club.html")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login.html"));
         mvc.perform(get("/jugador.html")).andExpect(redirectedUrlPattern("**/login.html"));
         mvc.perform(get("/login.html")).andExpect(status().isOk());

@@ -56,7 +56,7 @@ public class SecurityConfig {
             throws Exception {
         http
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/", "/index.html", "/login.html", "/registro.html", "/olvido.html",
+                        .requestMatchers("/", "/index.html", "/madsports", "/madsports.html", "/login.html", "/registro.html", "/olvido.html",
                                 "/restablecer.html", "/css/**", "/js/**", "/error",
                                 "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
                                 "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**", "/api/suscripciones")
