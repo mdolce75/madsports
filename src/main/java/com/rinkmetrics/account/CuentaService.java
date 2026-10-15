@@ -41,7 +41,7 @@ public class CuentaService {
     private final SecureRandom random = new SecureRandom();
 
     public CuentaService(UsuarioRepository usuarios, TokenUsuarioRepository tokens, PasswordEncoder encoder,
-                         Mailer mailer, Clock clock, @Value("${fpp.mail.base-url}") String baseUrl) {
+                         Mailer mailer, Clock clock, @Value("${rinkmetrics.mail.base-url}") String baseUrl) {
         this.usuarios = usuarios;
         this.tokens = tokens;
         this.encoder = encoder;

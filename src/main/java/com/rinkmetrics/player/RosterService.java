@@ -5,6 +5,7 @@ import com.rinkmetrics.catalog.CatalogService.CategoryOption;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
 import com.rinkmetrics.sidgad.SidgadClient;
 import com.rinkmetrics.sidgad.model.Competition;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.parse.SidgadParser;
@@ -65,16 +66,17 @@ public class RosterService {
      * @param categoria opción de categoría del club ("INFANTIL" o "INFANTIL:B")
      * @param rama      MASCULINO o FEMENINO
      */
-    public List<RosterPlayer> players(int clubId, int year, String categoria, String rama) {
-        ClubView club = catalog.club(clubId, year);
+    public List<RosterPlayer> players(Federacion fed, int clubId, int year, String categoria, String rama) {
+        ClubView club = catalog.club(fed, clubId, year);
         CategoryOption option = CategoryOption.parse(categoria);
-        Competition.Category category = catalog.category(option.level(), rama);
-        return cache.get(clubId + "|" + year + "|" + option.key() + "|" + category.branch(),
-                k -> load(club, year, category, option.teamKey(club.code())));
+        Competition.Category category = catalog.category(fed, option.level(), rama);
+        return cache.get(fed + "|" + clubId + "|" + year + "|" + option.key() + "|" + category.branch(),
+                k -> load(fed, club, year, category, option.teamKey(club.code())));
     }
 
-    private List<RosterPlayer> load(ClubView club, int year, Competition.Category category, String teamKey) {
-        List<Competition> comps = catalog.competitionsFor(club.id(), category, null, year);
+    private List<RosterPlayer> load(Federacion fed, ClubView club, int year, Competition.Category category,
+                                    String teamKey) {
+        List<Competition> comps = catalog.competitionsFor(fed, club.id(), category, null, year);
         Map<Integer, String> keys = ClubTeams.keys(comps, club);
         Set<Integer> teamIds = keys.entrySet().stream().filter(e -> e.getValue().equals(teamKey))
                 .map(Map.Entry::getKey).collect(Collectors.toSet());
@@ -116,7 +118,8 @@ public class RosterService {
     }
 
     /** ¿El jugador figura en ese equipo del club? (valida lo que se elige en el registro). */
-    public Optional<RosterPlayer> find(int clubId, int year, String categoria, String rama, int playerId) {
-        return players(clubId, year, categoria, rama).stream().filter(p -> p.id() == playerId).findFirst();
+    public Optional<RosterPlayer> find(Federacion fed, int clubId, int year, String categoria, String rama,
+                                       int playerId) {
+        return players(fed, clubId, year, categoria, rama).stream().filter(p -> p.id() == playerId).findFirst();
     }
 }

@@ -1,6 +1,7 @@
 package com.rinkmetrics.stats;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.rinkmetrics.sidgad.model.Federacion;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -13,17 +14,29 @@ import java.util.List;
  */
 public record ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn,
                          int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league,
-                         List<String> notPublished) {
+                         List<String> notPublished, Federacion federacion) {
+
+    public ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn, int lastMatches,
+                      List<Source> sources, List<TeamReport> teams, LeagueContext league, List<String> notPublished) {
+        this(club, category, torneo, generatedOn, lastMatches, sources, teams, league, notPublished, Federacion.FPP);
+    }
 
     /** Copia con el escudo del club (data URI, o null si no hay). */
     public ReportData withLogo(String logo) {
         return new ReportData(new ClubInfo(club.id(), club.code(), club.name(), logo), category, torneo, generatedOn,
-                lastMatches, sources, teams, league, notPublished);
+                lastMatches, sources, teams, league, notPublished, federacion);
     }
 
     /** Copia con la lista de datos que el sitio no publicó (respuestas 404 de SIDGAD). */
     public ReportData withNotPublished(List<String> items) {
-        return new ReportData(club, category, torneo, generatedOn, lastMatches, sources, teams, league, List.copyOf(items));
+        return new ReportData(club, category, torneo, generatedOn, lastMatches, sources, teams, league,
+                List.copyOf(items), federacion);
+    }
+
+    /** Copia con la federación del club (FPP o AMP). */
+    public ReportData withFederacion(Federacion fed) {
+        return new ReportData(club, category, torneo, generatedOn, lastMatches, sources, teams, league, notPublished,
+                fed);
     }
 
     /** True si el informe se limita a los últimos N partidos (jugadores y pelota parada siguen siendo del torneo). */

@@ -24,7 +24,7 @@
     <section class="hero">
         <span class="tag">Informes de rendimiento</span>
         <h1>Tu equipo,<br><em>en números.</em></h1>
-        <p class="lead">Estadísticas de la Federación Porteña de Patín convertidas en un informe PDF: resultados,
+        <p class="lead">Estadísticas de la Federación Porteña de Patín (FPP) y de la Asociación Mendocina de Patín (AMP) convertidas en un informe PDF: resultados,
             goleadores, minuto a minuto, fortalezas y debilidades, con análisis de IA.</p>
     </section>
 
@@ -76,7 +76,7 @@
         <button class="go" id="go" type="submit" disabled>Generar informe</button>
 
         <ul class="steps" id="steps" hidden>
-            <li data-s="EXTRAYENDO">Datos FPP</li>
+            <li data-s="EXTRAYENDO">Datos de SIDGAD</li>
             <li data-s="ANALIZANDO">Análisis</li>
             <li data-s="GENERANDO_PDF">PDF</li>
         </ul>
@@ -84,7 +84,7 @@
     </form>
 
     <footer><b>RinkMetrics</b> · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín
-        (buenosaires.sidgad.com).</footer>
+        (FPP) y Asociación Mendocina de Patín (AMP), en SIDGAD.</footer>
 </div>
 
 <script src="/js/app.js"></script>
@@ -129,7 +129,8 @@
         $("categoria").innerHTML = "";
         $("rama").innerHTML = "";
         try {
-            const res = await fetch("/api/catalogo" + (year ? "?anio=" + year : ""));
+            // El catálogo es el de la federación del usuario (FPP o AMP).
+            const res = await fetch("/api/catalogo?federacion=" + me.federacion + (year ? "&anio=" + year : ""));
             if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
             catalog = await res.json();
             fillYears();
@@ -143,12 +144,12 @@
                 sel.add(new Option("Sin información para " + catalog.year));
                 return;
             }
-            // El usuario CLUBFPP saca informes solo de su club: el selector queda fijo.
+            // El usuario de club saca informes solo de su club: el selector queda fijo.
             const mine = catalog.clubs.find(c => c.id === me.club.id);
             if (!mine) {
                 sel.add(new Option(me.club.nombre));
                 noData.hidden = false;
-                noData.textContent = `${me.club.nombre} no tiene equipos en la FPP en ${catalog.year}.`;
+                noData.textContent = `${me.club.nombre} no tiene equipos en la ${me.federacion} en ${catalog.year}.`;
                 return;
             }
             sel.add(new Option(`${mine.name} (${mine.code})`, mine.id));
@@ -189,7 +190,7 @@
             $("go").disabled = false;
         }
     });
-    requireProfile("CLUBFPP").then(s => {
+    requireProfile(["CLUBFPP", "CLUBAMP"]).then(s => {
         if (!s) return;
         me = s;
         loadCatalog();

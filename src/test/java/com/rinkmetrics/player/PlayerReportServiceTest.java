@@ -6,6 +6,7 @@ import com.rinkmetrics.player.PlayerReportService.Query;
 import com.rinkmetrics.player.PlayerReportService.TeamInput;
 import com.rinkmetrics.report.ReportService.Scope;
 import com.rinkmetrics.sidgad.model.Competition;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.EventType;
 import com.rinkmetrics.sidgad.model.Models.Match;
@@ -344,6 +345,21 @@ class PlayerReportServiceTest {
         assertThat(PlayerReportService.clock(1500, 25)).isEqualTo("2T 0:00");
         assertThat(PlayerReportService.clock(1630, 25)).isEqualTo("2T 2:10");
         assertThat(PlayerReportService.clock(1250, 20)).isEqualTo("2T 0:50");
+    }
+
+    @Test
+    void categoriasEnQuePuedeJugarEnLaAmp() {
+        Federacion amp = Federacion.AMP;
+        // Misma regla que en la FPP, con las categorías de Mendoza: la suya y dos arriba; desde Juvenil, hasta Senior.
+        assertThat(Eligibility.levels(amp, "INFANTIL")).containsExactly("INFANTIL", "PRECADETE", "CADETE");
+        assertThat(Eligibility.levels(amp, "CADETE")).containsExactly("CADETE", "PREJUVENIL", "JUVENIL");
+        assertThat(Eligibility.levels(amp, "JUVENIL")).containsExactly("JUVENIL", "PREJUNIOR", "JUNIOR", "RESERVA", "SENIOR");
+        assertThat(Eligibility.levels(amp, "SENIOR")).containsExactly("RESERVA", "SENIOR");
+        assertThat(Eligibility.levels(amp, "JUNIORS")).isEmpty();   // categoría de la FPP
+        // Quien figura en Senior puede ser de Juvenil para arriba.
+        assertThat(Eligibility.searchLevels(amp, "SENIOR"))
+                .containsExactly("JUVENIL", "PREJUNIOR", "JUNIOR", "RESERVA", "SENIOR");
+        assertThat(Eligibility.lowest(amp, List.of("SENIOR", "PREJUNIOR", "JUVENIL"))).isEqualTo("JUVENIL");
     }
 
     @Test

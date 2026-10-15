@@ -2,7 +2,7 @@ package com.rinkmetrics.player;
 
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
-import com.rinkmetrics.config.FppProperties;
+import com.rinkmetrics.config.RinkMetricsProperties;
 import com.rinkmetrics.player.PlayerReport.Line;
 import com.rinkmetrics.player.PlayerReport.MatchRow;
 import com.rinkmetrics.report.Crests;
@@ -12,6 +12,7 @@ import com.rinkmetrics.report.ReportService.Scope;
 import com.rinkmetrics.report.ReportService.Status;
 import com.rinkmetrics.sidgad.SidgadClient;
 import com.rinkmetrics.sidgad.model.Competition;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.model.Models.MatchEvent;
@@ -65,23 +66,29 @@ public class PlayerReportService {
      * @param levels     categorías a revisar (ver {@link Eligibility}); vacía = todas
      * @param branch     rama del jugador (MASCULINO o FEMENINO); null = ambas
      * @param base       su categoría real, ya determinada (la más baja en que jugó); null si todavía no se sabe
+     * @param federacion federación del jugador (la de su perfil: FPP o AMP)
      */
     public record Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
-                        List<String> levels, String branch, String base) {
+                        List<String> levels, String branch, String base, Federacion federacion) {
 
         public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope) {
-            this(playerId, playerName, fullName, clubId, year, scope, List.of(), null, null);
+            this(playerId, playerName, fullName, clubId, year, scope, List.of(), null, null, Federacion.FPP);
         }
 
         public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
                      List<String> levels, String branch) {
-            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null);
+            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null, Federacion.FPP);
+        }
+
+        public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
+                     List<String> levels, String branch, Federacion federacion) {
+            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null, federacion);
         }
 
         /** Con su categoría real: se revisan solo las categorías en que puede jugar un jugador de esa categoría. */
         Query withBase(String level) {
-            return new Query(playerId, playerName, fullName, clubId, year, scope, Eligibility.levels(level), branch,
-                    level);
+            return new Query(playerId, playerName, fullName, clubId, year, scope,
+                    Eligibility.levels(federacion, level), branch, level, federacion);
         }
 
         boolean eligible(Competition c) {
@@ -166,25 +173,23 @@ public class PlayerReportService {
     private final SidgadClient sidgad;
     private final PdfRenderer renderer;
     private final Clock clock;
-    private final List<String> levels;
     private final Cache<UUID, Job> jobs = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build();
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
     public PlayerReportService(CatalogService catalog, SidgadClient sidgad, PdfRenderer renderer, Clock clock,
-                               FppProperties props) {
+                               RinkMetricsProperties props) {
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.renderer = renderer;
         this.clock = clock;
-        this.levels = props.sidgad().levels();
     }
 
     public Job submit(Query query, String owner) {
         if (query.scope() == Scope.ULTIMOS_5) {
             throw new IllegalArgumentException("Para jugadores el período es Apertura, Clausura o Apertura + Clausura.");
         }
-        if (!catalog.available(query.year())) {
-            throw new IllegalArgumentException(CatalogService.unavailableMessage(query.year()));
+        if (!catalog.available(query.federacion(), query.year())) {
+            throw new IllegalArgumentException(CatalogService.unavailableMessage(query.federacion(), query.year()));
         }
         Job job = new Job(owner);
         jobs.put(job.id(), job);
@@ -212,8 +217,8 @@ public class PlayerReportService {
     }
 
     PlayerReport build(Query q, Job job) {
-        ClubView club = catalog.club(q.clubId(), q.year());
-        List<Competition> all = catalog.competitions(q.year()).stream()
+        ClubView club = catalog.club(q.federacion(), q.clubId(), q.year());
+        List<Competition> all = catalog.competitions(q.federacion(), q.year()).stream()
                 .filter(c -> !ClubTeams.own(c, club).isEmpty())
                 .toList();
         // Las letras A/B se deciden con todo el año (como en el informe de club); después se filtra el período.
@@ -267,9 +272,9 @@ public class PlayerReportService {
         ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(),
                 Crests.tile(sidgad.clubLogo(ReportService.logoFile(all, club.id()))));
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
-        Query resolved = baseLevel(q.playerId(), inputs).map(q::withBase).orElse(q);
+        Query resolved = baseLevel(q.federacion(), q.playerId(), inputs).map(q::withBase).orElse(q);
         List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
-        return assemble(resolved, info, LocalDate.now(clock), levels, own);
+        return assemble(resolved, info, LocalDate.now(clock), q.federacion().levels(), own);
     }
 
     /**
@@ -326,7 +331,11 @@ public class PlayerReportService {
 
     /** La categoría más baja en que figura el jugador en las planillas (su categoría real), si figura en alguna. */
     static Optional<String> baseLevel(int playerId, List<TeamInput> inputs) {
-        return Optional.ofNullable(Eligibility.lowest(inputs.stream()
+        return baseLevel(Federacion.FPP, playerId, inputs);
+    }
+
+    static Optional<String> baseLevel(Federacion fed, int playerId, List<TeamInput> inputs) {
+        return Optional.ofNullable(Eligibility.lowest(fed, inputs.stream()
                 .filter(in -> in.playedBy(playerId))
                 .map(in -> in.competition().category().level())
                 .toList()));
@@ -463,7 +472,7 @@ public class PlayerReportService {
         ReportData.ShortHanded sh = shortHanded.result();
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
                 categories, total, minutes.result(), sh, rows, notes, blocks,
-                PlayerStrengths.evaluate(q.playerId(), inputs, sh));
+                PlayerStrengths.evaluate(q.playerId(), inputs, sh), q.federacion());
     }
 
     /**

@@ -27,13 +27,14 @@ async function session() {
 }
 
 /** Exige sesión con el perfil indicado; si no, va al login o a la pantalla de su perfil. */
-async function requireProfile(perfil) {
+/** La página pide uno de estos perfiles (p. ej. ["CLUBFPP", "CLUBAMP"]); si no lo tiene, va a su pantalla. */
+async function requireProfile(perfiles) {
     const s = await session();
     if (!s.autenticado) {
         location.replace("/login.html");
         return null;
     }
-    if (!s.perfiles.includes(perfil)) {
+    if (![].concat(perfiles).some(p => s.perfiles.includes(p))) {
         location.replace(s.inicio);
         return null;
     }

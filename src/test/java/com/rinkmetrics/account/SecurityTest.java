@@ -3,6 +3,7 @@ package com.rinkmetrics.account;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.player.RosterService;
 import com.rinkmetrics.player.RosterService.RosterPlayer;
 import com.rinkmetrics.report.ReportService;
@@ -54,6 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SecurityTest {
 
     static final ClubView VELEZ = new ClubView(74, "CAVS", "VELEZ", List.of());
+    static final ClubView MURIALDO = new ClubView(3, "LM", "LEONARDO MURIALDO", List.of());
 
     @Autowired MockMvc mvc;
     @Autowired UsuarioRepository usuarios;
@@ -81,11 +83,19 @@ class SecurityTest {
         usuarios.deleteAll();
         when(catalog.defaultYear()).thenReturn(2026);
         when(catalog.checkYear(any())).thenReturn(2026);
-        when(catalog.club(74, 2026)).thenReturn(VELEZ);
-        when(catalog.club(eq(99), eq(2026))).thenThrow(new IllegalArgumentException("El club 99 no juega en la FPP en 2026."));
-        when(roster.find(74, 2026, "PRIMERA", "MASCULINO", 3851))
+        when(catalog.club(Federacion.FPP, 74, 2026)).thenReturn(VELEZ);
+        when(catalog.club(eq(Federacion.FPP), eq(99), eq(2026)))
+                .thenThrow(new IllegalArgumentException("El club 99 no juega en la FPP en 2026."));
+        when(roster.find(Federacion.FPP, 74, 2026, "PRIMERA", "MASCULINO", 3851))
                 .thenReturn(Optional.of(new RosterPlayer(3851, "Ignacio J Graiño", "Ignacio J", "Graiño",
                         "Primera Masculino")));
+        // AMP (Mendoza): Leonardo Murialdo; Vélez no juega en la AMP.
+        when(catalog.club(Federacion.AMP, 3, 2026)).thenReturn(MURIALDO);
+        when(catalog.club(eq(Federacion.AMP), eq(74), eq(2026)))
+                .thenThrow(new IllegalArgumentException("El club 74 no juega en la AMP en 2026."));
+        when(roster.find(Federacion.AMP, 3, 2026, "JUVENIL", "MASCULINO", 6188))
+                .thenReturn(Optional.of(new RosterPlayer(6188, "Victor Daniel Terraza Gomez", "Victor Daniel",
+                        "Terraza Gomez", "Juvenil Masculino")));
     }
 
     Map<String, Object> club(String usuario) {
@@ -204,6 +214,49 @@ class SecurityTest {
 
         confirmar("juan@example.com");
         login("juan", "clave-segura").andExpect(jsonPath("$.inicio").value("/jugador.html"));
+    }
+
+    @Test
+    void registroDeClubYJugadorDeLaAmp() throws Exception {
+        Map<String, Object> clubAmp = club("murialdo");
+        clubAmp.putAll(Map.of("perfil", "CLUBAMP", "clubId", 3));
+        register(clubAmp).andExpect(status().isCreated());
+        Usuario club = usuarios.findByUsuario("murialdo").orElseThrow();
+        assertThat(club.getPerfiles()).containsExactly(Perfil.CLUBAMP);
+        assertThat(club.federacion()).isEqualTo(Federacion.AMP);
+        assertThat(club.getClubNombre()).isEqualTo("LEONARDO MURIALDO");
+
+        // El club tiene que ser de la AMP: Vélez es de la FPP.
+        Map<String, Object> velezEnAmp = club("velez.amp");
+        velezEnAmp.put("perfil", "CLUBAMP");
+        register(velezEnAmp).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El club 74 no juega en la AMP en 2026."));
+
+        Map<String, Object> jugadorAmp = player("terraza");
+        jugadorAmp.putAll(Map.of("perfil", "PLAYERAMP", "clubId", 3, "categoria", "JUVENIL", "jugadorId", 6188));
+        register(jugadorAmp).andExpect(status().isCreated());
+        Usuario jugador = usuarios.findByUsuario("terraza").orElseThrow();
+        assertThat(jugador.getPerfiles()).containsExactly(Perfil.PLAYERAMP);
+        assertThat(jugador.getJugadorNombre()).isEqualTo("Victor Daniel Terraza Gomez");
+
+        confirmar("murialdo@example.com");
+        login("murialdo", "clave-segura").andExpect(jsonPath("$.inicio").value("/club.html"));
+        mvc.perform(get("/api/sesion").with(user("murialdo").authorities(() -> "CLUBAMP")))
+                .andExpect(jsonPath("$.federacion").value("AMP"));
+        confirmar("terraza@example.com");
+        login("terraza", "clave-segura").andExpect(jsonPath("$.inicio").value("/jugador.html"));
+    }
+
+    @Test
+    void lasPantallasAceptanLosPerfilesDeLasDosFederaciones() throws Exception {
+        mvc.perform(get("/club.html").with(user("a").authorities(() -> "CLUBAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/jugador.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
+        // Cada perfil, solo su pantalla.
+        mvc.perform(get("/jugador.html").with(user("a").authorities(() -> "CLUBAMP")))
+                .andExpect(status().is3xxRedirection());
+        mvc.perform(post("/api/informes").with(user("a").authorities(() -> "PLAYERAMP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

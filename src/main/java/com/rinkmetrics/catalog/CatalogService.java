@@ -1,15 +1,17 @@
 package com.rinkmetrics.catalog;
 
-import com.rinkmetrics.config.FppProperties;
+import com.rinkmetrics.config.RinkMetricsProperties;
 import com.rinkmetrics.sidgad.SidgadClient;
 import com.rinkmetrics.sidgad.model.Competition;
 import com.rinkmetrics.sidgad.model.Competition.Category;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.model.Models.TeamRef;
 import com.rinkmetrics.sidgad.parse.SidgadParser;
 import com.rinkmetrics.stats.TeamKeys;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -21,9 +23,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Catálogo por año de la federación configurada (FPP = id_fede_3), limitado a las categorías relevadas
- * ({@code fpp.sidgad.levels}: de Infantil para arriba) y a los años ofrecidos ({@code fpp.sidgad.years}).
- * El año se traduce al id de temporada de SIDGAD con el selector de temporadas del portal.
+ * Catálogo por año y federación ({@link Federacion}: FPP = id_fede_3, AMP = id_fede_4), limitado a sus categorías
+ * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code rinkmetrics.sidgad.years}). El año se traduce al id de
+ * temporada de SIDGAD con el selector de temporadas del portal (es el mismo para todas las federaciones).
  */
 @Service
 public class CatalogService {
@@ -61,37 +63,40 @@ public class CatalogService {
     }
 
     /**
-     * @param year      año consultado
-     * @param available false si SIDGAD no tiene competiciones FPP para ese año (en ese caso {@code message} lo explica)
-     * @param years     años que se ofrecen
+     * @param year       año consultado
+     * @param available  false si SIDGAD no tiene competiciones de la federación ese año ({@code message} lo explica)
+     * @param years      años que se ofrecen
+     * @param federacion sigla de la federación (FPP, AMP)
      */
     public record CatalogView(int year, boolean available, String message, List<Integer> years,
-                              List<LevelView> categories, List<String> branches, List<ClubView> clubs) {
+                              List<LevelView> categories, List<String> branches, List<ClubView> clubs,
+                              String federacion) {
+
+        CatalogView withFederacion(Federacion f) {
+            return new CatalogView(year, available, message, years, categories, branches, clubs, f.name());
+        }
     }
 
     private static final List<String> BRANCHES = List.of("MASCULINO", "FEMENINO");
 
     private final SidgadClient client;
-    private final int federationId;
-    private final List<String> levels;
     private final List<Integer> years;
 
-    public CatalogService(SidgadClient client, FppProperties props) {
+    public CatalogService(SidgadClient client, RinkMetricsProperties props) {
         this.client = client;
-        this.federationId = props.sidgad().federationId();
-        this.levels = props.sidgad().levels();
         this.years = List.copyOf(props.sidgad().years());
     }
 
-    /** Años que se ofrecen (configuración {@code fpp.sidgad.years}). */
+    /** Años que se ofrecen (configuración {@code rinkmetrics.sidgad.years}). */
     public List<Integer> years() {
         return years;
     }
 
-    /** El año más reciente de los ofrecidos que ya tiene datos; si ninguno tiene, el primero. */
+    /** El año más reciente de los ofrecidos que ya tiene datos (de alguna federación); si ninguno tiene, el primero. */
     public int defaultYear() {
-        return years.stream().sorted(Comparator.reverseOrder()).filter(this::available).findFirst()
-                .orElse(years.getFirst());
+        return years.stream().sorted(Comparator.reverseOrder())
+                .filter(y -> Arrays.stream(Federacion.values()).anyMatch(f -> available(f, y)))
+                .findFirst().orElse(years.getFirst());
     }
 
     /** Valida que el año sea uno de los ofrecidos. */
@@ -105,24 +110,24 @@ public class CatalogService {
         return year;
     }
 
-    public boolean available(int year) {
-        return !competitions(year).isEmpty();
+    public boolean available(Federacion f, int year) {
+        return !competitions(f, year).isEmpty();
     }
 
-    public static String unavailableMessage(int year) {
-        return "No hay información de la FPP para el año " + year + " todavía.";
+    public static String unavailableMessage(Federacion f, int year) {
+        return "No hay información de la " + f.name() + " para el año " + year + " todavía.";
     }
 
     /**
-     * Competiciones FPP del año en las categorías relevadas. El año se traduce al id de temporada de SIDGAD con
-     * el selector de temporadas del portal; si el año no existe ahí, no hay competiciones.
+     * Competiciones de la federación en el año, en sus categorías relevadas. El año se traduce al id de temporada de
+     * SIDGAD con el selector de temporadas del portal; si el año no existe ahí, no hay competiciones.
      */
-    public List<Competition> competitions(int year) {
+    public List<Competition> competitions(Federacion f, int year) {
         Integer seasonId = SidgadParser.seasons(client.portal()).get(year);
         if (seasonId == null) {
             return List.of();
         }
-        return competitions(SidgadParser.catalog(client.catalog()), federationId, levels, seasonId);
+        return competitions(SidgadParser.catalog(client.catalog()), f.id(), f.levels(), seasonId);
     }
 
     static List<Competition> competitions(List<Competition> all, int federationId, List<String> levels, int seasonId) {
@@ -133,12 +138,13 @@ public class CatalogService {
                 .toList();
     }
 
-    public CatalogView view(int year) {
-        List<Competition> comps = competitions(year);
+    public CatalogView view(Federacion f, int year) {
+        List<Competition> comps = competitions(f, year);
         if (comps.isEmpty()) {
-            return new CatalogView(year, false, unavailableMessage(year), years, List.of(), BRANCHES, List.of());
+            return new CatalogView(year, false, unavailableMessage(f, year), years, List.of(), BRANCHES, List.of(),
+                    f.name());
         }
-        return view(comps, levels, year, years);
+        return view(comps, f.levels(), year, years).withFederacion(f);
     }
 
     static CatalogView view(List<Competition> comps, List<String> levels, int year, List<Integer> years) {
@@ -158,7 +164,7 @@ public class CatalogService {
                 .sorted(Comparator.comparing(ClubView::name))
                 .toList();
         return new CatalogView(year, true, null, years,
-                levelViews(comps.stream().map(Competition::category).toList(), levels), BRANCHES, clubs);
+                levelViews(comps.stream().map(Competition::category).toList(), levels), BRANCHES, clubs, null);
     }
 
     /** Agrupa por nivel (en el orden configurado) con sus ramas (masculino primero). */
@@ -218,29 +224,31 @@ public class CatalogService {
      *
      * @param torneo Apertura o Clausura; {@code null} = ambos
      */
-    public List<Competition> competitionsFor(int clubId, Category category, Competition.Torneo torneo, int year) {
-        return competitions(year).stream()
+    public List<Competition> competitionsFor(Federacion f, int clubId, Category category, Competition.Torneo torneo,
+                                             int year) {
+        return competitions(f, year).stream()
                 .filter(c -> c.category().equals(category))
                 .filter(c -> torneo == null || c.torneo() == torneo)
                 .filter(c -> c.teams().stream().anyMatch(t -> t.clubId() == clubId))
                 .toList();
     }
 
-    public ClubView club(int clubId, int year) {
-        CatalogView view = view(year);
+    public ClubView club(Federacion f, int clubId, int year) {
+        CatalogView view = view(f, year);
         if (!view.available()) {
             throw new IllegalArgumentException(view.message());
         }
         return view.clubs().stream().filter(c -> c.id() == clubId).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("El club " + clubId + " no juega en la FPP en " + year + "."));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El club " + clubId + " no juega en la " + f.name() + " en " + year + "."));
     }
 
-    /** Valida y arma la categoría pedida; rechaza Mini/Promo u otras fuera de lo relevado. */
-    public Category category(String level, String branch) {
+    /** Valida y arma la categoría pedida; rechaza Mini/Promo u otras fuera de lo relevado en la federación. */
+    public Category category(Federacion f, String level, String branch) {
         String l = level == null ? "" : level.trim().toUpperCase();
         String b = branch == null ? "" : branch.trim().toUpperCase();
-        if (!levels.contains(l)) {
-            throw new IllegalArgumentException("Categoría no relevada: " + level + ". Válidas: " + levels);
+        if (!f.levels().contains(l)) {
+            throw new IllegalArgumentException("Categoría no relevada: " + level + ". Válidas: " + f.levels());
         }
         if (!BRANCHES.contains(b)) {
             throw new IllegalArgumentException("Rama inválida: " + branch + ". Válidas: " + BRANCHES);

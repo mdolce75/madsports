@@ -42,7 +42,7 @@
                 <input type="text" id="nombre" readonly>
             </div>
             <div class="field">
-                <label for="jugador">Jugador en la FPP</label>
+                <label for="jugador">Jugador en SIDGAD</label>
                 <input type="text" id="jugador" readonly>
             </div>
         </div>
@@ -71,7 +71,7 @@
         <button class="go" id="go" type="submit" disabled>Generar informe</button>
 
         <ul class="steps" id="steps" hidden>
-            <li data-s="EXTRAYENDO">Datos FPP</li>
+            <li data-s="EXTRAYENDO">Datos de SIDGAD</li>
             <li data-s="GENERANDO_PDF">PDF</li>
             <li data-s="LISTO">Listo</li>
         </ul>
@@ -79,18 +79,20 @@
     </form>
 
     <footer><b>RinkMetrics</b> · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín
-        (buenosaires.sidgad.com).</footer>
+        (FPP) y Asociación Mendocina de Patín (AMP), en SIDGAD.</footer>
 </div>
 
 <script src="/js/app.js"></script>
 <script>
     $("brand").outerHTML = BRAND;
 
-    // Años ofrecidos; si el año elegido no tiene datos, se avisa y no se genera.
+    let federacion = "FPP";
+
+    // Años ofrecidos; si el año elegido no tiene datos en su federación, se avisa y no se genera.
     async function loadYears(year) {
         $("go").disabled = true;
         try {
-            const res = await fetch("/api/catalogo" + (year ? "?anio=" + year : ""));
+            const res = await fetch("/api/catalogo?federacion=" + federacion + (year ? "&anio=" + year : ""));
             const catalog = await res.json();
             if (!res.ok) throw new Error(catalog.detail || res.statusText);
             const sel = $("anio");
@@ -128,8 +130,9 @@
         }
     });
 
-    requireProfile("PLAYERFPP").then(s => {
+    requireProfile(["PLAYERFPP", "PLAYERAMP"]).then(s => {
         if (!s) return;
+        federacion = s.federacion;
         $("club").value = s.club.nombre;
         $("nombre").value = s.nombre ? `${s.nombre} ${s.apellido}` : "";
         $("jugador").value = s.jugador ? s.jugador.nombre : "Sin jugador vinculado";

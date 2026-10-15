@@ -70,7 +70,11 @@ public final class SidgadParser {
             int temp = classNumber(a, "temp_");
             Element input = doc.getElementById("teams_array_" + id);
             List<TeamRef> teams = input == null ? List.of() : teamsArray(input.val());
-            result.add(Competition.of(id, clean(a.attr("name")), fede, temp, teams, periodMinutes(a.attr("config_params"))));
+            // El nombre visible es el completo: el atributo name se corta cuando el nombre trae comillas
+            // (AMP'26- CAMP MASC "APERTURA 26"-CATEGORIA SENIOR).
+            Element shown = a.selectFirst(".nombre_competicion_listado");
+            String name = shown == null || shown.text().isBlank() ? a.attr("name") : shown.text();
+            result.add(Competition.of(id, clean(name), fede, temp, teams, periodMinutes(a.attr("config_params"))));
         }
         return result;
     }

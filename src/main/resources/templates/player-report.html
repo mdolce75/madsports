@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8"/>
     <title th:text="|Informe ${r.playerName} - ${r.club.name}|">Informe de jugador</title>
-    <style>
+    <style th:inline="css">
         @page {
             size: A4;
             margin: 16mm 14mm 18mm 14mm;
-            @bottom-left { content: "Informe elaborado por RinkMetrics · Datos: FPP (buenosaires.sidgad.com)"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-left { content: "Informe elaborado por RinkMetrics · Datos: [(${r.federacion.name()})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
             @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
         }
         body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
@@ -71,7 +71,8 @@
 
 <div class="sample-banner" th:if="${sample}">
     <b>Informe de ejemplo.</b> Jugador, club, rivales y resultados son ficticios: sirven solo para mostrar el formato
-    y las secciones del informe de jugador de RinkMetrics. Los informes reales usan las actas publicadas por la FPP.
+    y las secciones del informe de jugador de RinkMetrics. Los informes reales usan las actas publicadas por la
+    <span th:text="${r.federacion.name()}">FPP</span> en SIDGAD.
 </div>
 
 <div class="header">
@@ -302,8 +303,8 @@
 
 <p class="muted" th:if="${!r.categories.isEmpty()}">* Goles o tarjetas que figuran en la planilla sin evento con
     minuto en el acta, o tarjetas fuera del juego. El descanso cuenta como inicio del 2do tiempo.</p>
-<p class="muted">Partidos, resultados, goles y tarjetas según las actas de partido publicadas por la FPP
-    (buenosaires.sidgad.com): cuenta cada partido en que el jugador figura en la planilla de su equipo.</p>
+<p class="muted"><span th:text="|Partidos, resultados, goles y tarjetas según las actas de partido publicadas por la ${r.federacion.nombre()} (${r.federacion.name()}) en SIDGAD:|">Partidos, resultados, goles y tarjetas según las actas de partido publicadas en SIDGAD:</span>
+    cuenta cada partido en que el jugador figura en la planilla de su equipo.</p>
 
 </body>
 </html>

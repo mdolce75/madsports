@@ -19,7 +19,7 @@ import com.rinkmetrics.stats.StatsEngine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-@SpringBootTest(properties = "fpp.ai.enabled=false")
+@SpringBootTest(properties = "rinkmetrics.ai.enabled=false")
 class SampleReportTest {
 
     static final LocalDate HOY = LocalDate.of(2026, 10, 13);

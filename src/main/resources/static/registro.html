@@ -17,7 +17,7 @@
     <section class="hero">
         <span class="tag">Registro</span>
         <h1>Sumate a<br><em>RinkMetrics.</em></h1>
-        <p class="lead">Elegí tu perfil: club, para los informes de los equipos de tu club, o jugador, para tus
+        <p class="lead">Elegí tu federación (FPP o AMP) y tu perfil: club, para los informes de los equipos de tu club, o jugador, para tus
             estadísticas en todas las categorías en que jugás.</p>
     </section>
 
@@ -25,11 +25,24 @@
         <div class="sheet-head"><span>Planilla de registro</span><span><span class="req">*</span> obligatorio</span></div>
 
         <div class="field">
+            <label>Federación <span class="req">*</span></label>
+            <div class="profiles" role="radiogroup" aria-label="Federación">
+                <label><input type="radio" name="federacion" value="FPP">FPP
+                    <small>Federación Porteña de Patín (Buenos Aires).</small></label>
+                <label><input type="radio" name="federacion" value="AMP">AMP
+                    <small>Asociación Mendocina de Patín (Mendoza).</small></label>
+            </div>
+            <p class="hint" id="fed-hint">Elegí tu federación para ver los perfiles y los planes.</p>
+        </div>
+
+        <!-- Perfiles, planes y datos: aparecen al elegir la federación. -->
+        <div id="after-fed" hidden>
+        <div class="field">
             <label>Perfil <span class="req">*</span></label>
             <div class="profiles" role="radiogroup" aria-label="Perfil">
-                <label><input type="radio" name="perfil" value="CLUBFPP" checked>Club FPP
+                <label><input type="radio" name="rol" value="CLUB" checked><span class="rol-name">Club FPP</span>
                     <small>Informes de los equipos de tu club.</small></label>
-                <label><input type="radio" name="perfil" value="PLAYERFPP">Jugador FPP
+                <label><input type="radio" name="rol" value="PLAYER"><span class="rol-name">Jugador FPP</span>
                     <small>Tus partidos, goles y tarjetas.</small></label>
             </div>
             <p class="hint">Mirá cómo es cada informe:
@@ -76,42 +89,62 @@
             <div class="field">
                 <label for="jugador">Jugador <span class="req">*</span></label>
                 <select id="jugador" disabled><option value="">Elegí la categoría</option></select>
-                <p class="hint">Tu nombre tal como figura en las actas de partido de la FPP.</p>
+                <p class="hint">Tu nombre tal como figura en las actas de partido de tu federación.</p>
             </div>
         </div>
 
         <button class="go" id="go" type="submit" disabled>Registrarme</button>
+        </div>
         <div id="status" role="status" aria-live="polite"></div>
         <p class="alt">¿Ya tenés usuario? <a href="/login.html">Ingresá</a> · <a href="/">Volver al inicio</a></p>
     </form>
 
     <footer><b>RinkMetrics</b> · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín
-        (buenosaires.sidgad.com).</footer>
+        (FPP) y Asociación Mendocina de Patín (AMP), en SIDGAD.</footer>
 </div>
 
 <script src="/js/app.js"></script>
 <script>
     $("brand").outerHTML = BRAND;
 
-    const perfil = () => document.querySelector("input[name=perfil]:checked").value;
-    const isPlayer = () => perfil() === "PLAYERFPP";
+    // Primero la federación y después el perfil: Club o Jugador de esa federación (CLUBAMP, PLAYERFPP...).
+    // Los clubes, las categorías y los jugadores son los de la federación elegida.
+    const fed = () => (document.querySelector("input[name=federacion]:checked") || {}).value;
+    const isPlayer = () => document.querySelector("input[name=rol]:checked").value === "PLAYER";
+    const perfil = () => (isPlayer() ? "PLAYER" : "CLUB") + fed();
     const rosters = {};
+    const catalogs = {};
     const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
     let catalog;
 
     async function loadClubs() {
+        const f = fed();
+        const sel = $("club");
+        sel.innerHTML = "";
+        sel.add(new Option("Cargando clubes…", ""));
+        sel.disabled = true;
         try {
-            const res = await fetch("/api/catalogo");
-            catalog = await res.json();
-            if (!res.ok) throw new Error(catalog.detail || res.statusText);
-            const sel = $("club");
+            if (!catalogs[f]) {
+                const res = await fetch("/api/catalogo?federacion=" + f);
+                const body = await res.json();
+                if (!res.ok) throw new Error(body.detail || res.statusText);
+                catalogs[f] = body;
+            }
+            if (fed() !== f) return;
+            catalog = catalogs[f];
             sel.innerHTML = "";
+            if (!catalog.available) {
+                sel.add(new Option(catalog.message, ""));
+                return;
+            }
             sel.add(new Option("Elegí tu club", ""));
             catalog.clubs.forEach(c => sel.add(new Option(`${c.name} (${c.code})`, c.id)));
             sel.disabled = false;
             $("go").disabled = false;
         } catch (e) {
             status("No se pudo cargar la lista de clubes: " + e.message, true);
+        } finally {
+            loadTeams();
         }
     }
 
@@ -145,13 +178,13 @@
             return;
         }
         const [categoria, rama] = team.split("|");
-        const key = `${clubId}|${team}`;
+        const key = `${fed()}|${clubId}|${team}`;
         sel.add(new Option("Leyendo las actas del equipo… (puede tardar unos segundos)", ""));
         status("");
         try {
             if (!rosters[key]) {
                 const res = await fetch(`/api/registro/jugadores?clubId=${clubId}`
-                    + `&categoria=${encodeURIComponent(categoria)}&rama=${rama}`);
+                    + `&categoria=${encodeURIComponent(categoria)}&rama=${rama}&federacion=${fed()}`);
                 const body = await res.json();
                 if (!res.ok) throw new Error(body.detail || res.statusText);
                 rosters[key] = body;
@@ -174,9 +207,9 @@
 
     // Beneficios de cada perfil (los planes cambian en informes por mes y precio).
     const BENEFICIOS = {
-        CLUBFPP: ["Informes de todos los equipos de tu club", "Análisis escrito con IA",
+        CLUB: ["Informes de todos los equipos de tu club", "Análisis escrito con IA",
             "Goles, tarjetas y faltas por tramos de 5'", "Fortalezas y debilidades"],
-        PLAYERFPP: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
+        PLAYER: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
             "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"]
     };
     // "$ 45.900": pesos sin centavos (vienen redondeados hacia abajo a centenas).
@@ -218,7 +251,7 @@
                     : `Equivale a ${pesos(plan.precioPorMes)} por mes`;
                 card.querySelector(".plan-quota").textContent = `Hasta ${plan.informesPorMes} informes por mes`;
                 const ul = card.querySelector("ul");
-                BENEFICIOS[p].forEach(b => {
+                BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : "CLUB"].forEach(b => {
                     const li = document.createElement("li");
                     li.textContent = b;
                     ul.append(li);
@@ -231,13 +264,26 @@
         }
     }
 
+    let lastFed = null;
     function toggleProfile() {
+        if (!fed()) return;
+        $("after-fed").hidden = false;
+        $("fed-hint").hidden = true;
+        document.querySelectorAll("input[name=rol]").forEach(r => {
+            r.parentElement.querySelector(".rol-name").textContent = (r.value === "PLAYER" ? "Jugador " : "Club ") + fed();
+        });
         $("player-fields").hidden = !isPlayer();
         loadPlans();
-        loadPlayers();
+        if (fed() !== lastFed) {
+            lastFed = fed();
+            loadClubs();
+        } else {
+            loadPlayers();
+        }
     }
 
-    document.querySelectorAll("input[name=perfil]").forEach(r => r.addEventListener("change", toggleProfile));
+    document.querySelectorAll("input[name=federacion], input[name=rol]")
+        .forEach(r => r.addEventListener("change", toggleProfile));
     $("club").addEventListener("change", loadTeams);
     $("equipo").addEventListener("change", loadPlayers);
 
@@ -294,8 +340,8 @@
         }
     });
 
-    session().then(() => loadClubs());
-    loadPlans();
+    // Si el navegador recuerda la federación elegida (volver atrás), se muestra lo que corresponde.
+    session().then(() => toggleProfile());
 </script>
 </body>
 </html>

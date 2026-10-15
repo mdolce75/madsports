@@ -2,6 +2,7 @@ package com.rinkmetrics.account;
 
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.player.RosterService;
 import com.rinkmetrics.player.RosterService.RosterPlayer;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -53,7 +54,7 @@ public class RegistroService {
     @Transactional
     public Usuario registrar(Registro r) {
         if (r.perfil() == null || !r.perfil().registrable()) {
-            throw new IllegalArgumentException("Elegí el perfil: Club FPP o Jugador FPP.");
+            throw new IllegalArgumentException("Elegí el perfil: Club o Jugador, de la FPP o de la AMP.");
         }
         String usuario = r.usuario().trim().toLowerCase(Locale.ROOT);
         String email = r.email().trim();
@@ -65,11 +66,12 @@ public class RegistroService {
         }
         SuscripcionType plan = plan(r);
         int year = catalog.defaultYear();
-        ClubView club = catalog.club(r.clubId(), year);
+        Federacion fed = r.perfil().federacion();
+        ClubView club = catalog.club(fed, r.clubId(), year);
 
         Usuario u;
         if (r.perfil().player()) {
-            u = registrarJugador(r, usuario, email, club, year);
+            u = registrarJugador(r, usuario, email, club, year, fed);
         } else {
             // Club: sin nombre ni apellido (el registro no los pide).
             u = new Usuario(usuario, encoder.encode(r.clave()), email, null, null,
@@ -93,8 +95,8 @@ public class RegistroService {
         return plan;
     }
 
-    /** Jugador: el nombre y el apellido son los de la FPP (el jugador elegido de la planilla de su equipo). */
-    private Usuario registrarJugador(Registro r, String usuario, String email, ClubView club, int year) {
+    /** Jugador: el nombre y el apellido son los de SIDGAD (el jugador elegido de la planilla de su equipo). */
+    private Usuario registrarJugador(Registro r, String usuario, String email, ClubView club, int year, Federacion fed) {
         if (r.jugadorId() == null || r.jugadorId() <= 0) {
             throw new IllegalArgumentException("Elegí tu nombre en la lista de jugadores del club.");
         }
@@ -104,7 +106,7 @@ public class RegistroService {
         if (r.categoria() == null || r.categoria().isBlank() || r.rama() == null || r.rama().isBlank()) {
             throw new IllegalArgumentException("Elegí la categoría en que jugás.");
         }
-        RosterPlayer jugador = roster.find(club.id(), year, r.categoria(), r.rama(), r.jugadorId())
+        RosterPlayer jugador = roster.find(fed, club.id(), year, r.categoria(), r.rama(), r.jugadorId())
                 .orElseThrow(() -> new IllegalArgumentException("El jugador elegido no figura en " + club.name() + "."));
         Usuario u = new Usuario(usuario, encoder.encode(r.clave()), email, jugador.firstName(), jugador.lastName(),
                 club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant());

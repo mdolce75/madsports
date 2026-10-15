@@ -3,6 +3,7 @@ package com.rinkmetrics.account;
 import com.rinkmetrics.account.RegistroService.ConflictException;
 import com.rinkmetrics.account.RegistroService.Registro;
 import com.rinkmetrics.catalog.CatalogService;
+import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.config.SecurityConfig;
 import com.rinkmetrics.player.RosterService;
 import com.rinkmetrics.player.RosterService.RosterPlayer;
@@ -73,12 +74,14 @@ public class AccountController {
                            LocalDate dolarFecha) {
     }
 
+    /** @param federacion sigla de la federación de sus perfiles (FPP, AMP) */
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
                               List<String> perfiles, Map<String, Object> club, Map<String, Object> jugador,
-                              String inicio, Map<String, Object> suscripcion, int informesPedidos) {
+                              String inicio, Map<String, Object> suscripcion, int informesPedidos,
+                              String federacion) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
-                "/", null, 0);
+                "/", null, 0, null);
     }
 
     private final RegistroService registro;
@@ -171,8 +174,9 @@ public class AccountController {
      */
     @GetMapping("/registro/jugadores")
     public List<RosterPlayer> jugadores(@RequestParam int clubId, @RequestParam String categoria,
-                                        @RequestParam String rama) {
-        return roster.players(clubId, catalog.defaultYear(), categoria, rama);
+                                        @RequestParam String rama,
+                                        @RequestParam(required = false) String federacion) {
+        return roster.players(Federacion.parse(federacion), clubId, catalog.defaultYear(), categoria, rama);
     }
 
     @GetMapping("/sesion")
@@ -193,7 +197,7 @@ public class AccountController {
                                 "nombre", u.getSuscripcionType().getNombre(),
                                 "desde", u.getSuscripcionDesde().toString(),
                                 "hasta", u.getSuscripcionHasta().toString()),
-                        u.getInformesPedidos()))
+                        u.getInformesPedidos(), u.federacion().name()))
                 .orElse(SessionView.ANONYMOUS);
     }
 

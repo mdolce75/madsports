@@ -1,6 +1,6 @@
 package com.rinkmetrics.sidgad;
 
-import com.rinkmetrics.config.FppProperties;
+import com.rinkmetrics.config.RinkMetricsProperties;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.jsoup.Connection;
@@ -26,17 +26,17 @@ public class SidgadClient {
     private static final Logger log = LoggerFactory.getLogger(SidgadClient.class);
     private static final String USER_AGENT = "Mozilla/5.0 (compatible; rink-metrics/0.1)";
 
-    private final FppProperties.Sidgad props;
+    private final RinkMetricsProperties.Sidgad props;
     private final Cache<String, String> dataCache;
     private final Cache<String, String> catalogCache;
     private final Cache<Integer, String> sheetCache;
     private final Cache<String, byte[]> logoCache;
     private final Object throttle = new Object();
-    /** Pedidos simultáneos a SIDGAD como máximo ({@code fpp.sidgad.max-concurrency}). */
+    /** Pedidos simultáneos a SIDGAD como máximo ({@code rinkmetrics.sidgad.max-concurrency}). */
     private final Semaphore concurrency;
     private long lastRequestNanos;
 
-    public SidgadClient(FppProperties props) {
+    public SidgadClient(RinkMetricsProperties props) {
         this.props = props.sidgad();
         this.dataCache = Caffeine.newBuilder().expireAfterWrite(this.props.dataTtl()).maximumSize(500).build();
         this.catalogCache = Caffeine.newBuilder().expireAfterWrite(this.props.catalogTtl()).maximumSize(4).build();
