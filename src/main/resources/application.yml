@@ -62,10 +62,8 @@ rinkmetrics:
     model: ${FPP_AI_MODEL:gemini-3.8-flash}
     base-url: https://generativelanguage.googleapis.com/v1beta
     timeout: 120s
-
-# Precios en pesos: el precio base de los planes está en dólares y se convierte con el dólar oficial del BNA
-# (venta) del día. Si DolarAPI no responde se usa la última cotización conocida o, si nunca respondió, el respaldo.
-rinkmetrics:
+  # Precios en pesos: el precio base de los planes está en dólares y se convierte con el dólar oficial del BNA
+  # (venta) del día. Si DolarAPI no responde se usa la última cotización conocida o, si nunca respondió, el respaldo.
   dolar:
     url: ${DOLAR_URL:https://dolarapi.com/v1/dolares/oficial}
     respaldo: ${DOLAR_RESPALDO:1500}
