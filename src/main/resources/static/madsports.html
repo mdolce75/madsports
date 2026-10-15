@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mad Sports · Estadísticas deportivas</title>
 <meta name="description" content="Mad Sports convierte actas, planillas y resultados oficiales en informes deportivos. Dueña de RinkMetrics, la app de métricas de hockey sobre patines.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1a2b'/%3E %3Cpath d='M0 16 H64 M0 32 H64 M0 48 H64 M16 0 V64 M32 0 V64 M48 0 V64' stroke='%23fff' stroke-opacity='.08' stroke-width='1'/%3E %3Cg fill='none' stroke='%23fff' stroke-width='3' stroke-linejoin='round' stroke-linecap='round'%3E %3Cpath d='M7 45 V22 L14.5 35 L22 22 V45'/%3E %3Cpath d='M26 45 L33 21 L40 45 M29 36.5 H37'/%3E %3Cpath d='M44 22 V45 H48 C54 45 57 40 57 33.5 C57 27 54 22 48 22 Z'/%3E %3C/g%3E %3Cg fill='%23ff5a1f'%3E %3Ccircle cx='7' cy='45' r='2.4'/%3E%3Ccircle cx='7' cy='22' r='2.4'/%3E%3Ccircle cx='14.5' cy='35' r='2.4'/%3E %3Ccircle cx='22' cy='22' r='2.4'/%3E%3Ccircle cx='22' cy='45' r='2.4'/%3E%3Ccircle cx='44' cy='22' r='2.4'/%3E %3C/g%3E %3Ccircle cx='33' cy='17.5' r='4.2' fill='%23ff5a1f' stroke='%230f1a2b' stroke-width='1.6'/%3E %3Cpath d='M8 54 H56' stroke='%23ff5a1f' stroke-width='2.2' stroke-linecap='round' stroke-dasharray='1 4.5'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1a2b'/%3E %3Cg fill='none' stroke='%23fff' stroke-opacity='.9' stroke-width='2.4'%3E %3Crect x='9' y='15' width='46' height='34' rx='7'/%3E %3Cpath d='M32 15 V49'/%3E %3Ccircle cx='32' cy='32' r='6'/%3E %3C/g%3E %3Cpath d='M14 43 Q26 6 46 22' fill='none' stroke='%23ff5a1f' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='0.5 4.5'/%3E %3Ccircle cx='47' cy='23' r='5' fill='%23ff5a1f' stroke='%230f1a2b' stroke-width='2'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -141,21 +141,16 @@ footer { border-top: 1px solid var(--rule); padding-block: 26px 40px; display: f
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#inicio" aria-label="Mad Sports, inicio">
-      <!-- Logo: las iniciales MAD como gráfico de datos (nodos sobre una grilla) con la pelota en la A -->
+      <!-- Logo: una cancha vista desde arriba y la trayectoria de la pelota (la jugada que medimos) -->
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <rect width="64" height="64" rx="14" fill="#0f1a2b"/>
-        <path d="M0 16 H64 M0 32 H64 M0 48 H64 M16 0 V64 M32 0 V64 M48 0 V64" stroke="#fff" stroke-opacity=".08" stroke-width="1"/>
-        <g fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-          <path d="M7 45 V22 L14.5 35 L22 22 V45"/>
-          <path d="M26 45 L33 21 L40 45 M29 36.5 H37"/>
-          <path d="M44 22 V45 H48 C54 45 57 40 57 33.5 C57 27 54 22 48 22 Z"/>
+        <g fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2.4">
+          <rect x="9" y="15" width="46" height="34" rx="7"/>
+          <path d="M32 15 V49"/>
+          <circle cx="32" cy="32" r="6"/>
         </g>
-        <g fill="#ff5a1f">
-          <circle cx="7" cy="45" r="2.4"/><circle cx="7" cy="22" r="2.4"/><circle cx="14.5" cy="35" r="2.4"/>
-          <circle cx="22" cy="22" r="2.4"/><circle cx="22" cy="45" r="2.4"/><circle cx="44" cy="22" r="2.4"/>
-        </g>
-        <circle cx="33" cy="17.5" r="4.2" fill="#ff5a1f" stroke="#0f1a2b" stroke-width="1.6"/>
-        <path d="M8 54 H56" stroke="#ff5a1f" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="1 4.5"/>
+        <path d="M14 43 Q26 6 46 22" fill="none" stroke="#ff5a1f" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0.5 4.5"/>
+        <circle cx="47" cy="23" r="5" fill="#ff5a1f" stroke="#0f1a2b" stroke-width="2"/>
       </svg>
       <b>Mad Sports</b>
     </a>
