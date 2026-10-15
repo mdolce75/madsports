@@ -59,7 +59,7 @@ Reglas que no se negocian:
   - `results` y `upcoming`: partidos jugados y próximos (`torneo`, `round` = jornada, `date`, `time`, `home` = true
     si es local, `rival`, `score`, `outcome`, `venue`). `date` null = fecha a confirmar.
   - `biggestWin`, `worstLoss`: mayor victoria y peor derrota.
-  - `players`: por jugador `name`, `games`, `goals`, `assists`, `goalsPerGame`, `goalShare` (% de los goles del
+  - `players`: por jugador `name`, `games`, `goals`, `goalsPerGame`, `goalShare` (% de los goles del
     equipo), penales y faltas directas (`penaltiesScored`/`penaltiesTaken`, `directFreeScored`/`directFreeTaken`),
     `blueCards`, `redCards`.
   - `setPieces`: faltas directas y penales del equipo, con `directFreePct` y `penaltyPct`.
@@ -104,7 +104,7 @@ Reglas que no se negocian:
    GF del top 3, promedio de la liga y GC del equipo. Mayor victoria y peor derrota.
 9. **Resultados** (tabla Torneo | Fecha | J | L/V | Rival | Resultado | G/E/P) y **Próximos partidos** (Torneo | Fecha |
    Hora | J | L/V | Rival | Cancha).
-10. **Goleadores y asistidores:** tabla Jugador | PJ | Goles | G/PJ | As | % de los goles del equipo.
+10. **Goleadores:** tabla Jugador | PJ | Goles | G/PJ | % de los goles del equipo.
 11. **Goles y tarjetas por tramos de 5 minutos:** tabla con una fila por tramo (`buckets`) y las columnas Goles a favor
     | Goles en contra | Amarillas propias | Azules propias | Rojas propias | Amarillas a rivales | Azules a rivales |
     Rojas a rivales; después las filas 1er tiempo, 2do tiempo, Sin minuto registrado (si tiene algún valor) y Total.

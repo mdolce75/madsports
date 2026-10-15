@@ -372,7 +372,8 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
         }
     }
 
-    public record PlayerLine(int playerId, String name, int games, int goals, int assists,
+    /** Un jugador del equipo. Sin asistencias: los clubes no las cargan en SIDGAD. */
+    public record PlayerLine(int playerId, String name, int games, int goals,
                              double goalsPerGame, double goalShare,
                              int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken,
                              int blueCards, int redCards) {
