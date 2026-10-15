@@ -56,6 +56,7 @@ public class PlayerController {
         PlayerReportService.Job job = reports.submit(new PlayerReportService.Query(u.getJugadorId(), u.getJugadorNombre(),
                 u.getNombre() == null ? u.getJugadorNombre() : u.getNombre() + " " + u.getApellido(), u.getClubId(), catalog.checkYear(req.anio()),
                 Scope.parse(req.periodo()), Eligibility.levels(u.getCategoria()), u.getRama()), u.getUsuario());
+        usuarios.contarInforme(u.getUsuario());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 

@@ -63,6 +63,8 @@ class SecurityTest {
     @MockitoBean CatalogService catalog;
     @MockitoBean RosterService roster;
     @MockitoBean ReportService reports;
+    @MockitoBean com.rinkmetrics.player.PlayerReportService playerReports;
+    @Autowired SuscripcionTypeRepository suscripciones;
     @MockitoBean Mailer mailer;
     @Autowired org.thymeleaf.ITemplateEngine templates;
 
@@ -310,9 +312,59 @@ class SecurityTest {
                         .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(99)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.detail").value("Solo podés pedir informes de tu club (VELEZ)."));
+        assertThat(usuarios.findByUsuario("club").orElseThrow().getInformesPedidos()).isZero();   // el rechazado no cuenta
         mvc.perform(post("/api/informes").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(74)))
                 .andExpect(status().isAccepted());
+        mvc.perform(post("/api/informes").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(74)))
+                .andExpect(status().isAccepted());
+        assertThat(usuarios.findByUsuario("club").orElseThrow().getInformesPedidos()).isEqualTo(2);
+    }
+
+    @Test
+    void elJugadorTambienSumaInformesPedidos() throws Exception {
+        Usuario u = saved("jug", Perfil.PLAYERFPP);
+        u.vincularJugador(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
+        usuarios.save(u);
+        com.rinkmetrics.player.PlayerReportService.Job job = mock(com.rinkmetrics.player.PlayerReportService.Job.class);
+        when(job.id()).thenReturn(UUID.randomUUID());
+        when(job.status()).thenReturn(ReportService.Status.PENDIENTE);
+        when(playerReports.submit(any(), eq("jug"))).thenReturn(job);
+
+        mvc.perform(post("/api/jugador/informes").with(user("jug").authorities(() -> "PLAYERFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"anio\":2026,\"periodo\":\"TEMPORADA\"}"))
+                .andExpect(status().isAccepted());
+        assertThat(usuarios.findByUsuario("jug").orElseThrow().getInformesPedidos()).isEqualTo(1);
+        // Los informes de ejemplo no cuentan.
+        mvc.perform(get("/api/ejemplo-jugador.pdf").with(user("jug").authorities(() -> "PLAYERFPP")))
+                .andExpect(status().isOk());
+        assertThat(usuarios.findByUsuario("jug").orElseThrow().getInformesPedidos()).isEqualTo(1);
+    }
+
+    @Test
+    void tiposDeSuscripcionYVigencia() throws Exception {
+        assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getMeses)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("MENSUAL", 1),
+                        org.assertj.core.groups.Tuple.tuple("TRIMESTRAL", 3),
+                        org.assertj.core.groups.Tuple.tuple("SEMESTRAL", 6),
+                        org.assertj.core.groups.Tuple.tuple("ANUAL", 12));
+
+        java.time.LocalDate desde = java.time.LocalDate.of(2026, 10, 15);
+        assertThat(suscripciones.findByCodigo("MENSUAL").orElseThrow().hasta(desde)).isEqualTo("2026-11-14");
+        assertThat(suscripciones.findByCodigo("ANUAL").orElseThrow().hasta(desde)).isEqualTo("2027-10-14");
+
+        Usuario u = saved("club", Perfil.CLUBFPP);
+        u.suscribir(suscripciones.findByCodigo("TRIMESTRAL").orElseThrow(), desde);
+        usuarios.save(u);
+        Usuario leido = usuarios.findByUsuario("club").orElseThrow();
+        assertThat(leido.getSuscripcionType().getNombre()).isEqualTo("Trimestral");
+        assertThat(leido.getSuscripcionDesde()).isEqualTo("2026-10-15");
+        assertThat(leido.getSuscripcionHasta()).isEqualTo("2027-01-14");
+        mvc.perform(get("/api/sesion").with(user("club").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.suscripcion.tipo").value("TRIMESTRAL"))
+                .andExpect(jsonPath("$.suscripcion.hasta").value("2027-01-14"))
+                .andExpect(jsonPath("$.informesPedidos").value(0));
     }
 
     @Test

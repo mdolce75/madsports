@@ -11,8 +11,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -41,6 +43,16 @@ public class Usuario {
     private String rama;
     private boolean emailVerificado;
     private Instant creado;
+
+    /** Suscripción comprada (null si todavía no tiene) y su vigencia. */
+    @ManyToOne
+    @JoinColumn(name = "suscripcion_type_id")
+    private SuscripcionType suscripcionType;
+    private LocalDate suscripcionDesde;
+    private LocalDate suscripcionHasta;
+
+    /** Informes pedidos por el usuario (club o jugador); los de ejemplo no cuentan. */
+    private int informesPedidos;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "usuario_perfil", joinColumns = @JoinColumn(name = "usuario_id"))
@@ -88,6 +100,17 @@ public class Usuario {
     public String getRama() { return rama; }
     public Instant getCreado() { return creado; }
     public boolean isEmailVerificado() { return emailVerificado; }
+    public SuscripcionType getSuscripcionType() { return suscripcionType; }
+    public LocalDate getSuscripcionDesde() { return suscripcionDesde; }
+    public LocalDate getSuscripcionHasta() { return suscripcionHasta; }
+    public int getInformesPedidos() { return informesPedidos; }
+
+    /** Asigna la suscripción desde una fecha; el fin sale de la duración del tipo. */
+    public void suscribir(SuscripcionType tipo, LocalDate desde) {
+        this.suscripcionType = tipo;
+        this.suscripcionDesde = desde;
+        this.suscripcionHasta = tipo.hasta(desde);
+    }
 
     public void verificarEmail() {
         this.emailVerificado = true;
