@@ -29,12 +29,13 @@ class CotizacionTest {
     }
 
     @Test
-    void preciosEnPesosRedondeadosACentenas() {
+    void preciosEnPesosRedondeadosHaciaAbajoACentenas() {
         Cotizacion.Valor v = new Cotizacion.Valor(new BigDecimal("1530"), "Oficial", LocalDate.of(2026, 10, 15), false);
 
-        assertThat(Cotizacion.enPesos(new BigDecimal("15"), v)).isEqualByComparingTo("23000");   // 22.950
+        assertThat(Cotizacion.enPesos(new BigDecimal("15"), v)).isEqualByComparingTo("22900");   // 22.950
         assertThat(Cotizacion.enPesos(new BigDecimal("280"), v)).isEqualByComparingTo("428400");
         assertThat(Cotizacion.enPesos(new BigDecimal("26.67"), v)).isEqualByComparingTo("40800"); // 40.805,10
+        assertThat(Cotizacion.enPesos(new BigDecimal("12.50"), v)).isEqualByComparingTo("19100"); // 19.125
     }
 
     @Test

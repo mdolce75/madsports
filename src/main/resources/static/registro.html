@@ -179,7 +179,7 @@
         PLAYERFPP: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
             "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"]
     };
-    // "$ 45.900": pesos sin centavos (vienen redondeados a centenas).
+    // "$ 45.900": pesos sin centavos (vienen redondeados hacia abajo a centenas).
     const pesos = n => "$ " + Number(n).toLocaleString("es-AR", {maximumFractionDigits: 0});
     const fecha = iso => iso ? iso.split("-").reverse().join("/") : "";
     const plazo = meses => meses === 1 ? "por mes" : `por ${meses} meses`;

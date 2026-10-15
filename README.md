@@ -215,7 +215,7 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   con cuánto más barato son que pagar el mensual esos meses. El plan es obligatorio y queda como suscripción del
   usuario desde el día del registro. Todavía no hay cobro ni límite de informes por mes.
 - **Precios en pesos:** el precio base de cada plan está en dólares y se muestra en pesos al dólar oficial del Banco
-  Nación (venta) del día, que publica [DolarAPI](https://dolarapi.com), redondeado a centenas. Se consulta como mucho
+  Nación (venta) del día, que publica [DolarAPI](https://dolarapi.com), redondeado hacia abajo a centenas. Se consulta como mucho
   una vez por hora; si DolarAPI no responde se usa la última cotización o el respaldo (`DOLAR_RESPALDO`, $ 1.500).
   La home de Mad Sports muestra el precio mensual de cada perfil con la misma conversión.
 

@@ -320,7 +320,7 @@ class SecurityTest {
                 .andExpect(jsonPath("$[*].informesPorMes").value(org.hamcrest.Matchers.contains(8, 10, 12, 14)))
                 // 80 contra 3 x 30 = 90 -> 11%; 150 contra 180 -> 17%; 280 contra 360 -> 22%.
                 .andExpect(jsonPath("$[*].ahorroPct").value(org.hamcrest.Matchers.contains(0, 11, 17, 22)))
-                // En pesos al dólar de respaldo de los tests ($ 1.500), redondeado a centenas.
+                // En pesos al dólar de respaldo de los tests ($ 1.500), redondeado hacia abajo a centenas.
                 .andExpect(jsonPath("$[*].precio").value(org.hamcrest.Matchers.contains(45000, 120000, 225000, 420000)))
                 .andExpect(jsonPath("$[1].precioPorMes").value(40000))
                 .andExpect(jsonPath("$[0].dolar").value(1500));

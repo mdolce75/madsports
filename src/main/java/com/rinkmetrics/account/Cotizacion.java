@@ -33,7 +33,7 @@ public class Cotizacion {
     private static final Logger log = LoggerFactory.getLogger(Cotizacion.class);
     private static final Duration VIGENCIA = Duration.ofHours(1);
     private static final ZoneId BUENOS_AIRES = ZoneId.of("America/Argentina/Buenos_Aires");
-    /** Los precios en pesos se redondean a centenas: $ 22.950 se muestra $ 23.000. */
+    /** Los precios en pesos se redondean hacia abajo a centenas: $ 22.950 se muestra $ 22.900. */
     private static final int REDONDEO = -2;
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -80,13 +80,13 @@ public class Cotizacion {
         }
     }
 
-    /** Un precio en dólares, en pesos al tipo de cambio del día, redondeado a centenas. */
+    /** Un precio en dólares, en pesos al tipo de cambio del día, redondeado hacia abajo a centenas. */
     public BigDecimal enPesos(BigDecimal dolares) {
         return enPesos(dolares, actual());
     }
 
     static BigDecimal enPesos(BigDecimal dolares, Valor valor) {
-        return dolares.multiply(valor.pesosPorDolar()).setScale(REDONDEO, RoundingMode.HALF_UP).setScale(0);
+        return dolares.multiply(valor.pesosPorDolar()).setScale(REDONDEO, RoundingMode.DOWN).setScale(0);
     }
 
     /** {@code {"casa":"oficial","nombre":"Oficial","compra":1480,"venta":1530,"fechaActualizacion":"…Z"}} */
