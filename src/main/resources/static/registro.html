@@ -43,7 +43,7 @@
             <div class="plans" id="plans" role="radiogroup" aria-label="Plan de suscripción">
                 <p class="hint">Cargando planes…</p>
             </div>
-            <p class="hint">Precios en dólares. Podés cambiar de plan más adelante.</p>
+            <p class="hint" id="plans-hint">Precios en pesos al dólar oficial del día. Podés cambiar de plan más adelante.</p>
         </div>
 
         <div class="grid2">
@@ -179,11 +179,9 @@
         PLAYERFPP: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
             "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"]
     };
-    // "U$S 80" o "U$S 12,50": con centavos, siempre dos decimales.
-    const usd = n => {
-        const d = Number.isInteger(Number(n)) ? 0 : 2;
-        return "U$S " + Number(n).toLocaleString("es-AR", {minimumFractionDigits: d, maximumFractionDigits: d});
-    };
+    // "$ 45.900": pesos sin centavos (vienen redondeados hacia abajo a centenas).
+    const pesos = n => "$ " + Number(n).toLocaleString("es-AR", {maximumFractionDigits: 0});
+    const fecha = iso => iso ? iso.split("-").reverse().join("/") : "";
     const plazo = meses => meses === 1 ? "por mes" : `por ${meses} meses`;
 
     // Planes del perfil elegido: una cajita por plan, con su cintillo de ahorro.
@@ -196,6 +194,10 @@
             if (!res.ok) throw new Error(planes.detail || res.statusText);
             if (perfil() !== p) return;
             box.innerHTML = "";
+            if (planes.length) {
+                $("plans-hint").textContent = `Precios en pesos al dólar oficial del día (BNA, venta: U$S 1 = `
+                    + `${pesos(planes[0].dolar)} al ${fecha(planes[0].dolarFecha)}). Podés cambiar de plan más adelante.`;
+            }
             planes.forEach((plan, i) => {
                 const card = document.createElement("label");
                 card.className = "plan";
@@ -210,10 +212,10 @@
                 card.querySelector("input").checked = i === 0;
                 if (plan.ahorroPct > 0) card.querySelector(".ribbon").textContent = `${plan.ahorroPct}% más barato`;
                 card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador) /, "");
-                card.querySelector(".plan-price b").textContent = usd(plan.precioUsd);
+                card.querySelector(".plan-price b").textContent = pesos(plan.precio);
                 card.querySelector(".plan-price small").textContent = plazo(plan.meses);
                 card.querySelector(".plan-month").textContent = plan.meses === 1 ? "Sin permanencia"
-                    : `Equivale a ${usd(plan.precioPorMes)} por mes`;
+                    : `Equivale a ${pesos(plan.precioPorMes)} por mes`;
                 card.querySelector(".plan-quota").textContent = `Hasta ${plan.informesPorMes} informes por mes`;
                 const ul = card.querySelector("ul");
                 BENEFICIOS[p].forEach(b => {

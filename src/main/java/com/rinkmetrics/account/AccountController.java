@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -58,13 +59,18 @@ public class AccountController {
     }
 
     /**
-     * Un plan para mostrar en el registro.
+     * Un plan para mostrar en el registro, con el precio en pesos al tipo de cambio del día.
      *
-     * @param precioPorMes precio equivalente por mes
-     * @param ahorroPct    cuánto más barato es que pagar el mensual esos meses (0 en el mensual)
+     * @param precio          precio del plan completo, en pesos (redondeado a centenas)
+     * @param precioPorMes    precio equivalente por mes, en pesos
+     * @param precioUsd       precio base del plan, en dólares
+     * @param ahorroPct       cuánto más barato es que pagar el mensual esos meses (0 en el mensual)
+     * @param dolar           pesos por dólar con que se convirtió (oficial BNA, venta)
+     * @param dolarFecha      día de esa cotización
      */
-    public record PlanView(String codigo, String nombre, int meses, BigDecimal precioUsd, BigDecimal precioPorMes,
-                           int informesPorMes, int ahorroPct) {
+    public record PlanView(String codigo, String nombre, int meses, BigDecimal precio, BigDecimal precioPorMes,
+                           BigDecimal precioUsd, int informesPorMes, int ahorroPct, BigDecimal dolar,
+                           LocalDate dolarFecha) {
     }
 
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
@@ -81,24 +87,36 @@ public class AccountController {
     private final CatalogService catalog;
     private final CuentaService cuenta;
     private final SuscripcionTypeRepository planes;
+    private final Cotizacion cotizacion;
 
     public AccountController(RegistroService registro, UsuarioRepository usuarios, RosterService roster,
-                             CatalogService catalog, CuentaService cuenta, SuscripcionTypeRepository planes) {
+                             CatalogService catalog, CuentaService cuenta, SuscripcionTypeRepository planes,
+                             Cotizacion cotizacion) {
         this.cuenta = cuenta;
         this.planes = planes;
+        this.cotizacion = cotizacion;
         this.registro = registro;
         this.usuarios = usuarios;
         this.roster = roster;
         this.catalog = catalog;
     }
 
-    /** Planes de suscripción del perfil (CLUBFPP o PLAYERFPP), del mensual al anual, con su ahorro. */
+    /**
+     * Planes de suscripción del perfil (CLUBFPP o PLAYERFPP), del mensual al anual, con su ahorro y el precio en
+     * pesos al dólar oficial del día.
+     */
     @GetMapping("/suscripciones")
     public List<PlanView> planes(@RequestParam Perfil perfil) {
         List<SuscripcionType> lista = planes.findByTipoUsuarioOrderByMeses(perfil.player() ? "PLAYER" : "CLUB");
         SuscripcionType mensual = lista.stream().filter(p -> p.getMeses() == 1).findFirst().orElse(null);
-        return lista.stream().map(p -> new PlanView(p.getCodigo(), p.getNombre(), p.getMeses(), p.getPrecioUsd(),
-                p.precioPorMes(), p.getInformesPorMes(), mensual == null ? 0 : p.ahorroPct(mensual))).toList();
+        Cotizacion.Valor dolar = cotizacion.actual();
+        return lista.stream().map(p -> {
+            BigDecimal precio = Cotizacion.enPesos(p.getPrecioUsd(), dolar);
+            BigDecimal porMes = Cotizacion.enPesos(p.precioPorMes(), dolar);
+            return new PlanView(p.getCodigo(), p.getNombre(), p.getMeses(), precio, porMes, p.getPrecioUsd(),
+                    p.getInformesPorMes(), mensual == null ? 0 : p.ahorroPct(mensual), dolar.pesosPorDolar(),
+                    dolar.fecha());
+        }).toList();
     }
 
     /** Alta: la cuenta queda sin confirmar y se manda el mail con el enlace para confirmarla. */
