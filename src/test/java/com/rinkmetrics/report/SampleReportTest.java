@@ -124,7 +124,14 @@ class SampleReportTest {
         assertThat(r.blocks().stream().mapToInt(b -> b.shortHanded().matches().size()).sum())
                 .isEqualTo(r.shortHanded().matches().size());
 
+        // Fortalezas y debilidades contra sus compañeros, con suficientes partidos para calificar.
+        assertThat(r.indicators()).extracting(com.rinkmetrics.stats.ReportData.Indicator::area)
+                .contains("Goleo", "Titularidad", "Disciplina", "Pelota parada", "Resultados");
+        assertThat(r.indicators()).anyMatch(i -> i.verdict() != com.rinkmetrics.stats.ReportData.Verdict.MUESTRA_CHICA);
+        assertThat(r.strengths().size() + r.weaknesses().size()).isPositive();
+
         String html = renderer.playerHtml(r, true);
+        assertThat(html).contains("Fortalezas y debilidades", "Aspectos a mejorar", "Compañeros");
         assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.", "Tomás Ejemplo",
                 "CLUB EJEMPLO", "Penales y libres directos", "Goles y tarjetas por tramos de 5 minutos");
         assertThat(renderer.playerHtml(r, false)).doesNotContain("DATOS FICTICIOS");

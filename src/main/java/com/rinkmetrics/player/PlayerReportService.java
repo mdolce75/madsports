@@ -343,8 +343,10 @@ public class PlayerReportService {
                         shortHandedByCategory.get(l.category()).result(),
                         rows.stream().filter(row -> row.category().equals(l.category())).toList()))
                 .toList();
+        ReportData.ShortHanded sh = shortHanded.result();
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
-                categories, total, minutes.result(), shortHanded.result(), rows, notes, blocks);
+                categories, total, minutes.result(), sh, rows, notes, blocks,
+                PlayerStrengths.evaluate(q.playerId(), inputs, sh));
     }
 
     /**

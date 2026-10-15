@@ -34,6 +34,8 @@ public final class SamplePlayerData {
             {"ROE", "RIVAL OESTE"}, {"RCE", "RIVAL CENTRO"}, {"RPU", "RIVAL PUERTO"}, {"RPA", "RIVAL PARQUE"}};
     private static final List<String> LEVELS = List.of("INFANTIL", "PREJUVENIL", "JUVENIL", "JUNIORS", "RESERVA", "PRIMERA");
     private static final int PERIOD_MINUTES = 25;
+    /** Compañeros ficticios de campo. */
+    private static final String[] MATES = {"Lucas Modelo", "Mateo Muestra", "Bruno Prueba", "Franco Demo"};
 
     private SamplePlayerData() {
     }
@@ -127,10 +129,23 @@ public final class SamplePlayerData {
                 ev.add(new MatchEvent(1 + rnd.nextInt(2), rnd.nextInt(PERIOD_MINUTES), rnd.nextInt(60), EventType.GOAL,
                         base + rival, rival + 1, TEAMS[rival][0], "", 0));
             }
+            // Cuatro compañeros de campo: se reparten los goles que no hizo él, con algunas tarjetas y pelota parada
+            // (son la referencia de sus fortalezas y debilidades).
             int teammates = own - lineup.stream().filter(p -> p.playerId() == PLAYER_ID).mapToInt(LineupPlayer::goals).sum();
+            int[] mateGoals = new int[MATES.length];
             for (int g = 0; g < teammates; g++) {
+                int k = rnd.nextInt(MATES.length);
+                mateGoals[k]++;
                 ev.add(new MatchEvent(1 + rnd.nextInt(2), rnd.nextInt(PERIOD_MINUTES), rnd.nextInt(60), EventType.GOAL,
-                        base, CLUB_ID, "CEJ", "", 2));
+                        base, CLUB_ID, "CEJ", "", 3 + k));
+            }
+            for (int k = 0; k < MATES.length; k++) {
+                int penTaken = rnd.nextDouble() < 0.1 ? 1 : 0;
+                int fdTaken = rnd.nextDouble() < 0.15 ? 1 : 0;
+                lineup.add(new LineupPlayer(3 + k, TEAMS[0][1], home, String.valueOf(4 + k), MATES[k], k < 3,
+                        mateGoals[k], rnd.nextDouble() < 0.12 ? 1 : 0, rnd.nextDouble() < 0.15 ? 1 : 0, 0,
+                        penTaken == 1 && rnd.nextBoolean() ? 1 : 0, penTaken, fdTaken == 1 && rnd.nextBoolean() ? 1 : 0,
+                        fdTaken, ""));
             }
             sheets.put(idp, lineup);
             events.put(idp, ev);

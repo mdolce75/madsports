@@ -16,14 +16,30 @@ import java.util.List;
 public record PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                            String period, LocalDate generatedOn, List<Line> categories, Line total,
                            Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
-                           List<String> notes, List<CategoryBlock> blocks) {
+                           List<String> notes, List<CategoryBlock> blocks, List<ReportData.Indicator> indicators) {
 
-    /** Sin bloques por categoría (informes armados a mano en los tests). */
+    /** Sin bloques por categoría ni fortalezas (informes armados a mano en los tests). */
     public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                         String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
                         ReportData.ShortHanded shortHanded, List<MatchRow> matches, List<String> notes) {
         this(playerId, playerName, fullName, club, year, period, generatedOn, categories, total, minutes, shortHanded,
-                matches, notes, List.of());
+                matches, notes, List.of(), List.of());
+    }
+
+    public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
+                        String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
+                        ReportData.ShortHanded shortHanded, List<MatchRow> matches, List<String> notes,
+                        List<CategoryBlock> blocks) {
+        this(playerId, playerName, fullName, club, year, period, generatedOn, categories, total, minutes, shortHanded,
+                matches, notes, blocks, List.of());
+    }
+
+    public List<ReportData.Indicator> strengths() {
+        return indicators.stream().filter(i -> i.verdict() == ReportData.Verdict.FORTALEZA).toList();
+    }
+
+    public List<ReportData.Indicator> weaknesses() {
+        return indicators.stream().filter(i -> i.verdict() == ReportData.Verdict.DEBILIDAD).toList();
     }
 
     /**

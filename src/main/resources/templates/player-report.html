@@ -51,6 +51,13 @@
         tr.sep td { border-top: 2px solid #0b1220; }
         tr.unrecorded td { color: #718096; font-style: italic; }
         .category { page-break-before: always; }
+        .verdict { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
+        .v-FORTALEZA { background: #c6f6d5; color: #22543d; }
+        .v-DEBILIDAD { background: #fed7d7; color: #822727; }
+        .v-EN_LINEA { background: #e2e8f0; color: #2d3748; }
+        .v-MUESTRA_CHICA { background: #f7fafc; color: #718096; font-weight: normal; }
+        ul.sw { margin: 3px 0 6px 16px; padding: 0; }
+        ul.sw li { margin: 2px 0; }
     </style>
     <style th:if="${sample}">
         @page {
@@ -142,6 +149,38 @@
     </table>
     <p class="muted">Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es
         el promedio por partido jugado. El detalle de cada categoría sigue a continuación.</p>
+
+    <div class="nobreak" th:if="${!r.indicators.isEmpty()}">
+        <h2>Fortalezas y debilidades</h2>
+        <table class="two" th:with="fs=${r.strengths()}, ds=${r.weaknesses()}">
+            <tr>
+                <td>
+                    <h3>Fortalezas</h3>
+                    <ul class="sw" th:if="${!fs.isEmpty()}"><li th:each="i : ${fs}"><b th:text="|${i.area}:|"></b> <span th:text="${i.explanation}"></span></li></ul>
+                    <p class="muted" th:if="${fs.isEmpty()}">Ningún aspecto se destaca por encima de la referencia.</p>
+                </td>
+                <td>
+                    <h3>Aspectos a mejorar</h3>
+                    <ul class="sw" th:if="${!ds.isEmpty()}"><li th:each="i : ${ds}"><b th:text="|${i.area}:|"></b> <span th:text="${i.explanation}"></span></li></ul>
+                    <p class="muted" th:if="${ds.isEmpty()}">Ningún aspecto queda por debajo de la referencia.</p>
+                </td>
+            </tr>
+        </table>
+        <table>
+            <tr><th class="l">Área</th><th class="l">Indicador</th><th>Jugador</th><th>Referencia</th><th>Evaluación</th></tr>
+            <tr th:each="i : ${r.indicators}">
+                <td class="l" th:text="${i.area}"></td>
+                <td class="l" th:text="${i.metric}"></td>
+                <td th:text="${f.indicator(i.value, i.unit)}"></td>
+                <td th:text="|${i.referenceLabel} ${f.indicator(i.reference, i.unit)}|"></td>
+                <td><span th:class="|verdict v-${i.verdict}|" th:text="${i.verdict.label()}"></span></td>
+            </tr>
+        </table>
+        <p class="muted">Fortaleza o debilidad: más de un 10% mejor o peor que la referencia. La referencia son sus
+            compañeros en los mismos partidos (según las planillas de las actas); la efectividad del equipo se compara
+            con los partidos en que no jugó, y los goles recibidos en sus sanciones con el resto del tiempo. Con menos
+            de 3 casos, la muestra es chica.</p>
+    </div>
 
     <!--/* Un bloque por categoría, con todas sus estadísticas. */-->
     <div class="category" th:each="b : ${r.blocks}" th:with="l=${b.line}">
