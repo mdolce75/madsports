@@ -320,7 +320,8 @@ public class PlayerReportService {
     private static boolean sameCompetition(String a, String b) {
         String x = a.toUpperCase().replaceAll("\\s+", " ").trim();
         String y = b.toUpperCase().replaceAll("\\s+", " ").trim();
-        return !x.isEmpty() && (x.startsWith(y) || y.startsWith(x));
+        // Igual, no "empieza con": "JUNIORS FEMENINO" y "JUNIORS FEMENINO 2" son competiciones distintas.
+        return !x.isEmpty() && x.equals(y);
     }
 
     /** La categoría más baja en que figura el jugador en las planillas (su categoría real), si figura en alguna. */
