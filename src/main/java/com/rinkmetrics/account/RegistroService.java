@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.Locale;
 
@@ -27,19 +28,22 @@ public class RegistroService {
         }
     }
 
+    /** @param suscripcion código del plan elegido (CLUB_* o PLAYER_*, según el perfil) */
     public record Registro(Perfil perfil, String usuario, String clave, String email,
-                           int clubId, String categoria, String rama, Integer jugadorId) {
+                           int clubId, String categoria, String rama, Integer jugadorId, String suscripcion) {
     }
 
     private final UsuarioRepository usuarios;
+    private final SuscripcionTypeRepository planes;
     private final CatalogService catalog;
     private final RosterService roster;
     private final PasswordEncoder encoder;
     private final Clock clock;
 
-    public RegistroService(UsuarioRepository usuarios, CatalogService catalog, RosterService roster,
-                           PasswordEncoder encoder, Clock clock) {
+    public RegistroService(UsuarioRepository usuarios, SuscripcionTypeRepository planes, CatalogService catalog,
+                           RosterService roster, PasswordEncoder encoder, Clock clock) {
         this.usuarios = usuarios;
+        this.planes = planes;
         this.catalog = catalog;
         this.roster = roster;
         this.encoder = encoder;
@@ -59,15 +63,34 @@ public class RegistroService {
         if (usuarios.existsByEmailIgnoreCase(email)) {
             throw new ConflictException("Ya hay un usuario registrado con ese email.");
         }
+        SuscripcionType plan = plan(r);
         int year = catalog.defaultYear();
         ClubView club = catalog.club(r.clubId(), year);
 
+        Usuario u;
         if (r.perfil().player()) {
-            return registrarJugador(r, usuario, email, club, year);
+            u = registrarJugador(r, usuario, email, club, year);
+        } else {
+            // Club: sin nombre ni apellido (el registro no los pide).
+            u = new Usuario(usuario, encoder.encode(r.clave()), email, null, null,
+                    club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant());
         }
-        // Club: sin nombre ni apellido (el registro no los pide).
-        return usuarios.save(new Usuario(usuario, encoder.encode(r.clave()), email, null, null,
-                club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant()));
+        u.suscribir(plan, LocalDate.now(clock));
+        return usuarios.save(u);
+    }
+
+    /** Plan elegido: obligatorio y del perfil (CLUB_* para clubes, PLAYER_* para jugadores). */
+    private SuscripcionType plan(Registro r) {
+        if (r.suscripcion() == null || r.suscripcion().isBlank()) {
+            throw new IllegalArgumentException("Elegí un plan de suscripción.");
+        }
+        SuscripcionType plan = planes.findByCodigo(r.suscripcion().trim().toUpperCase(Locale.ROOT))
+                .orElseThrow(() -> new IllegalArgumentException("Plan de suscripción inválido: " + r.suscripcion() + "."));
+        if (plan.paraJugador() != r.perfil().player()) {
+            throw new IllegalArgumentException("El plan " + plan.getNombre() + " es para "
+                    + (plan.paraJugador() ? "jugadores" : "clubes") + ".");
+        }
+        return plan;
     }
 
     /** Jugador: el nombre y el apellido son los de la FPP (el jugador elegido de la planilla de su equipo). */
@@ -87,6 +110,6 @@ public class RegistroService {
                 club.id(), club.name(), club.code(), EnumSet.of(r.perfil()), clock.instant());
         u.vincularJugador(jugador.id(), jugador.name(),
                 CatalogService.CategoryOption.parse(r.categoria()).level(), r.rama().trim().toUpperCase(Locale.ROOT));
-        return usuarios.save(u);
+        return u;
     }
 }

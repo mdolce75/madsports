@@ -90,7 +90,7 @@ class SecurityTest {
 
     Map<String, Object> club(String usuario) {
         Map<String, Object> m = new HashMap<>(Map.of("perfil", "CLUBFPP", "usuario", usuario, "clave", "clave-segura",
-                "email", usuario + "@example.com", "clubId", 74));
+                "email", usuario + "@example.com", "clubId", 74, "suscripcion", "CLUB_MENSUAL"));
         return m;
     }
 
@@ -98,7 +98,7 @@ class SecurityTest {
     Map<String, Object> player(String usuario) {
         Map<String, Object> m = club(usuario);
         m.putAll(Map.of("perfil", "PLAYERFPP", "categoria", "PRIMERA", "rama", "MASCULINO",
-                "jugadorId", 3851));
+                "jugadorId", 3851, "suscripcion", "PLAYER_ANUAL"));
         return m;
     }
 
@@ -156,6 +156,10 @@ class SecurityTest {
         assertThat(u.getPerfiles()).containsExactly(Perfil.CLUBFPP);
         assertThat(u.getClave()).isNotEqualTo("clave-segura").startsWith("$2");
         assertThat(u.getClubNombre()).isEqualTo("VELEZ");
+        // El plan elegido queda como suscripción desde hoy.
+        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("CLUB_MENSUAL");
+        assertThat(u.getSuscripcionDesde()).isEqualTo(java.time.LocalDate.now());
+        assertThat(u.getSuscripcionHasta()).isEqualTo(java.time.LocalDate.now().plusMonths(1).minusDays(1));
         assertThat(u.getNombre()).isNull();   // el registro no pide nombre ni apellido
 
         // Sin confirmar el email no se ingresa (con la clave correcta se avisa por qué).
@@ -184,6 +188,7 @@ class SecurityTest {
         assertThat(u.getPerfiles()).containsExactly(Perfil.PLAYERFPP);
         assertThat(u.getJugadorId()).isEqualTo(3851);
         assertThat(u.getJugadorNombre()).isEqualTo("Ignacio J Graiño");
+        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("PLAYER_ANUAL");
         assertThat(u.getNombre()).isEqualTo("Ignacio J");
         assertThat(u.getApellido()).isEqualTo("Graiño");
         assertThat(u.getCategoria()).isEqualTo("PRIMERA");
@@ -206,6 +211,16 @@ class SecurityTest {
         Map<String, Object> clave = club("pedro");
         clave.put("clave", "corta");
         register(clave).andExpect(status().isBadRequest());
+
+        Map<String, Object> sinPlan = club("pedro");
+        sinPlan.remove("suscripcion");
+        register(sinPlan).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Elegí un plan de suscripción."));
+
+        Map<String, Object> planDeJugador = club("pedro");
+        planDeJugador.put("suscripcion", "PLAYER_MENSUAL");
+        register(planDeJugador).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El plan Jugador mensual es para jugadores."));
 
         Map<String, Object> clubInexistente = club("pedro");
         clubInexistente.put("clubId", 99);
@@ -290,6 +305,24 @@ class SecurityTest {
         String preview = realMailer.html(m).replace("cid:logo",
                 "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(Mailer.logo()));
         java.nio.file.Files.writeString(java.nio.file.Path.of("target", "mail-ejemplo.html"), preview);
+    }
+
+    @Test
+    void planesConPrecioInformesYAhorro() throws Exception {
+        mvc.perform(get("/api/suscripciones").param("perfil", "CLUBFPP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains(
+                        "CLUB_MENSUAL", "CLUB_TRIMESTRAL", "CLUB_SEMESTRAL", "CLUB_ANUAL")))
+                .andExpect(jsonPath("$[*].precioUsd").value(org.hamcrest.Matchers.contains(30.0, 80.0, 150.0, 280.0)))
+                .andExpect(jsonPath("$[*].informesPorMes").value(org.hamcrest.Matchers.contains(8, 10, 12, 14)))
+                // 80 contra 3 x 30 = 90 -> 11%; 150 contra 180 -> 17%; 280 contra 360 -> 22%.
+                .andExpect(jsonPath("$[*].ahorroPct").value(org.hamcrest.Matchers.contains(0, 11, 17, 22)))
+                .andExpect(jsonPath("$[1].precioPorMes").value(26.67));
+        mvc.perform(get("/api/suscripciones").param("perfil", "PLAYERFPP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains(
+                        "PLAYER_MENSUAL", "PLAYER_TRIMESTRAL", "PLAYER_SEMESTRAL", "PLAYER_ANUAL")))
+                .andExpect(jsonPath("$[*].precioUsd").value(org.hamcrest.Matchers.contains(15.0, 40.0, 75.0, 140.0)))
+                .andExpect(jsonPath("$[*].informesPorMes").value(org.hamcrest.Matchers.contains(4, 6, 8, 10)))
+                .andExpect(jsonPath("$[*].ahorroPct").value(org.hamcrest.Matchers.contains(0, 11, 17, 22)));
     }
 
     @Test
