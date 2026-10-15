@@ -238,6 +238,42 @@ class PlayerReportServiceTest {
     }
 
     @Test
+    void dondeBuscarSegunLaCategoriaEnQueFigura() {
+        // Quien figura en Primera puede ser Juvenil, Juniors, Reserva o Primera: se busca en todas esas.
+        assertThat(Eligibility.possibleBases("PRIMERA")).containsExactly("JUVENIL", "JUNIORS", "RESERVA", "PRIMERA");
+        assertThat(Eligibility.searchLevels("PRIMERA")).containsExactly("JUVENIL", "JUNIORS", "RESERVA", "PRIMERA");
+        assertThat(Eligibility.searchLevels("JUNIORS"))
+                .containsExactly("PREJUVENIL", "JUVENIL", "JUNIORS", "RESERVA", "PRIMERA");
+        assertThat(Eligibility.searchLevels("INFANTIL")).containsExactly("INFANTIL", "PREJUVENIL", "JUVENIL");
+        assertThat(Eligibility.searchLevels(null)).isEmpty();
+        assertThat(Eligibility.lowest(List.of("PRIMERA", "JUVENIL", "JUNIORS"))).isEqualTo("JUVENIL");
+    }
+
+    @Test
+    void suCategoriaEsLaMasBajaEnQueJugo() {
+        // Graiño figura en Primera y (simulado) en un equipo de Juvenil: es Juvenil.
+        Competition juvenil = new Competition(primera.id(), primera.name(), primera.federationId(), primera.seasonId(),
+                primera.torneo(), new Competition.Category("JUVENIL", "MASCULINO"), 1, primera.teams(),
+                primera.periodMinutes());
+        TeamInput enPrimera = team(5581, "Primera Masculino", velezSheets());
+        TeamInput enJuvenil = new TeamInput(juvenil, "Juvenil Masculino", 5581, enPrimera.matches(), enPrimera.sheets(),
+                enPrimera.events());
+        assertThat(PlayerReportService.baseLevel(3851, List.of(enPrimera, enJuvenil))).contains("JUVENIL");
+        assertThat(PlayerReportService.baseLevel(3851, List.of(enPrimera))).contains("PRIMERA");
+        assertThat(PlayerReportService.baseLevel(1, List.of(enPrimera))).isEmpty();
+
+        // Con su categoría real se revisan las de un Juvenil (incluye Juvenil y Juniors), y el informe lo aclara.
+        Query q = new Query(3851, "Ignacio J Graiño", "X", 74, 2026, Scope.TEMPORADA,
+                Eligibility.searchLevels("PRIMERA"), "MASCULINO").withBase("JUVENIL");
+        assertThat(q.levels()).containsExactly("JUVENIL", "JUNIORS", "RESERVA", "PRIMERA");
+        assertThat(q.eligible(juvenil)).isTrue();
+        PlayerReport r = PlayerReportService.assemble(q, VELEZ, HOY, LEVELS, List.of(enJuvenil, enPrimera));
+        assertThat(r.notes().getFirst()).isEqualTo("Su categoría es Juvenil (la más baja en que jugó en 2026). "
+                + "Categorías en que puede jugar: Juvenil, Juniors, Reserva y Primera Masculino.");
+        assertThat(r.categories()).extracting(Line::category).containsExactly("Juvenil Masculino", "Primera Masculino");
+    }
+
+    @Test
     void siNoFiguraLoInforma() {
         PlayerReport r = PlayerReportService.assemble(query(1, "Nadie"), VELEZ, HOY, LEVELS,
                 List.of(team(5581, "Primera Masculino", velezSheets())));

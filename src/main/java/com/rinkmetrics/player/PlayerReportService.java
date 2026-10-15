@@ -61,14 +61,26 @@ public class PlayerReportService {
      * @param playerName nombre del jugador en la FPP
      * @param fullName   nombre y apellido del usuario (como se registró)
      * @param scope      Apertura, Clausura o Apertura + Clausura
-     * @param levels     categorías en que puede jugar (ver {@link Eligibility}); vacía = todas
+     * @param levels     categorías a revisar (ver {@link Eligibility}); vacía = todas
      * @param branch     rama del jugador (MASCULINO o FEMENINO); null = ambas
+     * @param base       su categoría real, ya determinada (la más baja en que jugó); null si todavía no se sabe
      */
     public record Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
-                        List<String> levels, String branch) {
+                        List<String> levels, String branch, String base) {
 
         public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope) {
-            this(playerId, playerName, fullName, clubId, year, scope, List.of(), null);
+            this(playerId, playerName, fullName, clubId, year, scope, List.of(), null, null);
+        }
+
+        public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
+                     List<String> levels, String branch) {
+            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null);
+        }
+
+        /** Con su categoría real: se revisan solo las categorías en que puede jugar un jugador de esa categoría. */
+        Query withBase(String level) {
+            return new Query(playerId, playerName, fullName, clubId, year, scope, Eligibility.levels(level), branch,
+                    level);
         }
 
         boolean eligible(Competition c) {
@@ -233,7 +245,18 @@ public class PlayerReportService {
         }
         ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(),
                 Crests.tile(sidgad.clubLogo(ReportService.logoFile(all, club.id()))));
-        return assemble(q, info, LocalDate.now(clock), levels, inputs);
+        // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
+        Query resolved = baseLevel(q.playerId(), inputs).map(q::withBase).orElse(q);
+        List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
+        return assemble(resolved, info, LocalDate.now(clock), levels, own);
+    }
+
+    /** La categoría más baja en que figura el jugador en las planillas (su categoría real), si figura en alguna. */
+    static Optional<String> baseLevel(int playerId, List<TeamInput> inputs) {
+        return Optional.ofNullable(Eligibility.lowest(inputs.stream()
+                .filter(in -> in.sheets().values().stream().anyMatch(s -> s.stream().anyMatch(p -> p.playerId() == playerId)))
+                .map(in -> in.competition().category().level())
+                .toList()));
     }
 
     static List<Match> teamMatches(List<Match> calendar, int teamId) {
@@ -324,7 +347,10 @@ public class PlayerReportService {
         rows.sort(Comparator.comparing(MatchRow::date, Comparator.nullsLast(Comparator.naturalOrder())));
 
         List<String> notes = new ArrayList<>();
-        if (q.eligibleLabel() != null) {
+        if (q.base() != null && q.eligibleLabel() != null) {
+            notes.add("Su categoría es " + new Competition.Category(q.base(), "").levelLabel() + " (la más baja en que jugó en "
+                    + q.year() + "). Categorías en que puede jugar: " + q.eligibleLabel() + ".");
+        } else if (q.eligibleLabel() != null) {
             notes.add("Categorías revisadas: " + q.eligibleLabel() + ", las que corresponden a su categoría.");
         }
         if (categories.isEmpty()) {
