@@ -236,7 +236,9 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
   separado, cada una con su promedio por partido; y penales y libres directos (convertidos, tirados y efectividad,
   con donas). Además, goles y tarjetas por tramos de 5 minutos (gráfico de columnas, con las tarjetas apiladas por
   color) y el detalle partido a partido.
-- **Fortalezas y debilidades del jugador:** con el mismo criterio que el informe de equipo (±10% de la
+- **Fortalezas y debilidades del jugador:** van por cada categoría en que jugó, dentro de su bloque y contra sus
+  compañeros de esa categoría. Si jugó en más de una, al final aparecen las generales. Usan el mismo criterio que el
+  informe de equipo (±10% de la
   referencia es "en línea"; con menos de 3 casos, "muestra chica"). Compara contra sus compañeros en los mismos
   partidos, según las planillas: goles por partido, titularidad, tarjetas por partido, azules y rojas, penales y
   libres convertidos. También compara la efectividad del equipo con él y sin él, y los goles recibidos durante sus

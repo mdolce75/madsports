@@ -365,9 +365,13 @@ public class PlayerReportService {
             }
         }
         List<PlayerReport.CategoryBlock> blocks = categories.stream()
-                .map(l -> new PlayerReport.CategoryBlock(l, minutesByCategory.get(l.category()).result(),
-                        shortHandedByCategory.get(l.category()).result(),
-                        rows.stream().filter(row -> row.category().equals(l.category())).toList()))
+                .map(l -> {
+                    ReportData.ShortHanded catShort = shortHandedByCategory.get(l.category()).result();
+                    List<TeamInput> catInputs = inputs.stream().filter(in -> in.category().equals(l.category())).toList();
+                    return new PlayerReport.CategoryBlock(l, minutesByCategory.get(l.category()).result(), catShort,
+                            rows.stream().filter(row -> row.category().equals(l.category())).toList(),
+                            PlayerStrengths.evaluate(q.playerId(), catInputs, catShort));
+                })
                 .toList();
         ReportData.ShortHanded sh = shortHanded.result();
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,

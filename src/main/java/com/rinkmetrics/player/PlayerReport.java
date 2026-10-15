@@ -44,10 +44,14 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
 
     /**
      * Todas las estadísticas de una categoría: totales, goles y tarjetas por tramo, goles con uno menos por sus
-     * sanciones y sus partidos.
+     * sanciones, sus partidos y sus fortalezas y debilidades (contra sus compañeros en esa categoría).
      */
     public record CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded,
-                                List<MatchRow> matches) {
+                                List<MatchRow> matches, List<ReportData.Indicator> indicators) {
+
+        public CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches) {
+            this(line, minutes, shortHanded, matches, List.of());
+        }
     }
 
     public boolean hasData() {

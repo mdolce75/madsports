@@ -17,6 +17,7 @@ import java.util.List;
 import com.rinkmetrics.stats.StatsEngine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 @SpringBootTest(properties = "fpp.ai.enabled=false")
 class SampleReportTest {
@@ -130,8 +131,22 @@ class SampleReportTest {
         assertThat(r.indicators()).anyMatch(i -> i.verdict() != com.rinkmetrics.stats.ReportData.Verdict.MUESTRA_CHICA);
         assertThat(r.strengths().size() + r.weaknesses().size()).isPositive();
 
+        // Por categoría: cada bloque compara contra los compañeros de esa categoría (sus goles por partido son los
+        // de la categoría, no los generales).
+        for (PlayerReport.CategoryBlock b : r.blocks()) {
+            assertThat(b.indicators()).isNotEmpty();
+            assertThat(b.indicators()).filteredOn(i -> i.metric().equals("Goles por partido")).singleElement()
+                    .satisfies(i -> assertThat(i.value()).isCloseTo(b.line().goalsPerGame(), within(1e-9)));
+        }
+
         String html = renderer.playerHtml(r, true);
-        assertThat(html).contains("Fortalezas y debilidades", "Aspectos a mejorar", "Compañeros");
+        assertThat(html).contains("Aspectos a mejorar", "Compañeros");
+        // Primero las de cada categoría y al final las generales.
+        int juniors = html.indexOf("Fortalezas y debilidades en Juniors Masculino");
+        int primera = html.indexOf("Fortalezas y debilidades en Primera Masculino");
+        int general = html.indexOf("Fortalezas y debilidades generales");
+        assertThat(juniors).isPositive().isLessThan(primera);
+        assertThat(primera).isLessThan(general);
         assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.", "Tomás Ejemplo",
                 "CLUB EJEMPLO", "Penales y libres directos", "Goles y tarjetas por tramos de 5 minutos");
         assertThat(renderer.playerHtml(r, false)).doesNotContain("DATOS FICTICIOS");
