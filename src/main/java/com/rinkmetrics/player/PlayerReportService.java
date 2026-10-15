@@ -16,6 +16,7 @@ import com.rinkmetrics.sidgad.model.Models.LineupPlayer;
 import com.rinkmetrics.sidgad.model.Models.Match;
 import com.rinkmetrics.sidgad.model.Models.MatchEvent;
 import com.rinkmetrics.sidgad.model.Models.EventType;
+import com.rinkmetrics.sidgad.model.Models.SeasonMatch;
 import com.rinkmetrics.stats.ShortHandedCalc;
 import com.rinkmetrics.sidgad.model.Models.TeamRef;
 import com.rinkmetrics.sidgad.parse.SidgadParser;
@@ -128,13 +129,32 @@ public class PlayerReportService {
     /**
      * Lo leído de SIDGAD para un equipo del club en una competición: sus partidos jugados, su planilla en cada uno y
      * los eventos del acta (goles y tarjetas con minuto e {@code id_player}).
+     *
+     * @param summaries      partidos sin acta en que figura el jugador, según su ficha de temporada (por idp)
+     * @param summaryLoaded  se pudo leer su ficha de temporada: un partido sin acta que no figura ahí no lo jugó
      */
     record TeamInput(Competition competition, String category, int teamId, List<Match> matches,
-                     Map<Integer, List<LineupPlayer>> sheets, Map<Integer, List<MatchEvent>> events) {
+                     Map<Integer, List<LineupPlayer>> sheets, Map<Integer, List<MatchEvent>> events,
+                     Map<Integer, SeasonMatch> summaries, boolean summaryLoaded) {
+
+        TeamInput(Competition competition, String category, int teamId, List<Match> matches,
+                  Map<Integer, List<LineupPlayer>> sheets, Map<Integer, List<MatchEvent>> events) {
+            this(competition, category, teamId, matches, sheets, events, Map.of(), false);
+        }
 
         TeamInput(Competition competition, String category, int teamId, List<Match> matches,
                   Map<Integer, List<LineupPlayer>> sheets) {
             this(competition, category, teamId, matches, sheets, Map.of());
+        }
+
+        TeamInput withSummaries(Map<Integer, SeasonMatch> summaries) {
+            return new TeamInput(competition, category, teamId, matches, sheets, events, summaries, true);
+        }
+
+        /** ¿El jugador figura en este equipo, en alguna planilla o en su ficha de temporada? */
+        boolean playedBy(int playerId) {
+            return !summaries.isEmpty()
+                    || sheets.values().stream().anyMatch(s -> s.stream().anyMatch(p -> p.playerId() == playerId));
         }
     }
 
@@ -243,6 +263,7 @@ public class PlayerReportService {
                 }
             }
         }
+        inputs = withSummaries(q, comps, inputs, job);
         ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(),
                 Crests.tile(sidgad.clubLogo(ReportService.logoFile(all, club.id()))));
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
@@ -251,10 +272,61 @@ public class PlayerReportService {
         return assemble(resolved, info, LocalDate.now(clock), levels, own);
     }
 
+    /**
+     * Partidos sin acta publicada: SIDGAD los lista igual en la ficha de temporada del jugador, con sus goles, libres,
+     * penales, azules y rojas. Si la ficha no se puede leer, esos partidos quedan como "sin acta".
+     */
+    private List<TeamInput> withSummaries(Query q, List<Competition> comps, List<TeamInput> inputs, Job job) {
+        boolean missing = inputs.stream().anyMatch(in -> in.matches().stream()
+                .anyMatch(m -> in.sheets().getOrDefault(m.idp(), List.of()).isEmpty()));
+        if (!missing) {
+            return inputs;
+        }
+        job.update(Status.EXTRAYENDO, "Leyendo la ficha de temporada del jugador (partidos sin acta)");
+        List<SeasonMatch> season = new ArrayList<>();
+        for (int seasonId : comps.stream().map(Competition::seasonId).distinct().toList()) {
+            try {
+                season.addAll(SidgadParser.seasonMatches(sidgad.playerSeason(q.playerId(), seasonId)));
+            } catch (SidgadClient.SidgadException e) {
+                log.info("No se pudo leer la ficha de temporada del jugador {}: {}", q.playerId(), e.getMessage());
+                return inputs;
+            }
+        }
+        if (season.isEmpty()) {
+            return inputs;
+        }
+        return inputs.stream().map(in -> in.withSummaries(summaries(in, season))).toList();
+    }
+
+    /**
+     * Los partidos sin acta del equipo que figuran en la ficha de temporada del jugador: por idp o, si la fila no lo
+     * trae, por fecha dentro de la misma competición.
+     */
+    static Map<Integer, SeasonMatch> summaries(TeamInput in, List<SeasonMatch> season) {
+        Map<Integer, SeasonMatch> out = new LinkedHashMap<>();
+        for (Match m : in.matches()) {
+            if (!in.sheets().getOrDefault(m.idp(), List.of()).isEmpty()) {
+                continue;
+            }
+            season.stream()
+                    .filter(s -> s.idp() == m.idp() || (s.idp() == 0 && Objects.equals(s.date(), m.date())
+                            && sameCompetition(s.competition(), in.competition().name())))
+                    .findFirst()
+                    .ifPresent(s -> out.put(m.idp(), s));
+        }
+        return out;
+    }
+
+    private static boolean sameCompetition(String a, String b) {
+        String x = a.toUpperCase().replaceAll("\\s+", " ").trim();
+        String y = b.toUpperCase().replaceAll("\\s+", " ").trim();
+        return !x.isEmpty() && (x.startsWith(y) || y.startsWith(x));
+    }
+
     /** La categoría más baja en que figura el jugador en las planillas (su categoría real), si figura en alguna. */
     static Optional<String> baseLevel(int playerId, List<TeamInput> inputs) {
         return Optional.ofNullable(Eligibility.lowest(inputs.stream()
-                .filter(in -> in.sheets().values().stream().anyMatch(s -> s.stream().anyMatch(p -> p.playerId() == playerId)))
+                .filter(in -> in.playedBy(playerId))
                 .map(in -> in.competition().category().level())
                 .toList()));
     }
@@ -273,8 +345,7 @@ public class PlayerReportService {
         List<MatchRow> rows = new ArrayList<>();
         // Tramos según la duración de tiempo más larga entre las categorías en que jugó (20' o 25').
         MinuteCounter minutes = new MinuteCounter(inputs.stream()
-                .filter(in -> in.sheets().values().stream()
-                        .anyMatch(sheet -> sheet.stream().anyMatch(p -> p.playerId() == q.playerId())))
+                .filter(in -> in.playedBy(q.playerId()))
                 .mapToInt(in -> in.competition().periodMinutes() > 0 ? in.competition().periodMinutes()
                         : Competition.DEFAULT_PERIOD_MINUTES)
                 .max().orElse(Competition.DEFAULT_PERIOD_MINUTES));
@@ -289,20 +360,28 @@ public class PlayerReportService {
                     (a, b) -> a.periodMinutes() >= b.periodMinutes() ? a : b);
             shortHandedByCategory.putIfAbsent(in.category(), new ShortHandedCalc());
         }
+        Map<String, Integer> fromSummary = new LinkedHashMap<>();
         for (TeamInput in : inputs) {
             int won = 0, drawn = 0, lost = 0, goals = 0, yellow = 0, blue = 0, red = 0, played = 0, withoutSheet = 0;
             int penScored = 0, penTaken = 0, fdScored = 0, fdTaken = 0;
             for (Match m : in.matches()) {
+                boolean home = m.homeTeamId() == in.teamId();
                 List<LineupPlayer> sheet = in.sheets().getOrDefault(m.idp(), List.of());
-                if (sheet.isEmpty()) {
-                    withoutSheet++;     // acta no publicada: no se sabe si jugó
-                    continue;
+                SeasonMatch summary = sheet.isEmpty() ? in.summaries().get(m.idp()) : null;
+                if (sheet.isEmpty() && summary == null) {
+                    if (!in.summaryLoaded()) {
+                        withoutSheet++; // acta no publicada y sin ficha de temporada: no se sabe si jugó
+                    }
+                    continue;           // sin acta y no figura en su ficha de temporada: no jugó
                 }
-                Optional<LineupPlayer> me = sheet.stream().filter(p -> p.playerId() == q.playerId()).findFirst();
+                Optional<LineupPlayer> me = summary != null ? Optional.of(fromSummary(q, summary, home))
+                        : sheet.stream().filter(p -> p.playerId() == q.playerId()).findFirst();
                 if (me.isEmpty()) {
                     continue;           // no figura en la planilla de ese partido
                 }
-                boolean home = m.homeTeamId() == in.teamId();
+                if (summary != null) {
+                    fromSummary.merge(in.category(), 1, Integer::sum);
+                }
                 int gf = home ? m.homeGoals() : m.awayGoals();
                 int ga = home ? m.awayGoals() : m.homeGoals();
                 String result = gf > ga ? "G" : gf == ga ? "E" : "P";
@@ -330,7 +409,7 @@ public class PlayerReportService {
                 rows.add(new MatchRow(m.date(), in.category(),
                         in.competition().torneo() == null ? "" : in.competition().torneo().label(),
                         home ? m.awayName() : m.homeName(), home, gf, ga, result,
-                        p.starter(), p.goals(), p.yellowCards(), p.blueCards(), p.redCards()));
+                        p.starter(), p.goals(), p.yellowCards(), p.blueCards(), p.redCards(), summary != null));
             }
             if (played == 0) {
                 continue;               // el jugador no figura en este equipo
@@ -358,6 +437,13 @@ public class PlayerReportService {
                     + " (" + q.scope().label() + ").");
         }
         for (Line l : categories) {
+            int summarized = fromSummary.getOrDefault(l.category(), 0);
+            if (summarized > 0) {
+                notes.add(l.category() + ": " + (summarized == 1 ? "1 partido sin acta publicada se tomó"
+                        : summarized + " partidos sin acta publicada se tomaron") + " de su ficha de temporada en"
+                        + " SIDGAD (goles, azules, rojas, penales y libres; sin amarillas ni minutos). Van marcados"
+                        + " con * en el partido a partido.");
+            }
             if (l.withoutSheet() > 0) {
                 notes.add(l.category() + ": " + l.withoutSheet() + (l.withoutSheet() == 1
                         ? " partido del equipo no tiene acta publicada; si jugó, no está contado."
@@ -377,6 +463,15 @@ public class PlayerReportService {
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
                 categories, total, minutes.result(), sh, rows, notes, blocks,
                 PlayerStrengths.evaluate(q.playerId(), inputs, sh));
+    }
+
+    /**
+     * Su "planilla" en un partido sin acta, armada con la ficha de temporada: sin amarillas ni titularidad (la ficha
+     * no las trae). Sin eventos, sus goles y tarjetas van a "sin minuto registrado".
+     */
+    static LineupPlayer fromSummary(Query q, SeasonMatch s, boolean home) {
+        return new LineupPlayer(q.playerId(), "", home, "", q.playerName(), false, s.goals(), 0, s.blueCards(),
+                s.redCards(), s.penaltiesScored(), s.penaltiesTaken(), s.directFreeScored(), s.directFreeTaken());
     }
 
     /**

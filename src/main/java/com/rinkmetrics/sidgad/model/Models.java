@@ -88,6 +88,19 @@ public final class Models {
         }
     }
 
+    /**
+     * Un partido de la ficha de temporada de un jugador ({@code cap_profileseason}): SIDGAD lo lista aunque el partido
+     * no tenga acta publicada, con lo que se le anotó. No trae amarillas, titularidad ni minutos.
+     *
+     * @param competition nombre de la competición ("TORNEO APERTURA JUVENIL MASCULINO (FPP)")
+     * @param idp         id del partido (0 si la fila no lo trae)
+     */
+    public record SeasonMatch(String competition, java.time.LocalDate date, String home, String away,
+                              int homeGoals, int awayGoals, int idp, int goals, int assists,
+                              int directFreeScored, int directFreeTaken, int penaltiesScored, int penaltiesTaken,
+                              int blueCards, int redCards) {
+    }
+
     public record PlayerStats(int playerId, int teamId, String teamCode, int clubId, String name,
                               int goals, int games, int assists,
                               int penaltiesScored, int penaltiesTaken,
