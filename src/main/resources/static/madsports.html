@@ -246,8 +246,8 @@ footer { border-top: 1px solid var(--rule); padding-block: 26px 40px; display: f
           <div class="stat"><b>Infantil → Primera</b><span>Seis categorías, rama masculina y femenina</span></div>
           <div class="stat"><b>5'</b><span>Tramos para goles, tarjetas y faltas</span></div>
           <div class="prices" aria-label="Planes mensuales">
-            <div class="price"><span class="eyebrow">Jugador</span><b>U$S 15</b><span>por mes · hasta 4 informes</span></div>
-            <div class="price"><span class="eyebrow">Club</span><b>U$S 30</b><span>por mes · hasta 8 informes</span></div>
+            <div class="price"><span class="eyebrow">Jugador</span><b id="precio-jugador">—</b><span>por mes · hasta 4 informes</span></div>
+            <div class="price"><span class="eyebrow">Club</span><b id="precio-club">—</b><span>por mes · hasta 8 informes</span></div>
           </div>
           <span class="eyebrow">Planes trimestrales, semestrales y anuales con hasta 22% de descuento</span>
           <a class="btn primary" href="/registro.html">Elegí tu plan</a>
@@ -363,6 +363,17 @@ document.getElementById("copy").addEventListener("click", () => {
       () => { select(); msg.textContent = "Correo seleccionado: copialo con Ctrl+C."; });
   } catch (e) { select(); msg.textContent = "Correo seleccionado: copialo con Ctrl+C."; }
 });
+
+// Precio mensual de cada plan, en pesos al dólar oficial del día (lo calcula la API de planes).
+for (const [perfil, id] of [["PLAYERFPP", "precio-jugador"], ["CLUBFPP", "precio-club"]]) {
+  fetch("/api/suscripciones?perfil=" + perfil)
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(planes => {
+      const mensual = planes.find(p => p.meses === 1);
+      if (mensual) document.getElementById(id).textContent = "$ " + Number(mensual.precio).toLocaleString("es-AR");
+    })
+    .catch(() => { document.getElementById(id).textContent = "Ver planes"; });
+}
 </script>
 
 </body>
