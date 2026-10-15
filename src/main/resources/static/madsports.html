@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mad Sports · Estadísticas deportivas</title>
 <meta name="description" content="Mad Sports convierte actas, planillas y resultados oficiales en informes deportivos. Dueña de RinkMetrics, la app de métricas de hockey sobre patines.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1a2b'/%3E %3Cg fill='none' stroke='%23fff' stroke-opacity='.9' stroke-width='2.4'%3E %3Crect x='9' y='15' width='46' height='34' rx='7'/%3E %3Cpath d='M32 15 V49'/%3E %3Ccircle cx='32' cy='32' r='6'/%3E %3C/g%3E %3Cpath d='M14 43 Q26 6 46 22' fill='none' stroke='%23ff5a1f' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='0.5 4.5'/%3E %3Ccircle cx='47' cy='23' r='5' fill='%23ff5a1f' stroke='%230f1a2b' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='t' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23ff5a1f' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23ff5a1f' stop-opacity='.75'/%3E%3C/linearGradient%3E%3C/defs%3E %3Crect width='64' height='64' rx='14' fill='%230f1a2b'/%3E %3Cg transform='rotate(-18 32 32)'%3E %3Cpath d='M6 32 L40 21 L40 43 Z' fill='url(%23t)'/%3E %3Cg stroke='%23fff' stroke-linecap='round' stroke-width='2.4'%3E %3Cpath d='M12 19 H26' stroke-opacity='.45'/%3E %3Cpath d='M16 45 H28' stroke-opacity='.3'/%3E %3C/g%3E %3Ccircle cx='42' cy='32' r='11' fill='%23ff5a1f'/%3E %3Ccircle cx='38' cy='27.5' r='2.6' fill='%23fff' fill-opacity='.85'/%3E %3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -141,16 +141,19 @@ footer { border-top: 1px solid var(--rule); padding-block: 26px 40px; display: f
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#inicio" aria-label="Mad Sports, inicio">
-      <!-- Logo: una cancha vista desde arriba y la trayectoria de la pelota (la jugada que medimos) -->
+      <!-- Logo: una pelota en movimiento con su estela -->
       <svg viewBox="0 0 64 64" aria-hidden="true">
+        <defs><linearGradient id="ms-trail" x1="0" x2="1"><stop offset="0" stop-color="#ff5a1f" stop-opacity="0"/><stop offset="1" stop-color="#ff5a1f" stop-opacity=".75"/></linearGradient></defs>
         <rect width="64" height="64" rx="14" fill="#0f1a2b"/>
-        <g fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2.4">
-          <rect x="9" y="15" width="46" height="34" rx="7"/>
-          <path d="M32 15 V49"/>
-          <circle cx="32" cy="32" r="6"/>
+        <g transform="rotate(-18 32 32)">
+          <path d="M6 32 L40 21 L40 43 Z" fill="url(#ms-trail)"/>
+          <g stroke="#fff" stroke-linecap="round" stroke-width="2.4">
+            <path d="M12 19 H26" stroke-opacity=".45"/>
+            <path d="M16 45 H28" stroke-opacity=".3"/>
+          </g>
+          <circle cx="42" cy="32" r="11" fill="#ff5a1f"/>
+          <circle cx="38" cy="27.5" r="2.6" fill="#fff" fill-opacity=".85"/>
         </g>
-        <path d="M14 43 Q26 6 46 22" fill="none" stroke="#ff5a1f" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0.5 4.5"/>
-        <circle cx="47" cy="23" r="5" fill="#ff5a1f" stroke="#0f1a2b" stroke-width="2"/>
       </svg>
       <b>Mad Sports</b>
     </a>
