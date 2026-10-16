@@ -671,3 +671,10 @@ body.dt-vivo .dt-menu { display: none; }
 .eq-balance { margin: 12px 0 4px; }
 @media (min-width: 760px) { .eq-balance { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .eq-rankings { margin-top: 18px; align-items: start; }
+
+/* Partidos: la caja de nuevo partido y la lista, lado a lado desde tablet. */
+.partidos-grid { display: grid; gap: 16px; margin-top: 12px; align-items: start; }
+.partidos-grid .dt-mis { margin-top: 0; }
+@media (min-width: 860px) { .partidos-grid { grid-template-columns: minmax(320px, 5fr) minmax(0, 7fr); gap: 24px; } }
+/* Los títulos de las vistas del DT, todos del mismo color (dentro de .dt-line heredaban el gris). */
+.dt-vista .section-title { color: var(--ink); }
