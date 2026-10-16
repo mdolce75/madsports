@@ -10,7 +10,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/css/app.css">
 </head>
-<body>
+<body class="home">
 <div class="wrap">
     <div class="topbar">
         <div id="brand"></div>
@@ -25,7 +25,7 @@
         <span class="tag">Hockey sobre patines</span>
         <h1>Tu juego,<br><em>en números.</em></h1>
         <p class="lead">Dos herramientas para la Federación Porteña de Patín (FPP) y la Asociación Mendocina de Patín
-            (AMP): informes de rendimiento para clubes y jugadores, y la planilla en vivo para el entrenador.</p>
+            (AMP): informes de rendimiento para clubes y jugadores, y Métricas DT, las estadísticas en vivo para el entrenador.</p>
     </section>
     </div>
     <div class="main">
@@ -45,7 +45,7 @@
         </article>
         <article class="example">
             <span class="tag">Entrenador</span>
-            <h3>Planilla DT</h3>
+            <h3>Métricas DT</h3>
             <p class="hint">Las estadísticas de cada jugador, cargadas en vivo desde el celular.</p>
             <ul>
                 <li>Pérdidas, recuperaciones, tiros y atajadas</li>
@@ -53,7 +53,7 @@
                 <li>Reloj del partido y marcador</li>
                 <li>Funciona aunque se corte la señal</li>
             </ul>
-            <a class="btn primary" href="/dt-inicio.html">Conocer la Planilla DT</a>
+            <a class="btn primary" href="/dt-inicio.html">Conocer Métricas DT</a>
             <a class="btn ghost" href="/registro.html?seccion=dt">Registrarme</a>
         </article>
     </div>
@@ -76,13 +76,13 @@
         const go = document.createElement("a");
         go.className = "btn primary";
         go.href = s.inicio;
-        go.textContent = s.inicio === "/dt.html" ? "Mi planilla" : "Mis informes";
+        go.textContent = s.inicio === "/dt.html" ? "Mis métricas DT" : "Mis informes";
         $("userbar").prepend(go);
         for (const cta of document.querySelectorAll("[data-cta]")) {
             const link = document.createElement("a");
             link.className = "go-link";
             link.href = s.inicio;
-            link.textContent = s.inicio === "/dt.html" ? "Ir a mi planilla" : "Ir a mis informes";
+            link.textContent = s.inicio === "/dt.html" ? "Ir a Métricas DT" : "Ir a mis informes";
             cta.replaceChildren(link);
         }
     });

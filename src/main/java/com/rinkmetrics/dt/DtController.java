@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Planilla DT en vivo (perfiles DTFPP y DTAMP): rivales posibles, plantel, partidos, acciones y reloj. Cada DT ve solo
+ * Métricas DT en vivo (perfiles DTFPP y DTAMP): rivales posibles, plantel, partidos, acciones y reloj. Cada DT ve solo
  * sus equipos y sus partidos; el partido de otro DT responde 404.
  */
 @RestController

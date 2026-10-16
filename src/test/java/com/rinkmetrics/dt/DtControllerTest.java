@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** API de la planilla DT, con la base H2 en memoria, SIDGAD simulado y un reloj que se adelanta a mano. */
+/** API de Métricas DT, con la base H2 en memoria, SIDGAD simulado y un reloj que se adelanta a mano. */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:planilla;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 class DtControllerTest {

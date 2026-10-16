@@ -1,5 +1,5 @@
 /* Paleta "petróleo y teal": fondo gris azulado (no blanco), tarjetas apenas más claras, tableros (marcador de la
-   planilla, encabezado de los formularios) en petróleo oscuro con texto claro. Azul petróleo claro (el celeste de la
+   pantalla de Métricas DT, encabezado de los formularios) en petróleo oscuro con texto claro. Azul petróleo claro (el celeste de la
    marca, más oscuro para que el texto blanco se lea) como color principal y verde lima, como un marcador de estadio,
    sobre los tableros. Verde, amarillo y rojo solo para estados. */
 :root {
@@ -212,12 +212,12 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .plans .plan li { margin: 2px 0; }
 @media (max-width: 480px) { .plans { grid-template-columns: 1fr; } }
 
-/* Planilla DT: equipos del DT */
+/* Métricas DT: equipos del DT */
 .dt-teams { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
 .dt-teams li { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--field); color: var(--muted); }
 .dt-teams li b { color: var(--ink); }
 
-/* ---- Planilla DT en vivo: una columna de celular; marcador y reloj fijos arriba ---- */
+/* ---- Métricas DT en vivo: una columna de celular; marcador y reloj fijos arriba ---- */
 .dt-mis { margin-top: 16px; }
 .dt-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .dt-lista button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 12px 14px; text-align: left;
@@ -352,7 +352,7 @@ input[type=date] { color-scheme: light; }
 .dt-toast button { padding: 4px 0; border: 0; background: none; color: var(--lime); cursor: pointer; font: 700 .85rem/1 var(--body); }
 @media (prefers-reduced-motion: reduce) { .dt-act, .dt-act:active, .dt-pair button:active, .dt-player:active { transition: none; transform: none; } }
 
-/* ---- Planilla DT en tablet y web: con el partido abierto la página usa todo el ancho y la carga va en columnas
+/* ---- Métricas DT en tablet y web: con el partido abierto la página usa todo el ancho y la carga va en columnas
    (jugadores | acciones | últimas acciones), así todo entra en la pantalla sin bajar. ---- */
 .dt-bloque { display: grid; gap: 6px; align-content: start; }
 .dt-bloques { display: grid; gap: 12px; }
@@ -400,7 +400,7 @@ input[type=date] { color-scheme: light; }
 .check input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
 .check small { display: block; color: var(--muted); font-size: .8rem; }
 
-/* ---- Tableros en petróleo: el marcador de la planilla y el encabezado de los formularios ---- */
+/* ---- Tableros en petróleo: el marcador de Métricas DT y el encabezado de los formularios ---- */
 .sheet-head { background: var(--dark); color: var(--on-dark); border-bottom: 0; border-radius: 4px 4px 0 0; }
 .sheet-head span:last-child { color: var(--on-dark-muted); }
 .dt-board { background: var(--dark); color: var(--on-dark); border-bottom: 0; backdrop-filter: none;
@@ -452,3 +452,21 @@ nav.secciones a[aria-current="page"] { background: var(--accent); color: var(--a
 .dt-plan { grid-template-columns: 1fr; margin-top: 18px; }
 .dt-plan .plan { cursor: default; }
 @media (max-width: 480px) { nav.secciones { order: 3; width: 100%; justify-content: center; } }
+
+/* Botón "Volver" arriba del registro (a la sección de la que viene) */
+.volver { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; padding: 8px 14px; border: 1px solid var(--line);
+          border-radius: 999px; background: var(--panel); color: var(--ink-2); text-decoration: none;
+          font: 700 .78rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
+.volver:hover { border-color: var(--accent); color: var(--accent); }
+.split > .intro .volver + .hero { margin-top: 18px; }
+
+/* Portada: la marca, más grande */
+body.home .brand { gap: 16px; }
+body.home .brand svg { width: 64px; height: 64px; }
+body.home .brand b { font-size: 2rem; }
+body.home .brand small { font-size: .85rem; margin-top: 6px; }
+@media (min-width: 960px) {
+    body.home .brand svg { width: 80px; height: 80px; }
+    body.home .brand b { font-size: 2.6rem; }
+    body.home .brand small { font-size: .95rem; }
+}
