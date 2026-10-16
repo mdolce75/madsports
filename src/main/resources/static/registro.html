@@ -134,9 +134,10 @@
             if (r.value === "DT") r.checked = true; else r.closest("label").remove();
         });
         $("perfil-field").hidden = true;
+        document.querySelector("input[name=federacion]").closest(".field").hidden = true;
         $("reg-tag").textContent = "Métricas DT";
-        $("reg-lead").textContent = "Creá tu cuenta de DT: seleccioná tu federación (FPP o AMP), tu club y los equipos que dirigís, "
-            + "según tu plan. Después vas a registrar las estadísticas de cada partido en vivo.";
+        $("reg-lead").textContent = "Creá tu cuenta de DT: seleccioná tu club y los equipos que dirigís, según tu plan. "
+            + "Después vas a registrar las estadísticas de cada partido en vivo.";
         $("volver").href = $("volver-top").href = "/dt-inicio.html";
         $("volver-top").textContent = "← Volver a Métricas DT";
         if (PIDIO_INFORMES) {
@@ -155,7 +156,8 @@
 
     // Primero la federación y después el perfil: Club o Jugador de esa federación (CLUBAMP, PLAYERFPP...).
     // Los clubes, las categorías y los jugadores son los de la federación elegida.
-    const fed = () => (document.querySelector("input[name=federacion]:checked") || {}).value;
+    let clubFed = null;   // DT: la federación del club elegido
+    const fed = () => SECCION === "dt" ? clubFed : (document.querySelector("input[name=federacion]:checked") || {}).value;
     const rol = () => document.querySelector("input[name=rol]:checked").value;
     const isPlayer = () => rol() === "PLAYER";
     const isDt = () => rol() === "DT";
@@ -273,12 +275,14 @@
     // Planes del perfil elegido: una cajita por plan, con su cintillo de ahorro.
     async function loadPlans() {
         const box = $("plans");
-        const p = perfil();
+        // Los planes del DT son los mismos en las dos federaciones.
+        const planesDe = () => isDt() ? "DTFPP" : perfil();
+        const p = planesDe();
         try {
             const res = await fetch("/api/suscripciones?perfil=" + p);
             const planes = await res.json();
             if (!res.ok) throw new Error(planes.detail || res.statusText);
-            if (perfil() !== p) return;
+            if (planesDe() !== p) return;
             box.innerHTML = "";
             if (planes.length) {
                 $("plans-hint").textContent = `Precios en pesos al dólar oficial del día (BNA, venta: U$S 1 = `
@@ -352,9 +356,61 @@
         }
     }
 
+    /**
+     * DT: un solo combo con los clubes de las dos federaciones (sin decir de cuál es cada uno). Al elegir el club se
+     * toma su federación, que define el perfil (DTFPP o DTAMP) y de dónde salen sus equipos.
+     */
+    async function loadClubsDt() {
+        const sel = $("club");
+        sel.innerHTML = "";
+        sel.add(new Option("Cargando clubes…", ""));
+        sel.disabled = true;
+        try {
+            const clubes = [];
+            for (const f of ["FPP", "AMP"]) {
+                if (!catalogs[f]) {
+                    const res = await fetch("/api/catalogo?federacion=" + f);
+                    const body = await res.json();
+                    if (!res.ok) throw new Error(body.detail || res.statusText);
+                    catalogs[f] = body;
+                }
+                if (catalogs[f].available) catalogs[f].clubs.forEach(c => clubes.push({c, f}));
+            }
+            clubes.sort((a, b) => a.c.name.localeCompare(b.c.name, "es"));
+            sel.innerHTML = "";
+            sel.add(new Option(clubes.length ? "Elegí tu club" : "No hay clubes disponibles", ""));
+            for (const {c, f} of clubes) {
+                const o = new Option(`${c.name} (${c.code})`, c.id);
+                o.dataset.fed = f;
+                sel.add(o);
+            }
+            sel.disabled = !clubes.length;
+            $("go").disabled = !clubes.length;
+        } catch (e) {
+            status("No se pudo cargar la lista de clubes: " + e.message, true);
+        } finally {
+            loadTeams();
+        }
+    }
+
     document.querySelectorAll("input[name=federacion], input[name=rol]")
         .forEach(r => r.addEventListener("change", toggleProfile));
-    $("club").addEventListener("change", loadTeams);
+    $("club").addEventListener("change", () => {
+        if (SECCION === "dt") {
+            const o = $("club").selectedOptions[0];
+            clubFed = o && o.dataset.fed ? o.dataset.fed : null;
+            catalog = clubFed ? catalogs[clubFed] : null;
+        }
+        loadTeams();
+    });
+    if (SECCION === "dt") {
+        $("after-fed").hidden = false;
+        $("fed-hint").hidden = true;
+        $("player-fields").hidden = true;
+        $("dt-fields").hidden = false;
+        loadPlans();
+        loadClubsDt();
+    }
     $("equipo").addEventListener("change", loadPlayers);
 
     $("form").addEventListener("submit", async ev => {
