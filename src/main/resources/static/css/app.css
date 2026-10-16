@@ -515,7 +515,7 @@ body.home .brand small { font-size: .85rem; margin-top: 6px; }
 
 /* Menú superior: cuatro entradas; en el celular, a todo el ancho y en dos filas si hace falta */
 html { scroll-behavior: smooth; }
-#por-que, #asi-se-ve { scroll-margin-top: 16px; }
+#asi-se-ve { scroll-margin-top: 16px; }
 nav.secciones { flex-wrap: wrap; }
 nav.secciones a { white-space: nowrap; }
 @media (max-width: 480px) { nav.secciones a { flex: 1 1 auto; text-align: center; padding: 6px 8px; font-size: .72rem; } }

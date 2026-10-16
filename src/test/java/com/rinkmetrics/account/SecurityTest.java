@@ -254,6 +254,7 @@ class SecurityTest {
         mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
         // La demo de Métricas DT y sus capturas, también.
         mvc.perform(get("/dt-demo.html")).andExpect(status().isOk());
+        mvc.perform(get("/por-que.html")).andExpect(status().isOk());
         mvc.perform(get("/img/demo/carga-web.png")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());
         mvc.perform(get("/api/ejemplo-jugador.pdf")).andExpect(status().isOk());

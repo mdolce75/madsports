@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Por qué RinkMetrics · RinkMetrics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body data-seccion="por-que">
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar">
+            <a class="btn ghost" href="/login.html">Ingresar</a>
+        </div>
+    </div>
+
+<div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Por qué RinkMetrics</span>
+        <h1>Por qué elegir<br><em>RinkMetrics.</em></h1>
+        <p class="lead">Estadísticas oficiales de la competencia y registro en vivo de cada partido, en una sola
+            plataforma pensada para el hockey sobre patines: clara en el banco, completa en el análisis y segura con tus
+            datos.</p>
+    </section>
+    </div>
+    <div class="main">
+    <div class="examples">
+        <article class="example">
+            <span class="tag">Cuerpos técnicos</span>
+            <h3>Métricas DT</h3>
+            <p class="hint">Registro en vivo de las acciones de cada jugador, desde el celular, la tablet o la computadora.</p>
+            <a class="btn primary" href="/dt-inicio.html">Conocer Métricas DT</a>
+            <a class="btn ghost" href="/dt-demo.html">Probar la demo</a>
+        </article>
+        <article class="example">
+            <span class="tag">Clubes y jugadores</span>
+            <h3>Informes</h3>
+            <p class="hint">Informes de rendimiento en PDF, elaborados con los datos oficiales de SIDGAD.</p>
+            <a class="btn primary" href="/informes.html">Conocer Informes</a>
+        </article>
+    </div>
+    </div>
+    </div>
+
+    <section class="ventajas" aria-label="Ventajas de RinkMetrics">
+                <div class="ventajas-grid">
+            <article><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><h3>Visión integral del juego</h3>
+                <p>Pérdidas y recuperaciones, tiros, atajadas, pelota parada, faltas y tarjetas de cada jugador: un registro completo del partido, más allá del resultado.</p></article>
+            <article><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><h3>Información en tiempo real</h3>
+                <p>Cada acción registrada actualiza el marcador y el resumen al instante, para tomar decisiones tácticas durante el partido.</p></article>
+            <article><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><h3>Multiplataforma</h3>
+                <p>Diseño adaptable a celulares, tablets y computadoras, con registro continuo aunque se pierda la conexión.</p></article>
+            <article><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg><h3>Informes profesionales</h3>
+                <p>Documentos en PDF listos para presentar al club, al cuerpo técnico o a los jugadores.</p></article>
+            <article><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><h3>Privacidad y seguridad</h3>
+                <p>Cada usuario accede únicamente a su información: el DT, a sus partidos; el club, a sus equipos. Las claves se almacenan protegidas, nunca en texto legible.</p></article>
+        </div>
+    </section>
+
+    <footer><b>RinkMetrics</b> · Datos de la Federación Porteña de Patín (FPP) y la Asociación Mendocina de Patín (AMP),
+        en SIDGAD. Un producto de <a href="/madsports">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+
+    // Con sesión: acceso directo a su pantalla en lugar de ingresar/registrarse.
+    session().then(s => {
+        if (!s.autenticado || s.inicio.startsWith("/login.html")) return;
+        renderUserBar(s);
+        const go = document.createElement("a");
+        go.className = "btn primary";
+        go.href = s.inicio;
+        go.textContent = s.inicio === "/dt.html" ? "Mis métricas DT" : "Mis informes";
+        $("userbar").prepend(go);
+        for (const cta of document.querySelectorAll("[data-cta]")) {
+            const link = document.createElement("a");
+            link.className = "go-link";
+            link.href = s.inicio;
+            link.textContent = s.inicio === "/dt.html" ? "Ir a Métricas DT" : "Ir a mis informes";
+            cta.replaceChildren(link);
+        }
+    });
+</script>
+</body>
+</html>
