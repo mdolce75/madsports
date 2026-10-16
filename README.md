@@ -41,12 +41,13 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 
 | Función | Detalle |
 |---|---|
-| 🏒 **Informe de equipo** | Resultados, posiciones, goleadores, pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
-| 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, más fortalezas y debilidades contra sus compañeros. |
+| 🏒 **Informe de equipo** | Resultados, posiciones, goleadores (sin arqueros), pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
+| 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, más fortalezas y debilidades contra sus compañeros. Cuenta también los partidos sin acta publicada. |
+| 📋 **Planilla DT** (en construcción) | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido. |
 | ⏱️ **Minuto a minuto** | Goles, tarjetas y faltas por tramos de 5′, cómo iba el partido en cada tramo y goles recibidos con uno menos. |
 | 📊 **Gráficos** | Barras y donas en cada PDF, con el escudo del club en la cabecera. |
-| 🔐 **Usuarios** | Registro con perfil Club o Jugador, confirmación del email, recuperación de clave y suscripciones. |
-| 🌐 **Fuente** | Datos públicos de la FPP en SIDGAD (buenosaires.sidgad.com), leídos en paralelo y con cache. |
+| 🔐 **Usuarios** | Registro con perfil Club, Jugador o DT de la FPP o de la AMP, confirmación del email, recuperación de clave y un plan mensual con precio en pesos. |
+| 🌐 **Fuente** | Datos públicos de la FPP (Buenos Aires) y de la AMP (Mendoza) en SIDGAD, leídos en paralelo y con cache. |
 
 ## Capturas
 
@@ -87,7 +88,7 @@ goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no public
 
 | | Capa | Tecnología | Para qué |
 |---|---|---|---|
-| <img src="https://img.shields.io/badge/Java-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java"> | Lenguaje y build | **Java 21**, **Maven 3.10** (wrapper `./mvnw`) | Compilación, tests y empaquetado en un jar ejecutable |
+| <img src="https://img.shields.io/badge/Java-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java"> | Lenguaje y build | **Java 21**, **Maven 3.9.11** (wrapper `./mvnw`) | Compilación, tests y empaquetado en un jar ejecutable |
 | <img src="https://img.shields.io/badge/Spring%20Boot-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot"> | Framework | **Spring Boot 3.5.7** (Spring Framework 6.2, Tomcat 10.1 embebido) | Aplicación web, configuración e inyección de dependencias |
 | <img src="https://img.shields.io/badge/Spring%20MVC-6DB33F?style=flat-square&logo=spring&logoColor=white" alt="Spring MVC"> | API web | Spring Web MVC, Bean Validation, Jackson 2.19 | API REST en JSON (`/api/...`) |
 | <img src="https://img.shields.io/badge/Security-6DB33F?style=flat-square&logo=springsecurity&logoColor=white" alt="Security"> | Seguridad | **Spring Security 6.5** | Registro y login con sesión, perfiles por pantalla, CSRF con cookie `XSRF-TOKEN`, claves con BCrypt |
@@ -131,7 +132,8 @@ espera y reintenta una vez.
 | `cap_clasif_idc_<idc>_1.php` | Tabla de posiciones |
 | `cap_cal_idc_<idc>_1.php` | Calendario y resultados |
 | `cap_stats_1_<idc>.php` | Estadísticas por jugador |
-| `cap_gr_<idp>_1.php` | Acta del partido: goles y tarjetas con período y minuto |
+| `cap_gr_<idp>_1.php` | Acta del partido: goles y tarjetas con período y minuto, y la planilla de cada equipo (con el arquero marcado "P") |
+| `profiles/cap_profileseason_<id_player>_1_<temp>.php` | Ficha de temporada de un jugador: todos sus partidos de cada competición, también los sin acta, con goles, libres, penales, azules y rojas |
 
 Federaciones (`Federacion`): **FPP** = `id_fede_3` (Federación Porteña de Patín) y **AMP** = `id_fede_4` (Asociación
 Mendocina de Patín). Los fragmentos son los mismos para las dos; los nombres de las competiciones de la AMP tienen otro
@@ -187,9 +189,16 @@ Cada gráfico lleva leyenda y valores visibles.
 (`sidgad.cloud/cap/images/logos_clubes/`, el archivo que figura en `teams_array`) y se encaja en una placa blanca
 cuadrada. Queda en cache 24 h; si no se puede bajar, el informe sale sin escudo.
 
-La duración de los períodos sale de `tpo_reg` en el catálogo (20' de Infantil a Juvenil, 25' de Juniors a
-Primera). SIDGAD no publica el acta de todos los partidos: el informe indica cuántas actas se usaron sobre el
-total de partidos jugados.
+**Goleadores:** salen de la ficha de temporada de cada jugador del club, que incluye los partidos sin acta; la tabla
+de estadísticas de SIDGAD solo suma los partidos con acta (y a veces no se publica), así que sus goles no llegaban a
+los del equipo. Quien no tiene ficha conserva su fila de la tabla. Los **arqueros** (marcados "P" en 2 planillas o
+más, o en la mayoría de las suyas) no entran en los goleadores ni en el % de los goles; sus tarjetas y su pelota
+parada sí suman en las del equipo. No hay **asistencias**: los clubes no las cargan en SIDGAD.
+
+La duración de los períodos sale de `tpo_reg` en el catálogo (en la FPP, 20' de Infantil a Juvenil y 25' de Juniors a
+Primera). SIDGAD no publica el acta de todos los partidos (en 2026, cerca del 40% en la FPP): el informe indica
+cuántas actas se usaron sobre el total de partidos jugados para lo que necesita minuto (tramos de 5', faltas,
+inferioridad).
 
 ### Datos no publicados (404)
 
@@ -258,9 +267,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   partidos, según las planillas: goles por partido, titularidad, tarjetas por partido, azules y rojas, penales y
   libres convertidos. También compara la efectividad del equipo con él y sin él, y los goles recibidos durante sus
   sanciones contra el resto del tiempo.
-- **Categorías en que puede jugar:** el jugador puede subir de categoría, nunca bajar. Infantil juega en Infantil,
-  Prejuvenil y Juvenil; Prejuvenil, en Prejuvenil, Juvenil y Juniors; Juvenil, en Juvenil, Juniors, Reserva y
-  Primera; Juniors, en Juniors, Reserva y Primera; Reserva y Primera, en Reserva y Primera.
+- **Categorías en que puede jugar:** el jugador puede subir de categoría, nunca bajar. En la FPP, Infantil juega en
+  Infantil, Prejuvenil y Juvenil; Prejuvenil, en Prejuvenil, Juvenil y Juniors; Juvenil, en Juvenil, Juniors, Reserva
+  y Primera; Juniors, en Juniors, Reserva y Primera; Reserva y Primera, en Reserva y Primera. En la AMP la regla es la
+  misma sobre sus categorías (la suya y dos arriba; desde Juvenil, hasta Senior).
   - **Su categoría real** es la más baja en que jugó en el año. En el registro se lo elige de la planilla de
     cualquier equipo en que figura, y esa categoría no tiene por qué ser la suya: un Juvenil que juega en Primera
     puede aparecer en el plantel de Primera.
@@ -274,8 +284,12 @@ con `id_player`, goles, tarjetas, penales y libres directos. Un partido cuenta s
 de su equipo. El minuto de goles y tarjetas sale de los eventos del acta. Si la planilla anota algo que no tiene
 evento (pasa con algunas actas), va a "Sin minuto registrado". La tabla de
 estadísticas de la FPP no alcanza, porque solo lista a los que hicieron goles. Se leen las actas de todos los equipos
-del club en el período y en esas categorías (la primera vez tarda unos 10 s; después quedan en cache 24 h). Los
-partidos sin acta publicada se informan aparte.
+del club en el período y en esas categorías (la primera vez tarda unos 10 s; después quedan en cache 24 h).
+
+**Partidos sin acta:** SIDGAD no publica el acta de todos los partidos, pero los lista en la **ficha de temporada**
+del jugador con sus goles, azules, rojas, penales y libres. Esos partidos cuentan como jugados, marcados con `*` en el
+partido a partido; sus goles y tarjetas van a "Sin minuto registrado" (la ficha no trae amarillas, titularidad ni
+minutos). Un partido sin acta que no figura en su ficha se toma como no jugado.
 
 Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo crea Flyway
 (`db/migration`). En producción, `FPP_DB_URL` apunta a otra base.
@@ -306,10 +320,14 @@ Abrir http://localhost:8080.
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
 | `MAIL_FROM` | `RinkMetrics <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
+| `DOLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
+| `DOLAR_RESPALDO` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
+
+La configuración propia va bajo `rinkmetrics:` en `application.yml` (clase `RinkMetricsProperties`).
 
 **API key gratuita:** se crea en Google AI Studio (https://aistudio.google.com/apikey) con una cuenta de Google.
 En el plan gratuito Google puede usar el contenido enviado para mejorar sus productos (son datos deportivos
-públicos de la FPP) y hay límites de pedidos por minuto y por día; los modelos y límites cambian seguido.
+públicos de la FPP y la AMP) y hay límites de pedidos por minuto y por día; los modelos y límites cambian seguido.
 
 Categorías relevadas (de Infantil para arriba), en `Federacion`:
 
@@ -330,24 +348,28 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 (sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
 
 - `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973,"suscripcion":"PLAYER_MENSUAL"}` → `201`
-- `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
+- `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO&federacion=FPP`: plantel del equipo según
+  sus actas (`federacion` FPP o AMP; sin ella, FPP)
+- `POST /api/registro` de un DT: `"perfil":"DTFPP"`, `"suscripcion":"DT_MENSUAL"` y
+  `"equipos":[{"categoria":"JUVENIL:A","rama":"MASCULINO"}]` (uno o dos)
 - `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`, `DTAMP`...): el plan mensual del perfil, con el precio en
   pesos (y el precio base en dólares, la cotización usada y su fecha), los informes por mes y, para el DT, equipos y
   partidos por mes
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
-- `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)
+- `GET /api/sesion`: usuario, perfiles, federación, club, jugador o equipos del DT, y la suscripción
+  (`autenticado: false` sin sesión)
 - `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
   `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
 - `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
-- `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP)
-- `GET /api/catalogo?anio=2026` — clubes con sus categorías y ramas del año (sin `anio`: el más reciente con datos);
-  `available: false` y `message` si el año no tiene datos
+- `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
+- `GET /api/catalogo?anio=2026&federacion=AMP` — clubes con sus categorías y ramas del año en la federación (sin
+  `anio`: el más reciente con datos; sin `federacion`: FPP); `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
   SIDGAD ni la API de Gemini. Enlazado desde la web.
 - `GET /api/ejemplo-jugador.pdf`: informe modelo de jugador con datos ficticios ("Tomás Ejemplo", de Juniors, que
   también juega en Primera del "Club Ejemplo"). Se arma con el mismo motor que los informes reales. Enlazado desde
   el login, el registro y la pantalla de jugador.
-- `POST /api/informes` (CLUBFPP, solo su club) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
+- `POST /api/informes` (CLUBFPP o CLUBAMP, solo su club y su federación) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
 - `GET /api/informes/{id}/pdf`
@@ -358,5 +380,11 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 ./mvnw test
 ```
 
-Los parsers y el motor se prueban contra HTML real guardado en `src/test/resources/fixtures`
-(13/10/2026). Si SIDGAD cambia el markup, actualizar los fixtures y ver qué test falla.
+Los parsers y el motor se prueban contra HTML real guardado en `src/test/resources/fixtures` (octubre de 2026:
+actas, calendarios, posiciones, la ficha de temporada de un jugador y el catálogo 2026 con la FPP y la AMP). Si SIDGAD
+cambia el markup, actualizar los fixtures y ver qué test falla. La seguridad, el registro y los planes se prueban con
+MockMvc y H2 en memoria (el dólar de los tests es fijo: $ 1.500).
+
+El proyecto usa **Maven 3.9.11** por el wrapper: IntelliJ 2025.3 no arranca su Maven con 3.10.0
+(`No implementation for ArtifactHandlerManager was bound`). Con IntelliJ, usar "Maven wrapper" en la configuración
+de Maven y recargar el proyecto.
