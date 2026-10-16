@@ -295,11 +295,13 @@ input[type=date] { color-scheme: light; }
 .dt-act .t { font: 600 .85rem/1.2 var(--body); }
 .dt-act .d { font-size: .72rem; color: var(--muted); }
 .dt-act .c { font: 500 .75rem/1 var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
-.dt-act.good { border-left: 4px solid var(--good); }
-.dt-act.bad { border-left: 4px solid var(--err); }
-.dt-act.card-y { border-left: 4px solid var(--warn); }
-.dt-act.card-b { border-left: 4px solid #2563eb; }
-.dt-act.card-r { border-left: 4px solid var(--err); }
+/* Cada acción con su color (--c, desde dt.js): botón relleno, texto blanco; la tarjeta amarilla lleva texto oscuro. */
+.dt-act { background: var(--c, var(--panel)); border-color: transparent; color: #fff; }
+.dt-act .t { font-weight: 700; }
+.dt-act .d, .dt-act .c { color: rgba(255, 255, 255, .85); }
+.dt-act.oscuro { color: #422006; }
+.dt-act.oscuro .d, .dt-act.oscuro .c { color: rgba(66, 32, 6, .8); }
+.dt-act:hover { filter: brightness(1.08); }
 .dt-pair { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
             box-shadow: 0 1px 2px rgba(9, 9, 11, .04); }
 .dt-pair .t { display: flex; justify-content: space-between; gap: 6px; font: 600 .85rem/1.2 var(--body); }
@@ -307,8 +309,8 @@ input[type=date] { color-scheme: light; }
 .dt-pair .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .dt-pair .btns button { min-height: 40px; padding: 8px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2);
                         cursor: pointer; font: 700 .85rem/1 var(--body); }
-.dt-pair .btns .yes { color: var(--good); }
-.dt-pair .btns .no { color: var(--muted); }
+.dt-pair .btns button { background: var(--c); border-color: transparent; color: #fff; }
+.dt-pair .btns button:hover { filter: brightness(1.08); }
 .dt-note { margin: 0; font-size: .75rem; color: var(--muted); }
 
 .dt-log { list-style: none; margin: 0; padding: 0; }
