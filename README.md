@@ -282,7 +282,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     penal en contra) van al arquero en cancha. Se pueden agregar jugadores que no figuran en las actas. Cada carga
     muestra "Deshacer" por 4 segundos, y las últimas acciones se pueden borrar.
   - **Informe:** el informe del partido en vivo (con lo que todavía no se envió), del equipo o de un jugador, con
-    los eventos y "Exportar PDF"; y el cierre del partido (o reabrirlo).
+    los eventos y "Exportar PDF"; y el cierre del partido (o reabrirlo). Al tocar "Fin del partido", la pantalla pasa
+    sola a esta pestaña.
   - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt-cola.js`) y se
     mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
     (`dt-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin

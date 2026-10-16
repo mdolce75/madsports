@@ -342,7 +342,13 @@
             toast(err instanceof TypeError ? sinSenal : err.message);
             return;
         }
+        const antes = partido.estado;
         recibir(p, Date.now());
+        // Al terminar el partido (fin del 2T), directo al informe.
+        if (antes === "EN_JUEGO" && p.estado === "TERMINADO") {
+            tab("t-resumen");
+            window.scrollTo(0, 0);
+        }
     }
 
     function reloj(accion, segundos) {
