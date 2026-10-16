@@ -215,6 +215,10 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 los demás. La federación del
 perfil decide de dónde salen los clubes, las categorías, los jugadores y los informes (que dicen FPP o AMP).
 
+- **Dos secciones:** la portada (`/`) presenta **Informes** (`/informes.html`: perfiles Club y Jugador, informes de
+  ejemplo) y **DT** (`/dt-inicio.html`: la planilla en vivo y su plan). El menú "Informes / DT" está arriba en todas
+  las páginas. Cada sección tiene su registro: `/registro.html?seccion=informes` ofrece Club o Jugador y
+  `/registro.html?seccion=dt`, solo DT. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
   No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club

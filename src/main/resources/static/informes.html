@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Informes · RinkMetrics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body data-seccion="informes">
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar">
+            <a class="btn ghost" href="/login.html">Ingresar</a>
+        </div>
+    </div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Informes de rendimiento</span>
+        <h1>Tu equipo,<br><em>en números.</em></h1>
+        <p class="lead">Estadísticas de la Federación Porteña de Patín (FPP) y de la Asociación Mendocina de Patín (AMP) convertidas en informes PDF, para clubes y para
+            jugadores: resultados, goles y tarjetas minuto a minuto, pelota parada, fortalezas y debilidades.</p>
+    </section>
+
+    <div class="board" aria-hidden="true">
+        <div><strong>12</strong><span>Indicadores de juego</span></div>
+        <div><strong>5'</strong><span>Tramos de goles y tarjetas</span></div>
+        <div><strong>IA</strong><span>Análisis escrito</span></div>
+    </div>
+    </div>
+    <div class="main">
+    <h2 class="section-title">Mirá un informe de ejemplo</h2>
+    <p class="hint">Con datos ficticios, para que veas el formato antes de registrarte.</p>
+
+    <div class="examples">
+        <article class="example">
+            <span class="tag">Club FPP · AMP</span>
+            <h3>Informe de club</h3>
+            <ul>
+                <li>Resultados, posiciones, local y visitante</li>
+                <li>Goleadores y reparto del gol</li>
+                <li>Goles, tarjetas y faltas por tramos de 5'</li>
+                <li>Fortalezas y debilidades, con análisis escrito</li>
+            </ul>
+            <a class="btn primary" href="/api/ejemplo.pdf" target="_blank" rel="noopener">Ver ejemplo de club</a>
+        </article>
+        <article class="example">
+            <span class="tag">Jugador FPP · AMP</span>
+            <h3>Informe de jugador</h3>
+            <ul>
+                <li>Partidos jugados, ganados, empatados y perdidos</li>
+                <li>Goles y tarjetas por color, con promedios</li>
+                <li>Penales y libres directos</li>
+                <li>Por cada categoría en que jugó y en total</li>
+            </ul>
+            <a class="btn primary" href="/api/ejemplo-jugador.pdf" target="_blank" rel="noopener">Ver ejemplo de jugador</a>
+        </article>
+    </div>
+
+    <div class="cta" data-cta>
+        <a class="go-link" href="/registro.html?seccion=informes">Registrarme en Informes</a>
+        <p class="alt">Perfiles Club y Jugador, de la FPP o la AMP. ¿Ya tenés usuario? <a href="/login.html">Ingresá</a></p>
+    </div>
+    </div>
+    </div>
+
+    <footer><b>RinkMetrics</b> · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín
+        (FPP) y Asociación Mendocina de Patín (AMP), en SIDGAD. Un producto de <a href="/madsports">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+
+    // Con sesión: acceso directo a su pantalla en lugar de ingresar/registrarse.
+    session().then(s => {
+        if (!s.autenticado || s.inicio.startsWith("/login.html")) return;
+        renderUserBar(s);
+        const go = document.createElement("a");
+        go.className = "btn primary";
+        go.href = s.inicio;
+        go.textContent = s.inicio === "/dt.html" ? "Mi planilla" : "Mis informes";
+        $("userbar").prepend(go);
+        for (const cta of document.querySelectorAll("[data-cta]")) {
+            const link = document.createElement("a");
+            link.className = "go-link";
+            link.href = s.inicio;
+            link.textContent = s.inicio === "/dt.html" ? "Ir a mi planilla" : "Ir a mis informes";
+            cta.replaceChildren(link);
+        }
+    });
+</script>
+</body>
+</html>

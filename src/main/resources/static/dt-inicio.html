@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Planilla DT · RinkMetrics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body data-seccion="dt">
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar">
+            <a class="btn ghost" href="/login.html">Ingresar</a>
+        </div>
+    </div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Planilla DT</span>
+        <h1>Cada acción,<br><em>en vivo.</em></h1>
+        <p class="lead">Para el entrenador: elegí el rival y la fecha, iniciá el reloj y cargá cada acción de cada jugador
+            con dos toques, desde el celular, la tablet o la computadora.</p>
+    </section>
+
+    <div class="board" aria-hidden="true">
+        <div><strong>11</strong><span>Tipos de acción</span></div>
+        <div><strong>25'</strong><span>Reloj por tiempo</span></div>
+        <div><strong>0</strong><span>Señal necesaria para cargar</span></div>
+    </div>
+    </div>
+    <div class="main">
+    <h2 class="section-title">Qué cargás en cada partido</h2>
+    <p class="hint">Cada acción queda con el jugador, el tiempo y el minuto del reloj.</p>
+
+    <div class="examples">
+        <article class="example">
+            <span class="tag">Acciones</span>
+            <h3>De cada jugador</h3>
+            <ul>
+                <li>Pérdidas y recuperaciones, en defensa y en ataque</li>
+                <li>Tiros al arco: gol o no gol</li>
+                <li>Libres y penales, a favor y en contra</li>
+                <li>Atajadas y goles recibidos del arquero</li>
+                <li>Faltas cometidas y recibidas; tarjetas amarilla, azul y roja</li>
+            </ul>
+        </article>
+        <article class="example">
+            <span class="tag">En el partido</span>
+            <h3>Hecho para la cancha</h3>
+            <ul>
+                <li>Plantel de las actas de SIDGAD, con los arqueros marcados</li>
+                <li>Reloj que descuenta cada tiempo y marcador</li>
+                <li>Deshacer y borrar cualquier acción</li>
+                <li>Sin señal, lo cargado queda en el teléfono y se manda al volver</li>
+                <li>Resumen por jugador y del equipo</li>
+            </ul>
+        </article>
+    </div>
+
+    <div class="plans dt-plan" id="plan-dt" hidden></div>
+
+    <div class="cta" data-cta>
+        <a class="go-link" href="/registro.html?seccion=dt">Registrarme como DT</a>
+        <p class="alt">Perfil DT de la FPP o la AMP. ¿Ya tenés usuario? <a href="/login.html">Ingresá</a></p>
+    </div>
+    </div>
+    </div>
+
+    <footer><b>RinkMetrics</b> · Datos de la Federación Porteña de Patín (FPP) y la Asociación Mendocina de Patín (AMP),
+        en SIDGAD. Un producto de <a href="/madsports">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+
+    // Plan del DT con su precio en pesos del día.
+    fetch("/api/suscripciones?perfil=DTFPP").then(r => r.ok ? r.json() : []).then(planes => {
+        const p = planes[0];
+        if (!p) return;
+        const box = $("plan-dt");
+        const card = document.createElement("div");
+        card.className = "plan";
+        const nombre = document.createElement("span");
+        nombre.className = "plan-name";
+        nombre.textContent = "Plan " + p.nombre;
+        const precio = document.createElement("span");
+        precio.className = "plan-price";
+        precio.innerHTML = "<b></b> <small>por mes</small>";
+        precio.querySelector("b").textContent = "$ " + Number(p.precio).toLocaleString("es-AR");
+        const cupo = document.createElement("span");
+        cupo.className = "plan-quota";
+        cupo.textContent = `Hasta ${p.equiposMax} equipos y ${p.partidosPorMes} partidos por mes`;
+        const nota = document.createElement("span");
+        nota.className = "plan-month";
+        nota.textContent = "Mensual, sin permanencia. Precio en pesos al dólar oficial del día.";
+        card.append(nombre, precio, cupo, nota);
+        box.append(card);
+        box.hidden = false;
+    }).catch(() => {});
+
+    // Con sesión: acceso directo a su pantalla en lugar de ingresar/registrarse.
+    session().then(s => {
+        if (!s.autenticado || s.inicio.startsWith("/login.html")) return;
+        renderUserBar(s);
+        const go = document.createElement("a");
+        go.className = "btn primary";
+        go.href = s.inicio;
+        go.textContent = s.inicio === "/dt.html" ? "Mi planilla" : "Mis informes";
+        $("userbar").prepend(go);
+        for (const cta of document.querySelectorAll("[data-cta]")) {
+            const link = document.createElement("a");
+            link.className = "go-link";
+            link.href = s.inicio;
+            link.textContent = s.inicio === "/dt.html" ? "Ir a mi planilla" : "Ir a mis informes";
+            cta.replaceChildren(link);
+        }
+    });
+</script>
+</body>
+</html>

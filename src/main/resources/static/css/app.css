@@ -435,3 +435,20 @@ input[type=date] { color-scheme: light; }
     .lead { max-width: none; }
 }
 @media (min-width: 1280px) { .split > .main .examples { grid-template-columns: 1fr 1fr; gap: 16px; } }
+
+/* ---- Secciones: menú Informes / DT al lado de la marca, y la portada con una tarjeta por sección ---- */
+.topbar > .brand, .topbar > header.brand { flex: none; }
+nav.secciones { display: flex; gap: 4px; margin-right: auto; padding: 3px; border: 1px solid var(--line); border-radius: 999px;
+                background: var(--panel); }
+nav.secciones a { padding: 6px 14px; border-radius: 999px; color: var(--ink-2); text-decoration: none;
+                  font: 700 .78rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
+nav.secciones a:hover { color: var(--accent); }
+nav.secciones a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); }
+.wrap > header.brand + nav.secciones { margin: 12px 0 0; align-self: flex-start; }
+.secciones-home .example { gap: 8px; }
+.secciones-home .example h3 { font-size: 1.5rem; }
+.secciones-home .example .hint { margin: 0; }
+.secciones-home .example .btn { text-align: center; }
+.dt-plan { grid-template-columns: 1fr; margin-top: 18px; }
+.dt-plan .plan { cursor: default; }
+@media (max-width: 480px) { nav.secciones { order: 3; width: 100%; justify-content: center; } }
