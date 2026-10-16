@@ -18,8 +18,42 @@
         <div class="userbar" id="userbar"></div>
     </div>
 
+
+    <!-- Menú del DT -->
+    <nav class="dt-menu" id="dt-menu" aria-label="Métricas DT">
+        <a href="#dashboard" data-vista="dashboard">Dashboard</a>
+        <a href="#partidos" data-vista="partidos">Partidos</a>
+        <a href="#jugadores" data-vista="jugadores">Jugadores</a>
+    </nav>
+
+    <!-- Dashboard general -->
+    <section id="v-dashboard" class="dt-vista" hidden>
+        <h2 class="section-title">Dashboard general</h2>
+        <div class="dt-kpis dash-kpis">
+            <div class="dt-kpi"><b id="d-jugadores">–</b><span>Jugadores</span></div>
+            <div class="dt-kpi"><b id="d-partidos">–</b><span>Partidos</span></div>
+            <div class="dt-kpi"><b id="d-mes">–</b><span id="d-mes-label">Este mes</span></div>
+        </div>
+        <div class="dash-grid">
+            <div class="dash-box"><h3>Estado de los partidos</h3><div id="d-estados"></div></div>
+            <div class="dash-box"><h3>Partidos jugados por mes</h3><div id="d-meses"></div></div>
+            <div class="dash-box dash-proximos"><h3>Próximos partidos</h3><ul class="dt-lista" id="d-proximos"></ul>
+                <a class="btn primary" href="#partidos">Programar un partido</a></div>
+        </div>
+    </section>
+
+    <!-- Jugadores: la ficha de cada uno -->
+    <section id="v-jugadores" class="dt-vista" hidden>
+        <div class="dt-line"><h2 class="section-title">Jugadores</h2>
+            <select id="j-equipo" aria-label="Equipo" hidden></select></div>
+        <p class="hint">Cada eje va de 0 a 100 comparado con el plantel (100 = el mejor del equipo en ese aspecto); los
+            arqueros se comparan entre sí. El índice es el promedio de los cinco ejes. Sale de las acciones cargadas en
+            tus partidos.</p>
+        <div class="fichas" id="fichas"><p class="dt-vacio">Cargando…</p></div>
+    </section>
+
     <!-- Elegir el partido (y la lista de partidos cargados) -->
-    <section id="v-elegir" class="split">
+    <section id="v-elegir" class="split" hidden>
         <div class="intro">
         <section class="hero">
             <span class="tag">Métricas DT</span>
@@ -147,6 +181,7 @@
 
 <script src="/js/app.js"></script>
 <script src="/js/dt-cola.js"></script>
+<script src="/js/dt-fichas.js"></script>
 <script src="/js/dt.js"></script>
 </body>
 </html>

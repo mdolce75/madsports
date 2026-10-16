@@ -189,7 +189,7 @@
             window.scrollTo(0, 0);
         } catch (err) {
             toast(err.status === 404 ? "No existe ese partido." : "No se pudo abrir el partido: " + err.message);
-            location.hash = "";
+            location.hash = "partidos";
         }
     }
 
@@ -572,22 +572,117 @@
     // ---------- Pestañas y navegación ----------
 
     function tab(id) {
-        if (id === "t-partidos") { location.hash = ""; return; }
+        if (id === "t-partidos") { location.hash = "partidos"; return; }
         for (const [t, v] of [["t-cargar", "p-cargar"], ["t-resumen", "p-resumen"]]) {
             $(t).setAttribute("aria-selected", String(t === id));
             $(v).hidden = t !== id;
         }
     }
 
+    /** #partido=ID abre la carga; #partidos, #jugadores o #dashboard (sin nada, el dashboard) muestran esa vista. */
     function ruta() {
         const m = location.hash.match(/^#partido=(\d+)$/);
-        if (m) { abrir(Number(m[1])); return; }
+        if (m) { $("dt-menu").hidden = true; for (const v of ["v-dashboard", "v-jugadores"]) $(v).hidden = true; abrir(Number(m[1])); return; }
         partido = null;
         actualizarWakeLock();
         $("v-partido").hidden = true;
-        $("v-elegir").hidden = false;
         document.body.classList.remove("dt-vivo");
-        cargarMis();
+        const vista = (location.hash.slice(1) || "dashboard");
+        const v = ["dashboard", "partidos", "jugadores"].includes(vista) ? vista : "dashboard";
+        $("dt-menu").hidden = false;
+        document.querySelectorAll("#dt-menu a").forEach(a =>
+            a.dataset.vista === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+        $("v-dashboard").hidden = v !== "dashboard";
+        $("v-elegir").hidden = v !== "partidos";
+        $("v-jugadores").hidden = v !== "jugadores";
+        if (v === "dashboard") cargarDashboard();
+        if (v === "partidos") cargarMis();
+        if (v === "jugadores") cargarFichas();
+    }
+
+    // ---------- Dashboard general ----------
+
+    async function cargarDashboard() {
+        try {
+            const [lista, planteles] = await Promise.all([
+                getJson("/api/dt/partidos").then(r => r.data),
+                Promise.all(sesion.equipos.map(e => getJson(`/api/dt/plantel?categoria=${encodeURIComponent(e.categoria)}`
+                    + `&rama=${encodeURIComponent(e.rama)}`).then(r => r.data).catch(() => []))),
+            ]);
+            const d = DtFichas.dashboard(lista, hoy());
+            $("d-jugadores").textContent = new Set(planteles.flat().map(j => j.id)).size;
+            $("d-partidos").textContent = d.partidos;
+            $("d-mes").textContent = d.esteMes;
+            const cupo = sesion.suscripcion && sesion.suscripcion.partidosPorMes;
+            $("d-mes-label").textContent = cupo ? `Este mes (plan: ${cupo} por mes)` : "Este mes";
+            $("d-estados").innerHTML = DtFichas.barrasEstado(d.estados);
+            $("d-meses").innerHTML = DtFichas.lineaMeses(d.meses);
+            const ul = $("d-proximos");
+            ul.replaceChildren();
+            if (!d.proximos.length) ul.append(el("li", "dt-vacio", "No hay partidos programados. Creá uno con fecha futura en Partidos."));
+            for (const p of d.proximos) {
+                const li = el("li"), b = el("button");
+                b.type = "button";
+                b.append(el("span", null, `${diaMes(p.fecha)} · vs. ${p.rival}`), el("b", null, p.local ? "Local" : "Visitante"),
+                    el("small", null, nombreEquipo(p)));
+                b.addEventListener("click", () => { location.hash = "partido=" + p.id; });
+                li.append(b);
+                ul.append(li);
+            }
+        } catch (err) {
+            $("d-estados").textContent = "No se pudo cargar el dashboard: " + err.message;
+        }
+    }
+
+    // ---------- Jugadores: fichas ----------
+
+    async function cargarFichas() {
+        const sel = $("j-equipo");
+        if (!sel.options.length) {
+            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
+            sel.hidden = sesion.equipos.length < 2;
+            sel.addEventListener("change", cargarFichas);
+        }
+        const e = sesion.equipos[Number(sel.value) || 0];
+        const box = $("fichas");
+        box.replaceChildren(el("p", "dt-vacio", "Cargando…"));
+        try {
+            const q = `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
+            const [plantelEq, acciones] = await Promise.all([getJson("/api/dt/plantel?" + q).then(r => r.data).catch(() => []),
+                getJson("/api/dt/acciones?" + q).then(r => r.data)]);
+            const fichas = DtFichas.calcular(plantelEq, acciones);
+            box.replaceChildren();
+            if (!fichas.length) box.append(el("p", "dt-vacio", "Todavía no hay jugadores ni acciones cargadas en este equipo."));
+            for (const f of fichas) box.append(ficha(f, e.nombre));
+        } catch (err) {
+            box.replaceChildren(el("p", "dt-vacio", "No se pudieron cargar las fichas: " + err.message));
+        }
+    }
+
+    function ficha(f, equipo) {
+        const card = el("article", "ficha" + (f.arquero ? " arquero" : "") + (f.indice == null ? " sin-datos" : ""));
+        const head = el("header", "ficha-head");
+        head.append(el("span", "ficha-num", f.numero || "–"));
+        const quien = el("div");
+        quien.append(el("b", null, f.nombre), el("small", null, `${f.numero ? "#" + f.numero + " · " : ""}${f.arquero ? "Arquero" : equipo}`));
+        const idx = el("div", "ficha-indice");
+        idx.append(el("small", null, "Índice"), el("b", null, f.indice == null ? "–" : String(f.indice)));
+        head.append(quien, idx);
+        const pj = el("div", "ficha-pj");
+        pj.append(el("span", null, `${f.partidos} ${f.partidos === 1 ? "partido" : "partidos"}`),
+            el("span", null, f.indice == null ? "Sin acciones cargadas" : `Mejor eje: ${f.ejes.slice().sort((a, b) => b.puntaje - a.puntaje)[0].nombre}`));
+        const graf = el("div", "ficha-pentagono");
+        graf.innerHTML = DtFichas.pentagono(f.ejes);
+        const filas = el("div", "ficha-filas");
+        for (const x of f.ejes) {
+            const fila = el("div", "ficha-fila");
+            fila.style.setProperty("--c", x.color);
+            fila.append(el("span", "t", x.nombre), el("span", "v", x.texto),
+                el("span", "d", x.etiquetas.join(" · ")), el("span", "n", `${x.a} | ${x.b}`));
+            filas.append(fila);
+        }
+        card.append(head, pj, graf, filas);
+        return card;
     }
 
     // ---------- Inicio ----------

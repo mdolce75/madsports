@@ -87,6 +87,11 @@ public class DtService {
         }
     }
 
+    /** Una acción de un partido del equipo (para las fichas de los jugadores). */
+    public record AccionDeEquipo(Long partidoId, String id, int jugadorId, String jugadorNombre, TipoAccion tipo,
+                                 Resultado resultado, int tiempo, int segundo) {
+    }
+
     /** @param acciones las activas, en orden de juego (vacía en la lista de partidos) */
     public record PartidoView(Long id, String categoria, String rama, Integer idp, String torneo, String rival,
                               LocalDate fecha, boolean local, int minutosTiempo, EstadoPartido estado, int golesFavor,
@@ -183,6 +188,25 @@ public class DtService {
     /** Partidos cargados por el DT, los más recientes primero (sin las acciones). */
     public List<PartidoView> lista(Usuario u) {
         return partidos.findByUsuarioIdOrderByFechaDescIdDesc(u.getId()).stream().map(p -> view(p, false)).toList();
+    }
+
+    /**
+     * Las acciones activas de todos los partidos que el DT cargó de un equipo: con eso la pantalla arma la ficha de
+     * cada jugador (pentágono e índice).
+     */
+    public List<AccionDeEquipo> accionesDelEquipo(Usuario u, String categoria, String rama) {
+        EquipoDt e = equipo(u, categoria, rama);
+        List<Long> ids = partidos.findByUsuarioIdOrderByFechaDescIdDesc(u.getId()).stream()
+                .filter(p -> p.getCategoria().equals(e.categoria()) && p.getRama().equals(e.rama()))
+                .map(PartidoDt::getId).toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return acciones.findByPartidoIdInOrderByPartidoIdAscTiempoAscSegundoAscCreadaAsc(ids).stream()
+                .filter(AccionDt::activa)
+                .map(a -> new AccionDeEquipo(a.getPartidoId(), a.getId(), a.getJugadorId(), a.getJugadorNombre(),
+                        a.getTipo(), a.getResultado(), a.getTiempo(), a.getSegundo()))
+                .toList();
     }
 
     public PartidoView partido(Usuario u, Long id) {

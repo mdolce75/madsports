@@ -283,4 +283,28 @@ class DtControllerTest {
                 .andExpect(jsonPath("$.detail").value("Tu plan DT free terminó el 31/12/2026. Pasate al plan mensual "
                         + "para seguir cargando partidos."));
     }
+
+    @Test
+    void accionesDeTodosLosPartidosDelEquipo() throws Exception {
+        long uno = crear("profe", "HURACAN");
+        long dos = crear("profe", "GEBA A");
+        enviar(post("/api/dt/partidos/" + uno + "/acciones"), "profe", List.of(accion(11, "TIRO", "GOL", 1, 30),
+                accion(10, "ATAJADA", null, 1, 40))).andExpect(status().isOk());
+        Map<String, Object> borrada = accion(11, "FALTA", "COMETIDA", 1, 50);
+        enviar(post("/api/dt/partidos/" + dos + "/acciones"), "profe", List.of(accion(11, "PERDIDA", "RIVAL", 1, 10),
+                borrada)).andExpect(status().isOk());
+        mvc.perform(delete("/api/dt/partidos/" + dos + "/acciones/" + borrada.get("id")).with(como("profe")).with(csrf()))
+                .andExpect(status().isOk());
+        // Un partido de otro equipo del DT no entra.
+        enviar(post("/api/dt/partidos"), "profe", Map.of("categoria", "INFANTIL", "rama", "MASCULINO", "rival", "SAN JUAN"))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/api/dt/acciones").with(como("profe"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))   // la borrada no cuenta
+                .andExpect(jsonPath("$[0].partidoId").value(uno))
+                .andExpect(jsonPath("$[0].jugadorNombre").value("Pedro Delantero"))
+                .andExpect(jsonPath("$[2].tipo").value("PERDIDA"));
+        // Otro DT no ve las acciones de este.
+        mvc.perform(get("/api/dt/acciones").with(como("otro"))).andExpect(jsonPath("$", hasSize(0)));
+    }
 }

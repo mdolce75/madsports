@@ -18,6 +18,9 @@ const CAPTURAS = [
     {archivo: "carga-web.png", url: "/dt-demo.html", ancho: 1280, alto: 800, escala: 1.5, celular: false},
     {archivo: "carga-celular.png", url: "/dt-demo.html", ancho: 390, alto: 844, escala: 2, celular: true},
     {archivo: "resumen.png", url: "/dt-demo.html?tab=resumen", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "dashboard.png", url: "/dt-demo.html#dashboard", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "jugadores.png", url: "/dt-demo.html#jugadores", ancho: 1280, alto: 960, escala: 1.5, celular: false},
+    {archivo: "ficha-celular.png", url: "/dt-demo.html#jugadores", ancho: 390, alto: 844, escala: 2, celular: true},
 ];
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));
