@@ -7,10 +7,26 @@ function csrfToken() {
     return m ? decodeURIComponent(m[1]) : "";
 }
 
-/** fetch con el header CSRF (los POST lo necesitan). */
-function api(url, options = {}) {
+/** fetch con el header CSRF (los POST lo necesitan). Si la sesión venció (401), va al ingreso. */
+async function api(url, options = {}) {
     const headers = Object.assign({"X-XSRF-TOKEN": csrfToken()}, options.headers || {});
-    return fetch(url, Object.assign({credentials: "same-origin"}, options, {headers}));
+    const res = await fetch(url, Object.assign({credentials: "same-origin"}, options, {headers}));
+    if (res.status === 401 && !url.startsWith("/api/login")) sesionVencida();
+    return res;
+}
+
+/** Al ingreso con el aviso "Tu sesión venció"; después de ingresar vuelve a esta misma pantalla. */
+function sesionVencida(aviso = true) {
+    const volver = location.pathname + location.search + location.hash;
+    location.replace(`/login.html?${aviso ? "vencida&" : ""}volver=${encodeURIComponent(volver)}`);
+}
+
+/** Pantalla a la que volver después de ingresar (solo una de esta web: empieza con una sola "/"). */
+function volverA() {
+    const v = new URLSearchParams(location.search).get("volver");
+    if (!v || !/^\/(?![\/\\])/.test(v)) return null;
+    // Si el servidor mandó al ingreso, el "#..." de la pantalla (por ejemplo #partido=5) quedó en esta dirección.
+    return v.includes("#") ? v : v + location.hash;
 }
 
 async function postJson(url, body) {
@@ -31,7 +47,7 @@ async function session() {
 async function requireProfile(perfiles) {
     const s = await session();
     if (!s.autenticado) {
-        location.replace("/login.html");
+        sesionVencida(false);
         return null;
     }
     if (![].concat(perfiles).some(p => s.perfiles.includes(p))) {
@@ -81,6 +97,7 @@ function showStep(estado) {
 async function poll(url) {
     while (true) {
         const res = await fetch(url, {credentials: "same-origin"});
+        if (res.status === 401) { sesionVencida(); throw new Error("Tu sesión venció."); }
         if (!res.ok) throw new Error("El informe expiró o no existe");
         const job = await res.json();
         showStep(job.estado);

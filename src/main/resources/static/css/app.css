@@ -356,3 +356,7 @@ input[type=date] { color-scheme: dark; }
     .dt-bloques .dt-bloque:last-child .dt-row.three { grid-template-columns: 1fr; }
     .dt-c-log .dt-log { max-height: calc(100vh - 230px); overflow-y: auto; }
 }
+/* Casilla "Mantener la sesión iniciada" del ingreso */
+.check { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; cursor: pointer; font-size: .9rem; }
+.check input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+.check small { display: block; color: var(--muted); font-size: .8rem; }

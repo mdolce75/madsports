@@ -3,6 +3,7 @@ package com.rinkmetrics.account;
 import com.rinkmetrics.account.TokenUsuario.Tipo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,16 +38,19 @@ public class CuentaService {
     private final PasswordEncoder encoder;
     private final Mailer mailer;
     private final Clock clock;
+    private final PersistentTokenRepository recordados;
     private final String baseUrl;
     private final SecureRandom random = new SecureRandom();
 
     public CuentaService(UsuarioRepository usuarios, TokenUsuarioRepository tokens, PasswordEncoder encoder,
-                         Mailer mailer, Clock clock, @Value("${rinkmetrics.mail.base-url}") String baseUrl) {
+                         Mailer mailer, Clock clock, PersistentTokenRepository recordados,
+                         @Value("${rinkmetrics.mail.base-url}") String baseUrl) {
         this.usuarios = usuarios;
         this.tokens = tokens;
         this.encoder = encoder;
         this.mailer = mailer;
         this.clock = clock;
+        this.recordados = recordados;
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
@@ -105,7 +109,8 @@ public class CuentaService {
     }
 
     /**
-     * Cambia la clave con el enlace del mail. También confirma el email (el enlace llegó a esa casilla).
+     * Cambia la clave con el enlace del mail. También confirma el email (el enlace llegó a esa casilla) y deja de
+     * recordar los dispositivos donde se había ingresado con "Recordarme": hay que volver a ingresar con la clave nueva.
      *
      * @throws IllegalArgumentException si el enlace venció, ya se usó o la clave es corta
      */
@@ -119,6 +124,7 @@ public class CuentaService {
         t.usar();
         t.getUsuario().cambiarClave(encoder.encode(clave));
         t.getUsuario().verificarEmail();
+        recordados.removeUserTokens(t.getUsuario().getUsuario());
     }
 
     private Optional<Usuario> buscarPorEmail(String email) {
