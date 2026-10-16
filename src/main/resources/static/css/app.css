@@ -535,3 +535,62 @@ nav.secciones a { white-space: nowrap; }
     .galeria-grid { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); grid-template-rows: auto auto; }
     .galeria-grid .galeria-celular { grid-column: 2; grid-row: 1 / span 2; }
 }
+
+/* ---- Métricas DT: menú (Dashboard · Partidos · Jugadores), dashboard y fichas de jugadores ---- */
+.dt-menu { display: flex; gap: 6px; margin: 14px 0 4px; padding: 4px; border: 1px solid var(--line); border-radius: 999px;
+           background: var(--panel); width: fit-content; max-width: 100%; overflow-x: auto; }
+.dt-menu a { padding: 8px 18px; border-radius: 999px; color: var(--ink-2); text-decoration: none; white-space: nowrap;
+             font: 700 .82rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
+.dt-menu a:hover { color: var(--accent); }
+.dt-menu a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); }
+.dt-vista { margin-top: 10px; }
+.dash-kpis { margin: 12px 0; }
+.dash-kpis .dt-kpi b { font-size: 2rem; }
+.dash-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+.dash-box { padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.dash-box h3 { margin: 0 0 10px; font: 700 .85rem/1.2 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.dash-proximos .btn { margin-top: 12px; }
+@media (min-width: 900px) {
+    .dash-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); }
+    .dash-proximos { grid-column: 1 / -1; }
+}
+.grafico { width: 100%; height: auto; display: block; }
+.grafico .eje { font: 500 11px var(--body); fill: var(--muted); }
+.grafico .valor { font: 700 12px var(--body); fill: var(--ink); }
+.grafico .grilla { stroke: var(--line); stroke-width: 1; }
+.grafico .linea { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.grafico .area-linea { fill: rgba(34, 184, 240, .12); }
+.grafico .punto { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+
+.fichas { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); margin-top: 12px; }
+.ficha { overflow: hidden; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.ficha-head { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 12px 14px;
+              background: linear-gradient(135deg, #0a7ea4, #075f7d); color: #fff; }
+.ficha.arquero .ficha-head { background: linear-gradient(135deg, #4c3a9e, #33276e); }
+.ficha.sin-datos .ficha-head { background: #1a2a48; }
+.ficha-num { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: rgba(255, 255, 255, .16);
+             border: 1px solid rgba(255, 255, 255, .25); font: 700 1.1rem/1 var(--display); }
+.ficha-head b { display: block; font: 700 1.05rem/1.15 var(--body); }
+.ficha-head small { color: rgba(255, 255, 255, .8); font-size: .78rem; }
+.ficha-indice { text-align: right; }
+.ficha-indice small { display: block; font: 700 .65rem/1 var(--display); letter-spacing: .14em; text-transform: uppercase; }
+.ficha-indice b { font: 700 1.8rem/1 var(--display); color: var(--lime); }
+.ficha.sin-datos .ficha-indice b { color: rgba(255, 255, 255, .5); }
+.ficha-pj { display: flex; justify-content: space-between; gap: 8px; padding: 8px 14px; background: var(--panel-2);
+            font: 700 .78rem/1.2 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.ficha-pentagono { padding: 4px 6px 0; background: #0f1a30; }
+.pentagono { width: 100%; height: auto; display: block; }
+.pentagono .anillos polygon, .pentagono .anillos line { fill: none; stroke: #3a5378; stroke-width: 1; }
+.pentagono .area { fill: rgba(34, 184, 240, .35); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.ficha.arquero .pentagono .area { fill: rgba(167, 139, 250, .35); stroke: #a78bfa; }
+.pentagono .etiquetas { font: 600 10.5px var(--body); fill: var(--ink-2); }
+.ficha-filas { display: grid; gap: 6px; padding: 10px 10px 12px; }
+.ficha-fila { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 10px; border-left: 3px solid var(--c);
+              background: rgba(255, 255, 255, .02); }
+.ficha-fila .t { font: 700 .8rem/1.2 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--c); }
+.ficha-fila .v { font-size: .76rem; color: var(--c); text-align: right; }
+.ficha-fila .d { font-size: .76rem; color: var(--muted); }
+.ficha-fila .n { font: 700 .9rem/1.2 var(--body); color: var(--ink); text-align: right; }
+body.dt-vivo .dt-menu { display: none; }
+
+@media (min-width: 960px) { .galeria-grid.galeria-dos { grid-template-columns: 1fr 1fr; grid-template-rows: auto; } }

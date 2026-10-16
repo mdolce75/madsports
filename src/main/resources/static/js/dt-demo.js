@@ -39,6 +39,38 @@
         ],
     }];
 
+    // Historia de la demo: partidos ya jugados en los últimos meses (con acciones generadas siempre iguales) y dos
+    // programados, para que el dashboard y las fichas de los jugadores tengan datos.
+    let semilla = 7;
+    const azar = () => (semilla = (semilla * 16807) % 2147483647) / 2147483647;
+    const elegir = lista => lista[Math.floor(azar() * lista.length)];
+    const dia = (meses, d) => { const x = new Date(); x.setMonth(x.getMonth() - meses); x.setDate(d); return x.toISOString().slice(0, 10); };
+    const enDias = n => { const x = new Date(); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+    const CAMPO = PLANTEL.filter(j => !j.arquero).map(j => j.id);
+    const TIPOS = [["PERDIDA", "PROPIO"], ["PERDIDA", "RIVAL"], ["RECUPERACION", "PROPIO"], ["RECUPERACION", "RIVAL"],
+        ["RECUPERACION", "RIVAL"], ["TIRO", "GOL"], ["TIRO", "NO_GOL"], ["TIRO", "NO_GOL"], ["FALTA", "COMETIDA"],
+        ["FALTA", "RECIBIDA"], ["LIBRE_FAVOR", "NO_GOL"], ["TARJETA", "AMARILLA"]];
+    function jugado(id, rival, fecha, local) {
+        const acciones = [];
+        for (let i = 0; i < 26; i++) {
+            const [tipo, res] = elegir(TIPOS);
+            // Los delanteros (7, 9, 10) tiran más; el resto recupera más.
+            const j = tipo === "TIRO" ? elegir([105, 107, 108, 108, 109]) : elegir(CAMPO);
+            acciones.push(accion(j, tipo, res, 1 + (i % 2), Math.floor(azar() * DUR)));
+        }
+        for (let i = 0; i < 4; i++) acciones.push(accion(elegir([101, 101, 102]), elegir(["ATAJADA", "ATAJADA", "GOL_RECIBIDO"]), null, 1 + (i % 2), Math.floor(azar() * DUR)));
+        return {id, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null, rival, fecha, local,
+            minutosTiempo: 25, estado: "CERRADO", tiempo: 2, segundos: DUR, desde: null, acciones};
+    }
+    partidos.push(
+        jugado(2, "Atlético Norte", dia(1, 20), false), jugado(3, "Unión Patín", dia(1, 6), true),
+        jugado(4, "Sporting Central", dia(2, 24), true), jugado(5, "Club Social Sur", dia(2, 9), false),
+        jugado(6, "Deportivo Oeste", dia(3, 15), false), jugado(7, "Atlético Norte", dia(4, 18), true),
+        {id: 8, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null, rival: "Club Social Sur", fecha: enDias(3),
+            local: true, minutosTiempo: 25, estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []},
+        {id: 9, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null, rival: "Unión Patín", fecha: enDias(10),
+            local: false, minutosTiempo: 25, estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []});
+
     const golAFavor = a => a.resultado === "GOL" && ["TIRO", "LIBRE_FAVOR", "PENAL_FAVOR"].includes(a.tipo);
     const golEnContra = a => a.tipo === "GOL_RECIBIDO" || a.resultado === "GOL" && ["LIBRE_CONTRA", "PENAL_CONTRA"].includes(a.tipo);
     const jugados = p => Math.max(0, Math.min(DUR, p.segundos + (p.desde ? Math.floor((Date.now() - p.desde) / 1000) : 0)));
@@ -86,9 +118,11 @@
         if (r === "/api/logout") { location.replace("/dt-inicio.html"); return json(200, {}); }
         if (r === "/api/dt/rivales") return json(200, RIVALES);
         if (r === "/api/dt/plantel") return json(200, PLANTEL);
-        if (r === "/api/dt/partidos" && method === "GET") return json(200, partidos.map(p => vista(p, false)));
+        if (r === "/api/dt/partidos" && method === "GET") return json(200, partidos.slice()
+            .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id).map(p => vista(p, false)));
+        if (r === "/api/dt/acciones") return json(200, partidos.flatMap(p => p.acciones.map(a => Object.assign({partidoId: p.id}, a))));
         if (r === "/api/dt/partidos" && method === "POST") {
-            const n = {id: partidos.length + 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null,
+            const n = {id: Math.max(...partidos.map(x => x.id)) + 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null,
                 rival: body.rival, fecha: body.fecha || hoy, local: body.local !== false, minutosTiempo: 25,
                 estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []};
             partidos.unshift(n);

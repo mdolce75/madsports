@@ -245,6 +245,16 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
   las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
+- **Métricas DT: menú, dashboard y fichas.** La pantalla del DT tiene un menú Dashboard · Partidos · Jugadores (entra
+  al dashboard).
+  - **Dashboard general:** jugadores del plantel, partidos cargados y del mes; estado de los partidos (programados =
+    creados con fecha futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6) y los
+    próximos partidos.
+  - **Jugadores:** la ficha de cada uno, con índice (0 a 100) y un pentágono de cinco ejes comparados con el plantel
+    (100 = el mejor del equipo): ataque, precisión, desequilibrio (faltas recibidas), recuperación (balance con las
+    pérdidas) y disciplina. Los arqueros se comparan entre sí con sus ejes: atajadas, efectividad, pelota parada,
+    valla y disciplina. Todo se calcula en el navegador (`js/dt-fichas.js`) con `GET /api/dt/acciones` (las acciones
+    activas de todos los partidos del equipo), el plantel y la lista de partidos; los gráficos son SVG propios.
 - **Métricas DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
   la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
   columna) y entra entera en la pantalla, sin bajar.
@@ -414,6 +424,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - Métricas DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
   - `GET /api/dt/rivales?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`clubId`, `nombre`: "GEBA B")
   - `GET /api/dt/plantel?categoria=&rama=`: jugadores con número y `arquero`
+  - `GET /api/dt/acciones?categoria=&rama=`: acciones activas de todos los partidos del equipo (con `partidoId`), para las fichas
   - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false}`
     → `201` (sin `fecha`, hoy); con el mismo rival y fecha devuelve el ya empezado; `409` si se acabó el cupo del mes
   - `GET /api/dt/partidos`, `GET /api/dt/partidos/{id}` (con `reloj {tiempo, jugados, restante, corriendo}` y las

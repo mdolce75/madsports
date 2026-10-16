@@ -53,6 +53,13 @@ public class DtController {
         return dt.rivales(usuario(auth), categoria, rama);
     }
 
+    /** Acciones de todos los partidos del equipo, para las fichas de los jugadores. */
+    @GetMapping("/acciones")
+    public List<DtService.AccionDeEquipo> acciones(@RequestParam(required = false) String categoria,
+                                                   @RequestParam(required = false) String rama, Authentication auth) {
+        return dt.accionesDelEquipo(usuario(auth), categoria, rama);
+    }
+
     @GetMapping("/plantel")
     public List<PlantelJugador> plantel(@RequestParam(required = false) String categoria,
                                         @RequestParam(required = false) String rama, Authentication auth) {
