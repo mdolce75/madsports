@@ -91,7 +91,7 @@ public class Mailer {
             g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             double k = px / 64.0;   // mismas coordenadas que el SVG de la web (viewBox 64x64)
             g.scale(k, k);
-            g.setColor(new Color(0x0d968b));
+            g.setColor(new Color(0x22b8f0));
             g.fill(new RoundRectangle2D.Double(0, 0, 64, 64, 28, 28));
             // Pista (rectángulo de esquinas redondeadas) con tres barras de métricas, como el SVG de la web.
             g.setColor(Color.WHITE);
