@@ -224,6 +224,13 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, que por ahora muestra sus
   equipos. Su plan (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en
   `suscripcion_type`).
+- **Planilla DT (servidor):** el DT elige el partido de un combo con el calendario de su equipo en SIDGAD (los
+  próximos primero) o carga un amistoso. Cada partido nuevo cuenta para el cupo del mes de suscripción (suscripto el
+  15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a 00:00, o lo que diga la competición) y se
+  calcula con la hora de inicio y los segundos acumulados, así un teléfono bloqueado no pierde el minuto. Cada acción
+  es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
+  segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
+  las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
 - **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
   ingresar: el login avisa y ofrece reenviar el mail.
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
@@ -362,6 +369,19 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
   `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
 - `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
+- Planilla DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
+  - `GET /api/dt/partidos-disponibles?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`idp`, fecha, rival,
+    local, torneo, `minutosTiempo`, `jugado`, `cargado`)
+  - `GET /api/dt/plantel?categoria=&rama=`: jugadores con número y `arquero`
+  - `POST /api/dt/partidos` `{"idp":9002}` o un amistoso `{"rival":"Lujan","fecha":"2026-10-18","local":true}` →
+    `201`; si ya estaba empezado lo devuelve; `409` si lo carga otro DT o se acabó el cupo del mes
+  - `GET /api/dt/partidos`, `GET /api/dt/partidos/{id}` (con `reloj {tiempo, jugados, restante, corriendo}` y las
+    acciones)
+  - `POST /api/dt/partidos/{id}/acciones` `[{"id":"<uuid>","jugadorId":11,"tipo":"TIRO","resultado":"GOL","tiempo":1,"segundo":390}]`
+    (`tipo`: `PERDIDA`, `RECUPERACION`, `TIRO`, `ATAJADA`, `GOL_RECIBIDO`, `LIBRE_FAVOR`, `LIBRE_CONTRA`,
+    `PENAL_FAVOR`, `PENAL_CONTRA`, `FALTA`, `TARJETA`); `DELETE /api/dt/partidos/{id}/acciones/{accionId}` deshace
+  - `POST /api/dt/partidos/{id}/reloj` `{"accion":"INICIAR"}` (`PAUSAR`, `REANUDAR`, `FIN_TIEMPO`, o `AJUSTAR` con
+    `segundos`); `POST /api/dt/partidos/{id}/cerrar` y `/reabrir`
 - `GET /api/catalogo?anio=2026&federacion=AMP` — clubes con sus categorías y ramas del año en la federación (sin
   `anio`: el más reciente con datos; sin `federacion`: FPP); `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
