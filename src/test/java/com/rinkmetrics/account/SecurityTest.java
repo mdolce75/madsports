@@ -515,7 +515,7 @@ class SecurityTest {
                 "Tu cuenta", "Confirmá tu email", "ana", List.of("Gracias por sumarte."), "Confirmar mi email",
                 "http://localhost/api/verificar?token=abc", "El enlace vale 48 horas.");
         String html = realMailer.html(m);
-        assertThat(html).contains("#fafafa", "#0d968b", "cid:logo", "Confirmá tu email", "Hola ana:",
+        assertThat(html).contains("#e6ecef", "#0d968b", "cid:logo", "Confirmá tu email", "Hola ana:",
                 "href=\"http://localhost/api/verificar?token=abc\"", "Confirmar mi email ►", "RinkMetrics");
         assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verificar?token=abc");
         assertThat(new String(Mailer.logo(), 1, 3)).isEqualTo("PNG");
