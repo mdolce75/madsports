@@ -7,12 +7,13 @@ import com.rinkmetrics.account.SuscripcionTypeRepository;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.catalog.CatalogService;
+import com.rinkmetrics.catalog.CatalogService.CatalogView;
+import com.rinkmetrics.catalog.CatalogService.ClubView;
+import com.rinkmetrics.catalog.CatalogService.LevelView;
 import com.rinkmetrics.player.RosterService;
-import com.rinkmetrics.player.RosterService.PartidoEquipo;
 import com.rinkmetrics.player.RosterService.PlantelJugador;
 import com.rinkmetrics.sidgad.model.Competition;
 import com.rinkmetrics.sidgad.model.Federacion;
-import com.rinkmetrics.sidgad.model.Models.Match;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +32,6 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
@@ -80,10 +80,21 @@ class DtControllerTest {
 
     static final Competition APERTURA = new Competition(500, "APERTURA PRIMERA MASCULINO", 3, 40,
             Competition.Torneo.APERTURA, new Competition.Category("PRIMERA", "MASCULINO"), 1, List.of(), 25);
+    static final Competition INFANTIL = new Competition(501, "APERTURA INFANTIL MASCULINO", 3, 40,
+            Competition.Torneo.APERTURA, new Competition.Category("INFANTIL", "MASCULINO"), 1, List.of(), 20);
 
-    static Match match(int idp, LocalDate fecha, String local, String visitante, Integer gl, Integer gv) {
-        return new Match(idp, 1, fecha, LocalTime.of(20, 0), "Cancha", 1, 74, local, 2, 9, visitante, gl, gv);
+    static LevelView nivel(String key, String... ramas) {
+        return new LevelView(key, key, List.of(ramas));
     }
+
+    /** Clubes de la FPP en 2026: Vélez (Primera A y B), Huracán, GEBA (A y B), Lujan (solo femenino) y SAN JUAN. */
+    static final CatalogView CATALOGO = new CatalogView(2026, true, null, List.of(2026), List.of(), List.of(), List.of(
+            new ClubView(74, "CAVS", "VELEZ", List.of(nivel("PRIMERA:A", "MASCULINO"), nivel("PRIMERA:B", "MASCULINO"),
+                    nivel("INFANTIL", "MASCULINO"))),
+            new ClubView(9, "CAH", "HURACAN", List.of(nivel("PRIMERA", "MASCULINO", "FEMENINO"))),
+            new ClubView(12, "GEBA", "GEBA", List.of(nivel("PRIMERA:A", "MASCULINO"), nivel("PRIMERA:B", "MASCULINO"))),
+            new ClubView(15, "LUJ", "LUJAN", List.of(nivel("PRIMERA", "FEMENINO"))),
+            new ClubView(20, "SJ", "SAN JUAN", List.of(nivel("INFANTIL", "MASCULINO")))), "FPP");
 
     static Map<String, Object> accion(int jugadorId, String tipo, String resultado, int tiempo, int segundo) {
         Map<String, Object> m = new java.util.HashMap<>(Map.of("id", UUID.randomUUID().toString(),
@@ -112,11 +123,9 @@ class DtControllerTest {
         usuarios.deleteAll();
         reloj.ahora = INICIO;
         when(catalog.defaultYear()).thenReturn(2026);
-        when(roster.partidos(Federacion.FPP, 74, 2026, "PRIMERA", "MASCULINO")).thenReturn(List.of(
-                new PartidoEquipo(APERTURA, match(9001, LocalDate.of(2026, 10, 1), "VELEZ", "HURACAN", 3, 2), true),
-                new PartidoEquipo(APERTURA, match(9003, LocalDate.of(2026, 10, 25), "SAN JUAN", "VELEZ", null, null), false),
-                new PartidoEquipo(APERTURA, match(9002, LocalDate.of(2026, 10, 18), "VELEZ", "LUJAN", null, null), true)));
-        when(roster.plantel(Federacion.FPP, 74, 2026, "PRIMERA", "MASCULINO")).thenReturn(List.of(
+        when(catalog.view(Federacion.FPP, 2026)).thenReturn(CATALOGO);
+        when(catalog.competitions(Federacion.FPP, 2026)).thenReturn(List.of(APERTURA, INFANTIL));
+        when(roster.plantel(Federacion.FPP, 74, 2026, "PRIMERA:A", "MASCULINO")).thenReturn(List.of(
                 new PlantelJugador(10, "1", "Juan Arquero", true),
                 new PlantelJugador(11, "7", "Pedro Delantero", false)));
         dt("profe");
@@ -126,7 +135,7 @@ class DtControllerTest {
     void dt(String nombre) {
         Usuario u = new Usuario(nombre, "x", nombre + "@example.com", "Ana", "Pérez", 74, "VELEZ", "CAVS",
                 EnumSet.of(Perfil.DTFPP), Instant.now());
-        u.asignarEquiposDt(List.of(new EquipoDt("PRIMERA", "MASCULINO")));
+        u.asignarEquiposDt(List.of(new EquipoDt("PRIMERA:A", "MASCULINO"), new EquipoDt("INFANTIL", "MASCULINO")));
         u.suscribir(suscripciones.findByCodigo("DT_MENSUAL").orElseThrow(), LocalDate.of(2026, 9, 15));
         usuarios.save(u);
     }
@@ -140,22 +149,26 @@ class DtControllerTest {
                 .content(json.writeValueAsString(body)));
     }
 
-    long crear(String usuario, int idp) throws Exception {
-        String body = enviar(post("/api/dt/partidos"), usuario, Map.of("idp", idp))
+    static Map<String, Object> partido(String rival) {
+        return Map.of("rival", rival, "fecha", "2026-10-18", "local", true);
+    }
+
+    long crear(String usuario, String rival) throws Exception {
+        String body = enviar(post("/api/dt/partidos"), usuario, partido(rival))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("id").asLong();
     }
 
     @Test
-    void comboDeRivalesConLosProximosPrimero() throws Exception {
-        mvc.perform(get("/api/dt/partidos-disponibles").with(como("profe")))
+    void comboConLosRivalesDeLaCategoria() throws Exception {
+        // Primera A de Vélez: los equipos de Primera masculino de los otros clubes, y Vélez B; no Lujan (solo femenino).
+        mvc.perform(get("/api/dt/rivales").with(como("profe")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].rival").value(contains("LUJAN", "SAN JUAN", "HURACAN")))
-                .andExpect(jsonPath("$[1].local").value(false))
-                .andExpect(jsonPath("$[2].jugado").value(true))
-                .andExpect(jsonPath("$[0].minutosTiempo").value(25))
-                .andExpect(jsonPath("$[0].torneo").value("Apertura"));
-        mvc.perform(get("/api/dt/partidos-disponibles").param("categoria", "JUNIORS:A").param("rama", "FEMENINO")
+                .andExpect(jsonPath("$[*].nombre").value(contains("GEBA A", "GEBA B", "HURACAN", "VELEZ B")))
+                .andExpect(jsonPath("$[2].clubId").value(9));
+        mvc.perform(get("/api/dt/rivales").param("categoria", "INFANTIL").param("rama", "MASCULINO").with(como("profe")))
+                .andExpect(jsonPath("$[*].nombre").value(contains("SAN JUAN")));
+        mvc.perform(get("/api/dt/rivales").param("categoria", "JUNIORS:A").param("rama", "FEMENINO")
                         .with(como("profe"))).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Ese equipo no es uno de los tuyos."));
         mvc.perform(get("/api/dt/plantel").with(como("profe")))
@@ -164,25 +177,31 @@ class DtControllerTest {
 
     @Test
     void soloElDtVeSusPartidos() throws Exception {
-        long id = crear("profe", 9002);
+        long id = crear("profe", "HURACAN");
         mvc.perform(get("/api/dt/partidos/" + id).with(como("profe"))).andExpect(status().isOk())
-                .andExpect(jsonPath("$.rival").value("LUJAN"))
+                .andExpect(jsonPath("$.rival").value("HURACAN"))
+                .andExpect(jsonPath("$.fecha").value("2026-10-18"))
+                .andExpect(jsonPath("$.local").value(true))
                 .andExpect(jsonPath("$.estado").value("PENDIENTE"))
                 .andExpect(jsonPath("$.reloj.restante").value(1500));
         mvc.perform(get("/api/dt/partidos/" + id).with(como("otro"))).andExpect(status().isNotFound());
-        enviar(post("/api/dt/partidos"), "otro", Map.of("idp", 9002)).andExpect(status().isConflict());
-        // El mismo DT retoma el partido en vez de crear otro.
-        enviar(post("/api/dt/partidos"), "profe", Map.of("idp", 9002)).andExpect(jsonPath("$.id").value(id));
-        mvc.perform(get("/api/dt/partidos-disponibles").with(como("profe")))
-                .andExpect(jsonPath("$[0].cargado").value(id));
+        // El mismo rival y la misma fecha retoman el partido en vez de crear otro.
+        enviar(post("/api/dt/partidos"), "profe", partido("HURACAN")).andExpect(jsonPath("$.id").value(id));
+        mvc.perform(get("/api/dt/partidos").with(como("profe"))).andExpect(jsonPath("$", hasSize(1)));
         mvc.perform(get("/api/dt/partidos").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
         mvc.perform(get("/api/dt/partidos").with(user("p").authorities(() -> "PLAYERFPP"))).andExpect(status().isForbidden());
-        enviar(post("/api/dt/partidos"), "profe", Map.of("idp", 1234)).andExpect(status().isBadRequest());
+        enviar(post("/api/dt/partidos"), "profe", Map.of("fecha", "2026-10-18")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Elegí el rival."));
+        // La duración de los tiempos sale de la categoría: Infantil juega de a 20'.
+        enviar(post("/api/dt/partidos"), "profe", Map.of("categoria", "INFANTIL", "rama", "MASCULINO",
+                "rival", "SAN JUAN")).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.minutosTiempo").value(20))
+                .andExpect(jsonPath("$.fecha").value("2026-10-16"));
     }
 
     @Test
     void relojYAccionesDelPartido() throws Exception {
-        long id = crear("profe", 9002);
+        long id = crear("profe", "HURACAN");
         String base = "/api/dt/partidos/" + id;
         enviar(post(base + "/reloj"), "profe", Map.of("accion", "PAUSAR")).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("Primero iniciá el partido."));
@@ -230,12 +249,11 @@ class DtControllerTest {
     }
 
     @Test
-    void amistosoYCupoDe20PartidosPorMes() throws Exception {
-        enviar(post("/api/dt/partidos"), "profe", Map.of()).andExpect(status().isBadRequest());
+    void cupoDe20PartidosPorMes() throws Exception {
         for (int i = 0; i < 20; i++) {
-            enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Amistoso " + i, "local", false))
+            enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Rival " + i, "local", false))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.torneo").value("Amistoso"))
+                    .andExpect(jsonPath("$.local").value(false))
                     .andExpect(jsonPath("$.minutosTiempo").value(25));
         }
         enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Uno más")).andExpect(status().isConflict())

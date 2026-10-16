@@ -71,6 +71,8 @@ function renderUserBar(s) {
     out.textContent = "Salir";
     out.addEventListener("click", async () => {
         await api("/api/logout", {method: "POST"});
+        // La planilla DT guarda copias para abrir sin señal: no quedan para el próximo usuario del teléfono.
+        if (window.caches) await caches.delete("rinkmetrics-dt-v1").catch(() => {});
         location.replace("/");
     });
     bar.append(who, out);

@@ -5,8 +5,10 @@ import com.rinkmetrics.account.SuscripcionType;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.player.RosterService;
-import com.rinkmetrics.player.RosterService.PartidoEquipo;
 import com.rinkmetrics.player.RosterService.PlantelJugador;
+import com.rinkmetrics.catalog.CatalogService.CategoryOption;
+import com.rinkmetrics.catalog.CatalogService.ClubView;
+import com.rinkmetrics.catalog.CatalogService.LevelView;
 import com.rinkmetrics.sidgad.model.Competition;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -39,7 +41,7 @@ public class DtService {
         }
     }
 
-    /** Choca con algo ya cargado (cupo del mes, partido que carga otro DT). */
+    /** Choca con algo ya cargado (el cupo de partidos del mes). */
     public static class Conflicto extends RuntimeException {
         public Conflicto(String message) {
             super(message);
@@ -51,18 +53,14 @@ public class DtService {
     private static final Pattern UUID = Pattern.compile("[0-9a-fA-F-]{36}");
     private static final DateTimeFormatter DIA = DateTimeFormatter.ofPattern("dd/MM");
 
-    /**
-     * Un partido del calendario del equipo para el combo de rivales.
-     *
-     * @param jugado  ya tiene resultado en SIDGAD
-     * @param cargado id del partido de la planilla si ya se empezó a cargar (null si no)
-     */
-    public record Disponible(int idc, int idp, LocalDate fecha, LocalTime hora, String rival, boolean local,
-                             String torneo, int minutosTiempo, boolean jugado, Long cargado) {
+    /** Un rival posible para el combo: un equipo de otro club en la misma categoría y rama ("GEBA B"). */
+    public record Rival(int clubId, String nombre) {
     }
 
-    /** Un partido nuevo: del combo ({@code idp}) o un amistoso ({@code rival}, {@code fecha}, {@code local}). */
-    public record NuevoPartido(String categoria, String rama, Integer idp, String rival, LocalDate fecha, Boolean local) {
+    /**
+     * Un partido nuevo: rival (del combo o escrito a mano), fecha (sin fecha, hoy) y si el equipo del DT es local.
+     */
+    public record NuevoPartido(String categoria, String rama, String rival, LocalDate fecha, Boolean local) {
     }
 
     /**
@@ -127,24 +125,27 @@ public class DtService {
         return pedido;
     }
 
-    /** Combo de rivales: los partidos del equipo en el año, los próximos primero y después los jugados. */
-    public List<Disponible> disponibles(Usuario u, String categoria, String rama) {
+    /**
+     * Combo de rivales: los equipos de los demás clubes que juegan la misma categoría y rama en el año, uno por equipo
+     * (si un club tiene A y B, van los dos). También los otros equipos del propio club.
+     */
+    public List<Rival> rivales(Usuario u, String categoria, String rama) {
         EquipoDt e = equipo(u, categoria, rama);
-        LocalDate hoy = LocalDate.now(clock);
-        Map<Integer, Long> cargados = partidos.findByUsuarioIdOrderByFechaDescIdDesc(u.getId()).stream()
-                .filter(p -> p.getIdp() != null && p.getCategoria().equals(e.categoria()) && p.getRama().equals(e.rama()))
-                .collect(Collectors.toMap(PartidoDt::getIdp, PartidoDt::getId, (a, b) -> a));
-        return partidosDelEquipo(u, e).stream()
-                .map(p -> new Disponible(p.competition().id(), p.match().idp(), p.match().date(), p.match().time(),
-                        p.rival(), p.local(), torneo(p.competition()), minutos(p.competition()), p.match().played(),
-                        cargados.get(p.match().idp())))
-                .sorted(Comparator.comparing((Disponible d) -> d.jugado() || d.fecha() != null && d.fecha().isBefore(hoy))
-                        .thenComparing((a, b) -> {
-                            boolean pasado = a.jugado() || a.fecha() != null && a.fecha().isBefore(hoy);
-                            Comparator<LocalDate> fechas = Comparator.nullsLast(Comparator.naturalOrder());
-                            return pasado ? fechas.reversed().compare(a.fecha(), b.fecha()) : fechas.compare(a.fecha(), b.fecha());
-                        }))
-                .toList();
+        CategoryOption propio = CategoryOption.parse(e.categoria());
+        var view = catalog.view(u.federacion(), catalog.defaultYear());
+        List<Rival> out = new ArrayList<>();
+        for (ClubView club : view.clubs()) {
+            for (LevelView lv : club.categories()) {
+                CategoryOption o = CategoryOption.parse(lv.key());
+                if (!o.level().equals(propio.level()) || !lv.branches().contains(e.rama())
+                        || club.id() == u.getClubId() && o.key().equals(propio.key())) {
+                    continue;
+                }
+                out.add(new Rival(club.id(), club.name() + (o.letter() == null ? "" : " " + o.letter())));
+            }
+        }
+        out.sort(Comparator.comparing(Rival::nombre));
+        return out;
     }
 
     /** Plantel del equipo (de sus actas), con número y arqueros marcados. */
@@ -154,39 +155,28 @@ public class DtService {
     }
 
     /**
-     * Empieza a cargar un partido. Si el partido de SIDGAD ya lo había empezado el DT, lo devuelve para retomarlo;
-     * si lo carga otro DT del mismo equipo, lo rechaza. Cada partido nuevo cuenta para el cupo del mes.
+     * Empieza a cargar un partido. Si el DT ya tiene uno de ese equipo con el mismo rival y la misma fecha, lo devuelve
+     * para retomarlo (no cuenta de nuevo para el cupo). Cada partido nuevo cuenta para el cupo del mes.
      */
     @Transactional
     public PartidoView crear(Usuario u, NuevoPartido n) {
         EquipoDt e = equipo(u, n.categoria(), n.rama());
-        if (n.idp() != null) {
-            var existente = partidos.findByClubIdAndCategoriaAndRamaAndIdp(u.getClubId(), e.categoria(), e.rama(), n.idp());
-            if (existente.isPresent()) {
-                if (!existente.get().getUsuarioId().equals(u.getId())) {
-                    throw new Conflicto("Ese partido ya lo está cargando otro DT de tu equipo.");
-                }
-                return view(existente.get(), true);
-            }
+        String rival = n.rival() == null ? "" : n.rival().trim().replaceAll("\\s+", " ");
+        if (rival.isEmpty()) {
+            throw new IllegalArgumentException("Elegí el rival.");
+        }
+        if (rival.length() > 60) {
+            throw new IllegalArgumentException("El nombre del rival es muy largo.");
+        }
+        LocalDate fecha = n.fecha() == null ? LocalDate.now(clock) : n.fecha();
+        var existente = partidos.findByUsuarioIdAndCategoriaAndRamaAndRivalAndFecha(u.getId(), e.categoria(),
+                e.rama(), rival, fecha);
+        if (existente.isPresent()) {
+            return view(existente.get(), true);
         }
         verificarCupo(u);
-        Instant ahora = clock.instant();
-        PartidoDt p;
-        if (n.idp() != null) {
-            PartidoEquipo pe = partidosDelEquipo(u, e).stream().filter(x -> x.match().idp() == n.idp()).findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Ese partido no es de tu equipo."));
-            p = new PartidoDt(u.getId(), u.federacion().name(), u.getClubId(), e.categoria(), e.rama(),
-                    pe.competition().id(), n.idp(), torneo(pe.competition()), pe.rival(),
-                    pe.match().date() == null ? LocalDate.now(clock) : pe.match().date(), pe.local(),
-                    minutos(pe.competition()), ahora);
-        } else {
-            if (n.rival() == null || n.rival().isBlank()) {
-                throw new IllegalArgumentException("Elegí el rival del calendario o escribí el del amistoso.");
-            }
-            p = new PartidoDt(u.getId(), u.federacion().name(), u.getClubId(), e.categoria(), e.rama(), null, null,
-                    "Amistoso", n.rival().trim(), n.fecha() == null ? LocalDate.now(clock) : n.fecha(),
-                    n.local() == null || n.local(), MINUTOS_POR_DEFECTO, ahora);
-        }
+        PartidoDt p = new PartidoDt(u.getId(), u.federacion().name(), u.getClubId(), e.categoria(), e.rama(), null,
+                null, null, rival, fecha, n.local() == null || n.local(), minutos(u, e), clock.instant());
         return view(partidos.save(p), true);
     }
 
@@ -345,10 +335,6 @@ public class DtService {
                 .orElseThrow(() -> new NoEncontrado("No existe ese partido."));
     }
 
-    private List<PartidoEquipo> partidosDelEquipo(Usuario u, EquipoDt e) {
-        return roster.partidos(u.federacion(), u.getClubId(), catalog.defaultYear(), e.categoria(), e.rama());
-    }
-
     private PartidoView view(PartidoDt p, boolean conAcciones) {
         Instant ahora = clock.instant();
         List<AccionView> lista = conAcciones && p.getId() != null
@@ -360,11 +346,11 @@ public class DtService {
                 new RelojView(p.getTiempoActual(), p.jugados(ahora), p.restante(ahora), p.corriendo()), lista);
     }
 
-    private static String torneo(Competition c) {
-        return c.torneoLabel();
-    }
-
-    private static int minutos(Competition c) {
-        return c.periodMinutes() > 0 ? c.periodMinutes() : MINUTOS_POR_DEFECTO;
+    /** Duración de cada tiempo en la categoría del equipo, según la competición; si no la informa, 25'. */
+    private int minutos(Usuario u, EquipoDt e) {
+        String level = CategoryOption.parse(e.categoria()).level();
+        return catalog.competitions(u.federacion(), catalog.defaultYear()).stream()
+                .filter(c -> c.category().level().equals(level) && c.category().branch().equals(e.rama()))
+                .mapToInt(Competition::periodMinutes).filter(m -> m > 0).findFirst().orElse(MINUTOS_POR_DEFECTO);
     }
 }

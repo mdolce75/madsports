@@ -414,6 +414,9 @@ class SecurityTest {
         mvc.perform(get("/club.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/jugador.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/api/dt/partidos").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
+        // El service worker de la planilla (para abrirla sin señal) se baja sin sesión, como el resto de los estáticos.
+        mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
+        mvc.perform(get("/js/dt.js")).andExpect(status().isOk());
     }
 
     @Test
