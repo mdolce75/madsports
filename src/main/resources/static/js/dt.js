@@ -1,39 +1,47 @@
 // Planilla DT en vivo: elegir el partido, manejar el reloj y cargar las acciones de cada jugador. Las acciones pasan
 // por DtCola (dt-cola.js), así se guardan aunque no haya señal; el reloj sí necesita conexión.
 (() => {
+    // Colores de los botones: cada acción el suyo (texto blanco; la amarilla, oscuro). Defensa = campo propio, ataque =
+    // campo rival. Los mismos colores marcan cada acción en la lista de últimas acciones.
+    const C = {
+        perdDef: "#b91c1c", perdAtq: "#c2410c", recDef: "#15803d", recAtq: "#4d7c0f",
+        gol: "#0f766e", noGol: "#52525b", atajada: "#1d4ed8", golRecibido: "#9f1239",
+        faltaCom: "#6d28d9", faltaRec: "#0369a1", amarilla: "#facc15", azul: "#1d4ed8", roja: "#dc2626",
+    };
     // Acciones de la planilla. arco: se cargan al arquero en cancha. Las de a pares (gol / no gol) van en una tarjeta.
     const SIMPLES = [
-        {g: "g-posesion", tipo: "PERDIDA", res: "PROPIO", t: "Pérdida", d: "En campo propio", cls: "bad"},
-        {g: "g-posesion", tipo: "PERDIDA", res: "RIVAL", t: "Pérdida", d: "En campo rival", cls: "bad"},
-        {g: "g-posesion", tipo: "RECUPERACION", res: "PROPIO", t: "Recuperación", d: "En campo propio", cls: "good"},
-        {g: "g-posesion", tipo: "RECUPERACION", res: "RIVAL", t: "Recuperación", d: "En campo rival", cls: "good"},
-        {g: "g-arco", tipo: "ATAJADA", res: null, t: "Atajada", d: "Arquero", cls: "good", arco: true},
-        {g: "g-arco", tipo: "GOL_RECIBIDO", res: null, t: "Gol recibido", d: "Arquero", cls: "bad", arco: true},
-        {g: "g-faltas", tipo: "FALTA", res: "COMETIDA", t: "Falta cometida", d: "", cls: "bad"},
-        {g: "g-faltas", tipo: "FALTA", res: "RECIBIDA", t: "Falta recibida", d: "", cls: "good"},
-        {g: "g-tarjetas", tipo: "TARJETA", res: "AMARILLA", t: "Amarilla", d: "", cls: "card-y"},
-        {g: "g-tarjetas", tipo: "TARJETA", res: "AZUL", t: "Azul", d: "", cls: "card-b"},
-        {g: "g-tarjetas", tipo: "TARJETA", res: "ROJA", t: "Roja", d: "", cls: "card-r"},
+        {g: "g-posesion", tipo: "PERDIDA", res: "PROPIO", t: "Pérdida en defensa", col: C.perdDef},
+        {g: "g-posesion", tipo: "PERDIDA", res: "RIVAL", t: "Pérdida en ataque", col: C.perdAtq},
+        {g: "g-posesion", tipo: "RECUPERACION", res: "PROPIO", t: "Recuperación en defensa", col: C.recDef},
+        {g: "g-posesion", tipo: "RECUPERACION", res: "RIVAL", t: "Recuperación en ataque", col: C.recAtq},
+        {g: "g-arco", tipo: "ATAJADA", res: null, t: "Atajada", d: "Arquero", col: C.atajada, arco: true},
+        {g: "g-arco", tipo: "GOL_RECIBIDO", res: null, t: "Gol recibido", d: "Arquero", col: C.golRecibido, arco: true},
+        {g: "g-faltas", tipo: "FALTA", res: "COMETIDA", t: "Falta cometida", col: C.faltaCom},
+        {g: "g-faltas", tipo: "FALTA", res: "RECIBIDA", t: "Falta recibida", col: C.faltaRec},
+        {g: "g-tarjetas", tipo: "TARJETA", res: "AMARILLA", t: "Tarjeta amarilla", col: C.amarilla, oscuro: true},
+        {g: "g-tarjetas", tipo: "TARJETA", res: "AZUL", t: "Tarjeta azul", col: C.azul},
+        {g: "g-tarjetas", tipo: "TARJETA", res: "ROJA", t: "Tarjeta roja", col: C.roja},
     ];
+    const A_FAVOR = {si: ["GOL", "Gol", C.gol], no: ["NO_GOL", "No gol", C.noGol]};
+    const EN_CONTRA = {si: ["GOL", "Gol", C.golRecibido], no: ["ATAJADO", "Atajado", C.atajada]};
     const PARES = [
-        {g: "g-arco", tipo: "TIRO", t: "Tiro al arco", quien: "", si: ["GOL", "Gol"], no: ["NO_GOL", "No gol"]},
-        {g: "g-parada", tipo: "LIBRE_FAVOR", t: "Libre a favor", quien: "pateador", si: ["GOL", "Gol"], no: ["NO_GOL", "No gol"]},
-        {g: "g-parada", tipo: "LIBRE_CONTRA", t: "Libre en contra", quien: "arquero", arco: true, si: ["GOL", "Gol"], no: ["ATAJADO", "Atajado"]},
-        {g: "g-parada", tipo: "PENAL_FAVOR", t: "Penal a favor", quien: "pateador", si: ["GOL", "Gol"], no: ["NO_GOL", "No gol"]},
-        {g: "g-parada", tipo: "PENAL_CONTRA", t: "Penal en contra", quien: "arquero", arco: true, si: ["GOL", "Gol"], no: ["ATAJADO", "Atajado"]},
+        Object.assign({g: "g-arco", tipo: "TIRO", t: "Tiro al arco", quien: ""}, A_FAVOR),
+        Object.assign({g: "g-parada", tipo: "LIBRE_FAVOR", t: "Libre a favor", quien: "pateador"}, A_FAVOR),
+        Object.assign({g: "g-parada", tipo: "LIBRE_CONTRA", t: "Libre en contra", quien: "arquero", arco: true}, EN_CONTRA),
+        Object.assign({g: "g-parada", tipo: "PENAL_FAVOR", t: "Penal a favor", quien: "pateador"}, A_FAVOR),
+        Object.assign({g: "g-parada", tipo: "PENAL_CONTRA", t: "Penal en contra", quien: "arquero", arco: true}, EN_CONTRA),
     ];
+
+    /** Nombre completo de una acción ("Pérdida en ataque", "Penal a favor: Gol") y su color. */
+    function accion(tipo, res) {
+        const s = SIMPLES.find(x => x.tipo === tipo && x.res === (res || null));
+        if (s) return {nombre: s.t, col: s.col};
+        const p = PARES.find(x => x.tipo === tipo);
+        const r = p && [p.si, p.no].find(x => x[0] === res);
+        return r ? {nombre: `${p.t}: ${r[1]}`, col: r[2]} : {nombre: tipo, col: "var(--muted)"};
+    }
     const ARCO = new Set(["ATAJADA", "GOL_RECIBIDO", "LIBRE_CONTRA", "PENAL_CONTRA"]);
-    const NOMBRE = {
-        PERDIDA: "Pérdida", RECUPERACION: "Recuperación", TIRO: "Tiro al arco", ATAJADA: "Atajada",
-        GOL_RECIBIDO: "Gol recibido", LIBRE_FAVOR: "Libre a favor", LIBRE_CONTRA: "Libre en contra",
-        PENAL_FAVOR: "Penal a favor", PENAL_CONTRA: "Penal en contra", FALTA: "Falta", TARJETA: "Tarjeta",
-    };
-    const RESULTADO = {
-        GOL: "Gol", NO_GOL: "No gol", ATAJADO: "Atajado", PROPIO: "Campo propio", RIVAL: "Campo rival",
-        COMETIDA: "Cometida", RECIBIDA: "Recibida", AMARILLA: "Amarilla", AZUL: "Azul", ROJA: "Roja",
-    };
     const ESTADO = {PENDIENTE: "Sin iniciar", EN_JUEGO: "En juego", ENTRETIEMPO: "Entretiempo", TERMINADO: "Terminado", CERRADO: "Cerrado"};
-    const COLOR = {good: "var(--good)", bad: "var(--err)", "card-y": "var(--warn)", "card-b": "#2563eb", "card-r": "var(--err)"};
 
     const golAFavor = a => a.resultado === "GOL" && ["TIRO", "LIBRE_FAVOR", "PENAL_FAVOR"].includes(a.tipo);
     const golEnContra = a => a.tipo === "GOL_RECIBIDO" || a.resultado === "GOL" && ["LIBRE_CONTRA", "PENAL_CONTRA"].includes(a.tipo);
@@ -357,7 +365,11 @@
                 const b = el("button", "dt-player" + (j.arquero ? " gk" : ""));
                 b.type = "button";
                 b.dataset.key = j.key;
-                b.append(el("span", "n", j.numero || "·"), el("span", "s", corto(j.nombre)));
+                // Lo principal es el nombre (completo, en una o dos líneas); el número va chico, arriba.
+                const arriba = el("span", "cab");
+                arriba.append(el("span", "n", j.numero ? "#" + j.numero : "s/n"));
+                if (j.arquero) arriba.append(el("span", "ar", "Arquero"));
+                b.append(arriba, el("span", "s", j.nombre));
                 b.addEventListener("click", () => { seleccionado = j.key; renderJugadores(); });
                 box.append(b);
             }
@@ -369,8 +381,8 @@
             b.setAttribute("aria-label", `${j.numero} ${j.nombre}${j.arquero ? ", arquero" : ""}${j.key === arquero ? ", en cancha" : ""}`);
         }
         const sel = lista.find(j => j.key === seleccionado), ar = lista.find(j => j.key === arquero);
-        $("sel").textContent = sel ? `${sel.numero ? sel.numero + " · " : ""}${sel.nombre}` : "—";
-        $("ar").textContent = ar ? `${ar.numero ? ar.numero + " · " : ""}${corto(ar.nombre)}` : "elegir";
+        $("sel").textContent = sel ? `${sel.nombre}${sel.numero ? " (#" + sel.numero + ")" : ""}` : "—";
+        $("ar").textContent = ar ? `${ar.nombre}${ar.numero ? " (#" + ar.numero + ")" : ""}` : "elegir";
     }
 
     /** Contadores de los botones de acción: [span, función que da el texto con las acciones del partido]. */
@@ -381,11 +393,14 @@
             contadores = [];
             for (const p of PARES.filter(x => x.g === "g-arco")) $(p.g).append(par(p));
             for (const a of SIMPLES) {
-                const b = el("button", "dt-act " + (a.cls || ""));
+                const b = el("button", "dt-act" + (a.oscuro ? " oscuro" : ""));
                 b.type = "button";
+                b.style.setProperty("--c", a.col);
                 const c = el("span", "c");
-                b.append(el("span", "t", a.t), el("span", "d", a.d || " "), c);
-                b.setAttribute("aria-label", `${a.t} ${a.d}`.trim());
+                b.append(el("span", "t", a.t));
+                if (a.d) b.append(el("span", "d", a.d));
+                b.append(c);
+                b.setAttribute("aria-label", a.t);
                 b.addEventListener("click", () => cargar(a.tipo, a.res));
                 contadores.push([c, l => `Partido: ${cuenta(l, a.tipo, a.res)}`]);
                 $(a.g).append(b);
@@ -404,9 +419,10 @@
         t.append(el("span", null, p.t), c);
         contadores.push([c, l => `${cuenta(l, p.tipo, p.si[0])} / ${cuenta(l, p.tipo)}${p.quien ? " · " + p.quien : ""}`]);
         const btns = el("div", "btns");
-        for (const [res, label, cls] of [[p.si[0], p.si[1], "yes"], [p.no[0], p.no[1], "no"]]) {
-            const b = el("button", cls, label);
+        for (const [res, label, col] of [p.si, p.no]) {
+            const b = el("button", null, label);
             b.type = "button";
+            b.style.setProperty("--c", col);
             b.setAttribute("aria-label", `${p.t}: ${label}`);
             b.addEventListener("click", () => cargar(p.tipo, res));
             btns.append(b);
@@ -437,7 +453,7 @@
         if (navigator.vibrate) navigator.vibrate(15);
         await DtCola.agregar(partido.id, accion);
         await refrescarPend();
-        toast(`${NOMBRE[tipo]}${resultado ? " · " + RESULTADO[resultado] : ""} · ${j.numero ? j.numero + " " : ""}${corto(j.nombre)}`,
+        toast(`${accion(tipo, resultado).nombre} · ${j.numero ? j.numero + " " : ""}${corto(j.nombre)}`,
             () => borrar(accion.id));
     }
 
@@ -459,15 +475,15 @@
             const li = el("li");
             const m = el("span", "m", `${a.tiempo}T ${mmss(partido.minutosTiempo * 60 - a.segundo)}`);
             const w = el("span", "w");
-            const def = SIMPLES.find(s => s.tipo === a.tipo && s.res === a.resultado);
+            const def = accion(a.tipo, a.resultado);
             const tag = el("span", "dt-tag");
-            tag.style.background = def && COLOR[def.cls] || (golAFavor(a) ? "var(--good)" : golEnContra(a) ? "var(--err)" : "var(--muted)");
-            w.append(tag, `${NOMBRE[a.tipo]}${a.resultado ? " · " + RESULTADO[a.resultado] : ""}`);
+            tag.style.background = def.col;
+            w.append(tag, def.nombre);
             const n = nums.get(clave(a));
             w.append(el("small", null, `${n ? n + " " : ""}${a.jugadorNombre}${a.pendiente ? " · sin enviar" : ""}`));
             const del = el("button", null, "Borrar");
             del.type = "button";
-            del.setAttribute("aria-label", `Borrar ${NOMBRE[a.tipo]} de ${a.jugadorNombre}`);
+            del.setAttribute("aria-label", `Borrar ${def.nombre} de ${a.jugadorNombre}`);
             del.disabled = partido.estado === "CERRADO";
             del.addEventListener("click", () => borrar(a.id));
             li.append(m, w, del);
@@ -487,8 +503,8 @@
         $("kpis").replaceChildren(...kp.map(([v, l]) => { const d = el("div", "dt-kpi"); d.append(el("b", null, String(v)), el("span", null, l)); return d; }));
         const conv = (k, tipo) => `${c(k, tipo, "GOL")}/${c(k, tipo)}`;
         const cols = [
-            ["Pérd. P", k => c(k, "PERDIDA", "PROPIO")], ["Pérd. R", k => c(k, "PERDIDA", "RIVAL")],
-            ["Rec. P", k => c(k, "RECUPERACION", "PROPIO")], ["Rec. R", k => c(k, "RECUPERACION", "RIVAL")],
+            ["Pérd. def.", k => c(k, "PERDIDA", "PROPIO")], ["Pérd. ataq.", k => c(k, "PERDIDA", "RIVAL")],
+            ["Rec. def.", k => c(k, "RECUPERACION", "PROPIO")], ["Rec. ataq.", k => c(k, "RECUPERACION", "RIVAL")],
             ["Tiros", k => conv(k, "TIRO")], ["Libres", k => conv(k, "LIBRE_FAVOR")], ["Penales", k => conv(k, "PENAL_FAVOR")],
             ["Ataj.", k => c(k, "ATAJADA") + c(k, "LIBRE_CONTRA", "ATAJADO") + c(k, "PENAL_CONTRA", "ATAJADO")],
             ["Recib.", k => c(k, "GOL_RECIBIDO") + c(k, "LIBRE_CONTRA", "GOL") + c(k, "PENAL_CONTRA", "GOL")],
