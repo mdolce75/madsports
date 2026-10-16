@@ -133,7 +133,7 @@ footer b { font: 700 .8rem/1 var(--display); letter-spacing: .14em; text-transfo
 .userbar button { background: none; border: 1px solid var(--line); color: var(--ink); padding: 6px 10px; cursor: pointer;
                   font: 700 .72rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
 .userbar button:hover { border-color: var(--accent); color: var(--accent); }
-input[type=text], input[type=password], input[type=email] {
+input[type=text], input[type=password], input[type=email], input[type=date] {
     width: 100%; padding: 12px 14px; background: #0d1422; color: var(--ink); border: 1px solid var(--line);
     border-radius: 0; font: 500 1rem/1.3 var(--body); }
 input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -195,3 +195,164 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .dt-teams { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
 .dt-teams li { padding: 12px 14px; border: 1px solid var(--line); background: #0d1422; color: var(--muted); }
 .dt-teams li b { color: var(--ink); }
+
+/* ---- Planilla DT en vivo: una columna de celular; marcador y reloj fijos arriba ---- */
+.dt-mis { margin-top: 16px; }
+.dt-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dt-lista button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 12px 14px; text-align: left;
+                   background: #0d1422; border: 1px solid var(--line); color: var(--ink); cursor: pointer; font: 600 .95rem/1.3 var(--body); }
+.dt-lista button:hover { border-color: var(--accent); }
+.dt-lista b { font: 700 1.1rem/1 var(--display); }
+.dt-lista small { grid-column: 1 / -1; color: var(--muted); font-weight: 400; font-size: .8rem; }
+.dt-vacio { color: var(--muted); font-size: .9rem; padding: 6px 0; list-style: none; }
+input[type=date] { color-scheme: dark; }
+
+.dt-board { position: sticky; top: 0; z-index: 5; margin: 14px -16px 0; padding: 10px 16px; display: grid; gap: 8px;
+            background: rgba(11, 18, 32, .97); border-bottom: 1px solid var(--line); }
+.dt-score { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+.dt-team { min-width: 0; }
+.dt-team b { display: block; font: 700 1.1rem/1.15 var(--display); letter-spacing: .02em; text-transform: uppercase;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dt-team span { display: block; font-size: .75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dt-team.rival { text-align: right; }
+.dt-goals { font: 700 2.5rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.dt-goals i { font-style: normal; color: var(--muted); padding-inline: 6px; }
+.dt-clockrow { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.dt-period { padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; font: 600 .8rem/1.2 var(--display);
+             letter-spacing: .08em; color: var(--muted); }
+.dt-clock { min-width: 84px; text-align: center; font: 700 1.7rem/1 var(--display); font-variant-numeric: tabular-nums; color: var(--muted); }
+.dt-clock.on { color: var(--ink); }
+.dt-clockbtns { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.dt-play { padding: 8px 14px; border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink); cursor: pointer;
+           font: 700 .85rem/1 var(--body); }
+.dt-play.on { background: var(--panel); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.dt-play.ghost { background: none; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.dt-play:focus-visible, .dt-adjust button:focus-visible, .dt-player:focus-visible, .dt-act:focus-visible,
+.dt-pair button:focus-visible, .dt-tabs button:focus-visible, .dt-link:focus-visible, .dt-log button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; }
+.dt-adjust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: .75rem; color: var(--muted); }
+.dt-adjust button { min-width: 48px; min-height: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+                    color: var(--ink); cursor: pointer; font: 600 .85rem/1 var(--display); }
+.dt-sync { text-align: center; font-size: .75rem; color: var(--muted); }
+.dt-sync.pend { color: var(--accent); font-weight: 600; }
+.dt-sync.off { color: #f5c518; font-weight: 600; }
+.dt-aviso { padding: 8px 12px; border-left: 4px solid var(--err); background: rgba(255, 107, 107, .12); font-weight: 600; font-size: .9rem; }
+
+.dt-tabs { display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.dt-tabs button { padding: 10px 4px; border: 0; background: none; color: var(--muted); cursor: pointer; font: 600 .85rem/1 var(--body); }
+.dt-tabs button[aria-selected="true"] { background: var(--panel); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+
+.dt-col { display: grid; gap: 18px; }
+.dt-group { display: grid; gap: 7px; }
+.dt-group h3 { margin: 4px 0 0; }
+.dt-eyebrow { font: 600 .72rem/1.2 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.dt-eyebrow.ink { color: var(--ink); }
+.dt-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: .82rem; color: var(--muted); }
+.dt-line b { color: var(--ink); }
+.dt-link { padding: 4px 0; border: 0; background: none; color: var(--accent); cursor: pointer; font: 600 .8rem/1.2 var(--body); }
+.dt-nuevo { display: grid; grid-template-columns: 64px 1fr auto; gap: 6px; }
+.dt-nuevo button { padding: 0 14px; border: 0; background: var(--accent); color: var(--accent-ink); cursor: pointer; font: 700 .85rem/1 var(--body); }
+.dt-players { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.dt-player { position: relative; display: grid; justify-items: center; gap: 1px; padding: 7px 2px 6px; min-height: 52px;
+             border: 1px solid var(--line); border-radius: 10px; background: #0d1422; color: var(--ink); cursor: pointer; }
+.dt-player .n { font: 700 1.25rem/1.1 var(--display); }
+.dt-player .s { max-width: 100%; padding-inline: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .66rem; color: var(--muted); }
+.dt-player.gk .n::after { content: "AR"; margin-left: 2px; vertical-align: super; font: 700 .52rem/1 var(--body); color: var(--accent); }
+.dt-player[aria-pressed="true"] { border-color: var(--accent); background: var(--panel); box-shadow: inset 0 0 0 1px var(--accent); }
+.dt-player.oncourt::before { content: ""; position: absolute; top: 5px; left: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--lime); }
+.dt-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.dt-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dt-act { display: grid; gap: 2px; min-height: 58px; padding: 10px 8px; text-align: left; border: 1px solid var(--line); border-radius: 10px;
+          background: var(--panel); color: var(--ink); cursor: pointer; transition: transform .08s; }
+.dt-act:active, .dt-pair button:active, .dt-player:active { transform: scale(.97); }
+.dt-act .t { font: 600 .85rem/1.2 var(--body); }
+.dt-act .d { font-size: .72rem; color: var(--muted); }
+.dt-act .c { font: 500 .75rem/1 var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.dt-act.good { box-shadow: inset 3px 0 0 var(--lime); }
+.dt-act.bad { box-shadow: inset 3px 0 0 var(--err); }
+.dt-act.card-y { box-shadow: inset 3px 0 0 #f5c518; }
+.dt-act.card-b { box-shadow: inset 3px 0 0 #2f7df6; }
+.dt-act.card-r { box-shadow: inset 3px 0 0 #e5383b; }
+.dt-pair { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.dt-pair .t { display: flex; justify-content: space-between; gap: 6px; font: 600 .85rem/1.2 var(--body); }
+.dt-pair .t small { font-weight: 400; color: var(--muted); font-size: .72rem; }
+.dt-pair .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dt-pair .btns button { min-height: 40px; padding: 8px 4px; border: 1px solid var(--line); border-radius: 8px; background: #0d1422;
+                        cursor: pointer; font: 700 .85rem/1 var(--body); }
+.dt-pair .btns .yes { color: var(--lime); }
+.dt-pair .btns .no { color: var(--muted); }
+.dt-note { margin: 0; font-size: .75rem; color: var(--muted); }
+
+.dt-log { list-style: none; margin: 0; padding: 0; }
+.dt-log li { display: grid; grid-template-columns: 62px 1fr auto; gap: 8px; align-items: center; padding: 8px 0;
+             border-bottom: 1px solid var(--line); font-size: .85rem; }
+.dt-log li.dt-vacio { display: block; border: 0; }
+.dt-log .m { font-family: var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.dt-log .w { min-width: 0; }
+.dt-log .w small { display: block; color: var(--muted); font-size: .75rem; }
+.dt-log button { padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted); cursor: pointer; font-size: .75rem; }
+.dt-log button:disabled { opacity: .4; cursor: default; }
+.dt-tag { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; vertical-align: 1px; }
+
+.dt-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.dt-kpi { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.dt-kpi b { display: block; font: 700 1.4rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.dt-kpi span { font-size: .72rem; color: var(--muted); }
+.dt-tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.dt-table { width: 100%; border-collapse: collapse; font-size: .78rem; font-variant-numeric: tabular-nums; }
+.dt-table th, .dt-table td { padding: 7px 6px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.dt-table th { background: var(--panel); color: var(--muted); font-weight: 600; font-size: .7rem; }
+.dt-table th:first-child, .dt-table td:first-child { position: sticky; left: 0; text-align: left; background: var(--bg); }
+.dt-table th:first-child { background: var(--panel); }
+.dt-table tfoot td { font-weight: 700; border-bottom: 0; }
+
+.dt-toast { position: fixed; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 10; margin-inline: auto;
+            display: flex; align-items: center; gap: 14px; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px;
+            background: var(--ink); color: var(--bg); box-shadow: 0 6px 24px rgba(0, 0, 0, .45); font-size: .85rem; font-weight: 600; }
+.dt-toast button { padding: 4px 0; border: 0; background: none; color: #0a7fb0; cursor: pointer; font: 700 .85rem/1 var(--body); }
+@media (max-width: 380px) { .dt-players { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .dt-act, .dt-act:active, .dt-pair button:active, .dt-player:active { transition: none; transform: none; } }
+
+/* ---- Planilla DT en tablet y web: con el partido abierto la página usa todo el ancho y la carga va en columnas
+   (jugadores | acciones | últimas acciones), así todo entra en la pantalla sin bajar. ---- */
+.dt-bloque { display: grid; gap: 6px; align-content: start; }
+.dt-bloques { display: grid; gap: 12px; }
+@media (min-width: 760px) {
+    body.dt-vivo .wrap { max-width: 1400px; padding-top: 10px; }
+    body.dt-vivo .topbar .brand svg { width: 32px; height: 32px; }
+    body.dt-vivo .topbar .brand small { display: none; }
+    body.dt-vivo footer { display: none; }
+    /* Marcador en una sola fila: equipos y goles a la izquierda, reloj y botones a la derecha. */
+    .dt-board { margin: 8px -16px 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 20px; }
+    .dt-score { grid-column: 1; }
+    .dt-clockrow { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+    .dt-adjust { grid-column: 2; justify-content: flex-end; }
+    .dt-sync { grid-column: 1; grid-row: 2; text-align: left; align-self: center; }
+    .dt-aviso { grid-column: 1 / -1; }
+    .dt-tabs { max-width: 420px; margin: 10px 0; }
+    .dt-tabs button { padding: 8px 4px; }
+    /* Carga: jugadores y últimas acciones a la izquierda, acciones a la derecha. */
+    .dt-cargar { grid-template-columns: minmax(260px, 1fr) minmax(0, 2.2fr); align-items: start; gap: 14px 20px; }
+    .dt-c-jug { grid-column: 1; grid-row: 1; }
+    .dt-c-log { grid-column: 1; grid-row: 2; }
+    .dt-c-acc { grid-column: 2; grid-row: 1 / span 2; }
+    .dt-players { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dt-bloques { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+    .dt-act { min-height: 50px; padding: 7px 8px; }
+    .dt-pair { padding: 6px 8px; }
+    .dt-pair .btns button { min-height: 36px; padding: 6px 4px; }
+    .dt-log li { padding: 6px 0; }
+    #p-resumen { max-width: 1100px; }
+}
+@media (min-width: 1200px) {
+    /* Web: tres columnas y las acciones en cuatro bloques lado a lado. */
+    .dt-cargar { grid-template-columns: minmax(250px, 1fr) minmax(0, 3fr) minmax(240px, 1fr); }
+    .dt-c-log { grid-column: 3; grid-row: 1; }
+    .dt-c-acc { grid-row: 1; }
+    .dt-players { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dt-bloques { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dt-bloques .dt-row, .dt-bloques .dt-row.three { grid-template-columns: 1fr; }
+    .dt-bloques .dt-bloque:last-child .dt-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dt-bloques .dt-bloque:last-child .dt-row.three { grid-template-columns: 1fr; }
+    .dt-c-log .dt-log { max-height: calc(100vh - 230px); overflow-y: auto; }
+}

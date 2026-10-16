@@ -43,7 +43,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 |---|---|
 | 🏒 **Informe de equipo** | Resultados, posiciones, goleadores (sin arqueros), pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
 | 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, más fortalezas y debilidades contra sus compañeros. Cuenta también los partidos sin acta publicada. |
-| 📋 **Planilla DT** (en construcción) | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido. |
+| 📋 **Planilla DT** | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido, aunque se corte la señal. |
 | ⏱️ **Minuto a minuto** | Goles, tarjetas y faltas por tramos de 5′, cómo iba el partido en cada tramo y goles recibidos con uno menos. |
 | 📊 **Gráficos** | Barras y donas en cada PDF, con el escudo del club en la cabecera. |
 | 🔐 **Usuarios** | Registro con perfil Club, Jugador o DT de la FPP o de la AMP, confirmación del email, recuperación de clave y un plan mensual con precio en pesos. |
@@ -220,17 +220,34 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
-- **DT** (planilla en vivo, en construcción): elige uno o dos equipos de su club (categoría con su letra y rama),
-  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, que por ahora muestra sus
-  equipos. Su plan (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en
-  `suscripcion_type`).
-- **Planilla DT (servidor):** el DT elige el partido de un combo con el calendario de su equipo en SIDGAD (los
-  próximos primero) o carga un amistoso. Cada partido nuevo cuenta para el cupo del mes de suscripción (suscripto el
-  15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a 00:00, o lo que diga la competición) y se
+- **DT** (planilla en vivo): elige uno o dos equipos de su club (categoría con su letra y rama),
+  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la planilla. Su plan
+  (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en `suscripcion_type`).
+- **Planilla DT (servidor):** el DT elige el rival de un combo con los equipos de los demás clubes que juegan su
+  categoría y rama en la federación (si un club tiene A y B, van los dos), o lo escribe; y la fecha y si es local o
+  visitante. El mismo rival en la misma fecha retoma el partido en vez de crear otro. Cada partido nuevo cuenta para
+  el cupo del mes de suscripción (suscripto el 15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a
+  00:00, o lo que dure el tiempo en las competiciones de la categoría) y se
   calcula con la hora de inicio y los segundos acumulados, así un teléfono bloqueado no pierde el minuto. Cada acción
   es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
   las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
+- **Planilla DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
+  la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
+  columna) y entra entera en la pantalla, sin bajar.
+  - **Partidos:** combo de rivales (o "Otro", escrito a mano), fecha y local / visitante, y la lista de partidos
+    cargados.
+  - **Marcador y reloj fijos arriba:** iniciar, pausar / reanudar, fin del 1T, iniciar 2T, fin del partido y ajuste
+    de ±1′ y ±10″. Al llegar a 00:00 avisa y vibra. Mientras el reloj corre, la pantalla no se apaga (Wake Lock, si
+    el teléfono lo permite).
+  - **Carga:** se toca el jugador y después la acción (dos toques). Las del arco (atajada, gol recibido, libre y
+    penal en contra) van al arquero en cancha. Se pueden agregar jugadores que no figuran en las actas. Cada carga
+    muestra "Deshacer" por 4 segundos, y las últimas acciones se pueden borrar.
+  - **Resumen:** por jugador y del equipo, y el cierre del partido (o reabrirlo).
+  - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt-cola.js`) y se
+    mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
+    (`dt-sw.js`) guarda la última copia de la página y de los datos, así la planilla abre aunque se recargue sin
+    señal. El reloj (iniciar, pausar, fin del tiempo) y el cierre sí necesitan conexión.
 - **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
   ingresar: el login avisa y ofrece reenviar el mail.
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
@@ -370,11 +387,10 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
 - Planilla DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
-  - `GET /api/dt/partidos-disponibles?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`idp`, fecha, rival,
-    local, torneo, `minutosTiempo`, `jugado`, `cargado`)
+  - `GET /api/dt/rivales?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`clubId`, `nombre`: "GEBA B")
   - `GET /api/dt/plantel?categoria=&rama=`: jugadores con número y `arquero`
-  - `POST /api/dt/partidos` `{"idp":9002}` o un amistoso `{"rival":"Lujan","fecha":"2026-10-18","local":true}` →
-    `201`; si ya estaba empezado lo devuelve; `409` si lo carga otro DT o se acabó el cupo del mes
+  - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false}`
+    → `201` (sin `fecha`, hoy); con el mismo rival y fecha devuelve el ya empezado; `409` si se acabó el cupo del mes
   - `GET /api/dt/partidos`, `GET /api/dt/partidos/{id}` (con `reloj {tiempo, jugados, restante, corriendo}` y las
     acciones)
   - `POST /api/dt/partidos/{id}/acciones` `[{"id":"<uuid>","jugadorId":11,"tipo":"TIRO","resultado":"GOL","tiempo":1,"segundo":390}]`
