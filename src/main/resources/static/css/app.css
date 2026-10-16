@@ -43,7 +43,7 @@ body::before {
     content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .045;
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%2309090b' stroke-width='1.2'%3E%3Crect x='10' y='10' width='380' height='180' rx='36'/%3E%3Cline x1='200' y1='10' x2='200' y2='190'/%3E%3Ccircle cx='200' cy='100' r='26'/%3E%3Cpath d='M10 70h44a8 8 0 0 1 8 8v44a8 8 0 0 1-8 8H10'/%3E%3Cpath d='M390 70h-44a8 8 0 0 0-8 8v44a8 8 0 0 0 8 8h44'/%3E%3Ccircle cx='86' cy='100' r='2.5' fill='%2309090b'/%3E%3Ccircle cx='314' cy='100' r='2.5' fill='%2309090b'/%3E%3C/g%3E%3C/svg%3E") center / cover no-repeat;
 }
-.wrap { position: relative; max-width: 620px; margin: 0 auto; padding: 24px 16px 40px; }
+.wrap { position: relative; width: 100%; max-width: 1440px; margin: 0 auto; padding: 24px 16px 40px; }
 
 /* Barra superior */
 .brand { display: flex; align-items: center; gap: 12px; }
@@ -358,7 +358,7 @@ input[type=date] { color-scheme: light; }
 .dt-bloque { display: grid; gap: 6px; align-content: start; }
 .dt-bloques { display: grid; gap: 12px; }
 @media (min-width: 760px) {
-    body.dt-vivo .wrap { max-width: 1400px; padding-top: 10px; }
+    body.dt-vivo .wrap { padding-top: 10px; }
     body.dt-vivo .topbar .brand svg { width: 32px; height: 32px; }
     body.dt-vivo .topbar .brand small { display: none; }
     body.dt-vivo footer { display: none; }
@@ -418,3 +418,21 @@ input[type=date] { color-scheme: light; }
 .dt-board .dt-sync.off { color: #fcd34d; }
 .dt-board .dt-aviso { background: rgba(255, 102, 102, .18); border-left-color: var(--coral); color: #ffd4d4; }
 .dt-board :focus-visible { outline-color: var(--accent-on-dark); }
+
+/* ---- Pantalla completa: en el celular, una columna; desde 960 px cada página ocupa todo el ancho (hasta 1440 px)
+   en dos columnas: la presentación a la izquierda (queda fija al bajar) y el contenido a la derecha. ---- */
+/* La página ocupa todo el alto: si el contenido es corto, el pie queda abajo de la pantalla. */
+.wrap { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.wrap > footer { margin-top: auto; }
+.wrap > .split, .wrap > #v-partido { margin-bottom: 26px; }
+@media (min-width: 600px) { .wrap { padding-left: 32px; padding-right: 32px; } }
+@media (min-width: 960px) {
+    .split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 0 56px; align-items: start; }
+    .split > .intro { position: sticky; top: 24px; }
+    .split > .intro .hero { margin-top: 28px; }
+    .split > .main { padding-top: 34px; }
+    .split > .main > .section-title:first-child { margin-top: 0; }
+    .split > .main .sheet + .sheet { margin-top: 20px; }
+    .lead { max-width: none; }
+}
+@media (min-width: 1280px) { .split > .main .examples { grid-template-columns: 1fr 1fr; gap: 16px; } }

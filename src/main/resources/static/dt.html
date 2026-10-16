@@ -19,14 +19,16 @@
     </div>
 
     <!-- Elegir el partido (y la lista de partidos cargados) -->
-    <section id="v-elegir">
+    <section id="v-elegir" class="split">
+        <div class="intro">
         <section class="hero">
             <span class="tag">Planilla DT</span>
             <h1>Cada acción,<br><em>en vivo.</em></h1>
             <p class="lead">Elegí el rival y la fecha, iniciá el reloj y cargá cada acción con dos toques: el jugador y la acción.
                 Si se corta la señal, lo cargado queda en el teléfono y se manda cuando vuelve.</p>
         </section>
-
+        </div>
+        <div class="main">
         <div class="sheet">
             <div class="sheet-head"><span>Nuevo partido</span><span id="cupo"></span></div>
             <div class="field" id="f-equipo" hidden>
@@ -59,6 +61,7 @@
         <div class="sheet dt-mis">
             <div class="sheet-head"><span>Tus partidos</span><span id="mis-n"></span></div>
             <ul class="dt-lista" id="mis"><li class="dt-vacio">Cargando…</li></ul>
+        </div>
         </div>
     </section>
 
