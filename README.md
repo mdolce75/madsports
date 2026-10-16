@@ -230,7 +230,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 
   | Plan mensual | Precio base | Incluye |
   |---|---|---|
-  | Club (`CLUB_MENSUAL`) | U$S 30 | 8 informes por mes |
+  | Club (`CLUB_MENSUAL`) | U$S 20 | 8 informes por mes |
   | Jugador (`PLAYER_MENSUAL`) | U$S 7 | 4 informes por mes |
   | DT (`DT_MENSUAL`) | U$S 12 | 2 equipos y 20 partidos por mes |
 

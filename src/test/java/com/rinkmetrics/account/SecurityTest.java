@@ -445,10 +445,10 @@ class SecurityTest {
     void soloSeOfreceElPlanMensual() throws Exception {
         mvc.perform(get("/api/suscripciones").param("perfil", "CLUBFPP")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("CLUB_MENSUAL")))
-                .andExpect(jsonPath("$[0].precioUsd").value(30.0))
+                .andExpect(jsonPath("$[0].precioUsd").value(20.0))
                 .andExpect(jsonPath("$[0].informesPorMes").value(8))
                 // En pesos al dólar de respaldo de los tests ($ 1.500), redondeado hacia abajo a centenas.
-                .andExpect(jsonPath("$[0].precio").value(45000))
+                .andExpect(jsonPath("$[0].precio").value(30000))
                 .andExpect(jsonPath("$[0].dolar").value(1500));
         mvc.perform(get("/api/suscripciones").param("perfil", "PLAYERFPP")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("PLAYER_MENSUAL")))
