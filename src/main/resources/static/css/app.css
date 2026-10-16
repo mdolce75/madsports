@@ -149,7 +149,8 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .alt { margin-top: 16px; font-size: .9rem; color: var(--muted); }
 .alt a { color: var(--accent); }
 [hidden] { display: none !important; }
-@media (max-width: 480px) { .profiles { grid-template-columns: 1fr; } }
+.profiles.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 480px) { .profiles, .profiles.three { grid-template-columns: 1fr; } }
 .hint a { color: var(--accent); }
 
 /* ---- Home: ejemplos y llamada a registrarse ---- */
@@ -196,3 +197,8 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 /* Lugar para el cintillo: el contenido no pasa por debajo */
 .plans .plan .plan-name, .plans .plan .plan-price { padding-right: 34px; }
 @media (max-width: 480px) { .plans { grid-template-columns: 1fr; } }
+
+/* Planilla DT: equipos del DT */
+.dt-teams { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.dt-teams li { padding: 12px 14px; border: 1px solid var(--line); background: #0d1422; color: var(--muted); }
+.dt-teams li b { color: var(--ink); }

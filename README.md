@@ -201,8 +201,9 @@ se cachea (se reintenta en el próximo informe). Cualquier otro error (5xx, time
 
 La web pide registro e ingreso (Spring Security, sesión con cookie, CSRF con `XSRF-TOKEN`). Cada usuario tiene uno o
 más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBCNT`, `CLUBAMP`, `PLAYERFPP`,
-`PLAYERFSP`, `PLAYERCNT`, `PLAYERAMP`. El registro ofrece **Club** o **Jugador** de la **FPP** (Buenos Aires) o de la
-**AMP** (Mendoza): primero se elige la federación y después el perfil, y uno excluye a los demás. La federación del
+`PLAYERFSP`, `PLAYERCNT`, `PLAYERAMP`, `DTFPP`, `DTAMP`. El registro ofrece **Club**, **Jugador** o **DT** de la
+**FPP** (Buenos Aires) o de la **AMP** (Mendoza): primero se elige la federación y después el perfil, y uno excluye a
+los demás. La federación del
 perfil decide de dónde salen los clubes, las categorías, los jugadores y los informes (que dicen FPP o AMP).
 
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
@@ -210,6 +211,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
+- **DT** (planilla en vivo, en construcción): elige uno o dos equipos de su club (categoría con su letra y rama),
+  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, que por ahora muestra sus
+  equipos. Sus planes (`DT_MENSUAL` ... `DT_ANUAL`) tienen el precio de los de club y permiten 2 equipos y 20 partidos
+  por mes (`equipos_max`, `partidos_por_mes` en `suscripcion_type`).
 - **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
   ingresar: el login avisa y ofrece reenviar el mail.
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h

@@ -42,7 +42,8 @@ import java.util.Map;
 
 /**
  * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/club.html) CLUBFPP o CLUBAMP y la de
- * jugador (/jugador.html) PLAYERFPP o PLAYERAMP; la federación sale del perfil del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
+ * jugador (/jugador.html) PLAYERFPP o PLAYERAMP, y la del DT (/dt.html) DTFPP o DTAMP; la federación sale del perfil
+ * del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
  */
 @Configuration
@@ -65,6 +66,8 @@ public class SecurityConfig {
                         .hasAnyAuthority(Perfil.CLUBFPP.name(), Perfil.CLUBAMP.name())
                         .requestMatchers("/jugador.html", "/api/jugador/**")
                         .hasAnyAuthority(Perfil.PLAYERFPP.name(), Perfil.PLAYERAMP.name())
+                        .requestMatchers("/dt.html", "/api/dt/**")
+                        .hasAnyAuthority(Perfil.DTFPP.name(), Perfil.DTAMP.name())
                         .anyRequest().authenticated())
                 .formLogin(f -> f
                         .loginPage("/login.html")
@@ -127,6 +130,9 @@ public class SecurityConfig {
         }
         if (has(authorities, Perfil.PLAYERFPP) || has(authorities, Perfil.PLAYERAMP)) {
             return "/jugador.html";
+        }
+        if (has(authorities, Perfil.DTFPP) || has(authorities, Perfil.DTAMP)) {
+            return "/dt.html";
         }
         return "/login.html?sinPerfil";
     }

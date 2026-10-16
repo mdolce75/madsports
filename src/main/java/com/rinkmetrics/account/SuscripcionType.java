@@ -12,7 +12,7 @@ import java.time.LocalDate;
 
 /**
  * Tipo de suscripción (tabla {@code suscripcion_type}): para jugador (PLAYER_MENSUAL, PLAYER_TRIMESTRAL,
- * PLAYER_SEMESTRAL, PLAYER_ANUAL) o para club (CLUB_MENSUAL, CLUB_TRIMESTRAL, CLUB_SEMESTRAL, CLUB_ANUAL).
+ * PLAYER_SEMESTRAL, PLAYER_ANUAL), para club (CLUB_*) o para DT (DT_*).
  */
 @Entity
 @Table(name = "suscripcion_type")
@@ -27,12 +27,16 @@ public class SuscripcionType {
     private String nombre;
     /** Duración en meses (1, 3, 6 o 12). */
     private int meses;
-    /** PLAYER o CLUB: a qué tipo de usuario corresponde. */
+    /** PLAYER, CLUB o DT: a qué tipo de usuario corresponde ({@link Perfil#tipoUsuario()}). */
     private String tipoUsuario;
     /** Precio del plan completo, en dólares. */
     private BigDecimal precioUsd;
     /** Informes que incluye por mes. */
     private int informesPorMes;
+    /** DT: equipos que puede tener (0 en los demás planes). */
+    private int equiposMax;
+    /** DT: partidos que puede empezar a cargar por mes (0 en los demás planes). */
+    private int partidosPorMes;
 
     protected SuscripcionType() {
     }
@@ -66,9 +70,23 @@ public class SuscripcionType {
                 .multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).intValue();
     }
 
-    /** ¿Es para jugadores (PLAYER_*)? Si no, es para clubes (CLUB_*). */
+    /** ¿Es para jugadores (PLAYER_*)? */
     public boolean paraJugador() {
         return "PLAYER".equals(tipoUsuario);
+    }
+
+    /** ¿Es un plan del perfil? (PLAYER_* para jugadores, CLUB_* para clubes, DT_* para DT.) */
+    public boolean paraPerfil(Perfil perfil) {
+        return perfil.tipoUsuario().equals(tipoUsuario);
+    }
+
+    /** "jugadores", "clubes" o "DT", para los mensajes. */
+    public String destinatarios() {
+        return switch (tipoUsuario) {
+            case "PLAYER" -> "jugadores";
+            case "DT" -> "DT";
+            default -> "clubes";
+        };
     }
 
     /** Último día de una suscripción de este tipo que empieza en {@code desde}. */
@@ -83,4 +101,6 @@ public class SuscripcionType {
     public String getTipoUsuario() { return tipoUsuario; }
     public BigDecimal getPrecioUsd() { return precioUsd; }
     public int getInformesPorMes() { return informesPorMes; }
+    public int getEquiposMax() { return equiposMax; }
+    public int getPartidosPorMes() { return partidosPorMes; }
 }
