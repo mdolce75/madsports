@@ -659,29 +659,37 @@
         }
     }
 
+    /** Ficha del jugador: encabezado con el índice, ecualizador de los cinco ejes, datos clave y el detalle por eje. */
     function ficha(f, equipo) {
         const card = el("article", "ficha" + (f.arquero ? " arquero" : "") + (f.indice == null ? " sin-datos" : ""));
         const head = el("header", "ficha-head");
-        head.append(el("span", "ficha-num", f.numero || "–"));
         const quien = el("div");
-        quien.append(el("b", null, f.nombre), el("small", null, `${f.numero ? "#" + f.numero + " · " : ""}${f.arquero ? "Arquero" : equipo}`));
+        quien.append(el("b", null, f.nombre),
+            el("small", null, `${f.numero ? "#" + f.numero + " · " : ""}${f.arquero ? "Arquero" : equipo}`),
+            el("small", "ficha-pj", `${f.partidos} ${f.partidos === 1 ? "partido" : "partidos"}`));
         const idx = el("div", "ficha-indice");
-        idx.append(el("small", null, "Índice"), el("b", null, f.indice == null ? "–" : String(f.indice)));
+        idx.append(el("b", null, f.indice == null ? "–" : String(f.indice)), el("small", null, "Índice"));
         head.append(quien, idx);
-        const pj = el("div", "ficha-pj");
-        pj.append(el("span", null, `${f.partidos} ${f.partidos === 1 ? "partido" : "partidos"}`),
-            el("span", null, f.indice == null ? "Sin acciones cargadas" : `Mejor eje: ${f.ejes.slice().sort((a, b) => b.puntaje - a.puntaje)[0].nombre}`));
-        const graf = el("div", "ficha-pentagono");
-        graf.innerHTML = DtFichas.pentagono(f.ejes);
-        const filas = el("div", "ficha-filas");
+        const graf = el("div", "ficha-ecualizador");
+        if (f.indice == null) graf.append(el("p", "dt-vacio", "Sin acciones cargadas todavía."));
+        else graf.innerHTML = DtFichas.ecualizador(f.ejes, f.arquero);
+        const e = Object.fromEntries(f.ejes.map(x => [x.clave, x]));
+        const datos = f.arquero
+            ? [[`${e.efectividad.a}`, "Atajados"], [`${e.efectividad.b}`, "Recibidos"],
+               [`${e.pelotaParada.a}/${e.pelotaParada.a + e.pelotaParada.b}`, "Penal/libre"]]
+            : [[`${e.ataque.a}/${e.ataque.b}`, "Goles/tiros"], [`${e.recuperacion.a} | ${e.recuperacion.b}`, "Rec. | Pérd."],
+               [`${e.disciplina.b}`, "Tarjetas"]];
+        const chips = el("div", "ficha-datos");
+        for (const [v, n] of datos) { const c = el("div"); c.append(el("b", null, v), el("span", null, n)); chips.append(c); }
+        const detalle = el("details", "ficha-detalle");
+        detalle.append(el("summary", null, "Detalle por eje"));
         for (const x of f.ejes) {
             const fila = el("div", "ficha-fila");
-            fila.style.setProperty("--c", x.color);
             fila.append(el("span", "t", x.nombre), el("span", "v", x.texto),
                 el("span", "d", x.etiquetas.join(" · ")), el("span", "n", `${x.a} | ${x.b}`));
-            filas.append(fila);
+            detalle.append(fila);
         }
-        card.append(head, pj, graf, filas);
+        card.append(head, graf, chips, detalle);
         return card;
     }
 
