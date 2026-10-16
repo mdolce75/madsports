@@ -1,4 +1,4 @@
-// Planilla DT en vivo: elegir el partido, manejar el reloj y cargar las acciones de cada jugador. Las acciones pasan
+// Métricas DT en vivo: elegir el partido, manejar el reloj y cargar las acciones de cada jugador. Las acciones pasan
 // por DtCola (dt-cola.js), así se guardan aunque no haya señal; el reloj sí necesita conexión.
 (() => {
     // Colores de los botones: cada acción el suyo (texto blanco; la amarilla, oscuro). Defensa = campo propio, ataque =
@@ -8,7 +8,7 @@
         gol: "#0f766e", noGol: "#52525b", atajada: "#1d4ed8", golRecibido: "#9f1239",
         faltaCom: "#6d28d9", faltaRec: "#0369a1", amarilla: "#facc15", azul: "#1d4ed8", roja: "#dc2626",
     };
-    // Acciones de la planilla. arco: se cargan al arquero en cancha. Las de a pares (gol / no gol) van en una tarjeta.
+    // Acciones de Métricas DT. arco: se cargan al arquero en cancha. Las de a pares (gol / no gol) van en una tarjeta.
     const SIMPLES = [
         {g: "g-posesion", tipo: "PERDIDA", res: "PROPIO", t: "Pérdida en defensa", col: C.perdDef},
         {g: "g-posesion", tipo: "PERDIDA", res: "RIVAL", t: "Pérdida en ataque", col: C.perdAtq},

@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Planilla DT en vivo: partidos que carga el DT de sus equipos, sus acciones (cada una de un jugador, con tiempo y
+ * Métricas DT en vivo: partidos que carga el DT de sus equipos, sus acciones (cada una de un jugador, con tiempo y
  * segundo) y el reloj. Todo se valida contra el DT: sus equipos, su cupo del mes y sus partidos.
  */
 @Service
@@ -285,7 +285,7 @@ public class DtService {
     void verificarCupo(Usuario u) {
         SuscripcionType plan = u.getSuscripcionType();
         if (plan == null || plan.getPartidosPorMes() <= 0) {
-            throw new IllegalStateException("Tu plan no incluye la planilla DT.");
+            throw new IllegalStateException("Tu plan no incluye Métricas DT.");
         }
         LocalDate hoy = LocalDate.now(clock);
         LocalDate desde = inicioDelMes(u.getSuscripcionDesde() == null ? hoy : u.getSuscripcionDesde(), hoy);

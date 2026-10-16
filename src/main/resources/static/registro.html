@@ -16,6 +16,7 @@
 
     <div class="split">
     <div class="intro">
+    <a class="volver" id="volver-top" href="/informes.html">← Volver a Informes</a>
     <section class="hero">
         <span class="tag" id="reg-tag">Informes</span>
         <h1>Sumate a<br><em>RinkMetrics.</em></h1>
@@ -132,14 +133,15 @@
             if (r.value === "DT") r.checked = true; else r.closest("label").remove();
         });
         $("perfil-field").hidden = true;
-        $("reg-tag").textContent = "Planilla DT";
+        $("reg-tag").textContent = "Métricas DT";
         $("reg-lead").textContent = "Registrate como DT: elegí tu federación (FPP o AMP), tu club y el equipo que dirigís "
             + "(hasta dos). Después cargás las estadísticas de cada partido en vivo.";
-        $("volver").href = "/dt-inicio.html";
+        $("volver").href = $("volver-top").href = "/dt-inicio.html";
+        $("volver-top").textContent = "← Volver a Métricas DT";
     } else {
         document.querySelector("input[name=rol][value=DT]").closest("label").remove();
         document.querySelector(".profiles.three").classList.remove("three");
-        $("volver").href = "/informes.html";
+        $("volver").href = $("volver-top").href = "/informes.html";
     }
     $("brand").outerHTML = BRAND;
 
@@ -253,7 +255,7 @@
             "Goles, tarjetas y faltas por tramos de 5'", "Fortalezas y debilidades"],
         PLAYER: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
             "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"],
-        DT: ["Planilla en vivo desde el celular", "Cada acción por jugador, con el minuto",
+        DT: ["Métricas en vivo desde el celular", "Cada acción por jugador, con el minuto",
             "Pérdidas, recuperaciones, tiros y atajadas", "Resumen del partido por jugador"]
     };
     // "$ 45.900": pesos sin centavos (vienen redondeados hacia abajo a centenas).
