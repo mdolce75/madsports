@@ -249,6 +249,9 @@ class SecurityTest {
                 .andExpect(redirectedUrl("/login.html?volver=%2Fclub.html"));
         mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/login.html?volver=%2Fjugador.html"));
         mvc.perform(get("/login.html")).andExpect(status().isOk());
+        // Las presentaciones de las dos secciones (Informes y DT) se ven sin sesión.
+        mvc.perform(get("/informes.html")).andExpect(status().isOk());
+        mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());
         mvc.perform(get("/api/ejemplo-jugador.pdf")).andExpect(status().isOk());
         mvc.perform(get("/api/informes/" + UUID.randomUUID())).andExpect(status().isUnauthorized());

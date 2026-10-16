@@ -22,77 +22,69 @@
     <div class="split">
     <div class="intro">
     <section class="hero">
-        <span class="tag">Informes de rendimiento</span>
-        <h1>Tu equipo,<br><em>en números.</em></h1>
-        <p class="lead">Estadísticas de la Federación Porteña de Patín (FPP) y de la Asociación Mendocina de Patín (AMP) convertidas en informes PDF, para clubes y para
-            jugadores: resultados, goles y tarjetas minuto a minuto, pelota parada, fortalezas y debilidades.</p>
+        <span class="tag">Hockey sobre patines</span>
+        <h1>Tu juego,<br><em>en números.</em></h1>
+        <p class="lead">Dos herramientas para la Federación Porteña de Patín (FPP) y la Asociación Mendocina de Patín
+            (AMP): informes de rendimiento para clubes y jugadores, y la planilla en vivo para el entrenador.</p>
     </section>
-
-    <div class="board" aria-hidden="true">
-        <div><strong>12</strong><span>Indicadores de juego</span></div>
-        <div><strong>5'</strong><span>Tramos de goles y tarjetas</span></div>
-        <div><strong>IA</strong><span>Análisis escrito</span></div>
-    </div>
     </div>
     <div class="main">
-    <h2 class="section-title">Mirá un informe de ejemplo</h2>
-    <p class="hint">Con datos ficticios, para que veas el formato antes de registrarte.</p>
-
-    <div class="examples">
+    <div class="examples secciones-home">
         <article class="example">
-            <span class="tag">Club FPP · AMP</span>
-            <h3>Informe de club</h3>
+            <span class="tag">Club · Jugador</span>
+            <h3>Informes</h3>
+            <p class="hint">Informes PDF con los datos de SIDGAD, para el club o para el jugador.</p>
             <ul>
-                <li>Resultados, posiciones, local y visitante</li>
-                <li>Goleadores y reparto del gol</li>
+                <li>Resultados, goleadores y reparto del gol</li>
                 <li>Goles, tarjetas y faltas por tramos de 5'</li>
+                <li>Tus partidos en todas las categorías en que jugás</li>
                 <li>Fortalezas y debilidades, con análisis escrito</li>
             </ul>
-            <a class="btn primary" href="/api/ejemplo.pdf" target="_blank" rel="noopener">Ver ejemplo de club</a>
+            <a class="btn primary" href="/informes.html">Conocer Informes</a>
+            <a class="btn ghost" href="/registro.html?seccion=informes">Registrarme</a>
         </article>
         <article class="example">
-            <span class="tag">Jugador FPP · AMP</span>
-            <h3>Informe de jugador</h3>
+            <span class="tag">Entrenador</span>
+            <h3>Planilla DT</h3>
+            <p class="hint">Las estadísticas de cada jugador, cargadas en vivo desde el celular.</p>
             <ul>
-                <li>Partidos jugados, ganados, empatados y perdidos</li>
-                <li>Goles y tarjetas por color, con promedios</li>
-                <li>Penales y libres directos</li>
-                <li>Por cada categoría en que jugó y en total</li>
+                <li>Pérdidas, recuperaciones, tiros y atajadas</li>
+                <li>Pelota parada, faltas y tarjetas</li>
+                <li>Reloj del partido y marcador</li>
+                <li>Funciona aunque se corte la señal</li>
             </ul>
-            <a class="btn primary" href="/api/ejemplo-jugador.pdf" target="_blank" rel="noopener">Ver ejemplo de jugador</a>
+            <a class="btn primary" href="/dt-inicio.html">Conocer la Planilla DT</a>
+            <a class="btn ghost" href="/registro.html?seccion=dt">Registrarme</a>
         </article>
     </div>
-
-    <div class="cta" id="cta">
-        <a class="go-link" href="/registro.html">Registrarme</a>
-        <p class="alt">¿Ya tenés usuario? <a href="/login.html">Ingresá</a></p>
-    </div>
+    <p class="alt">¿Ya tenés usuario? <a href="/login.html">Ingresá</a>: cada perfil entra a su sección.</p>
     </div>
     </div>
 
-    <footer><b>RinkMetrics</b> · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín
-        (FPP) y Asociación Mendocina de Patín (AMP), en SIDGAD. Un producto de <a href="/madsports">Mad Sports</a>.</footer>
+    <footer><b>RinkMetrics</b> · Datos de la Federación Porteña de Patín (FPP) y la Asociación Mendocina de Patín (AMP),
+        en SIDGAD. Un producto de <a href="/madsports">Mad Sports</a>.</footer>
 </div>
 
 <script src="/js/app.js"></script>
 <script>
     $("brand").outerHTML = BRAND;
 
-    // Con sesión: acceso directo a sus informes en lugar de ingresar/registrarse.
+    // Con sesión: acceso directo a su pantalla en lugar de ingresar/registrarse.
     session().then(s => {
         if (!s.autenticado || s.inicio.startsWith("/login.html")) return;
         renderUserBar(s);
         const go = document.createElement("a");
         go.className = "btn primary";
         go.href = s.inicio;
-        go.textContent = "Mis informes";
+        go.textContent = s.inicio === "/dt.html" ? "Mi planilla" : "Mis informes";
         $("userbar").prepend(go);
-        $("cta").innerHTML = "";
-        const link = document.createElement("a");
-        link.className = "go-link";
-        link.href = s.inicio;
-        link.textContent = "Ir a mis informes";
-        $("cta").append(link);
+        for (const cta of document.querySelectorAll("[data-cta]")) {
+            const link = document.createElement("a");
+            link.className = "go-link";
+            link.href = s.inicio;
+            link.textContent = s.inicio === "/dt.html" ? "Ir a mi planilla" : "Ir a mis informes";
+            cta.replaceChildren(link);
+        }
     });
 </script>
 </body>

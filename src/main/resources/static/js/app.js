@@ -116,6 +116,26 @@ function showReady(job) {
     window.location.href = job.pdfUrl;
 }
 
+/**
+ * Menú de las dos secciones, al lado de la marca en todas las páginas: Informes (perfiles Club y Jugador) y DT. La
+ * página marca la suya con data-seccion en el body. Se agrega cuando la página ya puso la marca.
+ */
+document.addEventListener("DOMContentLoaded", () => {
+    const marca = document.querySelector("header.brand");
+    if (!marca || document.querySelector("nav.secciones")) return;
+    const nav = document.createElement("nav");
+    nav.className = "secciones";
+    nav.setAttribute("aria-label", "Secciones");
+    for (const [id, texto, href] of [["informes", "Informes", "/informes.html"], ["dt", "DT", "/dt-inicio.html"]]) {
+        const a = document.createElement("a");
+        a.href = href;
+        a.textContent = texto;
+        if (document.body.dataset.seccion === id) a.setAttribute("aria-current", "page");
+        nav.append(a);
+    }
+    marca.after(nav);
+});
+
 /** Marca de la barra superior (pista con barras de métricas). */
 const BRAND = `<header class="brand">
     <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#22b8f0"/><rect x="8" y="15" width="48" height="34" rx="14" fill="none" stroke="#fff" stroke-width="4"/><rect x="20" y="33" width="6" height="9" rx="1.5" fill="#fff"/><rect x="29" y="27" width="6" height="15" rx="1.5" fill="#fff"/><rect x="38" y="21" width="6" height="21" rx="1.5" fill="#fff"/></svg>
