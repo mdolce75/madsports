@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Planilla DT · RinkMetrics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar"></div>
+    </div>
+
+    <section class="hero">
+        <span class="tag">Planilla DT</span>
+        <h1>Cada acción,<br><em>en vivo.</em></h1>
+        <p class="lead">Pérdidas, recuperaciones, tiros, atajadas, pelota parada, faltas y tarjetas de cada jugador,
+            cargadas desde el celular durante el partido.</p>
+    </section>
+
+    <div class="sheet">
+        <div class="sheet-head"><span>Tus equipos</span><span id="cupo"></span></div>
+        <ul class="dt-teams" id="equipos"><li>Cargando…</li></ul>
+        <p class="hint">Próximamente: elegí el rival del calendario de tu equipo y empezá a cargar el partido.</p>
+    </div>
+
+    <footer><b>RinkMetrics</b> · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín
+        (FPP) y Asociación Mendocina de Patín (AMP), en SIDGAD.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+    $("brand").outerHTML = BRAND;
+
+    requireProfile(["DTFPP", "DTAMP"]).then(s => {
+        if (!s) return;
+        const ul = $("equipos");
+        ul.replaceChildren();
+        for (const e of s.equipos) {
+            const li = document.createElement("li");
+            const b = document.createElement("b");
+            b.textContent = e.nombre;
+            li.append(b, ` · ${s.club.nombre} (${s.federacion})`);
+            ul.append(li);
+        }
+        if (s.suscripcion && s.suscripcion.partidosPorMes) {
+            $("cupo").textContent = `${s.suscripcion.nombre}: hasta ${s.suscripcion.equiposMax} equipos y `
+                + `${s.suscripcion.partidosPorMes} partidos por mes`;
+        }
+    });
+</script>
+</body>
+</html>

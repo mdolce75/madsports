@@ -149,7 +149,8 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .alt { margin-top: 16px; font-size: .9rem; color: var(--muted); }
 .alt a { color: var(--accent); }
 [hidden] { display: none !important; }
-@media (max-width: 480px) { .profiles { grid-template-columns: 1fr; } }
+.profiles.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 480px) { .profiles, .profiles.three { grid-template-columns: 1fr; } }
 .hint a { color: var(--accent); }
 
 /* ---- Home: ejemplos y llamada a registrarse ---- */
@@ -188,11 +189,9 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
               border-left: 3px solid var(--accent); font-weight: 600; font-size: .85rem; }
 .plans .plan ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted); font-size: .8rem; }
 .plans .plan li { margin: 2px 0; }
-/* Cintillo diagonal con el ahorro */
-.plans .ribbon { position: absolute; top: 30px; right: -48px; width: 190px; transform: rotate(45deg);
-          background: var(--lime); color: #12180a; text-align: center; padding: 3px 0;
-          font: 700 .66rem/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
-/* Lugar para el cintillo: el contenido no pasa por debajo */
-.plans .plan .plan-name, .plans .plan .plan-price { padding-right: 34px; }
 @media (max-width: 480px) { .plans { grid-template-columns: 1fr; } }
+
+/* Planilla DT: equipos del DT */
+.dt-teams { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.dt-teams li { padding: 12px 14px; border: 1px solid var(--line); background: #0d1422; color: var(--muted); }
+.dt-teams li b { color: var(--ink); }

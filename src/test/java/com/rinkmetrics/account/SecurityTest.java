@@ -54,8 +54,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SecurityTest {
 
-    static final ClubView VELEZ = new ClubView(74, "CAVS", "VELEZ", List.of());
-    static final ClubView MURIALDO = new ClubView(3, "LM", "LEONARDO MURIALDO", List.of());
+    static final ClubView VELEZ = new ClubView(74, "CAVS", "VELEZ", List.of(
+            new CatalogService.LevelView("JUNIORS:A", "Juniors A", List.of("MASCULINO", "FEMENINO")),
+            new CatalogService.LevelView("PRIMERA", "Primera", List.of("MASCULINO"))));
+    static final ClubView MURIALDO = new ClubView(3, "LM", "LEONARDO MURIALDO", List.of(
+            new CatalogService.LevelView("JUVENIL:A", "Juvenil A", List.of("MASCULINO"))));
 
     @Autowired MockMvc mvc;
     @Autowired UsuarioRepository usuarios;
@@ -108,7 +111,7 @@ class SecurityTest {
     Map<String, Object> player(String usuario) {
         Map<String, Object> m = club(usuario);
         m.putAll(Map.of("perfil", "PLAYERFPP", "categoria", "PRIMERA", "rama", "MASCULINO",
-                "jugadorId", 3851, "suscripcion", "PLAYER_ANUAL"));
+                "jugadorId", 3851, "suscripcion", "PLAYER_MENSUAL"));
         return m;
     }
 
@@ -202,7 +205,7 @@ class SecurityTest {
         assertThat(u.getPerfiles()).containsExactly(Perfil.PLAYERFPP);
         assertThat(u.getJugadorId()).isEqualTo(3851);
         assertThat(u.getJugadorNombre()).isEqualTo("Ignacio J Graiño");
-        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("PLAYER_ANUAL");
+        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("PLAYER_MENSUAL");
         assertThat(u.getNombre()).isEqualTo("Ignacio J");
         assertThat(u.getApellido()).isEqualTo("Graiño");
         assertThat(u.getCategoria()).isEqualTo("PRIMERA");
@@ -257,6 +260,80 @@ class SecurityTest {
         mvc.perform(post("/api/informes").with(user("a").authorities(() -> "PLAYERAMP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
+    }
+
+    Map<String, Object> dt(String usuario, List<Map<String, String>> equipos) {
+        Map<String, Object> m = club(usuario);
+        m.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_MENSUAL", "equipos", equipos));
+        return m;
+    }
+
+    @Test
+    void registroDeDtConSusEquipos() throws Exception {
+        register(dt("profe", List.of(Map.of("categoria", "PRIMERA", "rama", "MASCULINO"),
+                Map.of("categoria", "juniors:a", "rama", "femenino")))).andExpect(status().isCreated());
+        Usuario u = usuarios.findByUsuario("profe").orElseThrow();
+        assertThat(u.getPerfiles()).containsExactly(Perfil.DTFPP);
+        assertThat(u.esDt()).isTrue();
+        assertThat(u.getEquiposDt()).containsExactly(new EquipoDt("PRIMERA", "MASCULINO"),
+                new EquipoDt("JUNIORS:A", "FEMENINO"));
+        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_MENSUAL");
+
+        confirmar("profe@example.com");
+        login("profe", "clave-segura").andExpect(jsonPath("$.inicio").value("/dt.html"));
+        mvc.perform(get("/api/sesion").with(user("profe").authorities(() -> "DTFPP")))
+                .andExpect(jsonPath("$.equipos[*].nombre").value(org.hamcrest.Matchers.contains(
+                        "Primera Masculino", "Juniors A Femenino")))
+                .andExpect(jsonPath("$.suscripcion.equiposMax").value(2))
+                .andExpect(jsonPath("$.suscripcion.partidosPorMes").value(20));
+
+        // DT de la AMP, con un solo equipo.
+        Map<String, Object> amp = dt("profe.amp", List.of(Map.of("categoria", "JUVENIL:A", "rama", "MASCULINO")));
+        amp.putAll(Map.of("perfil", "DTAMP", "clubId", 3));
+        register(amp).andExpect(status().isCreated());
+        assertThat(usuarios.findByUsuario("profe.amp").orElseThrow().federacion()).isEqualTo(Federacion.AMP);
+    }
+
+    @Test
+    void elDtEligeEntreUnoYDosEquiposDeSuClub() throws Exception {
+        register(dt("dt.a", List.of())).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Elegí el equipo que dirigís."));
+        Map<String, String> primera = Map.of("categoria", "PRIMERA", "rama", "MASCULINO");
+        Map<String, String> juniorsM = Map.of("categoria", "JUNIORS:A", "rama", "MASCULINO");
+        Map<String, String> juniorsF = Map.of("categoria", "JUNIORS:A", "rama", "FEMENINO");
+        register(dt("dt.b", List.of(primera, juniorsM, juniorsF))).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El plan DT mensual permite hasta 2 equipos."));
+        register(dt("dt.c", List.of(Map.of("categoria", "PRIMERA", "rama", "FEMENINO")))).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("VELEZ no tiene equipo en PRIMERA FEMENINO."));
+        Map<String, Object> planDeClub = dt("dt.d", List.of(primera));
+        planDeClub.put("suscripcion", "CLUB_MENSUAL");
+        register(planDeClub).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El plan Club mensual es para clubes."));
+        // El mismo equipo dos veces cuenta como uno.
+        register(dt("dt.e", List.of(primera, primera))).andExpect(status().isCreated());
+        assertThat(usuarios.findByUsuario("dt.e").orElseThrow().getEquiposDt()).hasSize(1);
+        assertThat(usuarios.findAll()).extracting(Usuario::getUsuario).containsExactly("dt.e");
+    }
+
+    @Test
+    void laPantallaDelDtEsSoloParaDt() throws Exception {
+        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "DTAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "PLAYERFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/club.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/jugador.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/api/dt/partidos").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void planesDelDt() throws Exception {
+        mvc.perform(get("/api/suscripciones").param("perfil", "DTFPP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("DT_MENSUAL")))
+                .andExpect(jsonPath("$[0].equiposMax").value(2))
+                .andExpect(jsonPath("$[0].partidosPorMes").value(20))
+                // USD 12, en pesos al dólar de respaldo de los tests ($ 1.500).
+                .andExpect(jsonPath("$[0].precioUsd").value(12.0))
+                .andExpect(jsonPath("$[0].precio").value(18000));
     }
 
     @Test
@@ -365,24 +442,25 @@ class SecurityTest {
     }
 
     @Test
-    void planesConPrecioInformesYAhorro() throws Exception {
+    void soloSeOfreceElPlanMensual() throws Exception {
         mvc.perform(get("/api/suscripciones").param("perfil", "CLUBFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains(
-                        "CLUB_MENSUAL", "CLUB_TRIMESTRAL", "CLUB_SEMESTRAL", "CLUB_ANUAL")))
-                .andExpect(jsonPath("$[*].precioUsd").value(org.hamcrest.Matchers.contains(30.0, 80.0, 150.0, 280.0)))
-                .andExpect(jsonPath("$[*].informesPorMes").value(org.hamcrest.Matchers.contains(8, 10, 12, 14)))
-                // 80 contra 3 x 30 = 90 -> 11%; 150 contra 180 -> 17%; 280 contra 360 -> 22%.
-                .andExpect(jsonPath("$[*].ahorroPct").value(org.hamcrest.Matchers.contains(0, 11, 17, 22)))
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("CLUB_MENSUAL")))
+                .andExpect(jsonPath("$[0].precioUsd").value(20.0))
+                .andExpect(jsonPath("$[0].informesPorMes").value(8))
                 // En pesos al dólar de respaldo de los tests ($ 1.500), redondeado hacia abajo a centenas.
-                .andExpect(jsonPath("$[*].precio").value(org.hamcrest.Matchers.contains(45000, 120000, 225000, 420000)))
-                .andExpect(jsonPath("$[1].precioPorMes").value(40000))
+                .andExpect(jsonPath("$[0].precio").value(30000))
                 .andExpect(jsonPath("$[0].dolar").value(1500));
         mvc.perform(get("/api/suscripciones").param("perfil", "PLAYERFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains(
-                        "PLAYER_MENSUAL", "PLAYER_TRIMESTRAL", "PLAYER_SEMESTRAL", "PLAYER_ANUAL")))
-                .andExpect(jsonPath("$[*].precioUsd").value(org.hamcrest.Matchers.contains(15.0, 40.0, 75.0, 140.0)))
-                .andExpect(jsonPath("$[*].informesPorMes").value(org.hamcrest.Matchers.contains(4, 6, 8, 10)))
-                .andExpect(jsonPath("$[*].ahorroPct").value(org.hamcrest.Matchers.contains(0, 11, 17, 22)));
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("PLAYER_MENSUAL")))
+                .andExpect(jsonPath("$[0].precioUsd").value(7.0))
+                .andExpect(jsonPath("$[0].precio").value(10500))
+                .andExpect(jsonPath("$[0].informesPorMes").value(4));
+
+        // Solo existen los planes mensuales.
+        Map<String, Object> otro = club("ana.otro");
+        otro.put("suscripcion", "CLUB_ANUAL");
+        register(otro).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Plan de suscripción inválido: CLUB_ANUAL."));
     }
 
     @Test
@@ -437,37 +515,31 @@ class SecurityTest {
 
     @Test
     void tiposDeSuscripcionYVigencia() throws Exception {
-        assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getMeses,
-                        SuscripcionType::getTipoUsuario)
+        // Un plan mensual por tipo de usuario.
+        assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getTipoUsuario)
                 .containsExactlyInAnyOrder(
-                        org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", 1, "PLAYER"),
-                        org.assertj.core.groups.Tuple.tuple("PLAYER_TRIMESTRAL", 3, "PLAYER"),
-                        org.assertj.core.groups.Tuple.tuple("PLAYER_SEMESTRAL", 6, "PLAYER"),
-                        org.assertj.core.groups.Tuple.tuple("PLAYER_ANUAL", 12, "PLAYER"),
-                        org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", 1, "CLUB"),
-                        org.assertj.core.groups.Tuple.tuple("CLUB_TRIMESTRAL", 3, "CLUB"),
-                        org.assertj.core.groups.Tuple.tuple("CLUB_SEMESTRAL", 6, "CLUB"),
-                        org.assertj.core.groups.Tuple.tuple("CLUB_ANUAL", 12, "CLUB"));
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("DT_MENSUAL", "DT"));
 
         java.time.LocalDate desde = java.time.LocalDate.of(2026, 10, 15);
         assertThat(suscripciones.findByCodigo("PLAYER_MENSUAL").orElseThrow().hasta(desde)).isEqualTo("2026-11-14");
-        assertThat(suscripciones.findByCodigo("CLUB_ANUAL").orElseThrow().hasta(desde)).isEqualTo("2027-10-14");
 
         Usuario u = saved("club", Perfil.CLUBFPP);
         // A un club no se le puede asignar una suscripción de jugador.
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                        u.suscribir(suscripciones.findByCodigo("PLAYER_TRIMESTRAL").orElseThrow(), desde))
+                        u.suscribir(suscripciones.findByCodigo("PLAYER_MENSUAL").orElseThrow(), desde))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("es para jugadores");
-        u.suscribir(suscripciones.findByCodigo("CLUB_TRIMESTRAL").orElseThrow(), desde);
+        u.suscribir(suscripciones.findByCodigo("CLUB_MENSUAL").orElseThrow(), desde);
         usuarios.save(u);
         Usuario leido = usuarios.findByUsuario("club").orElseThrow();
-        assertThat(leido.getSuscripcionType().getNombre()).isEqualTo("Club trimestral");
+        assertThat(leido.getSuscripcionType().getNombre()).isEqualTo("Club mensual");
         assertThat(leido.getSuscripcionDesde()).isEqualTo("2026-10-15");
-        assertThat(leido.getSuscripcionHasta()).isEqualTo("2027-01-14");
+        assertThat(leido.getSuscripcionHasta()).isEqualTo("2026-11-14");
         mvc.perform(get("/api/sesion").with(user("club").authorities(() -> "CLUBFPP")))
-                .andExpect(jsonPath("$.suscripcion.tipo").value("CLUB_TRIMESTRAL"))
+                .andExpect(jsonPath("$.suscripcion.tipo").value("CLUB_MENSUAL"))
                 .andExpect(jsonPath("$.suscripcion.tipoUsuario").value("CLUB"))
-                .andExpect(jsonPath("$.suscripcion.hasta").value("2027-01-14"))
+                .andExpect(jsonPath("$.suscripcion.hasta").value("2026-11-14"))
                 .andExpect(jsonPath("$.informesPedidos").value(0));
     }
 

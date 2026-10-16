@@ -17,7 +17,7 @@
     <section class="hero">
         <span class="tag">Registro</span>
         <h1>Sumate a<br><em>RinkMetrics.</em></h1>
-        <p class="lead">Elegí tu federación (FPP o AMP) y tu perfil: club, para los informes de los equipos de tu club, o jugador, para tus
+        <p class="lead">Elegí tu federación (FPP o AMP) y tu perfil: club, para los informes de los equipos de tu club; DT, para cargar estadísticas en vivo; o jugador, para tus
             estadísticas en todas las categorías en que jugás.</p>
     </section>
 
@@ -39,11 +39,13 @@
         <div id="after-fed" hidden>
         <div class="field">
             <label>Perfil <span class="req">*</span></label>
-            <div class="profiles" role="radiogroup" aria-label="Perfil">
+            <div class="profiles three" role="radiogroup" aria-label="Perfil">
                 <label><input type="radio" name="rol" value="CLUB" checked><span class="rol-name">Club FPP</span>
                     <small>Informes de los equipos de tu club.</small></label>
                 <label><input type="radio" name="rol" value="PLAYER"><span class="rol-name">Jugador FPP</span>
                     <small>Tus partidos, goles y tarjetas.</small></label>
+                <label><input type="radio" name="rol" value="DT"><span class="rol-name">DT FPP</span>
+                    <small>Estadísticas en vivo de tus equipos.</small></label>
             </div>
             <p class="hint">Mirá cómo es cada informe:
                 <a href="/api/ejemplo.pdf" target="_blank" rel="noopener">ejemplo de club</a> ·
@@ -93,6 +95,18 @@
             </div>
         </div>
 
+        <div id="dt-fields" hidden>
+            <div class="field">
+                <label for="dt-equipo1">Equipo que dirigís <span class="req">*</span></label>
+                <select id="dt-equipo1" disabled><option value="">Elegí el club</option></select>
+            </div>
+            <div class="field">
+                <label for="dt-equipo2">Segundo equipo (opcional)</label>
+                <select id="dt-equipo2" disabled><option value="">Elegí el club</option></select>
+                <p class="hint">Tu plan incluye hasta 2 equipos del club; el segundo lo podés sumar más adelante.</p>
+            </div>
+        </div>
+
         <button class="go" id="go" type="submit" disabled>Registrarme</button>
         </div>
         <div id="status" role="status" aria-live="polite"></div>
@@ -110,8 +124,11 @@
     // Primero la federación y después el perfil: Club o Jugador de esa federación (CLUBAMP, PLAYERFPP...).
     // Los clubes, las categorías y los jugadores son los de la federación elegida.
     const fed = () => (document.querySelector("input[name=federacion]:checked") || {}).value;
-    const isPlayer = () => document.querySelector("input[name=rol]:checked").value === "PLAYER";
-    const perfil = () => (isPlayer() ? "PLAYER" : "CLUB") + fed();
+    const rol = () => document.querySelector("input[name=rol]:checked").value;
+    const isPlayer = () => rol() === "PLAYER";
+    const isDt = () => rol() === "DT";
+    const perfil = () => rol() + fed();
+    const ROL_NAME = {CLUB: "Club ", PLAYER: "Jugador ", DT: "DT "};
     const rosters = {};
     const catalogs = {};
     const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
@@ -148,16 +165,19 @@
         }
     }
 
-    // Equipos del club: cada categoría en cada rama ("Infantil B Femenino").
+    // Equipos del club: cada categoría en cada rama ("Infantil B Femenino"). Los usan el jugador y el DT.
     function loadTeams() {
-        const sel = $("equipo");
-        sel.innerHTML = "";
-        sel.disabled = true;
         const club = catalog && catalog.clubs.find(c => String(c.id) === $("club").value);
-        if (!club) {
-            sel.add(new Option("Elegí el club", ""));
-        } else {
-            sel.add(new Option("Elegí la categoría", ""));
+        for (const [id, empty] of [["equipo", "Elegí la categoría"], ["dt-equipo1", "Elegí el equipo"],
+                                   ["dt-equipo2", "Sin segundo equipo"]]) {
+            const sel = $(id);
+            sel.innerHTML = "";
+            sel.disabled = true;
+            if (!club) {
+                sel.add(new Option("Elegí el club", ""));
+                continue;
+            }
+            sel.add(new Option(empty, ""));
             ["MASCULINO", "FEMENINO"].forEach(b => club.categories.filter(c => c.branches.includes(b))
                 .forEach(c => sel.add(new Option(`${c.label} ${BRANCH_LABEL[b]}`, `${c.key}|${b}`))));
             sel.disabled = false;
@@ -210,12 +230,13 @@
         CLUB: ["Informes de todos los equipos de tu club", "Análisis escrito con IA",
             "Goles, tarjetas y faltas por tramos de 5'", "Fortalezas y debilidades"],
         PLAYER: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
-            "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"]
+            "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"],
+        DT: ["Planilla en vivo desde el celular", "Cada acción por jugador, con el minuto",
+            "Pérdidas, recuperaciones, tiros y atajadas", "Resumen del partido por jugador"]
     };
     // "$ 45.900": pesos sin centavos (vienen redondeados hacia abajo a centenas).
     const pesos = n => "$ " + Number(n).toLocaleString("es-AR", {maximumFractionDigits: 0});
     const fecha = iso => iso ? iso.split("-").reverse().join("/") : "";
-    const plazo = meses => meses === 1 ? "por mes" : `por ${meses} meses`;
 
     // Planes del perfil elegido: una cajita por plan, con su cintillo de ahorro.
     async function loadPlans() {
@@ -235,7 +256,6 @@
                 const card = document.createElement("label");
                 card.className = "plan";
                 card.innerHTML = `<input type="radio" name="plan">
-                    ${plan.ahorroPct > 0 ? '<span class="ribbon"></span>' : ""}
                     <span class="plan-name"></span>
                     <span class="plan-price"><b></b> <small></small></span>
                     <span class="plan-month"></span>
@@ -243,15 +263,15 @@
                     <ul></ul>`;
                 card.querySelector("input").value = plan.codigo;
                 card.querySelector("input").checked = i === 0;
-                if (plan.ahorroPct > 0) card.querySelector(".ribbon").textContent = `${plan.ahorroPct}% más barato`;
-                card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador) /, "");
+                card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador|DT) /, "");
                 card.querySelector(".plan-price b").textContent = pesos(plan.precio);
-                card.querySelector(".plan-price small").textContent = plazo(plan.meses);
-                card.querySelector(".plan-month").textContent = plan.meses === 1 ? "Sin permanencia"
-                    : `Equivale a ${pesos(plan.precioPorMes)} por mes`;
-                card.querySelector(".plan-quota").textContent = `Hasta ${plan.informesPorMes} informes por mes`;
+                card.querySelector(".plan-price small").textContent = "por mes";
+                card.querySelector(".plan-month").textContent = "Sin permanencia";
+                card.querySelector(".plan-quota").textContent = plan.partidosPorMes > 0
+                    ? `Hasta ${plan.equiposMax} equipos y ${plan.partidosPorMes} partidos por mes`
+                    : `Hasta ${plan.informesPorMes} informes por mes`;
                 const ul = card.querySelector("ul");
-                BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : "CLUB"].forEach(b => {
+                BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("DT") ? "DT" : "CLUB"].forEach(b => {
                     const li = document.createElement("li");
                     li.textContent = b;
                     ul.append(li);
@@ -270,9 +290,10 @@
         $("after-fed").hidden = false;
         $("fed-hint").hidden = true;
         document.querySelectorAll("input[name=rol]").forEach(r => {
-            r.parentElement.querySelector(".rol-name").textContent = (r.value === "PLAYER" ? "Jugador " : "Club ") + fed();
+            r.parentElement.querySelector(".rol-name").textContent = ROL_NAME[r.value] + fed();
         });
         $("player-fields").hidden = !isPlayer();
+        $("dt-fields").hidden = !isDt();
         loadPlans();
         if (fed() !== lastFed) {
             lastFed = fed();
@@ -319,6 +340,18 @@
             }
             if (!data.jugadorId) {
                 status("Elegí tu nombre en la lista de jugadores.", true);
+                return;
+            }
+        }
+        if (isDt()) {
+            data.equipos = [$("dt-equipo1").value, $("dt-equipo2").value].filter(v => v)
+                .map(v => { const [categoria, rama] = v.split("|"); return {categoria, rama}; });
+            if (!$("dt-equipo1").value) {
+                status("Elegí el equipo que dirigís.", true);
+                return;
+            }
+            if ($("dt-equipo1").value === $("dt-equipo2").value) {
+                status("El segundo equipo tiene que ser distinto del primero.", true);
                 return;
             }
         }

@@ -3,6 +3,7 @@ package com.rinkmetrics.account;
 import com.rinkmetrics.account.RegistroService.ConflictException;
 import com.rinkmetrics.account.RegistroService.Registro;
 import com.rinkmetrics.catalog.CatalogService;
+import com.rinkmetrics.sidgad.model.Competition;
 import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.config.SecurityConfig;
 import com.rinkmetrics.player.RosterService;
@@ -56,32 +57,40 @@ public class AccountController {
             String categoria,
             String rama,
             Integer jugadorId,
-            @NotBlank(message = "Elegí un plan de suscripción.") String suscripcion) {
+            @NotBlank(message = "Elegí un plan de suscripción.") String suscripcion,
+            List<EquipoDt> equipos) {
     }
 
     /**
-     * Un plan para mostrar en el registro, con el precio en pesos al tipo de cambio del día.
+     * El plan mensual para mostrar en el registro, con el precio en pesos al tipo de cambio del día.
      *
-     * @param precio          precio del plan completo, en pesos (redondeado a centenas)
-     * @param precioPorMes    precio equivalente por mes, en pesos
-     * @param precioUsd       precio base del plan, en dólares
-     * @param ahorroPct       cuánto más barato es que pagar el mensual esos meses (0 en el mensual)
-     * @param dolar           pesos por dólar con que se convirtió (oficial BNA, venta)
-     * @param dolarFecha      día de esa cotización
+     * @param precio     precio por mes, en pesos (redondeado hacia abajo a centenas)
+     * @param precioUsd  precio base, en dólares
+     * @param dolar      pesos por dólar con que se convirtió (oficial BNA, venta)
+     * @param dolarFecha día de esa cotización
      */
-    public record PlanView(String codigo, String nombre, int meses, BigDecimal precio, BigDecimal precioPorMes,
-                           BigDecimal precioUsd, int informesPorMes, int ahorroPct, BigDecimal dolar,
-                           LocalDate dolarFecha) {
+    public record PlanView(String codigo, String nombre, BigDecimal precio, BigDecimal precioUsd, int informesPorMes,
+                           BigDecimal dolar, LocalDate dolarFecha, int equiposMax, int partidosPorMes) {
     }
 
-    /** @param federacion sigla de la federación de sus perfiles (FPP, AMP) */
+    /**
+     * @param federacion sigla de la federación de sus perfiles (FPP, AMP)
+     * @param equipos    equipos del DT: {categoria, rama, nombre} ("Juvenil A Masculino"); vacío si no es DT
+     */
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
                               List<String> perfiles, Map<String, Object> club, Map<String, Object> jugador,
                               String inicio, Map<String, Object> suscripcion, int informesPedidos,
-                              String federacion) {
+                              String federacion, List<Map<String, String>> equipos) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
-                "/", null, 0, null);
+                "/", null, 0, null, List.of());
+    }
+
+    /** "JUVENIL:A" + "MASCULINO" -> "Juvenil A Masculino". */
+    static String equipoNombre(EquipoDt e) {
+        CatalogService.CategoryOption o = CatalogService.CategoryOption.parse(e.categoria());
+        return new Competition.Category(o.level(), e.rama()).levelLabel() + (o.letter() == null ? "" : " " + o.letter())
+                + " " + new Competition.Category(o.level(), e.rama()).branchLabel();
     }
 
     private final RegistroService registro;
@@ -104,22 +113,15 @@ public class AccountController {
         this.catalog = catalog;
     }
 
-    /**
-     * Planes de suscripción del perfil (CLUBFPP o PLAYERFPP), del mensual al anual, con su ahorro y el precio en
-     * pesos al dólar oficial del día.
-     */
+    /** El plan mensual del perfil (CLUBFPP, PLAYERAMP, DTFPP...), con el precio en pesos al dólar oficial del día. */
     @GetMapping("/suscripciones")
     public List<PlanView> planes(@RequestParam Perfil perfil) {
-        List<SuscripcionType> lista = planes.findByTipoUsuarioOrderByMeses(perfil.player() ? "PLAYER" : "CLUB");
-        SuscripcionType mensual = lista.stream().filter(p -> p.getMeses() == 1).findFirst().orElse(null);
         Cotizacion.Valor dolar = cotizacion.actual();
-        return lista.stream().map(p -> {
-            BigDecimal precio = Cotizacion.enPesos(p.getPrecioUsd(), dolar);
-            BigDecimal porMes = Cotizacion.enPesos(p.precioPorMes(), dolar);
-            return new PlanView(p.getCodigo(), p.getNombre(), p.getMeses(), precio, porMes, p.getPrecioUsd(),
-                    p.getInformesPorMes(), mensual == null ? 0 : p.ahorroPct(mensual), dolar.pesosPorDolar(),
-                    dolar.fecha());
-        }).toList();
+        return planes.findByTipoUsuario(perfil.tipoUsuario()).stream()
+                .map(p -> new PlanView(p.getCodigo(), p.getNombre(), Cotizacion.enPesos(p.getPrecioUsd(), dolar),
+                        p.getPrecioUsd(), p.getInformesPorMes(), dolar.pesosPorDolar(), dolar.fecha(),
+                        p.getEquiposMax(), p.getPartidosPorMes()))
+                .toList();
     }
 
     /** Alta: la cuenta queda sin confirmar y se manda el mail con el enlace para confirmarla. */
@@ -127,7 +129,8 @@ public class AccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> registrar(@Valid @RequestBody RegistroRequest req) {
         Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(),
-                req.clubId(), req.categoria(), req.rama(), req.jugadorId(), req.suscripcion()));
+                req.clubId(), req.categoria(), req.rama(), req.jugadorId(), req.suscripcion(),
+                req.equipos() == null ? List.of() : req.equipos()));
         cuenta.enviarVerificacion(u);
         return Map.of("usuario", u.getUsuario(), "email", u.getEmail());
     }
@@ -196,8 +199,12 @@ public class AccountController {
                                 "tipoUsuario", u.getSuscripcionType().getTipoUsuario(),
                                 "nombre", u.getSuscripcionType().getNombre(),
                                 "desde", u.getSuscripcionDesde().toString(),
-                                "hasta", u.getSuscripcionHasta().toString()),
-                        u.getInformesPedidos(), u.federacion().name()))
+                                "hasta", u.getSuscripcionHasta().toString(),
+                                "equiposMax", u.getSuscripcionType().getEquiposMax(),
+                                "partidosPorMes", u.getSuscripcionType().getPartidosPorMes()),
+                        u.getInformesPedidos(), u.federacion().name(),
+                        u.getEquiposDt().stream().map(e -> Map.of("categoria", e.categoria(), "rama", e.rama(),
+                                "nombre", equipoNombre(e))).toList()))
                 .orElse(SessionView.ANONYMOUS);
     }
 

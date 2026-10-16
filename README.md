@@ -201,8 +201,9 @@ se cachea (se reintenta en el próximo informe). Cualquier otro error (5xx, time
 
 La web pide registro e ingreso (Spring Security, sesión con cookie, CSRF con `XSRF-TOKEN`). Cada usuario tiene uno o
 más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBCNT`, `CLUBAMP`, `PLAYERFPP`,
-`PLAYERFSP`, `PLAYERCNT`, `PLAYERAMP`. El registro ofrece **Club** o **Jugador** de la **FPP** (Buenos Aires) o de la
-**AMP** (Mendoza): primero se elige la federación y después el perfil, y uno excluye a los demás. La federación del
+`PLAYERFSP`, `PLAYERCNT`, `PLAYERAMP`, `DTFPP`, `DTAMP`. El registro ofrece **Club**, **Jugador** o **DT** de la
+**FPP** (Buenos Aires) o de la **AMP** (Mendoza): primero se elige la federación y después el perfil, y uno excluye a
+los demás. La federación del
 perfil decide de dónde salen los clubes, las categorías, los jugadores y los informes (que dicen FPP o AMP).
 
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
@@ -210,31 +211,32 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
+- **DT** (planilla en vivo, en construcción): elige uno o dos equipos de su club (categoría con su letra y rama),
+  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, que por ahora muestra sus
+  equipos. Su plan (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en
+  `suscripcion_type`).
 - **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
   ingresar: el login avisa y ofrece reenviar el mail.
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
   (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
   un mail por minuto como mucho, y en la base queda solo el hash del token.
-- **Planes en el registro:** al elegir el perfil se muestran sus cuatro planes en cajitas. Cada una trae el precio,
-  lo que equivale por mes, los informes por mes y los beneficios. Los planes de 3, 6 y 12 meses llevan un cintillo
-  con cuánto más barato son que pagar el mensual esos meses. El plan es obligatorio y queda como suscripción del
-  usuario desde el día del registro. Todavía no hay cobro ni límite de informes por mes.
+- **Plan en el registro:** cada perfil tiene un solo plan, mensual y sin permanencia. Al elegir el perfil se muestra
+  con su precio, su cupo y los beneficios. Es obligatorio y queda como suscripción del usuario desde el día del
+  registro. Todavía no hay cobro ni límite de informes por mes.
 - **Precios en pesos:** el precio base de cada plan está en dólares y se muestra en pesos al dólar oficial del Banco
   Nación (venta) del día, que publica [DolarAPI](https://dolarapi.com), redondeado hacia abajo a centenas. Se consulta como mucho
   una vez por hora; si DolarAPI no responde se usa la última cotización o el respaldo (`DOLAR_RESPALDO`, $ 1.500).
   La home de Mad Sports muestra el precio mensual de cada perfil con la misma conversión.
 
-  | Plan (precio base) | Club | Jugador | Ahorro |
-  |---|---|---|---|
-  | Mensual | U$S 30 · 8 informes/mes | U$S 15 · 4 informes/mes | — |
-  | Trimestral | U$S 80 · 10 informes/mes | U$S 40 · 6 informes/mes | 11% |
-  | Semestral | U$S 150 · 12 informes/mes | U$S 75 · 8 informes/mes | 17% |
-  | Anual | U$S 280 · 14 informes/mes | U$S 140 · 10 informes/mes | 22% |
+  | Plan mensual | Precio base | Incluye |
+  |---|---|---|
+  | Club (`CLUB_MENSUAL`) | U$S 20 | 8 informes por mes |
+  | Jugador (`PLAYER_MENSUAL`) | U$S 7 | 4 informes por mes |
+  | DT (`DT_MENSUAL`) | U$S 12 | 2 equipos y 20 partidos por mes |
 
-- **Suscripciones:** la tabla `suscripcion_type` (con `precio_usd` e `informes_por_mes`) tiene tipos para jugador (`PLAYER_MENSUAL`, `PLAYER_TRIMESTRAL`,
-  `PLAYER_SEMESTRAL`, `PLAYER_ANUAL`) y para club (`CLUB_MENSUAL` ... `CLUB_ANUAL`), con su duración en meses. A un
-  usuario solo se le asigna un tipo de su perfil. Cada usuario puede tener un tipo de suscripción con su fecha desde y su fecha hasta, que sale de
-  la duración del tipo. También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
+- **Suscripciones:** la tabla `suscripcion_type` (con `precio_usd`, `informes_por_mes`, `equipos_max` y
+  `partidos_por_mes`) tiene un plan mensual por tipo de usuario: `PLAYER_MENSUAL`, `CLUB_MENSUAL` y `DT_MENSUAL`. A un
+  usuario solo se le asigna el de su perfil, con su fecha desde y su fecha hasta (un mes). También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
   jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
   Todavía no hay reglas que limiten el uso según la suscripción.
 - **Mad Sports** (`/madsports`): pública. Es la home de Mad Sports, la empresa dueña de RinkMetrics, y enlaza a la app
@@ -327,10 +329,11 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide sesión con el perfil que corresponde
 (sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
 
-- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973,"suscripcion":"PLAYER_ANUAL"}` → `201`
+- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973,"suscripcion":"PLAYER_MENSUAL"}` → `201`
 - `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO`: plantel del equipo según sus actas
-- `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`): planes con precio y precio por mes en pesos (y el precio
-  base en dólares, la cotización usada y su fecha), informes por mes y % de ahorro
+- `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`, `DTAMP`...): el plan mensual del perfil, con el precio en
+  pesos (y el precio base en dólares, la cotización usada y su fecha), los informes por mes y, para el DT, equipos y
+  partidos por mes
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
 - `GET /api/sesion`: usuario, perfiles, club y jugador (`autenticado: false` sin sesión)
 - `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
