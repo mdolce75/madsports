@@ -253,6 +253,11 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
   (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
   un mail por minuto como mucho, y en la base queda solo el hash del token.
+- **Sesión:** dura 8 h sin actividad (`SESSION_TIMEOUT`). En el ingreso, "Mantener la sesión iniciada" (marcado por
+  defecto) deja el dispositivo recordado 30 días (cookie `RECORDARME`, token en `persistent_logins`, V13): si la
+  sesión se pierde porque venció, se cerró el navegador o se reinició la app, el próximo pedido vuelve a entrar solo.
+  El token cambia en cada uso y se borra al salir o al cambiar la clave. Si la sesión vence con una pantalla abierta,
+  la web lleva al ingreso con el aviso "Tu sesión venció" y después vuelve a esa misma pantalla.
 - **Plan en el registro:** cada perfil tiene un solo plan, mensual y sin permanencia. Al elegir el perfil se muestra
   con su precio, su cupo y los beneficios. Es obligatorio y queda como suscripción del usuario desde el día del
   registro. Todavía no hay cobro ni límite de informes por mes.
@@ -346,6 +351,9 @@ Abrir http://localhost:8080.
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
 | `DOLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
 | `DOLAR_RESPALDO` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
+| `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
+| `RECORDARME_DIAS` | `30` | Días que queda recordado un dispositivo |
+| `RECORDARME_CLAVE` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |
 
 La configuración propia va bajo `rinkmetrics:` en `application.yml` (clase `RinkMetricsProperties`).
 
