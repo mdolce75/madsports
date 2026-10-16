@@ -573,40 +573,37 @@
         }
     }
 
-    /** #partido=ID abre la carga; #partidos, #jugadores o #dashboard (sin nada, el dashboard) muestran esa vista. */
+    /** #partido=ID abre la carga; #partidos, #equipo, #jugadores, #informes o #dashboard (sin nada) muestran esa vista. */
     function ruta() {
         const m = location.hash.match(/^#partido=(\d+)$/);
-        if (m) { $("dt-menu").hidden = true; for (const v of ["v-dashboard", "v-jugadores", "v-informes"]) $(v).hidden = true; abrir(Number(m[1])); return; }
+        if (m) { $("dt-menu").hidden = true; for (const v of ["v-dashboard", "v-equipo", "v-jugadores", "v-informes"]) $(v).hidden = true; abrir(Number(m[1])); return; }
         partido = null;
         actualizarWakeLock();
         $("v-partido").hidden = true;
         document.body.classList.remove("dt-vivo");
         const inf = location.hash.match(/^#informe=(\d+)$/);
         const vista = inf ? "informes" : (location.hash.slice(1) || "dashboard");
-        const v = ["dashboard", "partidos", "jugadores", "informes"].includes(vista) ? vista : "dashboard";
+        const v = ["dashboard", "partidos", "equipo", "jugadores", "informes"].includes(vista) ? vista : "dashboard";
         $("dt-menu").hidden = false;
         document.querySelectorAll("#dt-menu a").forEach(a =>
             a.dataset.vista === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
         $("v-dashboard").hidden = v !== "dashboard";
         $("v-elegir").hidden = v !== "partidos";
         $("v-jugadores").hidden = v !== "jugadores";
+        $("v-equipo").hidden = v !== "equipo";
         $("v-informes").hidden = v !== "informes";
         if (v === "informes") cargarInformes(inf ? Number(inf[1]) : null);
         if (v === "dashboard") cargarDashboard();
         if (v === "partidos") cargarMis();
         if (v === "jugadores") cargarFichas();
+        if (v === "equipo") cargarEquipo();
     }
 
     // ---------- Dashboard general ----------
 
     async function cargarDashboard() {
         try {
-            const q = e => `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
-            const [lista, planteles, acciones] = await Promise.all([
-                getJson("/api/dt/partidos").then(r => r.data),
-                Promise.all(sesion.equipos.map(e => getJson("/api/dt/plantel?" + q(e)).then(r => r.data).catch(() => []))),
-                Promise.all(sesion.equipos.map(e => getJson("/api/dt/acciones?" + q(e)).then(r => r.data).catch(() => []))),
-            ]);
+            const lista = (await getJson("/api/dt/partidos")).data;
             const d = DtFichas.dashboard(lista, hoy());
             $("d-partidos").textContent = d.partidos;
             $("d-mes").textContent = d.esteMes;
@@ -614,7 +611,6 @@
             $("d-mes-label").textContent = cupo ? `Este mes (plan: ${cupo} por mes)` : "Este mes";
             $("d-estados").innerHTML = DtFichas.barrasEstado(d.estados);
             $("d-meses").innerHTML = DtFichas.lineaMeses(d.meses);
-            rankings(acciones.flat(), planteles.flat().map(j => ({key: "j" + j.id, numero: j.numero, nombre: j.nombre, arquero: j.arquero})));
             const ul = $("d-proximos");
             ul.replaceChildren();
             if (!d.proximos.length) ul.append(el("li", "dt-vacio", "No hay partidos programados. Creá uno con fecha futura en Partidos."));
@@ -632,13 +628,48 @@
         }
     }
 
+    // ---------- Equipo: estadísticas consolidadas ----------
+
+    /** Vista Equipo: balance, las métricas de todos los partidos cargados del equipo y los rankings. */
+    async function cargarEquipo() {
+        const sel = $("e-equipo");
+        if (!sel.options.length) {
+            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
+            sel.hidden = sesion.equipos.length < 2;
+            sel.addEventListener("change", cargarEquipo);
+        }
+        const e = sesion.equipos[Number(sel.value) || 0];
+        const q = `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
+        $("e-kpis").replaceChildren(el("p", "dt-vacio", "Cargando…"));
+        try {
+            const [lista, acc, pl] = await Promise.all([getJson("/api/dt/partidos").then(r => r.data),
+                getJson("/api/dt/acciones?" + q).then(r => r.data), getJson("/api/dt/plantel?" + q).then(r => r.data).catch(() => [])]);
+            const fin = lista.filter(p => p.categoria === e.categoria && p.rama === e.rama && DtInforme.finalizado(p));
+            const plantelEq = pl.map(j => ({key: "j" + j.id, numero: j.numero, nombre: j.nombre, arquero: j.arquero}));
+            const inf = DtInforme.armar({titulo: "", detalle: "", unPartido: false, partidos: fin, acciones: acc,
+                jugadores: plantelEq, nombreAccion: accion});
+            const b = inf.balance;
+            $("e-balance").replaceChildren(...[[b.jugados, "Jugados"], [b.ganados, "Ganados"], [b.empatados, "Empatados"],
+                [b.perdidos, "Perdidos"], [b.golesFavor, "Goles a favor"], [b.golesContra, "Goles en contra"]].map(([v, n]) => {
+                const k = el("div", "dt-kpi"); k.append(el("b", null, String(v)), el("span", null, n)); return k;
+            }));
+            $("e-kpis").replaceChildren(...DtInforme.tarjetas(inf.totales).map(([v, n, d, cls]) => {
+                const k = el("div", "dt-kpi" + (cls ? " t-" + cls : ""));
+                k.append(el("b", null, String(v)), el("span", null, n));
+                if (d) k.append(el("small", null, d));
+                return k;
+            }));
+            rankings(inf.jugadores);
+        } catch (err) {
+            $("e-kpis").replaceChildren(el("p", "dt-vacio", "No se pudieron cargar las estadísticas: " + err.message));
+        }
+    }
+
     /**
      * Goleadores del equipo (los 5 con más goles) y los 3 mejores en penales y en libres a favor (por efectividad; a
-     * igual efectividad, el que más pateó), con todas las acciones cargadas en los partidos del DT.
+     * igual efectividad, el que más pateó).
      */
-    function rankings(acciones, plantelTodos) {
-        const js = DtInforme.armar({titulo: "", detalle: "", unPartido: false, partidos: [], acciones,
-            jugadores: plantelTodos, nombreAccion: accion}).jugadores;
+    function rankings(js) {
         const pintar = (id, filas, vacio) => {
             const ol = $(id);
             ol.replaceChildren();
@@ -653,7 +684,7 @@
                 ol.append(li);
             });
         };
-        pintar("d-goleadores", js.filter(j => j.metricas.goles > 0)
+        pintar("e-goleadores", js.filter(j => j.metricas.goles > 0)
             .sort((a, b) => b.metricas.goles - a.metricas.goles || a.nombre.localeCompare(b.nombre, "es")).slice(0, 5)
             .map(j => ({j, valor: String(j.metricas.goles), barra: j.metricas.goles,
                 detalle: `${j.metricas.goles === 1 ? "gol" : "goles"} · ${j.partidos} PJ`})),
@@ -662,8 +693,8 @@
             .map(j => ({j, pct: Math.round(100 * j.metricas[gol] / j.metricas[total]), a: j.metricas[gol], b: j.metricas[total]}))
             .sort((x, y) => y.pct - x.pct || y.b - x.b || x.j.nombre.localeCompare(y.j.nombre, "es")).slice(0, 3)
             .map(x => ({j: x.j, valor: x.pct + "%", barra: x.pct, detalle: `${x.a}/${x.b} convertidos`})), vacio);
-        top("penalesGol", "penales", "Todavía no hay penales a favor cargados.", "d-penales");
-        top("libresGol", "libres", "Todavía no hay libres a favor cargados.", "d-libres");
+        top("penalesGol", "penales", "Todavía no hay penales a favor cargados.", "e-penales");
+        top("libresGol", "libres", "Todavía no hay libres a favor cargados.", "e-libres");
     }
 
     // ---------- Informes ----------

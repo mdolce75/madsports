@@ -19,6 +19,7 @@ const CAPTURAS = [
     {archivo: "carga-celular.png", url: "/dt-demo.html", ancho: 390, alto: 844, escala: 2, celular: true},
     {archivo: "resumen.png", url: "/dt-demo.html?tab=resumen", ancho: 1280, alto: 800, escala: 1.5, celular: false},
     {archivo: "dashboard.png", url: "/dt-demo.html#dashboard", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "equipo.png", url: "/dt-demo.html#equipo", ancho: 1280, alto: 960, escala: 1.5, celular: false},
     {archivo: "jugadores.png", url: "/dt-demo.html#jugadores", ancho: 1280, alto: 960, escala: 1.5, celular: false},
     {archivo: "ficha-celular.png", url: "/dt-demo.html#jugadores", ancho: 390, alto: 844, escala: 2, celular: true},
     {archivo: "informes.png", url: "/dt-demo.html?informe=CAMPEONATO#informes", ancho: 1280, alto: 960, escala: 1.5, celular: false},

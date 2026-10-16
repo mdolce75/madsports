@@ -25,6 +25,7 @@
     <nav class="dt-menu" id="dt-menu" aria-label="Métricas DT">
         <a href="#dashboard" data-vista="dashboard">Dashboard</a>
         <a href="#partidos" data-vista="partidos">Partidos</a>
+        <a href="#equipo" data-vista="equipo">Equipo</a>
         <a href="#jugadores" data-vista="jugadores">Jugadores</a>
         <a href="#informes" data-vista="informes">Informes</a>
     </nav>
@@ -39,11 +40,24 @@
         <div class="dash-grid">
             <div class="dash-box"><h3>Estado de los partidos</h3><div id="d-estados"></div></div>
             <div class="dash-box"><h3>Partidos jugados por mes</h3><div id="d-meses"></div></div>
-            <div class="dash-box dash-goleadores"><h3>Goleadores</h3><ol class="dash-ranking" id="d-goleadores"></ol></div>
-            <div class="dash-box"><h3>Penales · Top 3</h3><ol class="dash-ranking" id="d-penales"></ol></div>
-            <div class="dash-box"><h3>Libres · Top 3</h3><ol class="dash-ranking" id="d-libres"></ol></div>
             <div class="dash-box dash-proximos"><h3>Próximos partidos</h3><ul class="dt-lista" id="d-proximos"></ul>
                 <a class="btn primary" href="#partidos">Programar un partido</a></div>
+        </div>
+    </section>
+
+    <!-- Equipo: estadísticas consolidadas, goleadores y pelota parada -->
+    <section id="v-equipo" class="dt-vista" hidden>
+        <div class="dt-line"><h2 class="section-title">Equipo</h2>
+            <select id="e-equipo" aria-label="Equipo" hidden></select></div>
+        <p class="hint">Estadísticas consolidadas de todos los partidos cargados del equipo. El balance cuenta los
+            partidos finalizados.</p>
+        <div class="dt-kpis eq-balance" id="e-balance"></div>
+        <h4 class="inf-sub">Estadísticas del equipo</h4>
+        <div class="inf-kpis" id="e-kpis"></div>
+        <div class="dash-grid eq-rankings">
+            <div class="dash-box"><h3>Goleadores</h3><ol class="dash-ranking" id="e-goleadores"></ol></div>
+            <div class="dash-box"><h3>Penales · Top 3</h3><ol class="dash-ranking" id="e-penales"></ol></div>
+            <div class="dash-box"><h3>Libres · Top 3</h3><ol class="dash-ranking" id="e-libres"></ol></div>
         </div>
     </section>
 

@@ -31,7 +31,8 @@
     --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
-html { background: var(--bg); }
+/* El espacio de la barra de desplazamiento queda reservado: al pasar de una pantalla corta a una larga, nada se corre. */
+html { background: var(--bg); scrollbar-gutter: stable; }
 body {
     margin: 0; min-height: 100vh; color: var(--ink); font: 16px/1.55 var(--body);
     background:
@@ -555,8 +556,7 @@ nav.secciones a { white-space: nowrap; }
     .dash-proximos { grid-column: 1 / -1; }
 }
 @media (min-width: 1100px) {
-    .dash-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .dash-goleadores { grid-row: span 2; }
+    .eq-rankings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .grafico { width: 100%; height: auto; display: block; }
 .grafico .eje { font: 500 11px var(--body); fill: var(--muted); }
@@ -666,3 +666,8 @@ body.dt-vivo .dt-menu { display: none; }
 .dash-ranking b { font: 700 1.15rem/1 var(--display); color: var(--accent); text-align: right; }
 .dash-ranking small { grid-column: 2 / -1; font-size: .72rem; color: var(--muted); }
 .dash-ranking .barra { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); opacity: .7; }
+
+/* Vista Equipo */
+.eq-balance { margin: 12px 0 4px; }
+@media (min-width: 760px) { .eq-balance { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.eq-rankings { margin-top: 18px; align-items: start; }
