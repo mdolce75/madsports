@@ -470,3 +470,17 @@ body.home .brand small { font-size: .85rem; margin-top: 6px; }
     body.home .brand b { font-size: 2.6rem; }
     body.home .brand small { font-size: .95rem; }
 }
+
+/* ---- Portada: cualidades bajo el título y el bloque "Por qué RinkMetrics" ---- */
+.cualidades { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 18px 0 6px; padding: 0; list-style: none; }
+.cualidades li { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92rem; color: var(--ink-2); }
+.cualidades svg { width: 20px; height: 20px; flex: none; color: var(--accent); }
+.hero .hint { max-width: 560px; }
+.ventajas { margin: 34px 0 6px; }
+.ventajas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+.ventajas-grid article { padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+                         box-shadow: var(--shadow); }
+.ventajas-grid svg { width: 34px; height: 34px; padding: 6px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+.ventajas-grid h3 { margin: 10px 0 4px; font: 700 1.05rem/1.2 var(--display); letter-spacing: .04em; text-transform: uppercase; color: var(--dark); }
+.ventajas-grid p { margin: 0; font-size: .9rem; color: var(--muted); }
+@media (min-width: 1200px) { .ventajas-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
