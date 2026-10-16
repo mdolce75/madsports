@@ -792,6 +792,8 @@
     // ---------- Inicio ----------
 
     $("brand").outerHTML = BRAND;
+    // Un solo menú arriba: el del DT va en la barra superior, al lado de la marca.
+    document.querySelector(".topbar header.brand").after($("dt-menu"));
     document.querySelectorAll("#i-tipo button").forEach(b => b.addEventListener("click", () => {
         infTipo = b.dataset.tipo;
         infValor = null;

@@ -217,7 +217,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 
 - **Dos secciones:** la portada (`/`) presenta **Informes** (`/informes.html`: perfiles Club y Jugador, informes de
   ejemplo) y **DT** (`/dt-inicio.html`: Métricas DT, las estadísticas en vivo, y su plan). El menú "Informes / DT" está arriba en todas
-  las páginas. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
+  las páginas, salvo en la pantalla de Métricas DT (y su demo): ahí la barra superior lleva solo el menú del DT
+  (Dashboard · Partidos · Jugadores · Informes) y el logo vuelve a la portada. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
 - **Por qué RinkMetrics** (`/por-que.html`, en el menú): las ventajas de la plataforma, en su propia página.
 - **Demo de Métricas DT** (`/dt-demo.html`, en el menú "Demo"): la pantalla de carga con un partido y un plantel de
   ejemplo, sin cuenta. `js/dt-demo.js` contesta en el navegador las llamadas a la API (nada se guarda). La página de
