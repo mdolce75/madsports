@@ -133,10 +133,14 @@ class DtControllerTest {
     }
 
     void dt(String nombre) {
+        dt(nombre, "DT_MENSUAL");
+    }
+
+    void dt(String nombre, String plan) {
         Usuario u = new Usuario(nombre, "x", nombre + "@example.com", "Ana", "Pérez", 74, "VELEZ", "CAVS",
                 EnumSet.of(Perfil.DTFPP), Instant.now());
         u.asignarEquiposDt(List.of(new EquipoDt("PRIMERA:A", "MASCULINO"), new EquipoDt("INFANTIL", "MASCULINO")));
-        u.suscribir(suscripciones.findByCodigo("DT_MENSUAL").orElseThrow(), LocalDate.of(2026, 9, 15));
+        u.suscribir(suscripciones.findByCodigo(plan).orElseThrow(), LocalDate.of(2026, 9, 15));
         usuarios.save(u);
     }
 
@@ -262,5 +266,21 @@ class DtControllerTest {
         // El mes siguiente de la suscripción vuelve a tener cupo.
         reloj.ahora = Instant.parse("2026-11-15T12:00:00Z");
         enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Nuevo mes")).andExpect(status().isCreated());
+    }
+
+    @Test
+    void elPlanFreeNoTieneLimiteDePartidosHastaFinDe2026() throws Exception {
+        dt("gratis", "DT_FREE");
+        // Más que los 20 del plan mensual: el free no tiene límite.
+        for (int i = 0; i < 25; i++) {
+            enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Rival " + i)).andExpect(status().isCreated());
+        }
+        // El 31/12/2026 todavía vale; el 1/1/2027 ya no se pueden empezar partidos.
+        reloj.ahora = Instant.parse("2026-12-31T20:00:00Z");
+        enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Fin de año")).andExpect(status().isCreated());
+        reloj.ahora = Instant.parse("2027-01-01T13:00:00Z");
+        enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Año nuevo")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Tu plan DT free terminó el 31/12/2026. Pasate al plan mensual "
+                        + "para seguir cargando partidos."));
     }
 }

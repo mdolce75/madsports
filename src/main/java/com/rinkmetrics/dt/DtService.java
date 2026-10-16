@@ -279,15 +279,24 @@ public class DtService {
     }
 
     /**
-     * El DT no puede empezar más partidos en el mes que los de su plan. El mes cuenta desde el día de su suscripción
-     * (suscripto el 15: del 15 al 14 del mes siguiente).
+     * El DT no puede empezar más partidos en el mes que los de su plan (0 = sin límite), ni después del último día de
+     * un plan con fecha fija (el free, hasta el 31/12/2026). El mes cuenta desde el día de su suscripción (suscripto
+     * el 15: del 15 al 14 del mes siguiente).
      */
     void verificarCupo(Usuario u) {
         SuscripcionType plan = u.getSuscripcionType();
-        if (plan == null || plan.getPartidosPorMes() <= 0) {
+        if (plan == null || !"DT".equals(plan.getTipoUsuario())) {
             throw new IllegalStateException("Tu plan no incluye Métricas DT.");
         }
         LocalDate hoy = LocalDate.now(clock);
+        if (!plan.vigente(hoy)) {
+            throw new Conflicto("Tu plan " + plan.getNombre() + " terminó el "
+                    + plan.getVigenteHasta().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    + ". Pasate al plan mensual para seguir cargando partidos.");
+        }
+        if (plan.getPartidosPorMes() <= 0) {
+            return;
+        }
         LocalDate desde = inicioDelMes(u.getSuscripcionDesde() == null ? hoy : u.getSuscripcionDesde(), hoy);
         long usados = partidos.countByUsuarioIdAndCreadoGreaterThanEqual(u.getId(),
                 desde.atStartOfDay(clock.getZone()).toInstant());

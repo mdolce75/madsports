@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.net.URI;
 import java.util.List;
@@ -69,8 +70,13 @@ public class AccountController {
      * @param dolar      pesos por dólar con que se convirtió (oficial BNA, venta)
      * @param dolarFecha día de esa cotización
      */
+    /**
+     * @param partidosPorMes DT: partidos por mes (0 = sin límite)
+     * @param vigenteHasta   último día de un plan con fecha fija de fin (el DT free); null en los mensuales
+     */
     public record PlanView(String codigo, String nombre, BigDecimal precio, BigDecimal precioUsd, int informesPorMes,
-                           BigDecimal dolar, LocalDate dolarFecha, int equiposMax, int partidosPorMes) {
+                           BigDecimal dolar, LocalDate dolarFecha, int equiposMax, int partidosPorMes,
+                           LocalDate vigenteHasta) {
     }
 
     /**
@@ -100,10 +106,12 @@ public class AccountController {
     private final CuentaService cuenta;
     private final SuscripcionTypeRepository planes;
     private final Cotizacion cotizacion;
+    private final Clock clock;
 
     public AccountController(RegistroService registro, UsuarioRepository usuarios, RosterService roster,
                              CatalogService catalog, CuentaService cuenta, SuscripcionTypeRepository planes,
-                             Cotizacion cotizacion) {
+                             Cotizacion cotizacion, Clock clock) {
+        this.clock = clock;
         this.cuenta = cuenta;
         this.planes = planes;
         this.cotizacion = cotizacion;
@@ -117,10 +125,12 @@ public class AccountController {
     @GetMapping("/suscripciones")
     public List<PlanView> planes(@RequestParam Perfil perfil) {
         Cotizacion.Valor dolar = cotizacion.actual();
-        return planes.findByTipoUsuario(perfil.tipoUsuario()).stream()
+        LocalDate hoy = LocalDate.now(clock);
+        return planes.findByTipoUsuarioOrderByPrecioUsdAscIdAsc(perfil.tipoUsuario()).stream()
+                .filter(p -> p.vigente(hoy))   // el DT free deja de ofrecerse después del 31/12/2026
                 .map(p -> new PlanView(p.getCodigo(), p.getNombre(), Cotizacion.enPesos(p.getPrecioUsd(), dolar),
                         p.getPrecioUsd(), p.getInformesPorMes(), dolar.pesosPorDolar(), dolar.fecha(),
-                        p.getEquiposMax(), p.getPartidosPorMes()))
+                        p.getEquiposMax(), p.getPartidosPorMes(), p.getVigenteHasta()))
                 .toList();
     }
 

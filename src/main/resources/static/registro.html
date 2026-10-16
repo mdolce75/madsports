@@ -107,7 +107,7 @@
             <div class="field">
                 <label for="dt-equipo2">Segundo equipo (opcional)</label>
                 <select id="dt-equipo2" disabled><option value="">Elegí el club</option></select>
-                <p class="hint">Tu plan incluye hasta 2 equipos del club; el segundo lo podés sumar más adelante.</p>
+                <p class="hint" id="dt-equipos-hint">Tu plan incluye hasta 2 equipos del club; el segundo lo podés sumar más adelante.</p>
             </div>
         </div>
 
@@ -286,13 +286,18 @@
                     <span class="plan-quota"></span>
                     <ul></ul>`;
                 card.querySelector("input").value = plan.codigo;
+                card.querySelector("input").dataset.equipos = plan.equiposMax;
                 card.querySelector("input").checked = i === 0;
+                card.querySelector("input").addEventListener("change", equiposDelPlan);
                 card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador|DT) /, "");
-                card.querySelector(".plan-price b").textContent = pesos(plan.precio);
-                card.querySelector(".plan-price small").textContent = "por mes";
-                card.querySelector(".plan-month").textContent = "Sin permanencia";
+                const gratis = Number(plan.precio) === 0;
+                card.querySelector(".plan-price b").textContent = gratis ? "Gratis" : pesos(plan.precio);
+                card.querySelector(".plan-price small").textContent = gratis ? "" : "por mes";
+                card.querySelector(".plan-month").textContent = plan.vigenteHasta
+                    ? "Hasta el " + fecha(plan.vigenteHasta) : "Sin permanencia";
                 card.querySelector(".plan-quota").textContent = plan.partidosPorMes > 0
-                    ? `Hasta ${plan.equiposMax} equipos y ${plan.partidosPorMes} partidos por mes`
+                    ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"} y ${plan.partidosPorMes} partidos por mes`
+                    : plan.equiposMax > 0 ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"}, partidos sin límite`
                     : `Hasta ${plan.informesPorMes} informes por mes`;
                 const ul = card.querySelector("ul");
                 BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("DT") ? "DT" : "CLUB"].forEach(b => {
@@ -302,10 +307,22 @@
                 });
                 box.append(card);
             });
+            equiposDelPlan();
         } catch (e) {
             box.innerHTML = "";
             status("No se pudieron cargar los planes: " + e.message, true);
         }
+    }
+
+    /** DT: con un plan de un solo equipo (el free), el segundo equipo no se puede elegir. */
+    function equiposDelPlan() {
+        const plan = document.querySelector("input[name=plan]:checked");
+        const max = plan ? Number(plan.dataset.equipos) : 2;
+        if (!isDt() || !max) return;
+        const uno = max < 2;
+        $("dt-equipo2").closest(".field").hidden = uno;
+        if (uno) $("dt-equipo2").value = "";
+        $("dt-equipos-hint").textContent = `Tu plan incluye hasta ${max} equipos del club; el segundo lo podés sumar más adelante.`;
     }
 
     let lastFed = null;

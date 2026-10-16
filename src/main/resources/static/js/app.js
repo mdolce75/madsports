@@ -123,6 +123,15 @@ function showReady(job) {
 document.addEventListener("DOMContentLoaded", () => {
     const marca = document.querySelector("header.brand");
     if (!marca || document.querySelector("nav.secciones")) return;
+    // El logo lleva a la portada.
+    if (!marca.querySelector("a.brand-link")) {
+        const link = document.createElement("a");
+        link.className = "brand-link";
+        link.href = "/";
+        link.setAttribute("aria-label", "RinkMetrics: ir al inicio");
+        link.append(...marca.childNodes);
+        marca.append(link);
+    }
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");

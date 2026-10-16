@@ -39,9 +39,10 @@
     <p class="hint">Cada acción queda con el jugador, el tiempo y el minuto del reloj.</p>
 
     <div class="examples">
-        <article class="example">
+        <article class="example proximamente">
+            <span class="cintillo">Próximamente</span>
             <span class="tag">Acciones</span>
-            <h3>De cada jugador</h3>
+            <h3>Acciones de cada jugador</h3>
             <ul>
                 <li>Pérdidas y recuperaciones, en defensa y en ataque</li>
                 <li>Tiros al arco: gol o no gol</li>
@@ -80,29 +81,33 @@
 <script>
     $("brand").outerHTML = BRAND;
 
-    // Plan del DT con su precio en pesos del día.
+    // Planes del DT (el free y el mensual) con su precio en pesos del día.
     fetch("/api/suscripciones?perfil=DTFPP").then(r => r.ok ? r.json() : []).then(planes => {
-        const p = planes[0];
-        if (!p) return;
         const box = $("plan-dt");
-        const card = document.createElement("div");
-        card.className = "plan";
-        const nombre = document.createElement("span");
-        nombre.className = "plan-name";
-        nombre.textContent = "Plan " + p.nombre;
-        const precio = document.createElement("span");
-        precio.className = "plan-price";
-        precio.innerHTML = "<b></b> <small>por mes</small>";
-        precio.querySelector("b").textContent = "$ " + Number(p.precio).toLocaleString("es-AR");
-        const cupo = document.createElement("span");
-        cupo.className = "plan-quota";
-        cupo.textContent = `Hasta ${p.equiposMax} equipos y ${p.partidosPorMes} partidos por mes`;
-        const nota = document.createElement("span");
-        nota.className = "plan-month";
-        nota.textContent = "Mensual, sin permanencia. Precio en pesos al dólar oficial del día.";
-        card.append(nombre, precio, cupo, nota);
-        box.append(card);
-        box.hidden = false;
+        for (const p of planes) {
+            const gratis = Number(p.precio) === 0;
+            const card = document.createElement("div");
+            card.className = "plan";
+            const nombre = document.createElement("span");
+            nombre.className = "plan-name";
+            nombre.textContent = "Plan " + p.nombre;
+            const precio = document.createElement("span");
+            precio.className = "plan-price";
+            precio.innerHTML = "<b></b> <small></small>";
+            precio.querySelector("b").textContent = gratis ? "Gratis" : "$ " + Number(p.precio).toLocaleString("es-AR");
+            precio.querySelector("small").textContent = gratis ? "" : "por mes";
+            const cupo = document.createElement("span");
+            cupo.className = "plan-quota";
+            cupo.textContent = `${p.equiposMax === 1 ? "1 equipo" : "Hasta " + p.equiposMax + " equipos"}`
+                + (p.partidosPorMes > 0 ? ` y ${p.partidosPorMes} partidos por mes` : ", partidos sin límite");
+            const nota = document.createElement("span");
+            nota.className = "plan-month";
+            nota.textContent = p.vigenteHasta ? "Sin costo hasta el " + p.vigenteHasta.split("-").reverse().join("/") + "."
+                : "Mensual, sin permanencia. En pesos al dólar oficial del día.";
+            card.append(nombre, precio, cupo, nota);
+            box.append(card);
+        }
+        box.hidden = !planes.length;
     }).catch(() => {});
 
     // Con sesión: acceso directo a su pantalla en lugar de ingresar/registrarse.
