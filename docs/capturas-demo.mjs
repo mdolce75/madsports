@@ -21,6 +21,7 @@ const CAPTURAS = [
     {archivo: "dashboard.png", url: "/dt-demo.html#dashboard", ancho: 1280, alto: 800, escala: 1.5, celular: false},
     {archivo: "jugadores.png", url: "/dt-demo.html#jugadores", ancho: 1280, alto: 960, escala: 1.5, celular: false},
     {archivo: "ficha-celular.png", url: "/dt-demo.html#jugadores", ancho: 390, alto: 844, escala: 2, celular: true},
+    {archivo: "informes.png", url: "/dt-demo.html?informe=CAMPEONATO#informes", ancho: 1280, alto: 960, escala: 1.5, celular: false},
 ];
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));

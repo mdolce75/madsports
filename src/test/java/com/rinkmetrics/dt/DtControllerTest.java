@@ -38,7 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -46,6 +48,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -306,5 +309,97 @@ class DtControllerTest {
                 .andExpect(jsonPath("$[2].tipo").value("PERDIDA"));
         // Otro DT no ve las acciones de este.
         mvc.perform(get("/api/dt/acciones").with(como("otro"))).andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void informeDelPartidoYDelPeriodo() throws Exception {
+        String body = enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "HURACAN", "fecha", "2026-10-18",
+                "torneo", "  Apertura   2026 ")).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.torneo").value("Apertura 2026"))
+                .andReturn().getResponse().getContentAsString();
+        long id = json.readTree(body).get("id").asLong();
+        String base = "/api/dt/partidos/" + id;
+        Map<String, Object> refuerzo = accion(0, "FALTA", "COMETIDA", 2, 100);
+        refuerzo.put("jugadorNombre", "Refuerzo");
+        enviar(post(base + "/acciones"), "profe", List.of(accion(11, "TIRO", "GOL", 1, 30),
+                accion(11, "TIRO", "NO_GOL", 1, 60), accion(11, "PENAL_FAVOR", "GOL", 1, 90),
+                accion(11, "LIBRE_FAVOR", "NO_GOL", 1, 120), accion(10, "ATAJADA", null, 1, 150),
+                accion(10, "PENAL_CONTRA", "ATAJADO", 1, 180), accion(10, "GOL_RECIBIDO", null, 1, 210),
+                accion(11, "PERDIDA", "PROPIO", 1, 240), accion(11, "RECUPERACION", "RIVAL", 1, 270),
+                accion(11, "FALTA", "RECIBIDA", 2, 10), accion(11, "TARJETA", "AZUL", 2, 50), refuerzo))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(base + "/informe").with(como("profe"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.titulo").value("VELEZ 2 - 1 HURACAN"))
+                .andExpect(jsonPath("$.detalle").value("Primera A Masculino · Local · Apertura 2026 · 18/10/2026"))
+                .andExpect(jsonPath("$.totales.goles").value(2))
+                .andExpect(jsonPath("$.totales.golesRecibidos").value(1))
+                .andExpect(jsonPath("$.totales.tiros").value(2))
+                .andExpect(jsonPath("$.totales.efectividadTiros").value(50))
+                .andExpect(jsonPath("$.totales.atajadas").value(2))
+                .andExpect(jsonPath("$.totales.perdidas").value(1))
+                .andExpect(jsonPath("$.totales.recuperaciones").value(1))
+                .andExpect(jsonPath("$.totales.faltasRecibidas").value(1))
+                .andExpect(jsonPath("$.totales.faltasCometidas").value(1))
+                .andExpect(jsonPath("$.totales.azules").value(1))
+                .andExpect(jsonPath("$.totales.efectividadPenales").value(100))
+                .andExpect(jsonPath("$.totales.efectividadLibres").value(0))
+                .andExpect(jsonPath("$.jugadores[*].nombre").value(contains("Juan Arquero", "Pedro Delantero", "Refuerzo")))
+                .andExpect(jsonPath("$.jugadores[0].arquero").value(true))
+                .andExpect(jsonPath("$.eventos", hasSize(12)))
+                .andExpect(jsonPath("$.eventos[0].minuto").value("1T 00:30"))
+                .andExpect(jsonPath("$.eventos[0].accion").value("Tiro al arco: Gol"))
+                .andExpect(jsonPath("$.eventos[11].jugador").value("Refuerzo"));
+        // Solo un jugador: sus métricas y sus eventos.
+        mvc.perform(get(base + "/informe").param("jugador", "j11").with(como("profe")))
+                .andExpect(jsonPath("$.jugador.nombre").value("Pedro Delantero"))
+                .andExpect(jsonPath("$.totales.goles").value(2))
+                .andExpect(jsonPath("$.totales.golesRecibidos").value(0))
+                .andExpect(jsonPath("$.jugadores", hasSize(1)))
+                .andExpect(jsonPath("$.eventos", hasSize(8)));
+        mvc.perform(get(base + "/informe").param("jugador", "j99").with(como("profe")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get(base + "/informe").with(como("otro"))).andExpect(status().isNotFound());
+        byte[] pdf = mvc.perform(get(base + "/informe.pdf").with(como("profe"))).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", containsString("informe-huracan-2026-10-18.pdf")))
+                .andReturn().getResponse().getContentAsByteArray();
+        assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+
+        // Los informes por período solo cuentan los partidos finalizados.
+        mvc.perform(get("/api/dt/informes").param("periodo", "MES").param("valor", "2026-10").with(como("profe")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("No hay partidos finalizados en Octubre 2026."));
+        for (String a : List.of("INICIAR", "FIN_TIEMPO", "INICIAR", "FIN_TIEMPO")) {
+            enviar(post(base + "/reloj"), "profe", Map.of("accion", a)).andExpect(status().isOk());
+        }
+        mvc.perform(get("/api/dt/informes").param("periodo", "MES").param("valor", "2026-10").with(como("profe")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.titulo").value("Octubre 2026"))
+                .andExpect(jsonPath("$.detalle").value("Primera A Masculino · 1 partido"))
+                .andExpect(jsonPath("$.balance.ganados").value(1))
+                .andExpect(jsonPath("$.partidos[0].resultado").value("G"))
+                .andExpect(jsonPath("$.eventos", hasSize(0)));
+        mvc.perform(get("/api/dt/informes").param("periodo", "BIMESTRE").param("valor", "2026-5").with(como("profe")))
+                .andExpect(jsonPath("$.titulo").value("Bimestre septiembre-octubre 2026"));
+        mvc.perform(get("/api/dt/informes").param("periodo", "SEMESTRE").param("valor", "2026-2").with(como("profe")))
+                .andExpect(jsonPath("$.titulo").value("2.º semestre 2026 (julio a diciembre)"));
+        mvc.perform(get("/api/dt/informes").param("periodo", "CAMPEONATO").param("valor", "Apertura 2026")
+                        .with(como("profe")))
+                .andExpect(jsonPath("$.titulo").value("Campeonato Apertura 2026"))
+                .andExpect(jsonPath("$.totales.goles").value(2));
+        mvc.perform(get("/api/dt/informes").param("periodo", "CAMPEONATO").param("valor", "").with(como("profe")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/dt/informes").param("periodo", "ANIO").param("valor", "2026").with(como("profe")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/dt/informes").param("periodo", "MES").param("valor", "2026-13").with(como("profe")))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/dt/informes.pdf").param("periodo", "MES").param("valor", "2026-10")
+                        .param("jugador", "j10").with(como("profe")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("informe-octubre-2026-juan-arquero.pdf")));
+        // Otro DT no tiene partidos en ese mes.
+        mvc.perform(get("/api/dt/informes").param("periodo", "MES").param("valor", "2026-10").with(como("otro")))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -245,8 +245,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
   las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
-- **Métricas DT: menú, dashboard y fichas.** La pantalla del DT tiene un menú Dashboard · Partidos · Jugadores (entra
-  al dashboard).
+- **Métricas DT: menú, dashboard, fichas e informes.** La pantalla del DT tiene un menú Dashboard · Partidos ·
+  Jugadores · Informes (entra al dashboard).
   - **Dashboard general:** jugadores del plantel, partidos cargados y del mes; estado de los partidos (programados =
     creados con fecha futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6) y los
     próximos partidos.
@@ -255,18 +255,27 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     pérdidas) y disciplina. Los arqueros se comparan entre sí con sus ejes: atajadas, efectividad, pelota parada,
     valla y disciplina. Todo se calcula en el navegador (`js/dt-fichas.js`) con `GET /api/dt/acciones` (las acciones
     activas de todos los partidos del equipo), el plantel y la lista de partidos; los gráficos son SVG propios.
+  - **Informes:** la lista de los partidos finalizados (terminados o cerrados), cada uno con su informe, y los
+    informes de un mes, un bimestre, un semestre o un campeonato (el que se carga, opcional, al crear el partido; los
+    que no tienen van a "Sin campeonato"). Cada informe trae goles, goles recibidos, tiros y su efectividad,
+    atajadas, pérdidas, recuperaciones, faltas recibidas y cometidas, tarjetas azul, amarilla y roja, y la
+    efectividad de penales y libres; la tabla por jugador y, en el de un partido, la lista de eventos (minuto,
+    jugador y acción). Se puede elegir un jugador para ver solo sus estadísticas. En pantalla se arma en el
+    navegador (`js/dt-informe.js`); el PDF lo arma el servidor (`DtInformeService`, `InformeDt`, plantilla
+    `templates/dt-informe.html`) con las mismas métricas.
 - **Métricas DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
   la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
   columna) y entra entera en la pantalla, sin bajar.
-  - **Partidos:** combo de rivales (o "Otro", escrito a mano), fecha y local / visitante, y la lista de partidos
-    cargados.
+  - **Partidos:** combo de rivales (o "Otro", escrito a mano), fecha, local / visitante y campeonato (opcional, con
+    los ya usados para elegir), y la lista de partidos cargados.
   - **Marcador y reloj fijos arriba:** iniciar, pausar / reanudar, fin del 1T, iniciar 2T, fin del partido y ajuste
     de ±1′ y ±10″. Al llegar a 00:00 avisa y vibra. Mientras el reloj corre, la pantalla no se apaga (Wake Lock, si
     el teléfono lo permite).
   - **Carga:** se toca el jugador y después la acción (dos toques). Las del arco (atajada, gol recibido, libre y
     penal en contra) van al arquero en cancha. Se pueden agregar jugadores que no figuran en las actas. Cada carga
     muestra "Deshacer" por 4 segundos, y las últimas acciones se pueden borrar.
-  - **Resumen:** por jugador y del equipo, y el cierre del partido (o reabrirlo).
+  - **Informe:** el informe del partido en vivo (con lo que todavía no se envió), del equipo o de un jugador, con
+    los eventos y "Exportar PDF"; y el cierre del partido (o reabrirlo).
   - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt-cola.js`) y se
     mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
     (`dt-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin
@@ -425,8 +434,9 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
   - `GET /api/dt/rivales?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`clubId`, `nombre`: "GEBA B")
   - `GET /api/dt/plantel?categoria=&rama=`: jugadores con número y `arquero`
   - `GET /api/dt/acciones?categoria=&rama=`: acciones activas de todos los partidos del equipo (con `partidoId`), para las fichas
-  - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false}`
-    → `201` (sin `fecha`, hoy); con el mismo rival y fecha devuelve el ya empezado; `409` si se acabó el cupo del mes
+  - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false,"torneo":"Apertura"}`
+    → `201` (sin `fecha`, hoy; `torneo` opcional); con el mismo rival y fecha devuelve el ya empezado; `409` si se
+    acabó el cupo del mes
   - `GET /api/dt/partidos`, `GET /api/dt/partidos/{id}` (con `reloj {tiempo, jugados, restante, corriendo}` y las
     acciones)
   - `POST /api/dt/partidos/{id}/acciones` `[{"id":"<uuid>","jugadorId":11,"tipo":"TIRO","resultado":"GOL","tiempo":1,"segundo":390}]`
@@ -434,6 +444,11 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
     `PENAL_FAVOR`, `PENAL_CONTRA`, `FALTA`, `TARJETA`); `DELETE /api/dt/partidos/{id}/acciones/{accionId}` deshace
   - `POST /api/dt/partidos/{id}/reloj` `{"accion":"INICIAR"}` (`PAUSAR`, `REANUDAR`, `FIN_TIEMPO`, o `AJUSTAR` con
     `segundos`); `POST /api/dt/partidos/{id}/cerrar` y `/reabrir`
+  - `GET /api/dt/partidos/{id}/informe?jugador=j11` y `/informe.pdf`: informe del partido (`jugador`: "j" + id del
+    plantel, o "m" + nombre de un jugador agregado a mano; sin él, todo el equipo)
+  - `GET /api/dt/informes?categoria=&rama=&periodo=MES&valor=2026-10&jugador=` y `/api/dt/informes.pdf`: informe de los
+    partidos finalizados del período (`periodo`: `MES` "2026-10", `BIMESTRE` "2026-5" = septiembre-octubre,
+    `SEMESTRE` "2026-2", `CAMPEONATO` con el nombre); `400` si no hay partidos finalizados
 - `GET /api/catalogo?anio=2026&federacion=AMP` — clubes con sus categorías y ramas del año en la federación (sin
   `anio`: el más reciente con datos; sin `federacion`: FPP); `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta

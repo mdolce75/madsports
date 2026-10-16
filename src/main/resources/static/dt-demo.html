@@ -14,7 +14,7 @@
 <body class="dt-page demo" data-seccion="demo">
 <div class="wrap">
     <div class="demo-aviso" role="note"><b>Demo</b> Partido y plantel de ejemplo: probá cargar acciones, mover el
-        reloj y ver el resumen. Nada se guarda. <a href="/registro.html?seccion=dt">Crear mi cuenta de DT</a></div>
+        reloj y ver el informe. Nada se guarda. <a href="/registro.html?seccion=dt">Crear mi cuenta de DT</a></div>
     <div class="topbar">
         <div id="brand"></div>
         <div class="userbar" id="userbar"></div>
@@ -26,6 +26,7 @@
         <a href="#dashboard" data-vista="dashboard">Dashboard</a>
         <a href="#partidos" data-vista="partidos">Partidos</a>
         <a href="#jugadores" data-vista="jugadores">Jugadores</a>
+        <a href="#informes" data-vista="informes">Informes</a>
     </nav>
 
     <!-- Dashboard general -->
@@ -52,6 +53,27 @@
             arqueros se comparan entre sí. El índice es el promedio de los cinco ejes. Sale de las acciones cargadas en
             tus partidos.</p>
         <div class="fichas" id="fichas"><p class="dt-vacio">Cargando…</p></div>
+    </section>
+
+    <!-- Informes: los partidos finalizados y los informes por período -->
+    <section id="v-informes" class="dt-vista" hidden>
+        <div class="dt-line"><h2 class="section-title">Informes</h2>
+            <select id="i-equipo" aria-label="Equipo" hidden></select></div>
+        <p class="hint">El informe de cada partido finalizado y los de un mes, un bimestre, un semestre o un campeonato:
+            las métricas del equipo y de cada jugador, en pantalla y en PDF.</p>
+        <div class="inf-filtros">
+            <div class="inf-seg" id="i-tipo" role="group" aria-label="Tipo de informe">
+                <button type="button" data-tipo="PARTIDOS" aria-pressed="true">Partidos</button>
+                <button type="button" data-tipo="MES" aria-pressed="false">Mes</button>
+                <button type="button" data-tipo="BIMESTRE" aria-pressed="false">Bimestre</button>
+                <button type="button" data-tipo="SEMESTRE" aria-pressed="false">Semestre</button>
+                <button type="button" data-tipo="CAMPEONATO" aria-pressed="false">Campeonato</button>
+            </div>
+            <select id="i-valor" aria-label="Período" hidden></select>
+        </div>
+        <ul class="dt-lista inf-finalizados" id="i-lista"></ul>
+        <div id="i-volver" hidden><button type="button" class="dt-link" id="i-volver-btn">← Partidos finalizados</button></div>
+        <div class="inf" id="i-informe"></div>
     </section>
 
     <!-- Elegir el partido (y la lista de partidos cargados) -->
@@ -88,6 +110,13 @@
                     <label for="local">Condición</label>
                     <select id="local"><option value="true">Local</option><option value="false">Visitante</option></select>
                 </div>
+            </div>
+            <div class="field">
+                <label for="torneo">Campeonato <small>(opcional)</small></label>
+                <input type="text" id="torneo" maxlength="60" autocomplete="off" list="torneos"
+                       placeholder="Apertura, Clausura, amistoso…">
+                <datalist id="torneos"></datalist>
+                <p class="hint">Agrupa los partidos en los informes por campeonato.</p>
             </div>
             <button type="button" class="go" id="crear" disabled>Cargar partido</button>
             <div id="status"></div>
@@ -126,7 +155,7 @@
 
         <div class="dt-tabs" role="tablist" aria-label="Secciones">
             <button type="button" role="tab" id="t-cargar" aria-selected="true">Cargar</button>
-            <button type="button" role="tab" id="t-resumen" aria-selected="false">Resumen</button>
+            <button type="button" role="tab" id="t-resumen" aria-selected="false">Informe</button>
             <button type="button" role="tab" id="t-partidos" aria-selected="false">Partidos</button>
         </div>
 
@@ -166,11 +195,7 @@
         </section>
 
         <section id="p-resumen" class="dt-col" hidden>
-            <div class="dt-kpis" id="kpis"></div>
-            <div class="dt-tablewrap"><table class="dt-table" id="resumen"></table></div>
-            <p class="dt-note">Pérdidas y recuperaciones: en defensa (campo propio) y en ataque (campo rival). Tiros, libres y
-                penales: convertidos / total.
-                Atajadas incluye libres y penales atajados.</p>
+            <div class="inf" id="informe-vivo"></div>
             <div id="cierre"></div>
         </section>
     </section>
@@ -185,6 +210,7 @@
 <script src="/js/app.js"></script>
 <script src="/js/dt-cola.js"></script>
 <script src="/js/dt-fichas.js"></script>
+<script src="/js/dt-informe.js"></script>
 <script src="/js/dt.js"></script>
 </body>
 </html>

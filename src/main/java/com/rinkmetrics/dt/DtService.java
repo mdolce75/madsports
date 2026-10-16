@@ -58,9 +58,11 @@ public class DtService {
     }
 
     /**
-     * Un partido nuevo: rival (del combo o escrito a mano), fecha (sin fecha, hoy) y si el equipo del DT es local.
+     * Un partido nuevo: rival (del combo o escrito a mano), fecha (sin fecha, hoy), si el equipo del DT es local y el
+     * campeonato (opcional: agrupa los partidos en los informes).
      */
-    public record NuevoPartido(String categoria, String rama, String rival, LocalDate fecha, Boolean local) {
+    public record NuevoPartido(String categoria, String rama, String rival, LocalDate fecha, Boolean local,
+                               String torneo) {
     }
 
     /**
@@ -173,6 +175,10 @@ public class DtService {
         if (rival.length() > 60) {
             throw new IllegalArgumentException("El nombre del rival es muy largo.");
         }
+        String torneo = n.torneo() == null ? "" : n.torneo().trim().replaceAll("\\s+", " ");
+        if (torneo.length() > 60) {
+            throw new IllegalArgumentException("El nombre del campeonato es muy largo.");
+        }
         LocalDate fecha = n.fecha() == null ? LocalDate.now(clock) : n.fecha();
         var existente = partidos.findByUsuarioIdAndCategoriaAndRamaAndRivalAndFecha(u.getId(), e.categoria(),
                 e.rama(), rival, fecha);
@@ -181,7 +187,8 @@ public class DtService {
         }
         verificarCupo(u);
         PartidoDt p = new PartidoDt(u.getId(), u.federacion().name(), u.getClubId(), e.categoria(), e.rama(), null,
-                null, null, rival, fecha, n.local() == null || n.local(), minutos(u, e), clock.instant());
+                null, torneo.isEmpty() ? null : torneo, rival, fecha, n.local() == null || n.local(), minutos(u, e),
+                clock.instant());
         return view(partidos.save(p), true);
     }
 

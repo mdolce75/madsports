@@ -50,6 +50,7 @@
     // Partido abierto: lo que devolvió el servidor, cuándo (para el reloj), plantel, pendientes de la cola.
     let partido = null, recibido = 0, plantel = [], pend = [], pendientesTotal = 0;
     let seleccionado = null, arquero = null;
+    let jugadorInforme = null;   // jugador elegido en el informe del partido (null: todo el equipo)
     let avisado = "";   // tiempo cuyo 00:00 ya se avisó
     let wakeLock = null;
 
@@ -115,7 +116,7 @@
     async function crear() {
         const e = equipoActual();
         const body = {categoria: e.categoria, rama: e.rama, rival: rivalElegido(), fecha: $("fecha").value || null,
-            local: $("local").value === "true"};
+            local: $("local").value === "true", torneo: $("torneo").value.trim() || null};
         if (!body.rival) { status("Elegí el rival.", true); return; }
         $("crear").disabled = true;
         status("Creando el partido…");
@@ -134,6 +135,9 @@
         const ul = $("mis");
         try {
             const lista = (await getJson("/api/dt/partidos")).data;
+            // Los campeonatos ya usados, para elegirlos al crear el próximo partido.
+            $("torneos").replaceChildren(...[...new Set(lista.map(p => p.torneo).filter(Boolean))]
+                .map(t => { const o = el("option"); o.value = t; return o; }));
             ul.replaceChildren();
             $("mis-n").textContent = lista.length ? String(lista.length) : "";
             if (!lista.length) ul.append(el("li", "dt-vacio", "Todavía no cargaste partidos."));
@@ -173,6 +177,8 @@
             recibido = r.at;
             pend = [];
             seleccionado = null;
+            jugadorInforme = null;
+            delete $("informe-vivo").dataset.firma;
             delete $("jugadores").dataset.firma;
             delete $("log").dataset.firma;
             avisado = "";
@@ -448,13 +454,13 @@
         const j = lista.find(x => x.key === key);
         if (!j) { toast(ARCO.has(tipo) ? "Elegí el arquero en cancha o tocá un jugador." : "Tocá primero el jugador."); return; }
         const r = partido.reloj;
-        const accion = {id: DtCola.uuid(), jugadorId: j.id, jugadorNombre: j.nombre, tipo, resultado,
+        const nueva = {id: DtCola.uuid(), jugadorId: j.id, jugadorNombre: j.nombre, tipo, resultado,
             tiempo: partido.estado === "PENDIENTE" ? 1 : r.tiempo, segundo: jugados()};
         if (navigator.vibrate) navigator.vibrate(15);
-        await DtCola.agregar(partido.id, accion);
+        await DtCola.agregar(partido.id, nueva);
         await refrescarPend();
         toast(`${accion(tipo, resultado).nombre} · ${j.numero ? j.numero + " " : ""}${corto(j.nombre)}`,
-            () => borrar(accion.id));
+            () => borrar(nueva.id));
     }
 
     async function borrar(id) {
@@ -491,50 +497,27 @@
         }
     }
 
+    /** Pestaña Informe: el informe del partido en vivo (con lo que todavía no se envió), por equipo o por jugador. */
     function renderResumen(acc) {
-        const c = (k, tipo, res) => acc.filter(a => (k == null || clave(a) === k) && a.tipo === tipo
-            && (res === undefined || a.resultado === res)).length;
-        const tiros = c(null, "TIRO"), rec = c(null, "RECUPERACION"), perd = c(null, "PERDIDA");
-        const kp = [
-            [`${c(null, "TIRO", "GOL")}/${tiros}`, "Tiros al arco convertidos"],
-            [`${rec} - ${perd}`, "Recuperaciones - pérdidas"],
-            [c(null, "ATAJADA") + c(null, "LIBRE_CONTRA", "ATAJADO") + c(null, "PENAL_CONTRA", "ATAJADO"), "Atajadas (con libres y penales)"],
-        ];
-        $("kpis").replaceChildren(...kp.map(([v, l]) => { const d = el("div", "dt-kpi"); d.append(el("b", null, String(v)), el("span", null, l)); return d; }));
-        const conv = (k, tipo) => `${c(k, tipo, "GOL")}/${c(k, tipo)}`;
-        const cols = [
-            ["Pérd. def.", k => c(k, "PERDIDA", "PROPIO")], ["Pérd. ataq.", k => c(k, "PERDIDA", "RIVAL")],
-            ["Rec. def.", k => c(k, "RECUPERACION", "PROPIO")], ["Rec. ataq.", k => c(k, "RECUPERACION", "RIVAL")],
-            ["Tiros", k => conv(k, "TIRO")], ["Libres", k => conv(k, "LIBRE_FAVOR")], ["Penales", k => conv(k, "PENAL_FAVOR")],
-            ["Ataj.", k => c(k, "ATAJADA") + c(k, "LIBRE_CONTRA", "ATAJADO") + c(k, "PENAL_CONTRA", "ATAJADO")],
-            ["Recib.", k => c(k, "GOL_RECIBIDO") + c(k, "LIBRE_CONTRA", "GOL") + c(k, "PENAL_CONTRA", "GOL")],
-            ["F. com.", k => c(k, "FALTA", "COMETIDA")], ["F. rec.", k => c(k, "FALTA", "RECIBIDA")],
-            ["Am", k => c(k, "TARJETA", "AMARILLA")], ["Az", k => c(k, "TARJETA", "AZUL")], ["Rj", k => c(k, "TARJETA", "ROJA")],
-        ];
-        const t = $("resumen");
-        t.replaceChildren();
-        const head = el("thead"), hr = el("tr");
-        ["Jugador", ...cols.map(x => x[0])].forEach(h => { const th = el("th", null, h); th.scope = "col"; hr.append(th); });
-        head.append(hr);
-        const body = el("tbody");
-        for (const j of jugadores()) {
-            if (!acc.some(a => clave(a) === j.key)) continue;
-            const tr = el("tr");
-            tr.append(el("td", null, `${j.numero ? j.numero + " " : ""}${corto(j.nombre)}`));
-            cols.forEach(([, f]) => tr.append(el("td", null, String(f(j.key)))));
-            body.append(tr);
+        const box = $("informe-vivo");
+        const firma = [partido.id, partido.estado, jugadorInforme, acc.map(a => a.id + (a.pendiente ? "*" : "")).join(",")].join("|");
+        if (box.dataset.firma !== firma) {
+            box.dataset.firma = firma;
+            const p = Object.assign({}, partido, {golesFavor: acc.filter(golAFavor).length, golesContra: acc.filter(golEnContra).length});
+            const lista = jugadores();
+            const armar = jugador => DtInforme.armar({titulo: `${sesion.club.nombre} ${p.golesFavor} - ${p.golesContra} ${p.rival}`,
+                detalle: detallePartido(p), unPartido: true, partidos: [p], acciones: acc, jugadores: lista, jugador,
+                nombreAccion: accion});
+            const inf = armar(jugadorInforme);
+            DtInforme.render(box, inf, {
+                jugadores: jugadorInforme ? armar(null).jugadores : inf.jugadores,
+                onJugador: k => { jugadorInforme = k; renderResumen(acciones()); },
+                onPdf: () => {
+                    if (pend.length) { toast("Esperá a que se envíe lo cargado: el PDF se arma con lo guardado en el servidor."); DtCola.enviar(); return; }
+                    exportarPdf(`/api/dt/partidos/${partido.id}/informe.pdf` + (jugadorInforme ? "?jugador=" + encodeURIComponent(jugadorInforme) : ""));
+                },
+            });
         }
-        if (!body.children.length) {
-            const tr = el("tr"), td = el("td", null, "Sin acciones cargadas.");
-            td.colSpan = cols.length + 1;
-            tr.append(td);
-            body.append(tr);
-        }
-        const foot = el("tfoot"), fr = el("tr");
-        fr.append(el("td", null, "Equipo"));
-        cols.forEach(([, f]) => fr.append(el("td", null, String(f(null)))));
-        foot.append(fr);
-        t.append(head, body, foot);
 
         const cierre = $("cierre");
         cierre.replaceChildren();
@@ -550,6 +533,17 @@
             b.addEventListener("click", cerrar);
             cierre.append(b);
         }
+    }
+
+    /** "Primera A Masculino · Local · Apertura · 18/10/2026", como en el PDF. */
+    function detallePartido(p) {
+        return [nombreEquipo(p), p.local ? "Local" : "Visitante", p.torneo, DtInforme.fecha(p.fecha)].filter(Boolean).join(" · ");
+    }
+
+    /** Abre el PDF en otra pestaña (la demo no los genera). */
+    function exportarPdf(url) {
+        if (window.DT_DEMO) { toast("La demo no genera PDF: con tu cuenta de Métricas DT exportás cada informe."); return; }
+        window.open(url, "_blank", "noopener");
     }
 
     // ---------- Wake Lock: la pantalla no se apaga mientras corre el reloj ----------
@@ -582,19 +576,22 @@
     /** #partido=ID abre la carga; #partidos, #jugadores o #dashboard (sin nada, el dashboard) muestran esa vista. */
     function ruta() {
         const m = location.hash.match(/^#partido=(\d+)$/);
-        if (m) { $("dt-menu").hidden = true; for (const v of ["v-dashboard", "v-jugadores"]) $(v).hidden = true; abrir(Number(m[1])); return; }
+        if (m) { $("dt-menu").hidden = true; for (const v of ["v-dashboard", "v-jugadores", "v-informes"]) $(v).hidden = true; abrir(Number(m[1])); return; }
         partido = null;
         actualizarWakeLock();
         $("v-partido").hidden = true;
         document.body.classList.remove("dt-vivo");
-        const vista = (location.hash.slice(1) || "dashboard");
-        const v = ["dashboard", "partidos", "jugadores"].includes(vista) ? vista : "dashboard";
+        const inf = location.hash.match(/^#informe=(\d+)$/);
+        const vista = inf ? "informes" : (location.hash.slice(1) || "dashboard");
+        const v = ["dashboard", "partidos", "jugadores", "informes"].includes(vista) ? vista : "dashboard";
         $("dt-menu").hidden = false;
         document.querySelectorAll("#dt-menu a").forEach(a =>
             a.dataset.vista === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
         $("v-dashboard").hidden = v !== "dashboard";
         $("v-elegir").hidden = v !== "partidos";
         $("v-jugadores").hidden = v !== "jugadores";
+        $("v-informes").hidden = v !== "informes";
+        if (v === "informes") cargarInformes(inf ? Number(inf[1]) : null);
         if (v === "dashboard") cargarDashboard();
         if (v === "partidos") cargarMis();
         if (v === "jugadores") cargarFichas();
@@ -632,6 +629,105 @@
         } catch (err) {
             $("d-estados").textContent = "No se pudo cargar el dashboard: " + err.message;
         }
+    }
+
+    // ---------- Informes ----------
+
+    let infTipo = "PARTIDOS", infValor = null, infJugador = null;
+
+    /** Sección Informes: los partidos finalizados o el informe de un período; con id, el informe de ese partido. */
+    async function cargarInformes(id) {
+        const sel = $("i-equipo");
+        if (!sel.options.length) {
+            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
+            sel.hidden = sesion.equipos.length < 2;
+            sel.addEventListener("change", () => { infValor = null; infJugador = null; if (location.hash !== "#informes") location.hash = "informes"; else cargarInformes(null); });
+        }
+        const box = $("i-informe"), lista = $("i-lista");
+        box.replaceChildren(el("p", "dt-vacio", "Cargando…"));
+        try {
+            const [todos, acc, plantelEq] = await datosDelEquipo();
+            const equipo = sesion.equipos[Number(sel.value) || 0];
+            if (id) {
+                const p = todos.find(x => x.id === id) || (await getJson(`/api/dt/partidos/${id}`)).data;
+                if (equipo.categoria !== p.categoria || equipo.rama !== p.rama) {
+                    const i = sesion.equipos.findIndex(e => e.categoria === p.categoria && e.rama === p.rama);
+                    if (i >= 0 && String(i) !== sel.value) { sel.value = String(i); return cargarInformes(id); }
+                }
+                return informeDePartido(p, acc.filter(a => a.partidoId === p.id), plantelEq);
+            }
+            $("i-volver").hidden = true;
+            document.querySelectorAll("#i-tipo button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tipo === infTipo)));
+            const fin = todos.filter(DtInforme.finalizado);
+            if (infTipo === "PARTIDOS") {
+                $("i-valor").hidden = true;
+                box.replaceChildren();
+                lista.hidden = false;
+                lista.replaceChildren();
+                if (!fin.length) lista.append(el("li", "dt-vacio", "Todavía no hay partidos finalizados en este equipo. El informe de cada partido queda acá cuando termina."));
+                for (const p of fin) {
+                    const li = el("li"), b = el("button");
+                    b.type = "button";
+                    b.append(el("span", null, `${DtInforme.fecha(p.fecha)} · ${p.rival}`), el("b", null, `${p.golesFavor} - ${p.golesContra}`),
+                        el("small", null, [p.local ? "Local" : "Visitante", p.torneo || "Sin campeonato", ESTADO[p.estado]].join(" · ")));
+                    b.addEventListener("click", () => { location.hash = "informe=" + p.id; });
+                    li.append(b);
+                    lista.append(li);
+                }
+                return;
+            }
+            lista.hidden = true;
+            const ops = DtInforme.opciones(infTipo, fin);
+            const v = $("i-valor");
+            v.hidden = false;
+            v.replaceChildren(...ops.map(o => { const op = el("option", null, `${o.nombre} (${o.n} ${o.n === 1 ? "partido" : "partidos"})`); op.value = o.valor; return op; }));
+            if (!ops.length) { v.hidden = true; box.replaceChildren(el("p", "dt-vacio", "Todavía no hay partidos finalizados en este equipo.")); return; }
+            if (!ops.some(o => o.valor === infValor)) infValor = ops[0].valor;
+            v.value = infValor;
+            const ps = fin.filter(p => DtInforme.valor(infTipo, p) === infValor).reverse();
+            const ids = new Set(ps.map(p => p.id));
+            const nombre = DtInforme.nombre(infTipo, infValor);
+            const armar = jugador => DtInforme.armar({titulo: infTipo === "CAMPEONATO" && infValor ? "Campeonato " + nombre : nombre,
+                detalle: `${equipo.nombre} · ${ps.length} ${ps.length === 1 ? "partido" : "partidos"}`, unPartido: false, partidos: ps,
+                acciones: acc.filter(a => ids.has(a.partidoId)), jugadores: plantelEq, jugador, nombreAccion: accion});
+            const infm = armar(infJugador);
+            if (infJugador && !infm.jugador) infJugador = null;
+            DtInforme.render(box, infJugador && infm.jugador ? infm : armar(null), {
+                jugadores: armar(null).jugadores,
+                onJugador: k => { infJugador = k; cargarInformes(null); },
+                onPartido: pid => { location.hash = "informe=" + pid; },
+                onPdf: () => exportarPdf(`/api/dt/informes.pdf?categoria=${encodeURIComponent(equipo.categoria)}&rama=${encodeURIComponent(equipo.rama)}`
+                    + `&periodo=${infTipo}&valor=${encodeURIComponent(infValor)}` + (infJugador ? "&jugador=" + encodeURIComponent(infJugador) : "")),
+            });
+        } catch (err) {
+            box.replaceChildren(el("p", "dt-vacio", "No se pudieron cargar los informes: " + err.message));
+        }
+    }
+
+    /** Partidos del DT del equipo elegido en Informes, sus acciones y el plantel (con las claves de los jugadores). */
+    async function datosDelEquipo() {
+        const e = sesion.equipos[Number($("i-equipo").value) || 0];
+        const q = `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
+        const [lista, acc, pl] = await Promise.all([getJson("/api/dt/partidos").then(r => r.data),
+            getJson("/api/dt/acciones?" + q).then(r => r.data), getJson("/api/dt/plantel?" + q).then(r => r.data).catch(() => [])]);
+        return [lista.filter(p => p.categoria === e.categoria && p.rama === e.rama), acc,
+            pl.map(j => ({key: "j" + j.id, numero: j.numero, nombre: j.nombre, arquero: j.arquero}))];
+    }
+
+    function informeDePartido(p, acc, plantelEq, jugador = null) {
+        $("i-lista").hidden = true;
+        $("i-valor").hidden = true;
+        $("i-volver").hidden = false;
+        document.querySelectorAll("#i-tipo button").forEach(b => b.setAttribute("aria-pressed", "false"));
+        const armar = j => DtInforme.armar({titulo: `${sesion.club.nombre} ${p.golesFavor} - ${p.golesContra} ${p.rival}`,
+            detalle: detallePartido(p), unPartido: true, partidos: [p], acciones: acc, jugadores: plantelEq, jugador: j,
+            nombreAccion: accion});
+        const todos = armar(null);
+        DtInforme.render($("i-informe"), jugador ? armar(jugador) : todos, {
+            jugadores: todos.jugadores,
+            onJugador: k => informeDePartido(p, acc, plantelEq, k),
+            onPdf: () => exportarPdf(`/api/dt/partidos/${p.id}/informe.pdf` + (jugador ? "?jugador=" + encodeURIComponent(jugador) : "")),
+        });
     }
 
     // ---------- Jugadores: fichas ----------
@@ -696,6 +792,14 @@
     // ---------- Inicio ----------
 
     $("brand").outerHTML = BRAND;
+    document.querySelectorAll("#i-tipo button").forEach(b => b.addEventListener("click", () => {
+        infTipo = b.dataset.tipo;
+        infValor = null;
+        infJugador = null;
+        if (location.hash !== "#informes") location.hash = "informes"; else cargarInformes(null);
+    }));
+    $("i-valor").addEventListener("change", () => { infValor = $("i-valor").value; infJugador = null; cargarInformes(null); });
+    $("i-volver-btn").addEventListener("click", () => { infTipo = "PARTIDOS"; location.hash = "informes"; });
     for (const t of ["t-cargar", "t-resumen", "t-partidos"]) $(t).addEventListener("click", () => tab(t));
     $("rival").addEventListener("change", elegirRival);
     $("equipo").addEventListener("change", cargarRivales);
