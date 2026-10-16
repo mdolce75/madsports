@@ -92,8 +92,8 @@
             <button type="button" role="tab" id="t-partidos" aria-selected="false">Partidos</button>
         </div>
 
-        <section id="p-cargar" class="dt-col">
-            <div class="dt-group">
+        <section id="p-cargar" class="dt-col dt-cargar">
+            <div class="dt-group dt-c-jug">
                 <div class="dt-line"><span class="dt-eyebrow">1 · Jugador</span>
                     <button type="button" class="dt-link" id="agregar-j">+ Agregar jugador</button></div>
                 <form class="dt-nuevo" id="nuevo-j" hidden>
@@ -106,23 +106,22 @@
                     <button type="button" class="dt-link" id="cambiar-ar">Arquero en cancha: <b id="ar">—</b></button></div>
             </div>
 
-            <div class="dt-group">
+            <div class="dt-group dt-c-acc">
                 <span class="dt-eyebrow">2 · Acción</span>
-                <h3 class="dt-eyebrow ink">Posesión</h3>
-                <div class="dt-row" id="g-posesion"></div>
-                <h3 class="dt-eyebrow ink">Tiros y arco</h3>
-                <div class="dt-row" id="g-arco"></div>
-                <h3 class="dt-eyebrow ink">Pelota parada</h3>
-                <div class="dt-row" id="g-parada"></div>
-                <h3 class="dt-eyebrow ink">Faltas</h3>
-                <div class="dt-row" id="g-faltas"></div>
-                <h3 class="dt-eyebrow ink">Tarjetas</h3>
-                <div class="dt-row three" id="g-tarjetas"></div>
+                <div class="dt-bloques">
+                    <div class="dt-bloque"><h3 class="dt-eyebrow ink">Posesión</h3><div class="dt-row" id="g-posesion"></div></div>
+                    <div class="dt-bloque"><h3 class="dt-eyebrow ink">Tiros y arco</h3><div class="dt-row" id="g-arco"></div></div>
+                    <div class="dt-bloque"><h3 class="dt-eyebrow ink">Pelota parada</h3><div class="dt-row" id="g-parada"></div></div>
+                    <div class="dt-bloque">
+                        <h3 class="dt-eyebrow ink">Faltas</h3><div class="dt-row" id="g-faltas"></div>
+                        <h3 class="dt-eyebrow ink">Tarjetas</h3><div class="dt-row three" id="g-tarjetas"></div>
+                    </div>
+                </div>
                 <p class="dt-note">Las acciones del arco (atajada, gol recibido, libre y penal en contra) se cargan al
                     arquero en cancha, aunque haya otro jugador seleccionado.</p>
             </div>
 
-            <div class="dt-group">
+            <div class="dt-group dt-c-log">
                 <span class="dt-eyebrow">Últimas acciones</span>
                 <ul class="dt-log" id="log"></ul>
             </div>

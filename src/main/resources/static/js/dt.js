@@ -157,6 +157,7 @@
     async function abrir(id) {
         $("v-elegir").hidden = true;
         $("v-partido").hidden = false;
+        document.body.classList.add("dt-vivo");
         tab("t-cargar");
         try {
             const r = await getJson(`/api/dt/partidos/${id}`);
@@ -569,6 +570,7 @@
         actualizarWakeLock();
         $("v-partido").hidden = true;
         $("v-elegir").hidden = false;
+        document.body.classList.remove("dt-vivo");
         cargarMis();
     }
 

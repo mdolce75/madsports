@@ -312,3 +312,47 @@ input[type=date] { color-scheme: dark; }
 .dt-toast button { padding: 4px 0; border: 0; background: none; color: #0a7fb0; cursor: pointer; font: 700 .85rem/1 var(--body); }
 @media (max-width: 380px) { .dt-players { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .dt-act, .dt-act:active, .dt-pair button:active, .dt-player:active { transition: none; transform: none; } }
+
+/* ---- Planilla DT en tablet y web: con el partido abierto la página usa todo el ancho y la carga va en columnas
+   (jugadores | acciones | últimas acciones), así todo entra en la pantalla sin bajar. ---- */
+.dt-bloque { display: grid; gap: 6px; align-content: start; }
+.dt-bloques { display: grid; gap: 12px; }
+@media (min-width: 760px) {
+    body.dt-vivo .wrap { max-width: 1400px; padding-top: 10px; }
+    body.dt-vivo .topbar .brand svg { width: 32px; height: 32px; }
+    body.dt-vivo .topbar .brand small { display: none; }
+    body.dt-vivo footer { display: none; }
+    /* Marcador en una sola fila: equipos y goles a la izquierda, reloj y botones a la derecha. */
+    .dt-board { margin: 8px -16px 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 20px; }
+    .dt-score { grid-column: 1; }
+    .dt-clockrow { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+    .dt-adjust { grid-column: 2; justify-content: flex-end; }
+    .dt-sync { grid-column: 1; grid-row: 2; text-align: left; align-self: center; }
+    .dt-aviso { grid-column: 1 / -1; }
+    .dt-tabs { max-width: 420px; margin: 10px 0; }
+    .dt-tabs button { padding: 8px 4px; }
+    /* Carga: jugadores y últimas acciones a la izquierda, acciones a la derecha. */
+    .dt-cargar { grid-template-columns: minmax(260px, 1fr) minmax(0, 2.2fr); align-items: start; gap: 14px 20px; }
+    .dt-c-jug { grid-column: 1; grid-row: 1; }
+    .dt-c-log { grid-column: 1; grid-row: 2; }
+    .dt-c-acc { grid-column: 2; grid-row: 1 / span 2; }
+    .dt-players { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dt-bloques { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+    .dt-act { min-height: 50px; padding: 7px 8px; }
+    .dt-pair { padding: 6px 8px; }
+    .dt-pair .btns button { min-height: 36px; padding: 6px 4px; }
+    .dt-log li { padding: 6px 0; }
+    #p-resumen { max-width: 1100px; }
+}
+@media (min-width: 1200px) {
+    /* Web: tres columnas y las acciones en cuatro bloques lado a lado. */
+    .dt-cargar { grid-template-columns: minmax(250px, 1fr) minmax(0, 3fr) minmax(240px, 1fr); }
+    .dt-c-log { grid-column: 3; grid-row: 1; }
+    .dt-c-acc { grid-row: 1; }
+    .dt-players { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dt-bloques { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dt-bloques .dt-row, .dt-bloques .dt-row.three { grid-template-columns: 1fr; }
+    .dt-bloques .dt-bloque:last-child .dt-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dt-bloques .dt-bloque:last-child .dt-row.three { grid-template-columns: 1fr; }
+    .dt-c-log .dt-log { max-height: calc(100vh - 230px); overflow-y: auto; }
+}

@@ -232,7 +232,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
   las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
-- **Planilla DT (pantalla, `/dt.html`):** pensada para el celular.
+- **Planilla DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
+  la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
+  columna) y entra entera en la pantalla, sin bajar.
   - **Partidos:** combo de rivales (o "Otro", escrito a mano), fecha y local / visitante, y la lista de partidos
     cargados.
   - **Marcador y reloj fijos arriba:** iniciar, pausar / reanudar, fin del 1T, iniciar 2T, fin del partido y ajuste
