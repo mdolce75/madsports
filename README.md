@@ -218,6 +218,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Dos secciones:** la portada (`/`) presenta **Informes** (`/informes.html`: perfiles Club y Jugador, informes de
   ejemplo) y **DT** (`/dt-inicio.html`: Métricas DT, las estadísticas en vivo, y su plan). El menú "Informes / DT" está arriba en todas
   las páginas. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
+- **Demo de Métricas DT** (`/dt-demo.html`, en el menú "Demo"): la pantalla de carga con un partido y un plantel de
+  ejemplo, sin cuenta. `js/dt-demo.js` contesta en el navegador las llamadas a la API (nada se guarda). La página de
+  la sección muestra capturas de la demo ("Así se ve Métricas DT", en `img/demo/`); se regeneran con la app levantada:
+  `node docs/capturas-demo.mjs` (usa el Chrome instalado).
 - **Alta de cuentas, por ahora solo de Métricas DT:** Informes figura como "Próximamente" y el registro
   (`/registro.html?seccion=dt`) solo crea cuentas de DT. El servidor rechaza el alta de Club y Jugador mientras
   `REGISTRO_INFORMES` (`rinkmetrics.registro.informes`) sea `false`, el valor por defecto; los usuarios que ya

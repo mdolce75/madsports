@@ -117,8 +117,9 @@ function showReady(job) {
 }
 
 /**
- * Menú de las dos secciones, al lado de la marca en todas las páginas: Informes (perfiles Club y Jugador) y DT. La
- * página marca la suya con data-seccion en el body. Se agrega cuando la página ya puso la marca.
+ * Menú superior, al lado de la marca en todas las páginas: las dos secciones (Informes y Métricas DT), la demo y
+ * "Por qué RinkMetrics", que baja a ese bloque de la portada. La página marca la suya con data-seccion en el body.
+ * Se agrega cuando la página ya puso la marca.
  */
 document.addEventListener("DOMContentLoaded", () => {
     const marca = document.querySelector("header.brand");
@@ -135,7 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
-    for (const [id, texto, href] of [["informes", "Informes", "/informes.html"], ["dt", "DT", "/dt-inicio.html"]]) {
+    for (const [id, texto, href] of [["informes", "Informes", "/informes.html"], ["dt", "Métricas DT", "/dt-inicio.html"],
+                                     ["demo", "Demo", "/dt-demo.html"], ["por-que", "Por qué RinkMetrics", "/#por-que"]]) {
         const a = document.createElement("a");
         a.href = href;
         a.textContent = texto;
