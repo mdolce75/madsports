@@ -8,9 +8,9 @@
 </head>
 <!--/* Mail con la identidad de la web: azul noche, acento naranja, tipografía condensada para los títulos.
        Tablas y estilos en línea: es lo que respetan Gmail, Outlook y los clientes de celular. */-->
-<body style="margin:0; padding:0; background:#0b1220;">
+<body style="margin:0; padding:0; background:#fafafa;">
 <div style="display:none; max-height:0; overflow:hidden; opacity:0;" th:text="${m.preheader}">Resumen</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0b1220;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fafafa;">
     <tr>
         <td align="center" style="padding:28px 12px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
@@ -23,8 +23,8 @@
                                     <img src="cid:logo" width="44" height="44" alt="RinkMetrics" style="display:block; border:0; border-radius:10px;">
                                 </td>
                                 <td valign="middle" style="font-family:'Oswald','Arial Narrow',Arial,sans-serif;">
-                                    <div style="font-size:20px; font-weight:bold; letter-spacing:2px; color:#f3f6fb; text-transform:uppercase;">RinkMetrics</div>
-                                    <div style="font-size:11px; font-weight:bold; letter-spacing:3px; color:#93a1b8; text-transform:uppercase;">Hockey sobre patines</div>
+                                    <div style="font-size:20px; font-weight:bold; letter-spacing:2px; color:#09090b; text-transform:uppercase;">RinkMetrics</div>
+                                    <div style="font-size:11px; font-weight:bold; letter-spacing:3px; color:#71717a; text-transform:uppercase;">Hockey sobre patines</div>
                                 </td>
                             </tr>
                         </table>
@@ -32,37 +32,37 @@
                 </tr>
                 <!-- Planilla -->
                 <tr>
-                    <td style="background:#13203a; border:1px solid #263a5c; border-left:5px solid #22b8f0; padding:26px 26px 28px 26px;">
-                        <div style="display:inline-block; background:#22b8f0; color:#04121c; font-family:'Oswald','Arial Narrow',Arial,sans-serif; font-size:12px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; padding:4px 10px;"
+                    <td style="background:#ffffff; border:1px solid #e4e4e7; border-left:5px solid #0d968b; padding:26px 26px 28px 26px;">
+                        <div style="display:inline-block; background:#0d968b; color:#ffffff; font-family:'Oswald','Arial Narrow',Arial,sans-serif; font-size:12px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; padding:4px 10px;"
                              th:text="${m.tag}">Cuenta</div>
-                        <h1 style="margin:14px 0 12px 0; font-family:'Oswald','Arial Narrow',Arial,sans-serif; font-size:28px; line-height:1.1; color:#f3f6fb; text-transform:uppercase; letter-spacing:1px;"
+                        <h1 style="margin:14px 0 12px 0; font-family:'Oswald','Arial Narrow',Arial,sans-serif; font-size:28px; line-height:1.1; color:#09090b; text-transform:uppercase; letter-spacing:1px;"
                             th:text="${m.title}">Título</h1>
-                        <p style="margin:0 0 12px 0; font-family:Arial,Helvetica,sans-serif; font-size:16px; line-height:1.55; color:#f3f6fb;"
+                        <p style="margin:0 0 12px 0; font-family:Arial,Helvetica,sans-serif; font-size:16px; line-height:1.55; color:#09090b;"
                            th:text="|Hola ${m.greeting}:|">Hola:</p>
-                        <p th:each="par : ${m.paragraphs}" style="margin:0 0 12px 0; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.55; color:#c9d2e0;"
+                        <p th:each="par : ${m.paragraphs}" style="margin:0 0 12px 0; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:1.55; color:#3f3f46;"
                            th:text="${par}">Texto</p>
                         <!-- Botón -->
                         <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 18px 0;">
                             <tr>
-                                <td style="background:#22b8f0;">
+                                <td style="background:#0d968b;">
                                     <a th:href="${m.url}" href="#" target="_blank"
-                                       style="display:inline-block; padding:14px 26px; font-family:'Oswald','Arial Narrow',Arial,sans-serif; font-size:17px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:#04121c; text-decoration:none;"
+                                       style="display:inline-block; padding:14px 26px; font-family:'Oswald','Arial Narrow',Arial,sans-serif; font-size:17px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:#ffffff; text-decoration:none;"
                                        th:text="|${m.button} ►|">Botón</a>
                                 </td>
                             </tr>
                         </table>
-                        <p style="margin:0 0 6px 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:1.5; color:#93a1b8;"
+                        <p style="margin:0 0 6px 0; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:1.5; color:#71717a;"
                            th:text="${m.note}">Nota</p>
-                        <p style="margin:14px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.5; color:#93a1b8;">
+                        <p style="margin:14px 0 0 0; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.5; color:#71717a;">
                             Si el botón no funciona, copiá este enlace en el navegador:<br>
-                            <a th:href="${m.url}" th:text="${m.url}" href="#" style="color:#22b8f0; word-break:break-all;">enlace</a>
+                            <a th:href="${m.url}" th:text="${m.url}" href="#" style="color:#0d968b; word-break:break-all;">enlace</a>
                         </p>
                     </td>
                 </tr>
                 <!-- Pie -->
                 <tr>
-                    <td style="padding:18px 4px 0 4px; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.5; color:#93a1b8;">
-                        <b style="font-family:'Oswald','Arial Narrow',Arial,sans-serif; letter-spacing:2px; text-transform:uppercase; color:#f3f6fb;">RinkMetrics</b>
+                    <td style="padding:18px 4px 0 4px; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:1.5; color:#71717a;">
+                        <b style="font-family:'Oswald','Arial Narrow',Arial,sans-serif; letter-spacing:2px; text-transform:uppercase; color:#09090b;">RinkMetrics</b>
                         · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín (buenosaires.sidgad.com).
                     </td>
                 </tr>

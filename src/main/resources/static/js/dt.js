@@ -33,7 +33,7 @@
         COMETIDA: "Cometida", RECIBIDA: "Recibida", AMARILLA: "Amarilla", AZUL: "Azul", ROJA: "Roja",
     };
     const ESTADO = {PENDIENTE: "Sin iniciar", EN_JUEGO: "En juego", ENTRETIEMPO: "Entretiempo", TERMINADO: "Terminado", CERRADO: "Cerrado"};
-    const COLOR = {good: "var(--lime)", bad: "var(--err)", "card-y": "#f5c518", "card-b": "#2f7df6", "card-r": "#e5383b"};
+    const COLOR = {good: "var(--good)", bad: "var(--err)", "card-y": "var(--warn)", "card-b": "#2563eb", "card-r": "var(--err)"};
 
     const golAFavor = a => a.resultado === "GOL" && ["TIRO", "LIBRE_FAVOR", "PENAL_FAVOR"].includes(a.tipo);
     const golEnContra = a => a.tipo === "GOL_RECIBIDO" || a.resultado === "GOL" && ["LIBRE_CONTRA", "PENAL_CONTRA"].includes(a.tipo);
@@ -461,7 +461,7 @@
             const w = el("span", "w");
             const def = SIMPLES.find(s => s.tipo === a.tipo && s.res === a.resultado);
             const tag = el("span", "dt-tag");
-            tag.style.background = def && COLOR[def.cls] || (golAFavor(a) ? "var(--lime)" : golEnContra(a) ? "var(--err)" : "var(--muted)");
+            tag.style.background = def && COLOR[def.cls] || (golAFavor(a) ? "var(--good)" : golEnContra(a) ? "var(--err)" : "var(--muted)");
             w.append(tag, `${NOMBRE[a.tipo]}${a.resultado ? " · " + RESULTADO[a.resultado] : ""}`);
             const n = nums.get(clave(a));
             w.append(el("small", null, `${n ? n + " " : ""}${a.jugadorNombre}${a.pendiente ? " · sin enviar" : ""}`));
