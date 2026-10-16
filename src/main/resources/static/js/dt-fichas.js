@@ -159,26 +159,26 @@ const DtFichas = (() => {
 
     const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 
-    /**
-     * Ecualizador de la ficha: una columna por eje, con la altura según el puntaje (0 a 100) y el número debajo. Cuanto
-     * más alto, más brillante la columna; la línea punteada marca el 50.
-     */
-    function ecualizador(ejesFicha, arquero) {
-        const W = 300, base = 110, alto = 92, ancho = 38, paso = W / ejesFicha.length;
-        const tono = arquero ? [167, 139, 250] : [34, 184, 240];
-        const titulo = ejesFicha.map(e => `${e.nombre} ${e.puntaje}`).join(", ");
-        const columnas = ejesFicha.map((e, i) => {
-            const x = i * paso + (paso - ancho) / 2;
-            const h = Math.max(3, alto * e.puntaje / 100);
-            const brillo = (0.35 + 0.65 * e.puntaje / 100).toFixed(2);
-            return `<rect class="fondo" x="${x.toFixed(1)}" y="${base - alto}" width="${ancho}" height="${alto}" rx="6"/>
-                <rect x="${x.toFixed(1)}" y="${(base - h).toFixed(1)}" width="${ancho}" height="${h.toFixed(1)}" rx="6"
-                    fill="rgba(${tono.join(",")},${brillo})"><title>${esc(e.nombre)}: ${e.puntaje} · ${esc(e.texto)}</title></rect>
-                <text class="nombre" x="${(x + ancho / 2).toFixed(1)}" y="${base + 15}">${esc(e.corto)}</text>
-                <text class="puntaje" x="${(x + ancho / 2).toFixed(1)}" y="${base + 30}">${e.puntaje}</text>`;
+    /** Pentágono de la ficha: anillos al 33, 66 y 100 % y el área del jugador. */
+    function pentagono(ejesFicha) {
+        const cx = 160, cy = 104, R = 68;
+        const punto = (i, r) => {
+            const ang = -Math.PI / 2 + i * 2 * Math.PI / 5;
+            return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
+        };
+        const poly = r => [0, 1, 2, 3, 4].map(i => punto(i, r).map(n => n.toFixed(1)).join(",")).join(" ");
+        const area = ejesFicha.map((e, i) => punto(i, R * Math.max(0.06, e.puntaje / 100)).map(n => n.toFixed(1)).join(",")).join(" ");
+        const etiquetas = ejesFicha.map((e, i) => {
+            const [x, y] = punto(i, R + 16);
+            const ancla = Math.abs(x - cx) < 4 ? "middle" : x > cx ? "start" : "end";
+            return `<text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="${ancla}">${esc(e.nombre)}</text>`;
         }).join("");
-        return `<svg class="ecualizador" viewBox="0 0 ${W} 146" role="img" aria-label="${esc(titulo)}"><title>${esc(titulo)}</title>
-            <line class="guia" x1="4" y1="${base - alto / 2}" x2="${W - 4}" y2="${base - alto / 2}"/>${columnas}</svg>`;
+        const titulo = ejesFicha.map(e => `${e.nombre} ${e.puntaje}`).join(", ");
+        return `<svg class="pentagono" viewBox="0 0 320 200" role="img" aria-label="${esc(titulo)}"><title>${esc(titulo)}</title>
+            <g class="anillos">${[1, 2 / 3, 1 / 3].map(f => `<polygon points="${poly(R * f)}"/>`).join("")}
+            ${[0, 1, 2, 3, 4].map(i => { const [x, y] = punto(i, R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join("")}</g>
+            <polygon class="area" points="${area}"/>
+            <g class="etiquetas">${etiquetas}</g></svg>`;
     }
 
     /** Estado de los partidos: una barra por estado. */
@@ -207,5 +207,5 @@ const DtFichas = (() => {
                 <text class="eje" x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle">${meses[i].etiqueta}</text>`).join("")}</svg>`;
     }
 
-    return {calcular, dashboard, ecualizador, barrasEstado, lineaMeses};
+    return {calcular, dashboard, pentagono, barrasEstado, lineaMeses};
 })();

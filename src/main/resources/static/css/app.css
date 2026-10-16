@@ -574,13 +574,13 @@ nav.secciones a { white-space: nowrap; }
 .ficha.arquero .ficha-indice b { color: #a78bfa; }
 .ficha.sin-datos .ficha-indice b { color: var(--muted); }
 .ficha-indice small { display: block; margin-top: 2px; font: 700 .65rem/1 var(--display); letter-spacing: .16em; text-transform: uppercase; }
-.ficha-ecualizador { padding: 6px 12px 0; }
-.ficha-ecualizador .dt-vacio { padding: 30px 0; text-align: center; }
-.ecualizador { width: 100%; height: auto; display: block; }
-.ecualizador .fondo { fill: rgba(255, 255, 255, .04); }
-.ecualizador .guia { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
-.ecualizador .nombre { font: 600 10.5px var(--body); fill: var(--muted); text-anchor: middle; }
-.ecualizador .puntaje { font: 700 13px var(--display); fill: var(--ink); text-anchor: middle; }
+.ficha-pentagono { padding: 4px 6px 0; }
+.ficha-pentagono .dt-vacio { padding: 30px 0; text-align: center; }
+.pentagono { width: 100%; max-width: 360px; height: auto; display: block; margin: 0 auto; }
+.pentagono .anillos polygon, .pentagono .anillos line { fill: none; stroke: #3a5378; stroke-width: 1; }
+.pentagono .area { fill: rgba(34, 184, 240, .35); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.ficha.arquero .pentagono .area { fill: rgba(167, 139, 250, .35); stroke: #a78bfa; }
+.pentagono .etiquetas { font: 600 10.5px var(--body); fill: var(--ink-2); }
 .ficha-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 4px 12px 12px; }
 .ficha-datos div { padding: 6px 8px; border-radius: 8px; background: var(--panel-2); }
 .ficha-datos b { display: block; font: 700 1rem/1.2 var(--display); color: var(--ink); }
@@ -643,3 +643,8 @@ body.dt-vivo .dt-menu { display: none; }
     .inf-eventos .j { font-size: .85rem; color: var(--ink-2); }
 }
 @media (min-width: 1100px) { .inf-kpis { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+
+/* En Métricas DT el menú del DT va en la barra superior, en lugar del menú del sitio. */
+.topbar .dt-menu { margin: 0 auto 0 0; }
+@media (max-width: 760px) { .topbar .dt-menu { order: 3; width: 100%; max-width: none; justify-content: space-between; } }
+@media (max-width: 480px) { .topbar .dt-menu a { flex: 1 1 auto; text-align: center; padding: 8px 6px; font-size: .72rem; letter-spacing: .06em; } }

@@ -119,7 +119,8 @@ function showReady(job) {
 /**
  * Menú superior, al lado de la marca en todas las páginas: las dos secciones (Informes y Métricas DT), la demo y
  * "Por qué RinkMetrics" (su página). La página marca la suya con data-seccion en el body.
- * Se agrega cuando la página ya puso la marca.
+ * Se agrega cuando la página ya puso la marca. Las pantallas de Métricas DT (body.dt-page) no lo llevan: tienen su
+ * propio menú en esa barra.
  */
 document.addEventListener("DOMContentLoaded", () => {
     const marca = document.querySelector("header.brand");
@@ -133,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
         link.append(...marca.childNodes);
         marca.append(link);
     }
+    if (document.body.classList.contains("dt-page")) return;
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
