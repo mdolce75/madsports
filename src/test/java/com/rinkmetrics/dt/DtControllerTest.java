@@ -133,10 +133,14 @@ class DtControllerTest {
     }
 
     void dt(String nombre) {
+        dt(nombre, "DT_MENSUAL");
+    }
+
+    void dt(String nombre, String plan) {
         Usuario u = new Usuario(nombre, "x", nombre + "@example.com", "Ana", "Pérez", 74, "VELEZ", "CAVS",
                 EnumSet.of(Perfil.DTFPP), Instant.now());
         u.asignarEquiposDt(List.of(new EquipoDt("PRIMERA:A", "MASCULINO"), new EquipoDt("INFANTIL", "MASCULINO")));
-        u.suscribir(suscripciones.findByCodigo("DT_MENSUAL").orElseThrow(), LocalDate.of(2026, 9, 15));
+        u.suscribir(suscripciones.findByCodigo(plan).orElseThrow(), LocalDate.of(2026, 9, 15));
         usuarios.save(u);
     }
 
@@ -262,5 +266,15 @@ class DtControllerTest {
         // El mes siguiente de la suscripción vuelve a tener cupo.
         reloj.ahora = Instant.parse("2026-11-15T12:00:00Z");
         enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Nuevo mes")).andExpect(status().isCreated());
+    }
+
+    @Test
+    void elPlanFreeTieneSeisPartidosPorMes() throws Exception {
+        dt("gratis", "DT_FREE");
+        for (int i = 0; i < 6; i++) {
+            enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Rival " + i)).andExpect(status().isCreated());
+        }
+        enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Uno más")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya cargaste los 6 partidos de este mes. El cupo se renueva el 15/11."));
     }
 }

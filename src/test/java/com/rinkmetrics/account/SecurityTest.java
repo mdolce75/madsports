@@ -424,13 +424,33 @@ class SecurityTest {
 
     @Test
     void planesDelDt() throws Exception {
+        // El free primero (del más barato al más caro).
         mvc.perform(get("/api/suscripciones").param("perfil", "DTFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("DT_MENSUAL")))
-                .andExpect(jsonPath("$[0].equiposMax").value(2))
-                .andExpect(jsonPath("$[0].partidosPorMes").value(20))
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("DT_FREE", "DT_MENSUAL")))
+                .andExpect(jsonPath("$[0].precio").value(0))
+                .andExpect(jsonPath("$[0].equiposMax").value(1))
+                .andExpect(jsonPath("$[0].partidosPorMes").value(6))
+                .andExpect(jsonPath("$[1].equiposMax").value(2))
+                .andExpect(jsonPath("$[1].partidosPorMes").value(20))
                 // USD 12, en pesos al dólar de respaldo de los tests ($ 1.500).
-                .andExpect(jsonPath("$[0].precioUsd").value(12.0))
-                .andExpect(jsonPath("$[0].precio").value(18000));
+                .andExpect(jsonPath("$[1].precioUsd").value(12.0))
+                .andExpect(jsonPath("$[1].precio").value(18000));
+    }
+
+    @Test
+    void elPlanFreeDelDtEsDeUnSoloEquipo() throws Exception {
+        Map<String, String> primera = Map.of("categoria", "PRIMERA", "rama", "MASCULINO");
+        Map<String, String> juniors = Map.of("categoria", "JUNIORS:A", "rama", "MASCULINO");
+        Map<String, Object> dos = dt("dt.free", List.of(primera, juniors));
+        dos.put("suscripcion", "DT_FREE");
+        register(dos).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El plan DT free permite hasta 1 equipo."));
+        Map<String, Object> uno = dt("dt.free", List.of(primera));
+        uno.put("suscripcion", "DT_FREE");
+        register(uno).andExpect(status().isCreated());
+        Usuario u = usuarios.findByUsuario("dt.free").orElseThrow();
+        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_FREE");
+        assertThat(u.getSuscripcionType().getPartidosPorMes()).isEqualTo(6);
     }
 
     @Test
@@ -612,11 +632,12 @@ class SecurityTest {
 
     @Test
     void tiposDeSuscripcionYVigencia() throws Exception {
-        // Un plan mensual por tipo de usuario.
+        // Un plan mensual por tipo de usuario, y el DT además tiene el free.
         assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getTipoUsuario)
                 .containsExactlyInAnyOrder(
                         org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", "PLAYER"),
                         org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("DT_FREE", "DT"),
                         org.assertj.core.groups.Tuple.tuple("DT_MENSUAL", "DT"));
 
         java.time.LocalDate desde = java.time.LocalDate.of(2026, 10, 15);

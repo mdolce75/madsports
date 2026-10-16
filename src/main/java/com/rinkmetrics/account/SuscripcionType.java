@@ -10,8 +10,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Plan de suscripción mensual (tabla {@code suscripcion_type}): uno por tipo de usuario, PLAYER_MENSUAL,
- * CLUB_MENSUAL o DT_MENSUAL.
+ * Plan de suscripción mensual (tabla {@code suscripcion_type}): PLAYER_MENSUAL, CLUB_MENSUAL, y para el DT,
+ * DT_FREE (sin costo, 1 equipo y 6 partidos por mes) o DT_MENSUAL.
  */
 @Entity
 @Table(name = "suscripcion_type")
@@ -21,7 +21,7 @@ public class SuscripcionType {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** PLAYER_MENSUAL, CLUB_MENSUAL o DT_MENSUAL. */
+    /** PLAYER_MENSUAL, CLUB_MENSUAL, DT_FREE o DT_MENSUAL. */
     private String codigo;
     private String nombre;
     /** PLAYER, CLUB o DT: a qué tipo de usuario corresponde ({@link Perfil#tipoUsuario()}). */

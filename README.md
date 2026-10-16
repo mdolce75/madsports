@@ -225,8 +225,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
 - **DT** (Métricas DT, en vivo): elige uno o dos equipos de su club (categoría con su letra y rama),
-  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la pantalla de Métricas DT. Su plan
-  (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en `suscripcion_type`).
+  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la pantalla de Métricas DT. Elige
+  el plan free (`DT_FREE`: 1 equipo y 6 partidos por mes, sin costo) o el mensual (`DT_MENSUAL`: 2 equipos y 20
+  partidos por mes) (`equipos_max`, `partidos_por_mes` en `suscripcion_type`).
 - **Métricas DT (servidor):** el DT elige el rival de un combo con los equipos de los demás clubes que juegan su
   categoría y rama en la federación (si un club tiene A y B, van los dos), o lo escribe; y la fecha y si es local o
   visitante. El mismo rival en la misma fecha retoma el partido en vez de crear otro. Cada partido nuevo cuenta para
@@ -274,10 +275,12 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   |---|---|---|
   | Club (`CLUB_MENSUAL`) | U$S 20 | 8 informes por mes |
   | Jugador (`PLAYER_MENSUAL`) | U$S 7 | 4 informes por mes |
+  | DT free (`DT_FREE`) | Gratis | 1 equipo y 6 partidos por mes |
   | DT (`DT_MENSUAL`) | U$S 12 | 2 equipos y 20 partidos por mes |
 
 - **Suscripciones:** la tabla `suscripcion_type` (con `precio_usd`, `informes_por_mes`, `equipos_max` y
-  `partidos_por_mes`) tiene un plan mensual por tipo de usuario: `PLAYER_MENSUAL`, `CLUB_MENSUAL` y `DT_MENSUAL`. A un
+  `partidos_por_mes`) tiene un plan mensual por tipo de usuario: `PLAYER_MENSUAL`, `CLUB_MENSUAL` y `DT_MENSUAL`, y el DT además el
+  `DT_FREE` (V14). `GET /api/suscripciones` los lista del más barato al más caro. A un
   usuario solo se le asigna el de su perfil, con su fecha desde y su fecha hasta (un mes). También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
   jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
   Todavía no hay reglas que limiten el uso según la suscripción.

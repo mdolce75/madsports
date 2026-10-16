@@ -117,7 +117,7 @@ public class AccountController {
     @GetMapping("/suscripciones")
     public List<PlanView> planes(@RequestParam Perfil perfil) {
         Cotizacion.Valor dolar = cotizacion.actual();
-        return planes.findByTipoUsuario(perfil.tipoUsuario()).stream()
+        return planes.findByTipoUsuarioOrderByPrecioUsdAscIdAsc(perfil.tipoUsuario()).stream()
                 .map(p -> new PlanView(p.getCodigo(), p.getNombre(), Cotizacion.enPesos(p.getPrecioUsd(), dolar),
                         p.getPrecioUsd(), p.getInformesPorMes(), dolar.pesosPorDolar(), dolar.fecha(),
                         p.getEquiposMax(), p.getPartidosPorMes()))
