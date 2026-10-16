@@ -248,8 +248,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
 - **Métricas DT: menú, dashboard, fichas e informes.** La pantalla del DT tiene un menú Dashboard · Partidos ·
   Jugadores · Informes (entra al dashboard).
-  - **Dashboard general:** jugadores del plantel, partidos cargados y del mes; estado de los partidos (programados =
-    creados con fecha futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6) y los
+  - **Dashboard general:** partidos cargados y del mes; estado de los partidos (programados = creados con fecha
+    futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6); goleadores del equipo (los
+    5 con más goles); top 3 en efectividad de penales y de libres a favor (a igual efectividad, el que más pateó); y los
     próximos partidos.
   - **Jugadores:** la ficha de cada uno, con índice (0 a 100) y un pentágono de cinco ejes comparados con el plantel
     (100 = el mejor del equipo): ataque, precisión, desequilibrio (faltas recibidas), recuperación (balance con las

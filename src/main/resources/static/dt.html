@@ -31,13 +31,15 @@
     <section id="v-dashboard" class="dt-vista" hidden>
         <h2 class="section-title">Dashboard general</h2>
         <div class="dt-kpis dash-kpis">
-            <div class="dt-kpi"><b id="d-jugadores">–</b><span>Jugadores</span></div>
             <div class="dt-kpi"><b id="d-partidos">–</b><span>Partidos</span></div>
             <div class="dt-kpi"><b id="d-mes">–</b><span id="d-mes-label">Este mes</span></div>
         </div>
         <div class="dash-grid">
             <div class="dash-box"><h3>Estado de los partidos</h3><div id="d-estados"></div></div>
             <div class="dash-box"><h3>Partidos jugados por mes</h3><div id="d-meses"></div></div>
+            <div class="dash-box dash-goleadores"><h3>Goleadores</h3><ol class="dash-ranking" id="d-goleadores"></ol></div>
+            <div class="dash-box"><h3>Penales · Top 3</h3><ol class="dash-ranking" id="d-penales"></ol></div>
+            <div class="dash-box"><h3>Libres · Top 3</h3><ol class="dash-ranking" id="d-libres"></ol></div>
             <div class="dash-box dash-proximos"><h3>Próximos partidos</h3><ul class="dt-lista" id="d-proximos"></ul>
                 <a class="btn primary" href="#partidos">Programar un partido</a></div>
         </div>
@@ -198,8 +200,6 @@
         </section>
     </section>
 
-    <footer><b>RinkMetrics</b> · Calendario y planteles: Federación Porteña de Patín (FPP) y Asociación Mendocina de
-        Patín (AMP), en SIDGAD.</footer>
 </div>
 
 <div class="dt-toast" id="toast" role="status" hidden><span id="toast-txt"></span><button type="button" id="toast-undo">Deshacer</button></div>

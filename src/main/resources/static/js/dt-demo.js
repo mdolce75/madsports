@@ -50,13 +50,14 @@
     const CAMPO = PLANTEL.filter(j => !j.arquero).map(j => j.id);
     const TIPOS = [["PERDIDA", "PROPIO"], ["PERDIDA", "RIVAL"], ["RECUPERACION", "PROPIO"], ["RECUPERACION", "RIVAL"],
         ["RECUPERACION", "RIVAL"], ["TIRO", "GOL"], ["TIRO", "NO_GOL"], ["TIRO", "NO_GOL"], ["FALTA", "COMETIDA"],
-        ["FALTA", "RECIBIDA"], ["LIBRE_FAVOR", "NO_GOL"], ["TARJETA", "AMARILLA"]];
+        ["FALTA", "RECIBIDA"], ["LIBRE_FAVOR", "NO_GOL"], ["LIBRE_FAVOR", "GOL"], ["PENAL_FAVOR", "GOL"],
+        ["PENAL_FAVOR", "NO_GOL"], ["TARJETA", "AMARILLA"]];
     function jugado(id, rival, fecha, local, torneo) {
         const acciones = [];
         for (let i = 0; i < 26; i++) {
             const [tipo, res] = elegir(TIPOS);
             // Los delanteros (7, 9, 10) tiran más; el resto recupera más.
-            const j = tipo === "TIRO" ? elegir([105, 107, 108, 108, 109]) : elegir(CAMPO);
+            const j = ["TIRO", "PENAL_FAVOR", "LIBRE_FAVOR"].includes(tipo) ? elegir([105, 107, 108, 108, 109]) : elegir(CAMPO);
             acciones.push(accion(j, tipo, res, 1 + (i % 2), Math.floor(azar() * DUR)));
         }
         for (let i = 0; i < 4; i++) acciones.push(accion(elegir([101, 101, 102]), elegir(["ATAJADA", "ATAJADA", "GOL_RECIBIDO"]), null, 1 + (i % 2), Math.floor(azar() * DUR)));

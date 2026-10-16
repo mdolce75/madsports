@@ -601,19 +601,20 @@
 
     async function cargarDashboard() {
         try {
-            const [lista, planteles] = await Promise.all([
+            const q = e => `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
+            const [lista, planteles, acciones] = await Promise.all([
                 getJson("/api/dt/partidos").then(r => r.data),
-                Promise.all(sesion.equipos.map(e => getJson(`/api/dt/plantel?categoria=${encodeURIComponent(e.categoria)}`
-                    + `&rama=${encodeURIComponent(e.rama)}`).then(r => r.data).catch(() => []))),
+                Promise.all(sesion.equipos.map(e => getJson("/api/dt/plantel?" + q(e)).then(r => r.data).catch(() => []))),
+                Promise.all(sesion.equipos.map(e => getJson("/api/dt/acciones?" + q(e)).then(r => r.data).catch(() => []))),
             ]);
             const d = DtFichas.dashboard(lista, hoy());
-            $("d-jugadores").textContent = new Set(planteles.flat().map(j => j.id)).size;
             $("d-partidos").textContent = d.partidos;
             $("d-mes").textContent = d.esteMes;
             const cupo = sesion.suscripcion && sesion.suscripcion.partidosPorMes;
             $("d-mes-label").textContent = cupo ? `Este mes (plan: ${cupo} por mes)` : "Este mes";
             $("d-estados").innerHTML = DtFichas.barrasEstado(d.estados);
             $("d-meses").innerHTML = DtFichas.lineaMeses(d.meses);
+            rankings(acciones.flat(), planteles.flat().map(j => ({key: "j" + j.id, numero: j.numero, nombre: j.nombre, arquero: j.arquero})));
             const ul = $("d-proximos");
             ul.replaceChildren();
             if (!d.proximos.length) ul.append(el("li", "dt-vacio", "No hay partidos programados. Creá uno con fecha futura en Partidos."));
@@ -629,6 +630,40 @@
         } catch (err) {
             $("d-estados").textContent = "No se pudo cargar el dashboard: " + err.message;
         }
+    }
+
+    /**
+     * Goleadores del equipo (los 5 con más goles) y los 3 mejores en penales y en libres a favor (por efectividad; a
+     * igual efectividad, el que más pateó), con todas las acciones cargadas en los partidos del DT.
+     */
+    function rankings(acciones, plantelTodos) {
+        const js = DtInforme.armar({titulo: "", detalle: "", unPartido: false, partidos: [], acciones,
+            jugadores: plantelTodos, nombreAccion: accion}).jugadores;
+        const pintar = (id, filas, vacio) => {
+            const ol = $(id);
+            ol.replaceChildren();
+            if (!filas.length) { ol.append(el("li", "dt-vacio", vacio)); return; }
+            const max = Math.max(...filas.map(f => f.barra));
+            filas.forEach((f, i) => {
+                const li = el("li");
+                const barra = el("span", "barra");
+                barra.style.width = (max ? 100 * f.barra / max : 0) + "%";
+                li.append(el("span", "pos", String(i + 1)), el("span", "quien", `${f.j.numero ? f.j.numero + " " : ""}${f.j.nombre}`),
+                    el("b", null, f.valor), el("small", null, f.detalle || ""), barra);
+                ol.append(li);
+            });
+        };
+        pintar("d-goleadores", js.filter(j => j.metricas.goles > 0)
+            .sort((a, b) => b.metricas.goles - a.metricas.goles || a.nombre.localeCompare(b.nombre, "es")).slice(0, 5)
+            .map(j => ({j, valor: String(j.metricas.goles), barra: j.metricas.goles,
+                detalle: `${j.metricas.goles === 1 ? "gol" : "goles"} · ${j.partidos} PJ`})),
+            "Todavía no hay goles cargados.");
+        const top = (gol, total, vacio, id) => pintar(id, js.filter(j => j.metricas[total] > 0)
+            .map(j => ({j, pct: Math.round(100 * j.metricas[gol] / j.metricas[total]), a: j.metricas[gol], b: j.metricas[total]}))
+            .sort((x, y) => y.pct - x.pct || y.b - x.b || x.j.nombre.localeCompare(y.j.nombre, "es")).slice(0, 3)
+            .map(x => ({j: x.j, valor: x.pct + "%", barra: x.pct, detalle: `${x.a}/${x.b} convertidos`})), vacio);
+        top("penalesGol", "penales", "Todavía no hay penales a favor cargados.", "d-penales");
+        top("libresGol", "libres", "Todavía no hay libres a favor cargados.", "d-libres");
     }
 
     // ---------- Informes ----------
