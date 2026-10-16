@@ -221,18 +221,20 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
 - **DT** (planilla en vivo): elige uno o dos equipos de su club (categoría con su letra y rama),
-  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la planilla. Su plan (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en
-  `suscripcion_type`).
-- **Planilla DT (servidor):** el DT elige el partido de un combo con el calendario de su equipo en SIDGAD (los
-  próximos primero) o carga un amistoso. Cada partido nuevo cuenta para el cupo del mes de suscripción (suscripto el
-  15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a 00:00, o lo que diga la competición) y se
+  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la planilla. Su plan
+  (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en `suscripcion_type`).
+- **Planilla DT (servidor):** el DT elige el rival de un combo con los equipos de los demás clubes que juegan su
+  categoría y rama en la federación (si un club tiene A y B, van los dos), o lo escribe; y la fecha y si es local o
+  visitante. El mismo rival en la misma fecha retoma el partido en vez de crear otro. Cada partido nuevo cuenta para
+  el cupo del mes de suscripción (suscripto el 15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a
+  00:00, o lo que dure el tiempo en las competiciones de la categoría) y se
   calcula con la hora de inicio y los segundos acumulados, así un teléfono bloqueado no pierde el minuto. Cada acción
   es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
   las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
 - **Planilla DT (pantalla, `/dt.html`):** pensada para el celular.
-  - **Partidos:** combo de rivales con fecha, torneo y local / visitante ("retomar" en los ya empezados), amistoso
-    con el rival escrito a mano y la lista de partidos cargados.
+  - **Partidos:** combo de rivales (o "Otro", escrito a mano), fecha y local / visitante, y la lista de partidos
+    cargados.
   - **Marcador y reloj fijos arriba:** iniciar, pausar / reanudar, fin del 1T, iniciar 2T, fin del partido y ajuste
     de ±1′ y ±10″. Al llegar a 00:00 avisa y vibra. Mientras el reloj corre, la pantalla no se apaga (Wake Lock, si
     el teléfono lo permite).
@@ -383,11 +385,10 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
 - Planilla DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
-  - `GET /api/dt/partidos-disponibles?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`idp`, fecha, rival,
-    local, torneo, `minutosTiempo`, `jugado`, `cargado`)
+  - `GET /api/dt/rivales?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`clubId`, `nombre`: "GEBA B")
   - `GET /api/dt/plantel?categoria=&rama=`: jugadores con número y `arquero`
-  - `POST /api/dt/partidos` `{"idp":9002}` o un amistoso `{"rival":"Lujan","fecha":"2026-10-18","local":true}` →
-    `201`; si ya estaba empezado lo devuelve; `409` si lo carga otro DT o se acabó el cupo del mes
+  - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false}`
+    → `201` (sin `fecha`, hoy); con el mismo rival y fecha devuelve el ya empezado; `409` si se acabó el cupo del mes
   - `GET /api/dt/partidos`, `GET /api/dt/partidos/{id}` (con `reloj {tiempo, jugados, restante, corriendo}` y las
     acciones)
   - `POST /api/dt/partidos/{id}/acciones` `[{"id":"<uuid>","jugadorId":11,"tipo":"TIRO","resultado":"GOL","tiempo":1,"segundo":390}]`

@@ -39,13 +39,14 @@
     const golEnContra = a => a.tipo === "GOL_RECIBIDO" || a.resultado === "GOL" && ["LIBRE_CONTRA", "PENAL_CONTRA"].includes(a.tipo);
 
     let sesion = null;
-    let disponibles = [];
     // Partido abierto: lo que devolvió el servidor, cuándo (para el reloj), plantel, pendientes de la cola.
     let partido = null, recibido = 0, plantel = [], pend = [], pendientesTotal = 0;
     let seleccionado = null, arquero = null;
     let avisado = "";   // tiempo cuyo 00:00 ya se avisó
     let wakeLock = null;
 
+    /** Fecha de hoy en el teléfono (AAAA-MM-DD, hora local). */
+    const hoy = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
     const mmss = s => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
     const diaMes = f => f ? f.slice(8, 10) + "/" + f.slice(5, 7) : "";
     const corto = n => { const w = (n || "").trim().split(/\s+/); return w[w.length - 1] || n; };
@@ -65,59 +66,49 @@
         return sesion.equipos[Number($("equipo").value) || 0];
     }
 
-    async function cargarDisponibles() {
+    /** Combo de rivales: los equipos de los otros clubes en la categoría y rama del equipo, y "Otro". */
+    async function cargarRivales() {
         const e = equipoActual();
         const sel = $("rival");
         sel.disabled = true;
-        $("crear").disabled = true;
-        sel.replaceChildren(el("option", null, "Cargando el calendario…"));
+        sel.replaceChildren(el("option", null, "Cargando los clubes…"));
         $("rival-hint").textContent = "";
+        let rivales = [];
         try {
-            disponibles = (await getJson(`/api/dt/partidos-disponibles?categoria=${encodeURIComponent(e.categoria)}`
+            rivales = (await getJson(`/api/dt/rivales?categoria=${encodeURIComponent(e.categoria)}`
                 + `&rama=${encodeURIComponent(e.rama)}`)).data;
         } catch (err) {
-            disponibles = [];
-            $("rival-hint").textContent = "No se pudo leer el calendario de SIDGAD (" + err.message + "). Podés cargar un amistoso.";
+            $("rival-hint").textContent = "No se pudo leer la lista de clubes (" + err.message + "). Escribí el rival.";
         }
-        const hoy = new Date().toISOString().slice(0, 10);
-        sel.replaceChildren(el("option", null, "Elegí el partido…"));
-        sel.firstChild.value = "";
-        const proximos = el("optgroup"), jugados = el("optgroup");
-        proximos.label = "Próximos";
-        jugados.label = "Jugados";
-        for (const d of disponibles) {
-            const o = el("option", null, `${diaMes(d.fecha)}${d.hora ? " " + d.hora.slice(0, 5) : ""} · ${d.rival} · `
-                + `${d.local ? "Local" : "Visitante"} · ${d.torneo}${d.cargado ? " · retomar" : ""}`);
-            o.value = "idp:" + d.idp;
-            (d.jugado || d.fecha && d.fecha < hoy ? jugados : proximos).append(o);
+        const vacio = el("option", null, "Elegí el rival…");
+        vacio.value = "";
+        sel.replaceChildren(vacio);
+        for (const r of rivales) {
+            const o = el("option", null, r.nombre);
+            o.value = r.nombre;
+            sel.append(o);
         }
-        if (proximos.children.length) sel.append(proximos);
-        if (jugados.children.length) sel.append(jugados);
-        const am = el("option", null, "Amistoso (escribo el rival)");
-        am.value = "amistoso";
-        sel.append(am);
+        const otro = el("option", null, "Otro (lo escribo)");
+        otro.value = "*";
+        sel.append(otro);
         sel.disabled = false;
+        if (!rivales.length) sel.value = "*";
         elegirRival();
     }
 
     function elegirRival() {
-        const v = $("rival").value;
-        $("f-amistoso").hidden = v !== "amistoso";
-        const d = disponibles.find(x => "idp:" + x.idp === v);
-        $("crear").disabled = !v;
-        $("crear").textContent = d && d.cargado ? "Retomar partido" : "Cargar partido";
-        if (v === "amistoso" && !$("am-fecha").value) $("am-fecha").value = new Date().toISOString().slice(0, 10);
+        $("f-otro").hidden = $("rival").value !== "*";
+        if (!$("f-otro").hidden) $("otro").focus();
+        $("crear").disabled = !rivalElegido();
     }
+
+    const rivalElegido = () => $("rival").value === "*" ? $("otro").value.trim() : $("rival").value;
 
     async function crear() {
         const e = equipoActual();
-        const v = $("rival").value;
-        const d = disponibles.find(x => "idp:" + x.idp === v);
-        if (d && d.cargado) { location.hash = "partido=" + d.cargado; return; }
-        const body = {categoria: e.categoria, rama: e.rama};
-        if (d) body.idp = d.idp;
-        else Object.assign(body, {rival: $("am-rival").value.trim(), fecha: $("am-fecha").value || null,
-            local: $("am-local").value === "true"});
+        const body = {categoria: e.categoria, rama: e.rama, rival: rivalElegido(), fecha: $("fecha").value || null,
+            local: $("local").value === "true"};
+        if (!body.rival) { status("Elegí el rival.", true); return; }
         $("crear").disabled = true;
         status("Creando el partido…");
         try {
@@ -125,9 +116,9 @@
             status("");
             location.hash = "partido=" + p.id;
         } catch (err) {
-            status(err.message, true);
+            status(err instanceof TypeError ? "Sin señal: para empezar un partido hace falta conexión." : err.message, true);
         } finally {
-            $("crear").disabled = false;
+            $("crear").disabled = !rivalElegido();
         }
     }
 
@@ -144,7 +135,8 @@
                 b.type = "button";
                 const t = el("span", null, `${diaMes(p.fecha)} · ${p.rival}`);
                 const r = el("b", null, `${p.golesFavor} - ${p.golesContra}`);
-                const sub = el("small", null, `${nombreEquipo(p)} · ${p.local ? "Local" : "Visitante"} · ${p.torneo} · ${ESTADO[p.estado]}`);
+                const sub = el("small", null, [nombreEquipo(p), p.local ? "Local" : "Visitante", p.torneo, ESTADO[p.estado]]
+                    .filter(Boolean).join(" · "));
                 b.append(t, r, sub);
                 b.addEventListener("click", () => { location.hash = "partido=" + p.id; });
                 li.append(b);
@@ -251,7 +243,7 @@
         $("m-propio").textContent = sesion.club.nombre;
         $("m-propio-sub").textContent = nombreEquipo(partido);
         $("m-rival").textContent = partido.rival;
-        $("m-rival-sub").textContent = `${partido.local ? "Local" : "Visitante"} · ${partido.torneo}`;
+        $("m-rival-sub").textContent = [partido.local ? "Local" : "Visitante", partido.torneo].filter(Boolean).join(" · ");
         const acc = acciones();
         $("m-gf").textContent = acc.filter(golAFavor).length;
         $("m-gc").textContent = acc.filter(golEnContra).length;
@@ -585,7 +577,9 @@
     $("brand").outerHTML = BRAND;
     for (const t of ["t-cargar", "t-resumen", "t-partidos"]) $(t).addEventListener("click", () => tab(t));
     $("rival").addEventListener("change", elegirRival);
-    $("equipo").addEventListener("change", cargarDisponibles);
+    $("equipo").addEventListener("change", cargarRivales);
+    $("otro").addEventListener("input", () => { $("crear").disabled = !rivalElegido(); });
+    $("fecha").value = hoy();
     $("crear").addEventListener("click", crear);
     document.querySelectorAll("#m-ajuste button").forEach(b =>
         b.addEventListener("click", () => reloj("AJUSTAR", Number(b.dataset.aj))));
@@ -649,7 +643,7 @@
             if (error) toast(error);
             if (partido) await refrescarPend(); else if (!$("v-elegir").hidden && p) cargarMis();
         });
-        if (s.equipos.length) cargarDisponibles();
+        if (s.equipos.length) cargarRivales();
         ruta();
     });
 })();

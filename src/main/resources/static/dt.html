@@ -23,7 +23,7 @@
         <section class="hero">
             <span class="tag">Planilla DT</span>
             <h1>Cada acción,<br><em>en vivo.</em></h1>
-            <p class="lead">Elegí el partido, iniciá el reloj y cargá cada acción con dos toques: el jugador y la acción.
+            <p class="lead">Elegí el rival y la fecha, iniciá el reloj y cargá cada acción con dos toques: el jugador y la acción.
                 Si se corta la señal, lo cargado queda en el teléfono y se manda cuando vuelve.</p>
         </section>
 
@@ -35,23 +35,21 @@
             </div>
             <div class="field">
                 <label for="rival">Rival</label>
-                <select id="rival" disabled><option>Cargando el calendario…</option></select>
+                <select id="rival" disabled><option>Cargando los clubes…</option></select>
                 <p class="hint" id="rival-hint"></p>
             </div>
-            <div id="f-amistoso" hidden>
+            <div class="field" id="f-otro" hidden>
+                <label for="otro">Nombre del rival</label>
+                <input type="text" id="otro" maxlength="60" autocomplete="off" placeholder="Escribí el rival">
+            </div>
+            <div class="grid2">
                 <div class="field">
-                    <label for="am-rival">Rival del amistoso</label>
-                    <input type="text" id="am-rival" maxlength="80" autocomplete="off" placeholder="Nombre del rival">
+                    <label for="fecha">Fecha</label>
+                    <input type="date" id="fecha">
                 </div>
-                <div class="grid2">
-                    <div class="field">
-                        <label for="am-fecha">Fecha</label>
-                        <input type="date" id="am-fecha">
-                    </div>
-                    <div class="field">
-                        <label for="am-local">Condición</label>
-                        <select id="am-local"><option value="true">Local</option><option value="false">Visitante</option></select>
-                    </div>
+                <div class="field">
+                    <label for="local">Condición</label>
+                    <select id="local"><option value="true">Local</option><option value="false">Visitante</option></select>
                 </div>
             </div>
             <button type="button" class="go" id="crear" disabled>Cargar partido</button>

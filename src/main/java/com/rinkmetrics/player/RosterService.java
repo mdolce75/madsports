@@ -60,18 +60,6 @@ public class RosterService {
     public record PlantelJugador(int id, String numero, String nombre, boolean arquero) {
     }
 
-    /**
-     * Un partido del equipo en el calendario de SIDGAD.
-     *
-     * @param local el equipo del club es el local
-     */
-    public record PartidoEquipo(Competition competition, Match match, boolean local) {
-
-        public String rival() {
-            return local ? match.awayName() : match.homeName();
-        }
-    }
-
     /** Un equipo del club en el año: sus competiciones, sus ids de equipo en SIDGAD y su nombre ("Infantil B Femenino"). */
     private record Equipo(ClubView club, List<Competition> comps, Set<Integer> teamIds, String label) {
     }
@@ -108,16 +96,6 @@ public class RosterService {
     public List<PlantelJugador> plantel(Federacion fed, int clubId, int year, String categoria, String rama) {
         String key = cacheKey(fed, clubId, year, categoria, rama);
         return plantelCache.get(key, k -> plantel(lineups(equipo(fed, clubId, year, categoria, rama))));
-    }
-
-    /** Partidos del equipo en el calendario del año (jugados y por jugar), de todas sus competiciones. */
-    public List<PartidoEquipo> partidos(Federacion fed, int clubId, int year, String categoria, String rama) {
-        Equipo e = equipo(fed, clubId, year, categoria, rama);
-        List<PartidoEquipo> out = new ArrayList<>();
-        calendars(e).forEach((c, matches) -> matches.stream()
-                .filter(m -> m.idp() > 0 && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId())))
-                .forEach(m -> out.add(new PartidoEquipo(c, m, e.teamIds().contains(m.homeTeamId())))));
-        return out;
     }
 
     private String cacheKey(Federacion fed, int clubId, int year, String categoria, String rama) {

@@ -4,9 +4,9 @@ import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.dt.DtService.AccionNueva;
 import com.rinkmetrics.dt.DtService.AccionReloj;
-import com.rinkmetrics.dt.DtService.Disponible;
 import com.rinkmetrics.dt.DtService.NuevoPartido;
 import com.rinkmetrics.dt.DtService.PartidoView;
+import com.rinkmetrics.dt.DtService.Rival;
 import com.rinkmetrics.player.RosterService.PlantelJugador;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
 import org.springframework.http.HttpStatus;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Planilla DT en vivo (perfiles DTFPP y DTAMP): combo de rivales, plantel, partidos, acciones y reloj. Cada DT ve solo
+ * Planilla DT en vivo (perfiles DTFPP y DTAMP): rivales posibles, plantel, partidos, acciones y reloj. Cada DT ve solo
  * sus equipos y sus partidos; el partido de otro DT responde 404.
  */
 @RestController
@@ -47,10 +47,10 @@ public class DtController {
         this.usuarios = usuarios;
     }
 
-    @GetMapping("/partidos-disponibles")
-    public List<Disponible> disponibles(@RequestParam(required = false) String categoria,
-                                        @RequestParam(required = false) String rama, Authentication auth) {
-        return dt.disponibles(usuario(auth), categoria, rama);
+    @GetMapping("/rivales")
+    public List<Rival> rivales(@RequestParam(required = false) String categoria,
+                               @RequestParam(required = false) String rama, Authentication auth) {
+        return dt.rivales(usuario(auth), categoria, rama);
     }
 
     @GetMapping("/plantel")
