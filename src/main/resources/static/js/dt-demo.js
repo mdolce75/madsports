@@ -2,6 +2,7 @@
 // llamadas a la API no salen del navegador: este archivo las contesta como lo haría el servidor (sesión, plantel,
 // partido, acciones y reloj). Nada se guarda: al recargar, la demo vuelve a empezar.
 (() => {
+    window.DT_DEMO = true;   // dt.js no pide PDF en la demo
     const DUR = 25 * 60;
     const hoy = new Date().toISOString().slice(0, 10);
     const SESION = {
@@ -27,7 +28,7 @@
 
     // Partido de ejemplo ya empezado: 1T, 12' jugados, con algunas acciones cargadas.
     const partidos = [{
-        id: 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null, rival: "Deportivo Oeste", fecha: hoy,
+        id: 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: "Clausura", rival: "Deportivo Oeste", fecha: hoy,
         local: true, minutosTiempo: 25, estado: "EN_JUEGO", tiempo: 1, segundos: 12 * 60 + 18, desde: Date.now(),
         acciones: [
             accion(104, "RECUPERACION", "RIVAL", 1, 95), accion(104, "TIRO", "GOL", 1, 101),
@@ -50,7 +51,7 @@
     const TIPOS = [["PERDIDA", "PROPIO"], ["PERDIDA", "RIVAL"], ["RECUPERACION", "PROPIO"], ["RECUPERACION", "RIVAL"],
         ["RECUPERACION", "RIVAL"], ["TIRO", "GOL"], ["TIRO", "NO_GOL"], ["TIRO", "NO_GOL"], ["FALTA", "COMETIDA"],
         ["FALTA", "RECIBIDA"], ["LIBRE_FAVOR", "NO_GOL"], ["TARJETA", "AMARILLA"]];
-    function jugado(id, rival, fecha, local) {
+    function jugado(id, rival, fecha, local, torneo) {
         const acciones = [];
         for (let i = 0; i < 26; i++) {
             const [tipo, res] = elegir(TIPOS);
@@ -59,16 +60,16 @@
             acciones.push(accion(j, tipo, res, 1 + (i % 2), Math.floor(azar() * DUR)));
         }
         for (let i = 0; i < 4; i++) acciones.push(accion(elegir([101, 101, 102]), elegir(["ATAJADA", "ATAJADA", "GOL_RECIBIDO"]), null, 1 + (i % 2), Math.floor(azar() * DUR)));
-        return {id, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null, rival, fecha, local,
+        return {id, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo, rival, fecha, local,
             minutosTiempo: 25, estado: "CERRADO", tiempo: 2, segundos: DUR, desde: null, acciones};
     }
     partidos.push(
-        jugado(2, "Atlético Norte", dia(1, 20), false), jugado(3, "Unión Patín", dia(1, 6), true),
-        jugado(4, "Sporting Central", dia(2, 24), true), jugado(5, "Club Social Sur", dia(2, 9), false),
-        jugado(6, "Deportivo Oeste", dia(3, 15), false), jugado(7, "Atlético Norte", dia(4, 18), true),
-        {id: 8, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null, rival: "Club Social Sur", fecha: enDias(3),
+        jugado(2, "Atlético Norte", dia(1, 20), false, "Clausura"), jugado(3, "Unión Patín", dia(1, 6), true, "Clausura"),
+        jugado(4, "Sporting Central", dia(2, 24), true, "Clausura"), jugado(5, "Club Social Sur", dia(2, 9), false, "Apertura"),
+        jugado(6, "Deportivo Oeste", dia(3, 15), false, "Apertura"), jugado(7, "Atlético Norte", dia(4, 18), true, "Apertura"),
+        {id: 8, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: "Clausura", rival: "Club Social Sur", fecha: enDias(3),
             local: true, minutosTiempo: 25, estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []},
-        {id: 9, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null, rival: "Unión Patín", fecha: enDias(10),
+        {id: 9, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: "Clausura", rival: "Unión Patín", fecha: enDias(10),
             local: false, minutosTiempo: 25, estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []});
 
     const golAFavor = a => a.resultado === "GOL" && ["TIRO", "LIBRE_FAVOR", "PENAL_FAVOR"].includes(a.tipo);
@@ -122,7 +123,8 @@
             .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id).map(p => vista(p, false)));
         if (r === "/api/dt/acciones") return json(200, partidos.flatMap(p => p.acciones.map(a => Object.assign({partidoId: p.id}, a))));
         if (r === "/api/dt/partidos" && method === "POST") {
-            const n = {id: Math.max(...partidos.map(x => x.id)) + 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: null,
+            const n = {id: Math.max(...partidos.map(x => x.id)) + 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null,
+                torneo: body.torneo || null,
                 rival: body.rival, fecha: body.fecha || hoy, local: body.local !== false, minutosTiempo: 25,
                 estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []};
             partidos.unshift(n);
@@ -167,6 +169,10 @@
     // La demo abre directamente el partido de ejemplo (o la pestaña pedida: ?tab=resumen).
     if (!location.hash) history.replaceState(null, "", location.pathname + location.search + "#partido=1");
     const tab = new URLSearchParams(location.search).get("tab");
+    const informe = new URLSearchParams(location.search).get("informe");
+    if (informe) document.addEventListener("DOMContentLoaded", () => setTimeout(() => {
+        document.querySelector(`#i-tipo [data-tipo='${informe}']`)?.click();
+    }, 700));
     if (tab) document.addEventListener("DOMContentLoaded", () => setTimeout(() => {
         document.querySelector("[aria-label^='9 '], [aria-label^='10 ']")?.click();
         $("t-" + tab)?.click();

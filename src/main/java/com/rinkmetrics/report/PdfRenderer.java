@@ -16,6 +16,7 @@ import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.Map;
 
 /** Arma los PDF desde las plantillas {@code templates/report.html} y {@code templates/player-report.html}. */
 @Component
@@ -71,6 +72,18 @@ public class PdfRenderer {
 
     public byte[] playerPdf(PlayerReport report, boolean sample) {
         return toPdf(playerHtml(report, sample));
+    }
+
+    /** Cualquier otra plantilla (el informe del DT, {@code templates/dt-informe.html}), con el formateo de siempre. */
+    public String templateHtml(String template, Map<String, Object> vars) {
+        Context ctx = new Context(Locale.forLanguageTag("es-AR"));
+        vars.forEach(ctx::setVariable);
+        ctx.setVariable("f", new Format());
+        return templates.process(template, ctx);
+    }
+
+    public byte[] templatePdf(String template, Map<String, Object> vars) {
+        return toPdf(templateHtml(template, vars));
     }
 
     private static byte[] toPdf(String html) {

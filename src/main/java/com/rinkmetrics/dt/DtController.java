@@ -9,12 +9,16 @@ import com.rinkmetrics.dt.DtService.PartidoView;
 import com.rinkmetrics.dt.DtService.Rival;
 import com.rinkmetrics.player.RosterService.PlantelJugador;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -40,10 +45,12 @@ public class DtController {
     }
 
     private final DtService dt;
+    private final DtInformeService informes;
     private final UsuarioRepository usuarios;
 
-    public DtController(DtService dt, UsuarioRepository usuarios) {
+    public DtController(DtService dt, DtInformeService informes, UsuarioRepository usuarios) {
         this.dt = dt;
+        this.informes = informes;
         this.usuarios = usuarios;
     }
 
@@ -106,14 +113,55 @@ public class DtController {
         return dt.reabrir(usuario(auth), id);
     }
 
+    /** Informe del partido: del equipo o, con {@code jugador} ("j" + id, o "m" + nombre), de ese jugador. */
+    @GetMapping("/partidos/{id}/informe")
+    public InformeDt informe(@PathVariable Long id, @RequestParam(required = false) String jugador,
+                             Authentication auth) {
+        return informes.partido(usuario(auth), id, jugador);
+    }
+
+    @GetMapping("/partidos/{id}/informe.pdf")
+    public ResponseEntity<byte[]> informePdf(@PathVariable Long id, @RequestParam(required = false) String jugador,
+                                             Authentication auth) {
+        return pdf(informes.pdf(informes.partido(usuario(auth), id, jugador)));
+    }
+
+    /** Informe de los partidos finalizados del equipo en un mes, bimestre, semestre o campeonato. */
+    @GetMapping("/informes")
+    public InformeDt informePeriodo(@RequestParam(required = false) String categoria,
+                                    @RequestParam(required = false) String rama, @RequestParam Periodo periodo,
+                                    @RequestParam(required = false) String valor,
+                                    @RequestParam(required = false) String jugador, Authentication auth) {
+        return informes.periodo(usuario(auth), categoria, rama, periodo, valor, jugador);
+    }
+
+    @GetMapping("/informes.pdf")
+    public ResponseEntity<byte[]> informePeriodoPdf(@RequestParam(required = false) String categoria,
+                                                    @RequestParam(required = false) String rama,
+                                                    @RequestParam Periodo periodo,
+                                                    @RequestParam(required = false) String valor,
+                                                    @RequestParam(required = false) String jugador,
+                                                    Authentication auth) {
+        return pdf(informes.pdf(informes.periodo(usuario(auth), categoria, rama, periodo, valor, jugador)));
+    }
+
+    /** El PDF se abre en el navegador (inline); desde ahí se guarda o se comparte. */
+    private static ResponseEntity<byte[]> pdf(DtInformeService.Pdf p) {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename(p.archivo()).build()
+                        .toString())
+                .body(p.contenido());
+    }
+
     private Usuario usuario(Authentication auth) {
         return usuarios.findByUsuario(auth.getName()).filter(Usuario::esDt)
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no es DT."));
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
     ProblemDetail badRequest(Exception e) {
-        String detail = e instanceof HttpMessageNotReadableException ? "El pedido no es válido." : e.getMessage();
+        String detail = e instanceof IllegalArgumentException ? e.getMessage() : "El pedido no es válido.";
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     }
 

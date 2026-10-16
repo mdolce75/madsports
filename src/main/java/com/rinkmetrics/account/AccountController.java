@@ -93,7 +93,7 @@ public class AccountController {
     }
 
     /** "JUVENIL:A" + "MASCULINO" -> "Juvenil A Masculino". */
-    static String equipoNombre(EquipoDt e) {
+    public static String equipoNombre(EquipoDt e) {
         CatalogService.CategoryOption o = CatalogService.CategoryOption.parse(e.categoria());
         return new Competition.Category(o.level(), e.rama()).levelLabel() + (o.letter() == null ? "" : " " + o.letter())
                 + " " + new Competition.Category(o.level(), e.rama()).branchLabel();
