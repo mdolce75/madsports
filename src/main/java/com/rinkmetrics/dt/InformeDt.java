@@ -1,7 +1,7 @@
 package com.rinkmetrics.dt;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.rinkmetrics.player.RosterService.PlantelJugador;
+import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -139,12 +139,12 @@ public record InformeDt(String titulo, String detalle, String club, String equip
      *
      * @param ps       los partidos (uno solo en el informe de un partido)
      * @param acciones las activas de esos partidos, en orden de juego
-     * @param plantel  para el número y si es arquero (vacío si SIDGAD no responde)
+     * @param plantel  para el nombre actual, el número y si es arquero (los dados de baja no están)
      * @param clave    el jugador elegido, o null
      */
     static InformeDt armar(String titulo, String detalle, String club, String equipo, LocalDate generado,
                            boolean unPartido, List<PartidoDt> ps, List<AccionDt> acciones,
-                           Map<Integer, PlantelJugador> plantel, String clave) {
+                           Map<Integer, JugadorPlantel> plantel, String clave) {
         Map<String, List<AccionDt>> porJugador = new LinkedHashMap<>();
         for (AccionDt a : acciones) {
             porJugador.computeIfAbsent(clave(a), k -> new ArrayList<>()).add(a);
@@ -152,9 +152,10 @@ public record InformeDt(String titulo, String detalle, String club, String equip
         List<JugadorFila> jugadores = new ArrayList<>();
         for (var e : porJugador.entrySet()) {
             AccionDt una = e.getValue().getFirst();
-            PlantelJugador pj = una.getJugadorId() > 0 ? plantel.get(una.getJugadorId()) : null;
+            JugadorPlantel pj = una.getJugadorId() > 0 ? plantel.get(una.getJugadorId()) : null;
             boolean arquero = pj != null ? pj.arquero() : e.getValue().stream().anyMatch(a -> DEL_ARCO.contains(a.getTipo()));
-            jugadores.add(new JugadorFila(e.getKey(), pj == null ? "" : pj.numero(), una.getJugadorNombre(), arquero,
+            jugadores.add(new JugadorFila(e.getKey(), pj == null ? "" : pj.numero(),
+                    pj == null ? una.getJugadorNombre() : pj.nombre(), arquero,
                     (int) e.getValue().stream().map(AccionDt::getPartidoId).distinct().count(),
                     Metricas.de(e.getValue())));
         }
@@ -169,13 +170,14 @@ public record InformeDt(String titulo, String detalle, String club, String equip
             lasDel = porJugador.get(clave);
             jugadores = List.of(elegido);
         }
-        Map<String, String> numeros = jugadores.stream().collect(Collectors.toMap(JugadorFila::clave,
-                JugadorFila::numero, (a, b) -> a));
+        Map<String, JugadorFila> porClave = jugadores.stream().collect(Collectors.toMap(JugadorFila::clave,
+                j -> j, (a, b) -> a));
         int duracion = ps.isEmpty() ? DtService.MINUTOS_POR_DEFECTO * 60 : ps.getFirst().duracion();
         List<Evento> eventos = !unPartido ? List.of() : lasDel.stream().map(a -> {
             var n = nombre(a.getTipo(), a.getResultado());
             return new Evento(a.getTiempo(), a.getSegundo(), a.getTiempo() + "T " + mmss(Math.min(a.getSegundo(), duracion)),
-                    clave(a), numeros.getOrDefault(clave(a), ""), a.getJugadorNombre(), n[0], n[1]);
+                    clave(a), porClave.containsKey(clave(a)) ? porClave.get(clave(a)).numero() : "",
+                    porClave.containsKey(clave(a)) ? porClave.get(clave(a)).nombre() : a.getJugadorNombre(), n[0], n[1]);
         }).toList();
         List<PartidoFila> filas = ps.stream().map(PartidoFila::of).toList();
         return new InformeDt(titulo, detalle, club, equipo, generado, unPartido, filas, Balance.de(filas),

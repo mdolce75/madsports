@@ -4,8 +4,7 @@ import com.rinkmetrics.account.EquipoDt;
 import com.rinkmetrics.account.SuscripcionType;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.catalog.CatalogService;
-import com.rinkmetrics.player.RosterService;
-import com.rinkmetrics.player.RosterService.PlantelJugador;
+import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
 import com.rinkmetrics.catalog.CatalogService.CategoryOption;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
 import com.rinkmetrics.catalog.CatalogService.LevelView;
@@ -102,15 +101,15 @@ public class DtService {
 
     private final PartidoDtRepository partidos;
     private final AccionDtRepository acciones;
-    private final RosterService roster;
+    private final PlantelDtService planteles;
     private final CatalogService catalog;
     private final Clock clock;
 
-    public DtService(PartidoDtRepository partidos, AccionDtRepository acciones, RosterService roster,
+    public DtService(PartidoDtRepository partidos, AccionDtRepository acciones, PlantelDtService planteles,
                      CatalogService catalog, Clock clock) {
         this.partidos = partidos;
         this.acciones = acciones;
-        this.roster = roster;
+        this.planteles = planteles;
         this.catalog = catalog;
         this.clock = clock;
     }
@@ -155,11 +154,6 @@ public class DtService {
         return out;
     }
 
-    /** Plantel del equipo (de sus actas), con número y arqueros marcados. */
-    public List<PlantelJugador> plantel(Usuario u, String categoria, String rama) {
-        EquipoDt e = equipo(u, categoria, rama);
-        return roster.plantel(u.federacion(), u.getClubId(), catalog.defaultYear(), e.categoria(), e.rama());
-    }
 
     /**
      * Empieza a cargar un partido. Si el DT ya tiene uno de ese equipo con el mismo rival y la misma fecha, lo devuelve
@@ -230,7 +224,7 @@ public class DtService {
         if (!p.aceptaAcciones()) {
             throw new IllegalStateException("El partido está cerrado: reabrilo para cargar acciones.");
         }
-        Map<Integer, PlantelJugador> plantel = null;
+        Map<Integer, JugadorPlantel> plantel = null;
         Instant ahora = clock.instant();
         for (AccionNueva a : nuevas == null ? List.<AccionNueva>of() : nuevas) {
             validar(a, p);
@@ -240,10 +234,10 @@ public class DtService {
             String nombre;
             if (a.jugadorId() > 0) {
                 if (plantel == null) {
-                    plantel = roster.plantel(u.federacion(), u.getClubId(), catalog.defaultYear(), p.getCategoria(),
-                            p.getRama()).stream().collect(Collectors.toMap(PlantelJugador::id, Function.identity()));
+                    plantel = planteles.plantel(u, p.getCategoria(), p.getRama()).stream()
+                            .collect(Collectors.toMap(JugadorPlantel::id, Function.identity()));
                 }
-                PlantelJugador j = plantel.get(a.jugadorId());
+                JugadorPlantel j = plantel.get(a.jugadorId());
                 if (j == null) {
                     throw new IllegalArgumentException("El jugador " + a.jugadorId() + " no está en el plantel.");
                 }

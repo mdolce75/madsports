@@ -3,9 +3,7 @@ package com.rinkmetrics.dt;
 import com.rinkmetrics.account.AccountController;
 import com.rinkmetrics.account.EquipoDt;
 import com.rinkmetrics.account.Usuario;
-import com.rinkmetrics.catalog.CatalogService;
-import com.rinkmetrics.player.RosterService;
-import com.rinkmetrics.player.RosterService.PlantelJugador;
+import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
 import com.rinkmetrics.report.PdfRenderer;
 import org.springframework.stereotype.Service;
 
@@ -35,17 +33,15 @@ public class DtInformeService {
 
     private final PartidoDtRepository partidos;
     private final AccionDtRepository acciones;
-    private final RosterService roster;
-    private final CatalogService catalog;
+    private final PlantelDtService planteles;
     private final PdfRenderer pdf;
     private final Clock clock;
 
-    public DtInformeService(PartidoDtRepository partidos, AccionDtRepository acciones, RosterService roster,
-                            CatalogService catalog, PdfRenderer pdf, Clock clock) {
+    public DtInformeService(PartidoDtRepository partidos, AccionDtRepository acciones, PlantelDtService planteles,
+                            PdfRenderer pdf, Clock clock) {
         this.partidos = partidos;
         this.acciones = acciones;
-        this.roster = roster;
-        this.catalog = catalog;
+        this.planteles = planteles;
         this.pdf = pdf;
         this.clock = clock;
     }
@@ -109,14 +105,10 @@ public class DtInformeService {
                 LocalDate.now(clock), unPartido, ps, lista, plantel(u, primero), jugador);
     }
 
-    /** Plantel del equipo para el número y los arqueros; si SIDGAD no responde, el informe sale sin números. */
-    private Map<Integer, PlantelJugador> plantel(Usuario u, PartidoDt p) {
-        try {
-            return roster.plantel(u.federacion(), u.getClubId(), catalog.defaultYear(), p.getCategoria(), p.getRama())
-                    .stream().collect(Collectors.toMap(PlantelJugador::id, Function.identity(), (a, b) -> a));
-        } catch (RuntimeException e) {
-            return Map.of();
-        }
+    /** Plantel del equipo (el de la sección Equipo) para el nombre, el número y los arqueros. */
+    private Map<Integer, JugadorPlantel> plantel(Usuario u, PartidoDt p) {
+        return planteles.plantel(u, p.getCategoria(), p.getRama()).stream()
+                .collect(Collectors.toMap(JugadorPlantel::id, Function.identity(), (a, b) -> a));
     }
 
     private static String nombre(String categoria, String rama) {

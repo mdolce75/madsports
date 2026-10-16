@@ -17,11 +17,42 @@
         [104, "5", "Joaquín Ríos", false], [105, "7", "Facundo Medina", false], [106, "8", "Nicolás Sosa", false],
         [107, "9", "Agustín Paz", false], [108, "10", "Santiago Herrera", false], [109, "11", "Bruno Castro", false],
         [110, "14", "Mateo Giménez", false],
-    ].map(([id, numero, nombre, arquero]) => ({id, numero, nombre, arquero}));
+    ].map(([id, numero, nombre, arquero]) => {
+        const [nombres, apellido] = [nombre.split(" ")[0], nombre.split(" ").slice(1).join(" ")];
+        return {id, numero, nombre, nombres, apellido, arquero};
+    });
     const RIVALES = ["Atlético Norte", "Club Social Sur", "Deportivo Oeste", "Unión Patín", "Sporting Central"]
         .map((nombre, i) => ({clubId: 900 + i, nombre}));
 
     const nombreDe = id => (PLANTEL.find(j => j.id === id) || {}).nombre;
+    let proximoId = 900000000;
+
+    /** Alta, cambio y baja de jugadores del plantel, con las mismas validaciones que el servidor. */
+    function plantel(method, id, body) {
+        if (method === "DELETE") {
+            const i = PLANTEL.findIndex(j => j.id === id);
+            if (i < 0) throw [404, "Ese jugador no está en el plantel."];
+            PLANTEL.splice(i, 1);
+            return new Response(null, {status: 204});
+        }
+        const nombres = (body.nombre || "").trim(), apellido = (body.apellido || "").trim(), num = (body.numero || "").trim();
+        if (!nombres) throw [400, "Escribí el nombre del jugador."];
+        if (!apellido) throw [400, "Escribí el apellido del jugador."];
+        if (num && !/^\d{1,3}$/.test(num)) throw [400, "El número es de 1 a 3 cifras."];
+        const numero = num ? String(Number(num)) : "";
+        const otro = numero && PLANTEL.find(j => j.numero === numero && j.id !== id);
+        if (otro) throw [409, `El número ${numero} ya es de ${otro.nombre}.`];
+        const datos = {numero, nombres, apellido, nombre: nombres + " " + apellido, arquero: !!body.arquero};
+        if (method === "POST") {
+            const j = Object.assign({id: proximoId++}, datos);
+            PLANTEL.push(j);
+            return json(201, j);
+        }
+        const j = PLANTEL.find(x => x.id === id);
+        if (!j) throw [404, "Ese jugador no está en el plantel."];
+        Object.assign(j, datos);
+        return json(200, j);
+    }
     let seq = 0;
     const accion = (jugadorId, tipo, resultado, tiempo, segundo) =>
         ({id: "demo-" + (++seq), jugadorId, jugadorNombre: nombreDe(jugadorId), tipo, resultado, tiempo, segundo});
@@ -119,7 +150,13 @@
         if (r === "/api/sesion") return json(200, SESION);
         if (r === "/api/logout") { location.replace("/dt-inicio.html"); return json(200, {}); }
         if (r === "/api/dt/rivales") return json(200, RIVALES);
-        if (r === "/api/dt/plantel") return json(200, PLANTEL);
+        if (r === "/api/dt/plantel" && method === "GET") return json(200, PLANTEL.slice()
+            .sort((a, b) => (Number(a.numero) || 9999) - (Number(b.numero) || 9999)));
+        const pl = r.match(/^\/api\/dt\/plantel(?:\/(\d+))?$/);
+        if (pl) {
+            try { return plantel(method, pl[1] ? Number(pl[1]) : null, body || {}); }
+            catch (e) { if (Array.isArray(e)) return json(e[0], {detail: e[1]}); throw e; }
+        }
         if (r === "/api/dt/partidos" && method === "GET") return json(200, partidos.slice()
             .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id).map(p => vista(p, false)));
         if (r === "/api/dt/acciones") return json(200, partidos.flatMap(p => p.acciones.map(a => Object.assign({partidoId: p.id}, a))));
