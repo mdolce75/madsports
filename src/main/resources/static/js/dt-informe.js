@@ -263,5 +263,5 @@ const DtInforme = (() => {
             + (inf.unPartido ? " Minuto: tiempo jugado del período." : " PJ: partidos con acciones del jugador.")));
     }
 
-    return {metricas, armar, opciones, nombre, valor, render, finalizado, fecha, TIPOS};
+    return {metricas, armar, opciones, nombre, valor, render, tarjetas, finalizado, fecha, TIPOS};
 })();

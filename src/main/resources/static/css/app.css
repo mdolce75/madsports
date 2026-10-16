@@ -31,7 +31,8 @@
     --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
-html { background: var(--bg); }
+/* El espacio de la barra de desplazamiento queda reservado: al pasar de una pantalla corta a una larga, nada se corre. */
+html { background: var(--bg); scrollbar-gutter: stable; }
 body {
     margin: 0; min-height: 100vh; color: var(--ink); font: 16px/1.55 var(--body);
     background:
@@ -550,9 +551,12 @@ nav.secciones a { white-space: nowrap; }
 .dash-box { padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
 .dash-box h3 { margin: 0 0 10px; font: 700 .85rem/1.2 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .dash-proximos .btn { margin-top: 12px; }
-@media (min-width: 900px) {
-    .dash-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); }
+@media (min-width: 640px) {
+    .dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dash-proximos { grid-column: 1 / -1; }
+}
+@media (min-width: 1100px) {
+    .eq-rankings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .grafico { width: 100%; height: auto; display: block; }
 .grafico .eje { font: 500 11px var(--body); fill: var(--muted); }
@@ -648,3 +652,29 @@ body.dt-vivo .dt-menu { display: none; }
 .topbar .dt-menu { margin: 0 auto 0 0; }
 @media (max-width: 760px) { .topbar .dt-menu { order: 3; width: 100%; max-width: none; justify-content: space-between; } }
 @media (max-width: 480px) { .topbar .dt-menu a { flex: 1 1 auto; text-align: center; padding: 8px 6px; font-size: .72rem; letter-spacing: .06em; } }
+
+/* Dashboard: dos totales, gráfico de partidos por mes más bajo y rankings de goleadores, penales y libres. */
+.dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 520px; }
+#d-meses .grafico { max-height: 150px; }
+.dash-ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dash-ranking li { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 0 8px; align-items: baseline;
+                   padding: 7px 10px 9px; border-radius: 8px; background: var(--panel-2); overflow: hidden; }
+.dash-ranking li.dt-vacio { display: block; background: none; padding: 0; }
+.dash-ranking .pos { font: 700 .9rem/1 var(--display); color: var(--muted); }
+.dash-ranking li:first-child .pos { color: var(--lime); }
+.dash-ranking .quien { font-size: .88rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-ranking b { font: 700 1.15rem/1 var(--display); color: var(--accent); text-align: right; }
+.dash-ranking small { grid-column: 2 / -1; font-size: .72rem; color: var(--muted); }
+.dash-ranking .barra { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); opacity: .7; }
+
+/* Vista Equipo */
+.eq-balance { margin: 12px 0 4px; }
+@media (min-width: 760px) { .eq-balance { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.eq-rankings { margin-top: 18px; align-items: start; }
+
+/* Partidos: la caja de nuevo partido y la lista, lado a lado desde tablet. */
+.partidos-grid { display: grid; gap: 16px; margin-top: 12px; align-items: start; }
+.partidos-grid .dt-mis { margin-top: 0; }
+@media (min-width: 860px) { .partidos-grid { grid-template-columns: minmax(320px, 5fr) minmax(0, 7fr); gap: 24px; } }
+/* Los títulos de las vistas del DT, todos del mismo color (dentro de .dt-line heredaban el gris). */
+.dt-vista .section-title { color: var(--ink); }

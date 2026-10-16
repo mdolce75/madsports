@@ -194,7 +194,7 @@ const DtFichas = (() => {
 
     /** Partidos jugados por mes: eje X los meses, eje Y la cantidad. */
     function lineaMeses(meses) {
-        const W = 320, H = 150, x0 = 30, y0 = 120, ancho = W - x0 - 14, alto = 100;
+        const W = 320, H = 112, x0 = 30, y0 = 84, ancho = W - x0 - 14, alto = 70;
         const max = Math.max(2, ...meses.map(m => m.cantidad));
         const paso = ancho / (meses.length - 1);
         const pts = meses.map((m, i) => [x0 + i * paso, y0 - alto * m.cantidad / max]);
