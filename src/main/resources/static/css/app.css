@@ -275,16 +275,20 @@ input[type=date] { color-scheme: light; }
 .dt-link { padding: 4px 0; border: 0; background: none; color: var(--accent); cursor: pointer; font: 600 .8rem/1.2 var(--body); }
 .dt-nuevo { display: grid; grid-template-columns: 64px 1fr auto; gap: 6px; }
 .dt-nuevo button { padding: 0 14px; border: 0; border-radius: var(--radius-sm); background: var(--accent); color: var(--accent-ink); cursor: pointer; font: 700 .85rem/1 var(--body); }
-.dt-players { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.dt-player { position: relative; display: grid; justify-items: center; gap: 1px; padding: 7px 2px 6px; min-height: 52px;
+/* Jugadores: el nombre completo es lo que se lee primero; el número y "Arquero", chicos arriba. */
+.dt-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.dt-player { position: relative; display: grid; align-content: start; gap: 3px; padding: 6px 8px 8px; min-height: 58px; text-align: left;
              border: 1px solid var(--line); border-radius: 10px; background: var(--field); color: var(--ink); cursor: pointer;
              box-shadow: 0 1px 2px rgba(9, 9, 11, .04); }
-.dt-player .n { font: 700 1.25rem/1.1 var(--display); }
-.dt-player .s { max-width: 100%; padding-inline: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .66rem; color: var(--muted); }
-.dt-player.gk .n::after { content: "AR"; margin-left: 2px; vertical-align: super; font: 700 .52rem/1 var(--body); color: var(--accent); }
+.dt-player .cab { display: flex; align-items: center; gap: 6px; padding-left: 12px; min-height: 14px; }
+.dt-player .n { font: 600 .72rem/1 var(--display); letter-spacing: .04em; color: var(--muted); }
+.dt-player .ar { padding: 1px 5px; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+                 font: 700 .58rem/1.3 var(--body); text-transform: uppercase; letter-spacing: .04em; }
+.dt-player .s { font: 700 .86rem/1.18 var(--body); color: var(--ink); overflow-wrap: anywhere; }
 .dt-player[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-.dt-player[aria-pressed="true"] .n { color: var(--accent); }
-.dt-player.oncourt::before { content: ""; position: absolute; top: 5px; left: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.dt-player[aria-pressed="true"] .s { color: var(--accent); }
+.dt-player.oncourt::before { content: ""; position: absolute; top: 9px; left: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.dt-player:not(.oncourt) .cab { padding-left: 0; }
 .dt-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .dt-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .dt-act { display: grid; gap: 2px; min-height: 58px; padding: 10px 8px; text-align: left; border: 1px solid var(--line); border-radius: 10px;
@@ -343,7 +347,6 @@ input[type=date] { color-scheme: light; }
             display: flex; align-items: center; gap: 14px; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px;
             background: var(--ink); color: var(--bg); box-shadow: 0 6px 24px rgba(0, 0, 0, .45); font-size: .85rem; font-weight: 600; }
 .dt-toast button { padding: 4px 0; border: 0; background: none; color: #5eead4; cursor: pointer; font: 700 .85rem/1 var(--body); }
-@media (max-width: 380px) { .dt-players { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { .dt-act, .dt-act:active, .dt-pair button:active, .dt-player:active { transition: none; transform: none; } }
 
 /* ---- Planilla DT en tablet y web: con el partido abierto la página usa todo el ancho y la carga va en columnas
@@ -369,7 +372,7 @@ input[type=date] { color-scheme: light; }
     .dt-c-jug { grid-column: 1; grid-row: 1; }
     .dt-c-log { grid-column: 1; grid-row: 2; }
     .dt-c-acc { grid-column: 2; grid-row: 1 / span 2; }
-    .dt-players { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .dt-players { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dt-bloques { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
     .dt-act { min-height: 50px; padding: 7px 8px; }
     .dt-pair { padding: 6px 8px; }
@@ -382,7 +385,7 @@ input[type=date] { color-scheme: light; }
     .dt-cargar { grid-template-columns: minmax(250px, 1fr) minmax(0, 3fr) minmax(240px, 1fr); }
     .dt-c-log { grid-column: 3; grid-row: 1; }
     .dt-c-acc { grid-row: 1; }
-    .dt-players { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dt-players { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dt-bloques { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .dt-bloques .dt-row, .dt-bloques .dt-row.three { grid-template-columns: 1fr; }
     .dt-bloques .dt-bloque:last-child .dt-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -365,7 +365,11 @@
                 const b = el("button", "dt-player" + (j.arquero ? " gk" : ""));
                 b.type = "button";
                 b.dataset.key = j.key;
-                b.append(el("span", "n", j.numero || "·"), el("span", "s", corto(j.nombre)));
+                // Lo principal es el nombre (completo, en una o dos líneas); el número va chico, arriba.
+                const arriba = el("span", "cab");
+                arriba.append(el("span", "n", j.numero ? "#" + j.numero : "s/n"));
+                if (j.arquero) arriba.append(el("span", "ar", "Arquero"));
+                b.append(arriba, el("span", "s", j.nombre));
                 b.addEventListener("click", () => { seleccionado = j.key; renderJugadores(); });
                 box.append(b);
             }
@@ -377,8 +381,8 @@
             b.setAttribute("aria-label", `${j.numero} ${j.nombre}${j.arquero ? ", arquero" : ""}${j.key === arquero ? ", en cancha" : ""}`);
         }
         const sel = lista.find(j => j.key === seleccionado), ar = lista.find(j => j.key === arquero);
-        $("sel").textContent = sel ? `${sel.numero ? sel.numero + " · " : ""}${sel.nombre}` : "—";
-        $("ar").textContent = ar ? `${ar.numero ? ar.numero + " · " : ""}${corto(ar.nombre)}` : "elegir";
+        $("sel").textContent = sel ? `${sel.nombre}${sel.numero ? " (#" + sel.numero + ")" : ""}` : "—";
+        $("ar").textContent = ar ? `${ar.nombre}${ar.numero ? " (#" + ar.numero + ")" : ""}` : "elegir";
     }
 
     /** Contadores de los botones de acción: [span, función que da el texto con las acciones del partido]. */
