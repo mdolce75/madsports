@@ -506,3 +506,32 @@ body.home .brand small { font-size: .85rem; margin-top: 6px; }
 .notice.proximo { border-left-color: var(--lime); background: rgba(200, 241, 53, .08); }
 .notice.proximo b { font: 700 .85rem/1.2 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--lime); }
 .split > .main > .notice.proximo:first-child { margin-top: 0; margin-bottom: 16px; }
+
+/* Demo de Métricas DT: aviso arriba de todo */
+.demo-aviso { margin: -8px 0 12px; padding: 8px 14px; border-radius: var(--radius-sm); background: rgba(200, 241, 53, .1);
+              border: 1px solid rgba(200, 241, 53, .35); font-size: .85rem; color: var(--ink-2); }
+.demo-aviso b { margin-right: 6px; font: 700 .78rem/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--lime); }
+.demo-aviso a { color: var(--accent); font-weight: 600; }
+
+/* Menú superior: cuatro entradas; en el celular, a todo el ancho y en dos filas si hace falta */
+html { scroll-behavior: smooth; }
+#por-que, #asi-se-ve { scroll-margin-top: 16px; }
+nav.secciones { flex-wrap: wrap; }
+nav.secciones a { white-space: nowrap; }
+@media (max-width: 480px) { nav.secciones a { flex: 1 1 auto; text-align: center; padding: 6px 8px; font-size: .72rem; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Galería de capturas de Métricas DT */
+.galeria { margin: 34px 0 6px; }
+.galeria-grid { display: grid; gap: 14px; margin-top: 14px; grid-template-columns: 1fr; }
+.galeria figure { margin: 0; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+                  box-shadow: var(--shadow); }
+.galeria img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.galeria-celular img { max-width: 320px; margin: 0 auto; }
+.galeria figcaption { margin-top: 10px; font-size: .88rem; color: var(--muted); }
+.galeria figcaption b { display: block; font: 700 .9rem/1.3 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+.galeria-demo { max-width: 420px; margin: 18px auto 0; text-align: center; }
+@media (min-width: 960px) {
+    .galeria-grid { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); grid-template-rows: auto auto; }
+    .galeria-grid .galeria-celular { grid-column: 2; grid-row: 1 / span 2; }
+}
