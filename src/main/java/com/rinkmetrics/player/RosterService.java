@@ -51,10 +51,37 @@ public class RosterService {
         }
     }
 
+    /**
+     * Un jugador del plantel para la planilla del DT.
+     *
+     * @param numero  número de camiseta más usado en las actas ("07"; vacío si no figura)
+     * @param arquero figura como arquero ("P") en 2 planillas o más, o en la mayoría de las suyas
+     */
+    public record PlantelJugador(int id, String numero, String nombre, boolean arquero) {
+    }
+
+    /**
+     * Un partido del equipo en el calendario de SIDGAD.
+     *
+     * @param local el equipo del club es el local
+     */
+    public record PartidoEquipo(Competition competition, Match match, boolean local) {
+
+        public String rival() {
+            return local ? match.awayName() : match.homeName();
+        }
+    }
+
+    /** Un equipo del club en el año: sus competiciones, sus ids de equipo en SIDGAD y su nombre ("Infantil B Femenino"). */
+    private record Equipo(ClubView club, List<Competition> comps, Set<Integer> teamIds, String label) {
+    }
+
     private final CatalogService catalog;
     private final SidgadClient sidgad;
     /** Plantel por equipo (club, año, categoría, rama): las actas ya quedan en cache, esto evita re-parsearlas. */
     private final Cache<String, List<RosterPlayer>> cache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(200).build();
+    private final Cache<String, List<PlantelJugador>> plantelCache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(200).build();
 
     public RosterService(CatalogService catalog, SidgadClient sidgad) {
@@ -67,15 +94,42 @@ public class RosterService {
      * @param rama      MASCULINO o FEMENINO
      */
     public List<RosterPlayer> players(Federacion fed, int clubId, int year, String categoria, String rama) {
+        String key = cacheKey(fed, clubId, year, categoria, rama);
+        return cache.get(key, k -> {
+            Equipo e = equipo(fed, clubId, year, categoria, rama);
+            return roster(lineups(e), e.label());
+        });
+    }
+
+    /**
+     * Plantel del equipo para la planilla del DT: cada jugador que figura en sus actas, con su número más usado y si
+     * es arquero.
+     */
+    public List<PlantelJugador> plantel(Federacion fed, int clubId, int year, String categoria, String rama) {
+        String key = cacheKey(fed, clubId, year, categoria, rama);
+        return plantelCache.get(key, k -> plantel(lineups(equipo(fed, clubId, year, categoria, rama))));
+    }
+
+    /** Partidos del equipo en el calendario del año (jugados y por jugar), de todas sus competiciones. */
+    public List<PartidoEquipo> partidos(Federacion fed, int clubId, int year, String categoria, String rama) {
+        Equipo e = equipo(fed, clubId, year, categoria, rama);
+        List<PartidoEquipo> out = new ArrayList<>();
+        calendars(e).forEach((c, matches) -> matches.stream()
+                .filter(m -> m.idp() > 0 && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId())))
+                .forEach(m -> out.add(new PartidoEquipo(c, m, e.teamIds().contains(m.homeTeamId())))));
+        return out;
+    }
+
+    private String cacheKey(Federacion fed, int clubId, int year, String categoria, String rama) {
+        CategoryOption option = CategoryOption.parse(categoria);
+        return fed + "|" + clubId + "|" + year + "|" + option.key() + "|" + (rama == null ? "" : rama.trim().toUpperCase());
+    }
+
+    private Equipo equipo(Federacion fed, int clubId, int year, String categoria, String rama) {
         ClubView club = catalog.club(fed, clubId, year);
         CategoryOption option = CategoryOption.parse(categoria);
         Competition.Category category = catalog.category(fed, option.level(), rama);
-        return cache.get(fed + "|" + clubId + "|" + year + "|" + option.key() + "|" + category.branch(),
-                k -> load(fed, club, year, category, option.teamKey(club.code())));
-    }
-
-    private List<RosterPlayer> load(Federacion fed, ClubView club, int year, Competition.Category category,
-                                    String teamKey) {
+        String teamKey = option.teamKey(club.code());
         List<Competition> comps = catalog.competitionsFor(fed, club.id(), category, null, year);
         Map<Integer, String> keys = ClubTeams.keys(comps, club);
         Set<Integer> teamIds = keys.entrySet().stream().filter(e -> e.getValue().equals(teamKey))
@@ -83,23 +137,49 @@ public class RosterService {
         if (comps.isEmpty() || teamIds.isEmpty()) {
             throw new IllegalArgumentException(club.name() + " no tiene ese equipo en " + year + ".");
         }
-        String label = ClubTeams.label(comps.getFirst(), club, teamKey);
-        List<LineupPlayer> lineups = new ArrayList<>();
+        return new Equipo(club, comps, teamIds, ClubTeams.label(comps.getFirst(), club, teamKey));
+    }
+
+    private Map<Competition, List<Match>> calendars(Equipo e) {
+        Map<Competition, List<Match>> out = new LinkedHashMap<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
             Map<Competition, Future<String>> calendars = new LinkedHashMap<>();
-            comps.forEach(c -> calendars.put(c, io.submit(() -> sidgad.calendar(c.id()))));
-            Map<Match, Future<String>> sheets = new LinkedHashMap<>();
-            for (Competition c : comps) {
-                for (Match m : SidgadParser.calendar(ClubTeams.await(calendars.get(c)))) {
-                    if (m.played() && m.idp() > 0 && (teamIds.contains(m.homeTeamId()) || teamIds.contains(m.awayTeamId()))) {
-                        sheets.put(m, io.submit(() -> sidgad.gameSheet(c.id(), m.idp())));
-                    }
-                }
-            }
-            // Cada acta trae la planilla del local y la del visitante: se toma la del equipo del club.
-            sheets.forEach((m, sheet) -> lineups.addAll(ownSide(SidgadParser.lineups(ClubTeams.await(sheet)), m, teamIds)));
+            e.comps().forEach(c -> calendars.put(c, io.submit(() -> sidgad.calendar(c.id()))));
+            calendars.forEach((c, f) -> out.put(c, SidgadParser.calendar(ClubTeams.await(f))));
         }
-        return roster(lineups, label);
+        return out;
+    }
+
+    /** Planillas del equipo en sus partidos jugados con acta (cada acta trae la del local y la del visitante). */
+    private List<LineupPlayer> lineups(Equipo e) {
+        List<LineupPlayer> lineups = new ArrayList<>();
+        Map<Competition, List<Match>> calendars = calendars(e);
+        try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
+            Map<Match, Future<String>> sheets = new LinkedHashMap<>();
+            calendars.forEach((c, matches) -> matches.stream()
+                    .filter(m -> m.played() && m.idp() > 0
+                            && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId())))
+                    .forEach(m -> sheets.put(m, io.submit(() -> sidgad.gameSheet(c.id(), m.idp())))));
+            sheets.forEach((m, sheet) -> lineups.addAll(ownSide(SidgadParser.lineups(ClubTeams.await(sheet)), m, e.teamIds())));
+        }
+        return lineups;
+    }
+
+    /** Un jugador por id_player: su número más usado, y arquero si figura con "P" en 2 planillas o en la mayoría. */
+    static List<PlantelJugador> plantel(List<LineupPlayer> lineups) {
+        Map<Integer, List<LineupPlayer>> byId = lineups.stream()
+                .collect(Collectors.groupingBy(LineupPlayer::playerId, LinkedHashMap::new, Collectors.toList()));
+        return byId.values().stream()
+                .map(ps -> {
+                    long gk = ps.stream().filter(LineupPlayer::goalkeeper).count();
+                    String numero = ps.stream().map(LineupPlayer::number).filter(n -> n != null && !n.isBlank())
+                            .collect(Collectors.groupingBy(n -> n, LinkedHashMap::new, Collectors.counting()))
+                            .entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("");
+                    return new PlantelJugador(ps.getFirst().playerId(), numero, ps.getFirst().name(),
+                            gk >= 2 || (gk > 0 && gk * 2 >= ps.size()));
+                })
+                .sorted(Comparator.comparing(PlantelJugador::nombre, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     /** Jugadores de la planilla del equipo del club en ese partido (local o visitante). */
