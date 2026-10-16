@@ -160,25 +160,32 @@ const DtFichas = (() => {
     const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 
     /**
-     * Ecualizador de la ficha: una columna por eje, con la altura según el puntaje (0 a 100) y el número debajo. Cuanto
-     * más alto, más brillante la columna; la línea punteada marca el 50.
+     * Rueda de la ficha: una porción por eje, que arranca arriba y sigue en el sentido del reloj. El largo de cada
+     * porción es el puntaje (0 a 100) y, cuanto más alto, más intenso el color; el círculo punteado marca el 50.
      */
-    function ecualizador(ejesFicha, arquero) {
-        const W = 300, base = 110, alto = 92, ancho = 38, paso = W / ejesFicha.length;
+    function rueda(ejesFicha, arquero) {
+        const W = 300, H = 200, cx = W / 2, cy = 100, R = 66, n = ejesFicha.length, hueco = 0.05;
         const tono = arquero ? [167, 139, 250] : [34, 184, 240];
         const titulo = ejesFicha.map(e => `${e.nombre} ${e.puntaje}`).join(", ");
-        const columnas = ejesFicha.map((e, i) => {
-            const x = i * paso + (paso - ancho) / 2;
-            const h = Math.max(3, alto * e.puntaje / 100);
+        const punto = (a, r) => [(cx + r * Math.cos(a)).toFixed(1), (cy + r * Math.sin(a)).toFixed(1)];
+        const porcion = (a0, a1, r) => {
+            const [x0, y0] = punto(a0, r), [x1, y1] = punto(a1, r);
+            return `M${cx},${cy}L${x0},${y0}A${r},${r} 0 0 1 ${x1},${y1}Z`;
+        };
+        const partes = ejesFicha.map((e, i) => {
+            const a0 = -Math.PI / 2 - Math.PI / n + i * 2 * Math.PI / n + hueco, a1 = a0 + 2 * Math.PI / n - 2 * hueco;
+            const medio = (a0 + a1) / 2, r = Math.max(4, R * e.puntaje / 100);
             const brillo = (0.35 + 0.65 * e.puntaje / 100).toFixed(2);
-            return `<rect class="fondo" x="${x.toFixed(1)}" y="${base - alto}" width="${ancho}" height="${alto}" rx="6"/>
-                <rect x="${x.toFixed(1)}" y="${(base - h).toFixed(1)}" width="${ancho}" height="${h.toFixed(1)}" rx="6"
-                    fill="rgba(${tono.join(",")},${brillo})"><title>${esc(e.nombre)}: ${e.puntaje} · ${esc(e.texto)}</title></rect>
-                <text class="nombre" x="${(x + ancho / 2).toFixed(1)}" y="${base + 15}">${esc(e.corto)}</text>
-                <text class="puntaje" x="${(x + ancho / 2).toFixed(1)}" y="${base + 30}">${e.puntaje}</text>`;
+            const [lx, ly] = punto(medio, R + 14).map(Number);
+            const ancla = Math.cos(medio) > 0.3 ? "start" : Math.cos(medio) < -0.3 ? "end" : "middle";
+            const y = Math.sin(medio) < -0.5 ? ly - 12 : Math.sin(medio) > 0.5 ? ly + 6 : ly - 3;
+            return `<path class="fondo" d="${porcion(a0, a1, R)}"/>
+                <path d="${porcion(a0, a1, r)}" fill="rgba(${tono.join(",")},${brillo})"><title>${esc(e.nombre)}: ${e.puntaje} · ${esc(e.texto)}</title></path>
+                <text class="nombre" x="${lx}" y="${y.toFixed(1)}" text-anchor="${ancla}">${esc(e.corto)}</text>
+                <text class="puntaje" x="${lx}" y="${(y + 15).toFixed(1)}" text-anchor="${ancla}">${e.puntaje}</text>`;
         }).join("");
-        return `<svg class="ecualizador" viewBox="0 0 ${W} 146" role="img" aria-label="${esc(titulo)}"><title>${esc(titulo)}</title>
-            <line class="guia" x1="4" y1="${base - alto / 2}" x2="${W - 4}" y2="${base - alto / 2}"/>${columnas}</svg>`;
+        return `<svg class="rueda" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(titulo)}"><title>${esc(titulo)}</title>
+            ${partes}<circle class="guia" cx="${cx}" cy="${cy}" r="${R / 2}"/></svg>`;
     }
 
     /** Estado de los partidos: una barra por estado. */
@@ -207,5 +214,5 @@ const DtFichas = (() => {
                 <text class="eje" x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle">${meses[i].etiqueta}</text>`).join("")}</svg>`;
     }
 
-    return {calcular, dashboard, ecualizador, barrasEstado, lineaMeses};
+    return {calcular, dashboard, rueda, barrasEstado, lineaMeses};
 })();
