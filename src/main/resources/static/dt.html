@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b1220">
     <title>Planilla DT · RinkMetrics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,50 +11,142 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/css/app.css">
 </head>
-<body>
+<body class="dt-page">
 <div class="wrap">
     <div class="topbar">
         <div id="brand"></div>
         <div class="userbar" id="userbar"></div>
     </div>
 
-    <section class="hero">
-        <span class="tag">Planilla DT</span>
-        <h1>Cada acción,<br><em>en vivo.</em></h1>
-        <p class="lead">Pérdidas, recuperaciones, tiros, atajadas, pelota parada, faltas y tarjetas de cada jugador,
-            cargadas desde el celular durante el partido.</p>
+    <!-- Elegir el partido (y la lista de partidos cargados) -->
+    <section id="v-elegir">
+        <section class="hero">
+            <span class="tag">Planilla DT</span>
+            <h1>Cada acción,<br><em>en vivo.</em></h1>
+            <p class="lead">Elegí el partido, iniciá el reloj y cargá cada acción con dos toques: el jugador y la acción.
+                Si se corta la señal, lo cargado queda en el teléfono y se manda cuando vuelve.</p>
+        </section>
+
+        <div class="sheet">
+            <div class="sheet-head"><span>Nuevo partido</span><span id="cupo"></span></div>
+            <div class="field" id="f-equipo" hidden>
+                <label for="equipo">Equipo</label>
+                <select id="equipo"></select>
+            </div>
+            <div class="field">
+                <label for="rival">Rival</label>
+                <select id="rival" disabled><option>Cargando el calendario…</option></select>
+                <p class="hint" id="rival-hint"></p>
+            </div>
+            <div id="f-amistoso" hidden>
+                <div class="field">
+                    <label for="am-rival">Rival del amistoso</label>
+                    <input type="text" id="am-rival" maxlength="80" autocomplete="off" placeholder="Nombre del rival">
+                </div>
+                <div class="grid2">
+                    <div class="field">
+                        <label for="am-fecha">Fecha</label>
+                        <input type="date" id="am-fecha">
+                    </div>
+                    <div class="field">
+                        <label for="am-local">Condición</label>
+                        <select id="am-local"><option value="true">Local</option><option value="false">Visitante</option></select>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="go" id="crear" disabled>Cargar partido</button>
+            <div id="status"></div>
+        </div>
+
+        <div class="sheet dt-mis">
+            <div class="sheet-head"><span>Tus partidos</span><span id="mis-n"></span></div>
+            <ul class="dt-lista" id="mis"><li class="dt-vacio">Cargando…</li></ul>
+        </div>
     </section>
 
-    <div class="sheet">
-        <div class="sheet-head"><span>Tus equipos</span><span id="cupo"></span></div>
-        <ul class="dt-teams" id="equipos"><li>Cargando…</li></ul>
-        <p class="hint">Próximamente: elegí el rival del calendario de tu equipo y empezá a cargar el partido.</p>
-    </div>
+    <!-- Partido en vivo -->
+    <section id="v-partido" hidden>
+        <header class="dt-board" aria-label="Marcador y reloj">
+            <div class="dt-score">
+                <div class="dt-team"><b id="m-propio"></b><span id="m-propio-sub"></span></div>
+                <div class="dt-goals" aria-live="polite"><span id="m-gf">0</span><i>-</i><span id="m-gc">0</span></div>
+                <div class="dt-team rival"><b id="m-rival"></b><span id="m-rival-sub"></span></div>
+            </div>
+            <div class="dt-clockrow">
+                <span class="dt-period" id="m-tiempo">1T</span>
+                <span class="dt-clock" id="m-reloj" role="timer">25:00</span>
+                <span id="m-botones" class="dt-clockbtns"></span>
+            </div>
+            <div class="dt-adjust" id="m-ajuste" hidden>
+                <span>Ajustar</span>
+                <button type="button" data-aj="60" aria-label="Restar un minuto al reloj">−1′</button>
+                <button type="button" data-aj="10" aria-label="Restar 10 segundos al reloj">−10″</button>
+                <button type="button" data-aj="-10" aria-label="Sumar 10 segundos al reloj">+10″</button>
+                <button type="button" data-aj="-60" aria-label="Sumar un minuto al reloj">+1′</button>
+            </div>
+            <div class="dt-sync" id="m-sync" aria-live="polite"></div>
+            <div class="dt-aviso" id="m-aviso" role="alert" hidden></div>
+        </header>
 
-    <footer><b>RinkMetrics</b> · Informes elaborados por RinkMetrics. Fuente de los datos: Federación Porteña de Patín
-        (FPP) y Asociación Mendocina de Patín (AMP), en SIDGAD.</footer>
+        <div class="dt-tabs" role="tablist" aria-label="Secciones">
+            <button type="button" role="tab" id="t-cargar" aria-selected="true">Cargar</button>
+            <button type="button" role="tab" id="t-resumen" aria-selected="false">Resumen</button>
+            <button type="button" role="tab" id="t-partidos" aria-selected="false">Partidos</button>
+        </div>
+
+        <section id="p-cargar" class="dt-col">
+            <div class="dt-group">
+                <div class="dt-line"><span class="dt-eyebrow">1 · Jugador</span>
+                    <button type="button" class="dt-link" id="agregar-j">+ Agregar jugador</button></div>
+                <form class="dt-nuevo" id="nuevo-j" hidden>
+                    <input type="text" id="nj-num" inputmode="numeric" maxlength="3" placeholder="N°" aria-label="Número">
+                    <input type="text" id="nj-nombre" maxlength="60" placeholder="Nombre y apellido" aria-label="Nombre y apellido">
+                    <button type="submit">Agregar</button>
+                </form>
+                <div class="dt-players" id="jugadores"></div>
+                <div class="dt-line"><span>Seleccionado: <b id="sel">—</b></span>
+                    <button type="button" class="dt-link" id="cambiar-ar">Arquero en cancha: <b id="ar">—</b></button></div>
+            </div>
+
+            <div class="dt-group">
+                <span class="dt-eyebrow">2 · Acción</span>
+                <h3 class="dt-eyebrow ink">Posesión</h3>
+                <div class="dt-row" id="g-posesion"></div>
+                <h3 class="dt-eyebrow ink">Tiros y arco</h3>
+                <div class="dt-row" id="g-arco"></div>
+                <h3 class="dt-eyebrow ink">Pelota parada</h3>
+                <div class="dt-row" id="g-parada"></div>
+                <h3 class="dt-eyebrow ink">Faltas</h3>
+                <div class="dt-row" id="g-faltas"></div>
+                <h3 class="dt-eyebrow ink">Tarjetas</h3>
+                <div class="dt-row three" id="g-tarjetas"></div>
+                <p class="dt-note">Las acciones del arco (atajada, gol recibido, libre y penal en contra) se cargan al
+                    arquero en cancha, aunque haya otro jugador seleccionado.</p>
+            </div>
+
+            <div class="dt-group">
+                <span class="dt-eyebrow">Últimas acciones</span>
+                <ul class="dt-log" id="log"></ul>
+            </div>
+        </section>
+
+        <section id="p-resumen" class="dt-col" hidden>
+            <div class="dt-kpis" id="kpis"></div>
+            <div class="dt-tablewrap"><table class="dt-table" id="resumen"></table></div>
+            <p class="dt-note">Pérd. y Rec. P / R: en campo propio / rival. Tiros, libres y penales: convertidos / total.
+                Atajadas incluye libres y penales atajados.</p>
+            <div id="cierre"></div>
+        </section>
+    </section>
+
+    <footer><b>RinkMetrics</b> · Calendario y planteles: Federación Porteña de Patín (FPP) y Asociación Mendocina de
+        Patín (AMP), en SIDGAD.</footer>
 </div>
 
-<script src="/js/app.js"></script>
-<script>
-    $("brand").outerHTML = BRAND;
+<div class="dt-toast" id="toast" role="status" hidden><span id="toast-txt"></span><button type="button" id="toast-undo">Deshacer</button></div>
 
-    requireProfile(["DTFPP", "DTAMP"]).then(s => {
-        if (!s) return;
-        const ul = $("equipos");
-        ul.replaceChildren();
-        for (const e of s.equipos) {
-            const li = document.createElement("li");
-            const b = document.createElement("b");
-            b.textContent = e.nombre;
-            li.append(b, ` · ${s.club.nombre} (${s.federacion})`);
-            ul.append(li);
-        }
-        if (s.suscripcion && s.suscripcion.partidosPorMes) {
-            $("cupo").textContent = `${s.suscripcion.nombre}: hasta ${s.suscripcion.equiposMax} equipos y `
-                + `${s.suscripcion.partidosPorMes} partidos por mes`;
-        }
-    });
-</script>
+<script src="/js/app.js"></script>
+<script src="/js/dt-cola.js"></script>
+<script src="/js/dt.js"></script>
 </body>
 </html>
