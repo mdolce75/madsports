@@ -5,6 +5,7 @@ import com.rinkmetrics.catalog.CatalogService.ClubView;
 import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.player.RosterService;
 import com.rinkmetrics.player.RosterService.RosterPlayer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,9 +52,13 @@ public class RegistroService {
     private final RosterService roster;
     private final PasswordEncoder encoder;
     private final Clock clock;
+    /** ¿Se pueden crear cuentas de Informes (Club y Jugador)? Por ahora no: solo de Métricas DT. */
+    private final boolean altaInformes;
 
     public RegistroService(UsuarioRepository usuarios, SuscripcionTypeRepository planes, CatalogService catalog,
-                           RosterService roster, PasswordEncoder encoder, Clock clock) {
+                           RosterService roster, PasswordEncoder encoder, Clock clock,
+                           @Value("${rinkmetrics.registro.informes:false}") boolean altaInformes) {
+        this.altaInformes = altaInformes;
         this.usuarios = usuarios;
         this.planes = planes;
         this.catalog = catalog;
@@ -66,6 +71,10 @@ public class RegistroService {
     public Usuario registrar(Registro r) {
         if (r.perfil() == null || !r.perfil().registrable()) {
             throw new IllegalArgumentException("Elegí el perfil: Club, Jugador o DT, de la FPP o de la AMP.");
+        }
+        if (!r.perfil().dt() && !altaInformes) {
+            throw new IllegalArgumentException("Las cuentas de Informes (Club y Jugador) estarán disponibles "
+                    + "próximamente. Por ahora podés crear tu cuenta de Métricas DT.");
         }
         String usuario = r.usuario().trim().toLowerCase(Locale.ROOT);
         String email = r.email().trim();
