@@ -18,7 +18,7 @@ public enum Perfil {
         return name().startsWith("PLAYER");
     }
 
-    /** DT: carga estadísticas en vivo de sus equipos (planilla DT). */
+    /** DT: carga estadísticas en vivo de sus equipos (Métricas DT). */
     public boolean dt() {
         return name().startsWith("DT");
     }

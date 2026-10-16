@@ -85,13 +85,13 @@
         const go = document.createElement("a");
         go.className = "btn primary";
         go.href = s.inicio;
-        go.textContent = s.inicio === "/dt.html" ? "Mi planilla" : "Mis informes";
+        go.textContent = s.inicio === "/dt.html" ? "Mis métricas DT" : "Mis informes";
         $("userbar").prepend(go);
         for (const cta of document.querySelectorAll("[data-cta]")) {
             const link = document.createElement("a");
             link.className = "go-link";
             link.href = s.inicio;
-            link.textContent = s.inicio === "/dt.html" ? "Ir a mi planilla" : "Ir a mis informes";
+            link.textContent = s.inicio === "/dt.html" ? "Ir a Métricas DT" : "Ir a mis informes";
             cta.replaceChildren(link);
         }
     });

@@ -43,7 +43,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 |---|---|
 | 🏒 **Informe de equipo** | Resultados, posiciones, goleadores (sin arqueros), pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
 | 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, más fortalezas y debilidades contra sus compañeros. Cuenta también los partidos sin acta publicada. |
-| 📋 **Planilla DT** | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido, aunque se corte la señal. |
+| 📋 **Métricas DT** | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido, aunque se corte la señal. |
 | ⏱️ **Minuto a minuto** | Goles, tarjetas y faltas por tramos de 5′, cómo iba el partido en cada tramo y goles recibidos con uno menos. |
 | 📊 **Gráficos** | Barras y donas en cada PDF, con el escudo del club en la cabecera. |
 | 🔐 **Usuarios** | Registro con perfil Club, Jugador o DT de la FPP o de la AMP, confirmación del email, recuperación de clave y un plan mensual con precio en pesos. |
@@ -216,7 +216,7 @@ los demás. La federación del
 perfil decide de dónde salen los clubes, las categorías, los jugadores y los informes (que dicen FPP o AMP).
 
 - **Dos secciones:** la portada (`/`) presenta **Informes** (`/informes.html`: perfiles Club y Jugador, informes de
-  ejemplo) y **DT** (`/dt-inicio.html`: la planilla en vivo y su plan). El menú "Informes / DT" está arriba en todas
+  ejemplo) y **DT** (`/dt-inicio.html`: Métricas DT, las estadísticas en vivo, y su plan). El menú "Informes / DT" está arriba en todas
   las páginas. Cada sección tiene su registro: `/registro.html?seccion=informes` ofrece Club o Jugador y
   `/registro.html?seccion=dt`, solo DT. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
@@ -224,10 +224,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
-- **DT** (planilla en vivo): elige uno o dos equipos de su club (categoría con su letra y rama),
-  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la planilla. Su plan
+- **DT** (Métricas DT, en vivo): elige uno o dos equipos de su club (categoría con su letra y rama),
+  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la pantalla de Métricas DT. Su plan
   (`DT_MENSUAL`) permite 2 equipos y 20 partidos por mes (`equipos_max`, `partidos_por_mes` en `suscripcion_type`).
-- **Planilla DT (servidor):** el DT elige el rival de un combo con los equipos de los demás clubes que juegan su
+- **Métricas DT (servidor):** el DT elige el rival de un combo con los equipos de los demás clubes que juegan su
   categoría y rama en la federación (si un club tiene A y B, van los dos), o lo escribe; y la fecha y si es local o
   visitante. El mismo rival en la misma fecha retoma el partido en vez de crear otro. Cada partido nuevo cuenta para
   el cupo del mes de suscripción (suscripto el 15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a
@@ -236,7 +236,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
   las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
-- **Planilla DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
+- **Métricas DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
   la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
   columna) y entra entera en la pantalla, sin bajar.
   - **Partidos:** combo de rivales (o "Otro", escrito a mano), fecha y local / visitante, y la lista de partidos
@@ -250,7 +250,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   - **Resumen:** por jugador y del equipo, y el cierre del partido (o reabrirlo).
   - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt-cola.js`) y se
     mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
-    (`dt-sw.js`) guarda la última copia de la página y de los datos, así la planilla abre aunque se recargue sin
+    (`dt-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin
     señal. El reloj (iniciar, pausar, fin del tiempo) y el cierre sí necesitan conexión.
 - **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
   ingresar: el login avisa y ofrece reenviar el mail.
@@ -398,7 +398,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
   `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
 - `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
-- Planilla DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
+- Métricas DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
   - `GET /api/dt/rivales?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`clubId`, `nombre`: "GEBA B")
   - `GET /api/dt/plantel?categoria=&rama=`: jugadores con número y `arquero`
   - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false}`
