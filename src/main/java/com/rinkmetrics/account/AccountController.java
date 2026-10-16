@@ -62,18 +62,15 @@ public class AccountController {
     }
 
     /**
-     * Un plan para mostrar en el registro, con el precio en pesos al tipo de cambio del día.
+     * El plan mensual para mostrar en el registro, con el precio en pesos al tipo de cambio del día.
      *
-     * @param precio          precio del plan completo, en pesos (redondeado a centenas)
-     * @param precioPorMes    precio equivalente por mes, en pesos
-     * @param precioUsd       precio base del plan, en dólares
-     * @param ahorroPct       cuánto más barato es que pagar el mensual esos meses (0 en el mensual)
-     * @param dolar           pesos por dólar con que se convirtió (oficial BNA, venta)
-     * @param dolarFecha      día de esa cotización
+     * @param precio     precio por mes, en pesos (redondeado hacia abajo a centenas)
+     * @param precioUsd  precio base, en dólares
+     * @param dolar      pesos por dólar con que se convirtió (oficial BNA, venta)
+     * @param dolarFecha día de esa cotización
      */
-    public record PlanView(String codigo, String nombre, int meses, BigDecimal precio, BigDecimal precioPorMes,
-                           BigDecimal precioUsd, int informesPorMes, int ahorroPct, BigDecimal dolar,
-                           LocalDate dolarFecha, int equiposMax, int partidosPorMes) {
+    public record PlanView(String codigo, String nombre, BigDecimal precio, BigDecimal precioUsd, int informesPorMes,
+                           BigDecimal dolar, LocalDate dolarFecha, int equiposMax, int partidosPorMes) {
     }
 
     /**
@@ -116,22 +113,15 @@ public class AccountController {
         this.catalog = catalog;
     }
 
-    /**
-     * Planes de suscripción del perfil (CLUBFPP o PLAYERFPP), del mensual al anual, con su ahorro y el precio en
-     * pesos al dólar oficial del día.
-     */
+    /** El plan mensual del perfil (CLUBFPP, PLAYERAMP, DTFPP...), con el precio en pesos al dólar oficial del día. */
     @GetMapping("/suscripciones")
     public List<PlanView> planes(@RequestParam Perfil perfil) {
-        List<SuscripcionType> lista = planes.findByTipoUsuarioOrderByMeses(perfil.tipoUsuario());
-        SuscripcionType mensual = lista.stream().filter(p -> p.getMeses() == 1).findFirst().orElse(null);
         Cotizacion.Valor dolar = cotizacion.actual();
-        return lista.stream().map(p -> {
-            BigDecimal precio = Cotizacion.enPesos(p.getPrecioUsd(), dolar);
-            BigDecimal porMes = Cotizacion.enPesos(p.precioPorMes(), dolar);
-            return new PlanView(p.getCodigo(), p.getNombre(), p.getMeses(), precio, porMes, p.getPrecioUsd(),
-                    p.getInformesPorMes(), mensual == null ? 0 : p.ahorroPct(mensual), dolar.pesosPorDolar(),
-                    dolar.fecha(), p.getEquiposMax(), p.getPartidosPorMes());
-        }).toList();
+        return planes.findByTipoUsuario(perfil.tipoUsuario()).stream()
+                .map(p -> new PlanView(p.getCodigo(), p.getNombre(), Cotizacion.enPesos(p.getPrecioUsd(), dolar),
+                        p.getPrecioUsd(), p.getInformesPorMes(), dolar.pesosPorDolar(), dolar.fecha(),
+                        p.getEquiposMax(), p.getPartidosPorMes()))
+                .toList();
     }
 
     /** Alta: la cuenta queda sin confirmar y se manda el mail con el enlace para confirmarla. */

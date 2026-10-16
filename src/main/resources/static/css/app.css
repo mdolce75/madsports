@@ -189,13 +189,6 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
               border-left: 3px solid var(--accent); font-weight: 600; font-size: .85rem; }
 .plans .plan ul { margin: 6px 0 0; padding-left: 16px; color: var(--muted); font-size: .8rem; }
 .plans .plan li { margin: 2px 0; }
-/* Cintillo diagonal con el ahorro */
-.plans .ribbon { position: absolute; top: 30px; right: -48px; width: 190px; transform: rotate(45deg);
-          background: var(--lime); color: #12180a; text-align: center; padding: 3px 0;
-          font: 700 .66rem/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
-/* Lugar para el cintillo: el contenido no pasa por debajo */
-.plans .plan .plan-name, .plans .plan .plan-price { padding-right: 34px; }
 @media (max-width: 480px) { .plans { grid-template-columns: 1fr; } }
 
 /* Planilla DT: equipos del DT */

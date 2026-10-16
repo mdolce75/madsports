@@ -237,7 +237,6 @@
     // "$ 45.900": pesos sin centavos (vienen redondeados hacia abajo a centenas).
     const pesos = n => "$ " + Number(n).toLocaleString("es-AR", {maximumFractionDigits: 0});
     const fecha = iso => iso ? iso.split("-").reverse().join("/") : "";
-    const plazo = meses => meses === 1 ? "por mes" : `por ${meses} meses`;
 
     // Planes del perfil elegido: una cajita por plan, con su cintillo de ahorro.
     async function loadPlans() {
@@ -257,7 +256,6 @@
                 const card = document.createElement("label");
                 card.className = "plan";
                 card.innerHTML = `<input type="radio" name="plan">
-                    ${plan.ahorroPct > 0 ? '<span class="ribbon"></span>' : ""}
                     <span class="plan-name"></span>
                     <span class="plan-price"><b></b> <small></small></span>
                     <span class="plan-month"></span>
@@ -265,12 +263,10 @@
                     <ul></ul>`;
                 card.querySelector("input").value = plan.codigo;
                 card.querySelector("input").checked = i === 0;
-                if (plan.ahorroPct > 0) card.querySelector(".ribbon").textContent = `${plan.ahorroPct}% más barato`;
                 card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador|DT) /, "");
                 card.querySelector(".plan-price b").textContent = pesos(plan.precio);
-                card.querySelector(".plan-price small").textContent = plazo(plan.meses);
-                card.querySelector(".plan-month").textContent = plan.meses === 1 ? "Sin permanencia"
-                    : `Equivale a ${pesos(plan.precioPorMes)} por mes`;
+                card.querySelector(".plan-price small").textContent = "por mes";
+                card.querySelector(".plan-month").textContent = "Sin permanencia";
                 card.querySelector(".plan-quota").textContent = plan.partidosPorMes > 0
                     ? `Hasta ${plan.equiposMax} equipos y ${plan.partidosPorMes} partidos por mes`
                     : `Hasta ${plan.informesPorMes} informes por mes`;

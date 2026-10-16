@@ -249,7 +249,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 26px 40px; display: f
             <div class="price"><span class="eyebrow">Jugador</span><b id="precio-jugador">—</b><span>por mes · hasta 4 informes</span></div>
             <div class="price"><span class="eyebrow">Club</span><b id="precio-club">—</b><span>por mes · hasta 8 informes</span></div>
           </div>
-          <span class="eyebrow">Planes trimestrales, semestrales y anuales con hasta 22% de descuento</span>
+          <span class="eyebrow">Plan mensual, sin permanencia</span>
           <a class="btn primary" href="/registro.html">Elegí tu plan</a>
         </div>
       </div>
@@ -369,7 +369,7 @@ for (const [perfil, id] of [["PLAYERFPP", "precio-jugador"], ["CLUBFPP", "precio
   fetch("/api/suscripciones?perfil=" + perfil)
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(planes => {
-      const mensual = planes.find(p => p.meses === 1);
+      const mensual = planes[0];
       if (mensual) document.getElementById(id).textContent = "$ " + Number(mensual.precio).toLocaleString("es-AR");
     })
     .catch(() => { document.getElementById(id).textContent = "Ver planes"; });

@@ -9,6 +9,6 @@ public interface SuscripcionTypeRepository extends JpaRepository<SuscripcionType
 
     Optional<SuscripcionType> findByCodigo(String codigo);
 
-    /** Planes de un tipo de usuario (PLAYER o CLUB), del más corto al más largo. */
-    List<SuscripcionType> findByTipoUsuarioOrderByMeses(String tipoUsuario);
+    /** El plan mensual de un tipo de usuario (PLAYER, CLUB o DT). */
+    List<SuscripcionType> findByTipoUsuario(String tipoUsuario);
 }
