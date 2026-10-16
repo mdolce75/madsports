@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 /**
  * Plan de suscripción mensual (tabla {@code suscripcion_type}): PLAYER_MENSUAL, CLUB_MENSUAL, y para el DT,
- * DT_FREE (sin costo, 1 equipo y 6 partidos por mes) o DT_MENSUAL.
+ * DT_FREE (sin costo, 1 equipo y partidos sin límite, hasta el 31/12/2026) o DT_MENSUAL.
  */
 @Entity
 @Table(name = "suscripcion_type")
@@ -32,8 +32,10 @@ public class SuscripcionType {
     private int informesPorMes;
     /** DT: equipos que puede tener (0 en los demás planes). */
     private int equiposMax;
-    /** DT: partidos que puede empezar a cargar por mes (0 en los demás planes). */
+    /** DT: partidos que puede empezar a cargar por mes; 0 = sin límite (y en los planes que no son de DT). */
     private int partidosPorMes;
+    /** Último día de un plan con fecha fija de fin (el DT free); null en los mensuales, que se renuevan. */
+    private LocalDate vigenteHasta;
 
     protected SuscripcionType() {
     }
@@ -65,9 +67,14 @@ public class SuscripcionType {
         };
     }
 
-    /** Último día de una suscripción de este tipo que empieza en {@code desde}. */
+    /** Último día de una suscripción de este tipo que empieza en {@code desde} (el del plan, si tiene fecha fija). */
     public LocalDate hasta(LocalDate desde) {
-        return desde.plusMonths(1).minusDays(1);
+        return vigenteHasta != null ? vigenteHasta : desde.plusMonths(1).minusDays(1);
+    }
+
+    /** ¿Se puede usar (y contratar) el {@code dia}? Los planes con fecha fija terminan en su {@link #vigenteHasta}. */
+    public boolean vigente(LocalDate dia) {
+        return vigenteHasta == null || !dia.isAfter(vigenteHasta);
     }
 
     public Long getId() { return id; }
@@ -78,4 +85,5 @@ public class SuscripcionType {
     public int getInformesPorMes() { return informesPorMes; }
     public int getEquiposMax() { return equiposMax; }
     public int getPartidosPorMes() { return partidosPorMes; }
+    public LocalDate getVigenteHasta() { return vigenteHasta; }
 }

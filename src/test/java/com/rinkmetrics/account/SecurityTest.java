@@ -429,7 +429,9 @@ class SecurityTest {
                 .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("DT_FREE", "DT_MENSUAL")))
                 .andExpect(jsonPath("$[0].precio").value(0))
                 .andExpect(jsonPath("$[0].equiposMax").value(1))
-                .andExpect(jsonPath("$[0].partidosPorMes").value(6))
+                .andExpect(jsonPath("$[0].partidosPorMes").value(0))   // sin límite
+                .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
+                .andExpect(jsonPath("$[1].vigenteHasta").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$[1].equiposMax").value(2))
                 .andExpect(jsonPath("$[1].partidosPorMes").value(20))
                 // USD 12, en pesos al dólar de respaldo de los tests ($ 1.500).
@@ -450,7 +452,8 @@ class SecurityTest {
         register(uno).andExpect(status().isCreated());
         Usuario u = usuarios.findByUsuario("dt.free").orElseThrow();
         assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_FREE");
-        assertThat(u.getSuscripcionType().getPartidosPorMes()).isEqualTo(6);
+        // Vence el 31/12/2026, no al mes.
+        assertThat(u.getSuscripcionHasta()).isEqualTo(java.time.LocalDate.of(2026, 12, 31));
     }
 
     @Test

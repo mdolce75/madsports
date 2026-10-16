@@ -98,11 +98,12 @@
             precio.querySelector("small").textContent = gratis ? "" : "por mes";
             const cupo = document.createElement("span");
             cupo.className = "plan-quota";
-            cupo.textContent = `${p.equiposMax === 1 ? "1 equipo" : "Hasta " + p.equiposMax + " equipos"} y `
-                + `${p.partidosPorMes} partidos por mes`;
+            cupo.textContent = `${p.equiposMax === 1 ? "1 equipo" : "Hasta " + p.equiposMax + " equipos"}`
+                + (p.partidosPorMes > 0 ? ` y ${p.partidosPorMes} partidos por mes` : ", partidos sin límite");
             const nota = document.createElement("span");
             nota.className = "plan-month";
-            nota.textContent = gratis ? "Para empezar, sin costo." : "Mensual, sin permanencia. En pesos al dólar oficial del día.";
+            nota.textContent = p.vigenteHasta ? "Sin costo hasta el " + p.vigenteHasta.split("-").reverse().join("/") + "."
+                : "Mensual, sin permanencia. En pesos al dólar oficial del día.";
             card.append(nombre, precio, cupo, nota);
             box.append(card);
         }

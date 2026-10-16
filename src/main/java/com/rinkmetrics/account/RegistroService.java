@@ -107,6 +107,9 @@ public class RegistroService {
         if (!plan.paraPerfil(r.perfil())) {
             throw new IllegalArgumentException("El plan " + plan.getNombre() + " es para " + plan.destinatarios() + ".");
         }
+        if (!plan.vigente(LocalDate.now(clock))) {
+            throw new IllegalArgumentException("El plan " + plan.getNombre() + " ya no está disponible.");
+        }
         return plan;
     }
 

@@ -293,9 +293,11 @@
                 const gratis = Number(plan.precio) === 0;
                 card.querySelector(".plan-price b").textContent = gratis ? "Gratis" : pesos(plan.precio);
                 card.querySelector(".plan-price small").textContent = gratis ? "" : "por mes";
-                card.querySelector(".plan-month").textContent = "Sin permanencia";
+                card.querySelector(".plan-month").textContent = plan.vigenteHasta
+                    ? "Hasta el " + fecha(plan.vigenteHasta) : "Sin permanencia";
                 card.querySelector(".plan-quota").textContent = plan.partidosPorMes > 0
                     ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"} y ${plan.partidosPorMes} partidos por mes`
+                    : plan.equiposMax > 0 ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"}, partidos sin límite`
                     : `Hasta ${plan.informesPorMes} informes por mes`;
                 const ul = card.querySelector("ul");
                 BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("DT") ? "DT" : "CLUB"].forEach(b => {

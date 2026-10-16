@@ -269,12 +269,18 @@ class DtControllerTest {
     }
 
     @Test
-    void elPlanFreeTieneSeisPartidosPorMes() throws Exception {
+    void elPlanFreeNoTieneLimiteDePartidosHastaFinDe2026() throws Exception {
         dt("gratis", "DT_FREE");
-        for (int i = 0; i < 6; i++) {
+        // Más que los 20 del plan mensual: el free no tiene límite.
+        for (int i = 0; i < 25; i++) {
             enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Rival " + i)).andExpect(status().isCreated());
         }
-        enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Uno más")).andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Ya cargaste los 6 partidos de este mes. El cupo se renueva el 15/11."));
+        // El 31/12/2026 todavía vale; el 1/1/2027 ya no se pueden empezar partidos.
+        reloj.ahora = Instant.parse("2026-12-31T20:00:00Z");
+        enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Fin de año")).andExpect(status().isCreated());
+        reloj.ahora = Instant.parse("2027-01-01T13:00:00Z");
+        enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Año nuevo")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Tu plan DT free terminó el 31/12/2026. Pasate al plan mensual "
+                        + "para seguir cargando partidos."));
     }
 }
