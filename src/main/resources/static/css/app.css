@@ -1,6 +1,7 @@
 /* Paleta "petróleo y teal": fondo gris azulado (no blanco), tarjetas apenas más claras, tableros (marcador de la
-   planilla, encabezado de los formularios) en petróleo oscuro con texto claro. Teal como color principal y coral como
-   acento (los títulos van en degradé de uno al otro). Verde, amarillo y rojo solo para estados. */
+   planilla, encabezado de los formularios) en petróleo oscuro con texto claro. Azul petróleo claro (el celeste de la
+   marca, más oscuro para que el texto blanco se lea) como color principal y verde lima, como un marcador de estadio,
+   sobre los tableros. Verde, amarillo y rojo solo para estados. */
 :root {
     color-scheme: light;
     --bg: #e6ecef;
@@ -11,14 +12,15 @@
     --ink: #0f1d23;
     --ink-2: #33464e;
     --muted: #5b6b73;
-    --accent: #0d968b;      /* teal: botón principal, selección, enlaces */
+    --accent: #0a7ea4;      /* azul petróleo claro: botón principal, selección, enlaces */
     --accent-ink: #ffffff;
-    --accent-soft: rgba(13, 150, 139, .1);
-    --coral: #ff6666;       /* acento del degradé de los títulos */
+    --accent-soft: rgba(10, 126, 164, .11);
+    --brand: #22b8f0;       /* celeste de la marca: logo */
+    --lime: #bef264;        /* verde lima: lo que se destaca sobre los tableros oscuros */
     --dark: #12303a;        /* petróleo: tableros y títulos */
     --on-dark: #ffffff;
     --on-dark-muted: #a9c1c9;
-    --accent-on-dark: #5eead4;
+    --accent-on-dark: #7dd3fc;
     --good: #16a34a;        /* listo, a favor, recuperaciones */
     --warn: #ca8a04;
     --err: #dc2626;         /* error, en contra, pérdidas */
@@ -34,8 +36,8 @@ html { background: var(--bg); }
 body {
     margin: 0; min-height: 100vh; color: var(--ink); font: 16px/1.55 var(--body);
     background:
-        radial-gradient(1200px 500px at 85% -10%, rgba(13, 150, 139, .08), transparent 60%),
-        radial-gradient(900px 500px at -10% 110%, rgba(255, 102, 102, .07), transparent 60%),
+        radial-gradient(1200px 500px at 85% -10%, rgba(34, 184, 240, .10), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(190, 242, 100, .10), transparent 60%),
         var(--bg);
 }
 /* Pista de hockey sobre patines, apenas marcada, de fondo */
@@ -59,10 +61,7 @@ body::before {
 h1 { margin: 12px 0 10px; font: 700 clamp(2.3rem, 9vw, 3.6rem)/1.05 var(--display); text-transform: uppercase;
      letter-spacing: .01em; }
 h1 { color: var(--dark); }
-h1 em { font-style: normal; color: var(--accent);
-        background: linear-gradient(90deg, var(--accent), var(--coral)); -webkit-background-clip: text;
-        background-clip: text; -webkit-text-fill-color: transparent;
-        padding: .14em 0 .04em; }   /* el degradé cubre también las tildes */
+h1 em { font-style: normal; color: var(--accent); }
 .lead { margin: 0; color: var(--muted); max-width: 520px; }
 
 /* Marcador de características */
@@ -86,7 +85,7 @@ h1 em { font-style: normal; color: var(--accent);
        background: var(--accent); color: var(--accent-ink); font: 700 .85rem/1 var(--display); letter-spacing: 0; }
 .num > i { font-style: normal; }
 select { width: 100%; appearance: none; -webkit-appearance: none; padding: 12px 40px 12px 14px;
-         background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230d968b' stroke-width='2' fill='none'/%3E%3C/svg%3E") right 14px center / 12px no-repeat;
+         background: var(--field) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230a7ea4' stroke-width='2' fill='none'/%3E%3C/svg%3E") right 14px center / 12px no-repeat;
          color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-sm);
          font: 600 1.02rem/1.3 var(--body); }
 select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
@@ -102,7 +101,7 @@ select option { background: var(--field); color: var(--ink); }
 button.go { position: relative; width: 100%; margin-top: 24px; padding: 15px 18px; border: 0; cursor: pointer;
             background: var(--accent); color: var(--accent-ink);
             font: 700 1.25rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase;
-            border-radius: var(--radius); box-shadow: 0 4px 12px rgba(13, 150, 139, .25);
+            border-radius: var(--radius); box-shadow: 0 4px 12px rgba(10, 126, 164, .25);
             transition: transform .12s ease, filter .12s ease; }
 button.go:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
 button.go:disabled { opacity: .45; cursor: not-allowed; }
@@ -188,7 +187,7 @@ input[readonly] { background: transparent; border-style: dashed; color: var(--in
 .cta { margin-top: 26px; text-align: center; }
 .go-link { display: block; padding: 15px 18px; background: var(--accent); color: var(--accent-ink); text-decoration: none;
            font: 700 1.25rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase;
-           border-radius: var(--radius); box-shadow: 0 4px 12px rgba(13, 150, 139, .25); }
+           border-radius: var(--radius); box-shadow: 0 4px 12px rgba(10, 126, 164, .25); }
 .go-link:hover { filter: brightness(1.06); }
 .go-link::after { content: " ►"; font-size: .85em; }
 @media (max-width: 560px) { .examples { grid-template-columns: 1fr; } }
@@ -350,7 +349,7 @@ input[type=date] { color-scheme: light; }
 .dt-toast { position: fixed; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 10; margin-inline: auto;
             display: flex; align-items: center; gap: 14px; width: fit-content; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px;
             background: var(--ink); color: var(--bg); box-shadow: 0 6px 24px rgba(0, 0, 0, .45); font-size: .85rem; font-weight: 600; }
-.dt-toast button { padding: 4px 0; border: 0; background: none; color: #5eead4; cursor: pointer; font: 700 .85rem/1 var(--body); }
+.dt-toast button { padding: 4px 0; border: 0; background: none; color: var(--lime); cursor: pointer; font: 700 .85rem/1 var(--body); }
 @media (prefers-reduced-motion: reduce) { .dt-act, .dt-act:active, .dt-pair button:active, .dt-player:active { transition: none; transform: none; } }
 
 /* ---- Planilla DT en tablet y web: con el partido abierto la página usa todo el ancho y la carga va en columnas
@@ -410,13 +409,13 @@ input[type=date] { color-scheme: light; }
 .dt-board .dt-team span, .dt-board .dt-goals i, .dt-board .dt-adjust, .dt-board .dt-sync { color: var(--on-dark-muted); }
 .dt-board .dt-period { border-color: rgba(255, 255, 255, .25); color: var(--on-dark-muted); }
 .dt-board .dt-clock { color: var(--on-dark-muted); }
-.dt-board .dt-clock.on { color: var(--accent-on-dark); }
+.dt-board .dt-clock.on { color: var(--lime); }
 .dt-board .dt-play.on, .dt-board .dt-play.ghost { background: rgba(255, 255, 255, .08); color: var(--on-dark);
                                                   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
 .dt-board .dt-adjust button { background: rgba(255, 255, 255, .08); color: var(--on-dark); border-color: rgba(255, 255, 255, .25); }
 .dt-board .dt-sync.pend { color: var(--accent-on-dark); }
 .dt-board .dt-sync.off { color: #fcd34d; }
-.dt-board .dt-aviso { background: rgba(255, 102, 102, .18); border-left-color: var(--coral); color: #ffd4d4; }
+.dt-board .dt-aviso { background: rgba(251, 191, 36, .16); border-left-color: #fbbf24; color: #fde68a; }
 .dt-board :focus-visible { outline-color: var(--accent-on-dark); }
 
 /* ---- Pantalla completa: en el celular, una columna; desde 960 px cada página ocupa todo el ancho (hasta 1440 px)
