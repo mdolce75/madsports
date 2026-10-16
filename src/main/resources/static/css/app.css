@@ -574,13 +574,13 @@ nav.secciones a { white-space: nowrap; }
 .ficha.arquero .ficha-indice b { color: #a78bfa; }
 .ficha.sin-datos .ficha-indice b { color: var(--muted); }
 .ficha-indice small { display: block; margin-top: 2px; font: 700 .65rem/1 var(--display); letter-spacing: .16em; text-transform: uppercase; }
-.ficha-rueda { padding: 4px 12px 0; }
-.ficha-rueda .dt-vacio { padding: 30px 0; text-align: center; }
-.rueda { width: 100%; max-width: 340px; height: auto; display: block; margin: 0 auto; }
-.rueda .fondo { fill: rgba(255, 255, 255, .05); }
-.rueda .guia { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
-.rueda .nombre { font: 600 10.5px var(--body); fill: var(--muted); }
-.rueda .puntaje { font: 700 13px var(--display); fill: var(--ink); }
+.ficha-pentagono { padding: 4px 6px 0; }
+.ficha-pentagono .dt-vacio { padding: 30px 0; text-align: center; }
+.pentagono { width: 100%; max-width: 360px; height: auto; display: block; margin: 0 auto; }
+.pentagono .anillos polygon, .pentagono .anillos line { fill: none; stroke: #3a5378; stroke-width: 1; }
+.pentagono .area { fill: rgba(34, 184, 240, .35); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.ficha.arquero .pentagono .area { fill: rgba(167, 139, 250, .35); stroke: #a78bfa; }
+.pentagono .etiquetas { font: 600 10.5px var(--body); fill: var(--ink-2); }
 .ficha-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 4px 12px 12px; }
 .ficha-datos div { padding: 6px 8px; border-radius: 8px; background: var(--panel-2); }
 .ficha-datos b { display: block; font: 700 1rem/1.2 var(--display); color: var(--ink); }

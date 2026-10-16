@@ -755,7 +755,7 @@
         }
     }
 
-    /** Ficha del jugador: encabezado con el índice, rueda de los cinco ejes, datos clave y el detalle por eje. */
+    /** Ficha del jugador: encabezado con el índice, pentágono de los cinco ejes, datos clave y el detalle por eje. */
     function ficha(f, equipo) {
         const card = el("article", "ficha" + (f.arquero ? " arquero" : "") + (f.indice == null ? " sin-datos" : ""));
         const head = el("header", "ficha-head");
@@ -766,9 +766,9 @@
         const idx = el("div", "ficha-indice");
         idx.append(el("b", null, f.indice == null ? "–" : String(f.indice)), el("small", null, "Índice"));
         head.append(quien, idx);
-        const graf = el("div", "ficha-rueda");
+        const graf = el("div", "ficha-pentagono");
         if (f.indice == null) graf.append(el("p", "dt-vacio", "Sin acciones cargadas todavía."));
-        else graf.innerHTML = DtFichas.rueda(f.ejes, f.arquero);
+        else graf.innerHTML = DtFichas.pentagono(f.ejes);
         const e = Object.fromEntries(f.ejes.map(x => [x.clave, x]));
         const datos = f.arquero
             ? [[`${e.efectividad.a}`, "Atajados"], [`${e.efectividad.b}`, "Recibidos"],

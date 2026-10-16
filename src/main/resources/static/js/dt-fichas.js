@@ -159,33 +159,26 @@ const DtFichas = (() => {
 
     const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 
-    /**
-     * Rueda de la ficha: una porción por eje, que arranca arriba y sigue en el sentido del reloj. El largo de cada
-     * porción es el puntaje (0 a 100) y, cuanto más alto, más intenso el color; el círculo punteado marca el 50.
-     */
-    function rueda(ejesFicha, arquero) {
-        const W = 300, H = 200, cx = W / 2, cy = 100, R = 66, n = ejesFicha.length, hueco = 0.05;
-        const tono = arquero ? [167, 139, 250] : [34, 184, 240];
-        const titulo = ejesFicha.map(e => `${e.nombre} ${e.puntaje}`).join(", ");
-        const punto = (a, r) => [(cx + r * Math.cos(a)).toFixed(1), (cy + r * Math.sin(a)).toFixed(1)];
-        const porcion = (a0, a1, r) => {
-            const [x0, y0] = punto(a0, r), [x1, y1] = punto(a1, r);
-            return `M${cx},${cy}L${x0},${y0}A${r},${r} 0 0 1 ${x1},${y1}Z`;
+    /** Pentágono de la ficha: anillos al 33, 66 y 100 % y el área del jugador. */
+    function pentagono(ejesFicha) {
+        const cx = 160, cy = 104, R = 68;
+        const punto = (i, r) => {
+            const ang = -Math.PI / 2 + i * 2 * Math.PI / 5;
+            return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)];
         };
-        const partes = ejesFicha.map((e, i) => {
-            const a0 = -Math.PI / 2 - Math.PI / n + i * 2 * Math.PI / n + hueco, a1 = a0 + 2 * Math.PI / n - 2 * hueco;
-            const medio = (a0 + a1) / 2, r = Math.max(4, R * e.puntaje / 100);
-            const brillo = (0.35 + 0.65 * e.puntaje / 100).toFixed(2);
-            const [lx, ly] = punto(medio, R + 14).map(Number);
-            const ancla = Math.cos(medio) > 0.3 ? "start" : Math.cos(medio) < -0.3 ? "end" : "middle";
-            const y = Math.sin(medio) < -0.5 ? ly - 12 : Math.sin(medio) > 0.5 ? ly + 6 : ly - 3;
-            return `<path class="fondo" d="${porcion(a0, a1, R)}"/>
-                <path d="${porcion(a0, a1, r)}" fill="rgba(${tono.join(",")},${brillo})"><title>${esc(e.nombre)}: ${e.puntaje} · ${esc(e.texto)}</title></path>
-                <text class="nombre" x="${lx}" y="${y.toFixed(1)}" text-anchor="${ancla}">${esc(e.corto)}</text>
-                <text class="puntaje" x="${lx}" y="${(y + 15).toFixed(1)}" text-anchor="${ancla}">${e.puntaje}</text>`;
+        const poly = r => [0, 1, 2, 3, 4].map(i => punto(i, r).map(n => n.toFixed(1)).join(",")).join(" ");
+        const area = ejesFicha.map((e, i) => punto(i, R * Math.max(0.06, e.puntaje / 100)).map(n => n.toFixed(1)).join(",")).join(" ");
+        const etiquetas = ejesFicha.map((e, i) => {
+            const [x, y] = punto(i, R + 16);
+            const ancla = Math.abs(x - cx) < 4 ? "middle" : x > cx ? "start" : "end";
+            return `<text x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="${ancla}">${esc(e.nombre)}</text>`;
         }).join("");
-        return `<svg class="rueda" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(titulo)}"><title>${esc(titulo)}</title>
-            ${partes}<circle class="guia" cx="${cx}" cy="${cy}" r="${R / 2}"/></svg>`;
+        const titulo = ejesFicha.map(e => `${e.nombre} ${e.puntaje}`).join(", ");
+        return `<svg class="pentagono" viewBox="0 0 320 200" role="img" aria-label="${esc(titulo)}"><title>${esc(titulo)}</title>
+            <g class="anillos">${[1, 2 / 3, 1 / 3].map(f => `<polygon points="${poly(R * f)}"/>`).join("")}
+            ${[0, 1, 2, 3, 4].map(i => { const [x, y] = punto(i, R); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join("")}</g>
+            <polygon class="area" points="${area}"/>
+            <g class="etiquetas">${etiquetas}</g></svg>`;
     }
 
     /** Estado de los partidos: una barra por estado. */
@@ -214,5 +207,5 @@ const DtFichas = (() => {
                 <text class="eje" x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle">${meses[i].etiqueta}</text>`).join("")}</svg>`;
     }
 
-    return {calcular, dashboard, rueda, barrasEstado, lineaMeses};
+    return {calcular, dashboard, pentagono, barrasEstado, lineaMeses};
 })();

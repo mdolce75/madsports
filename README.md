@@ -251,7 +251,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   - **Dashboard general:** jugadores del plantel, partidos cargados y del mes; estado de los partidos (programados =
     creados con fecha futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6) y los
     próximos partidos.
-  - **Jugadores:** la ficha de cada uno, con índice (0 a 100) y una rueda de cinco ejes (una porción por eje, más larga cuanto mejor) comparados con el plantel
+  - **Jugadores:** la ficha de cada uno, con índice (0 a 100) y un pentágono de cinco ejes comparados con el plantel
     (100 = el mejor del equipo): ataque, precisión, desequilibrio (faltas recibidas), recuperación (balance con las
     pérdidas) y disciplina. Los arqueros se comparan entre sí con sus ejes: atajadas, efectividad, pelota parada,
     valla y disciplina. Todo se calcula en el navegador (`js/dt-fichas.js`) con `GET /api/dt/acciones` (las acciones
