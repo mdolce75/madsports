@@ -1,27 +1,31 @@
-/* Paleta clara: fondo casi blanco, tarjetas blancas con borde gris y sombra suave, teal como color principal y coral
-   como acento (los títulos van en degradé de uno al otro). Verde, amarillo y rojo solo para estados. */
+/* Paleta "petróleo y teal": fondo gris azulado (no blanco), tarjetas apenas más claras, tableros (marcador de la
+   planilla, encabezado de los formularios) en petróleo oscuro con texto claro. Teal como color principal y coral como
+   acento (los títulos van en degradé de uno al otro). Verde, amarillo y rojo solo para estados. */
 :root {
     color-scheme: light;
-    --bg: #fafafa;
-    --panel: #ffffff;
-    --panel-2: #f4f4f5;
-    --field: #ffffff;
-    --line: #e4e4e7;
-    --ink: #09090b;
-    --ink-2: #3f3f46;
-    --muted: #71717a;
+    --bg: #e6ecef;
+    --panel: #f4f7f8;
+    --panel-2: #e9eff1;
+    --field: #fbfcfd;
+    --line: #cfd8dc;
+    --ink: #0f1d23;
+    --ink-2: #33464e;
+    --muted: #5b6b73;
     --accent: #0d968b;      /* teal: botón principal, selección, enlaces */
     --accent-ink: #ffffff;
     --accent-soft: rgba(13, 150, 139, .1);
     --coral: #ff6666;       /* acento del degradé de los títulos */
-    --dark: #111827;
+    --dark: #12303a;        /* petróleo: tableros y títulos */
+    --on-dark: #ffffff;
+    --on-dark-muted: #a9c1c9;
+    --accent-on-dark: #5eead4;
     --good: #16a34a;        /* listo, a favor, recuperaciones */
     --warn: #ca8a04;
     --err: #dc2626;         /* error, en contra, pérdidas */
     --radius: 8px;
     --radius-sm: 6px;
-    --shadow: 0 1px 2px rgba(9, 9, 11, .04), 0 4px 14px rgba(9, 9, 11, .06);
-    --shadow-lg: 0 10px 15px -3px rgba(9, 9, 11, .08), 0 4px 6px -4px rgba(9, 9, 11, .06);
+    --shadow: 0 1px 2px rgba(18, 48, 58, .06), 0 4px 14px rgba(18, 48, 58, .08);
+    --shadow-lg: 0 10px 15px -3px rgba(18, 48, 58, .12), 0 4px 6px -4px rgba(18, 48, 58, .08);
     --display: "Oswald", "Arial Narrow", "Roboto Condensed", sans-serif;
     --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -396,3 +400,21 @@ input[type=date] { color-scheme: light; }
 .check { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; cursor: pointer; font-size: .9rem; }
 .check input { width: 18px; height: 18px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
 .check small { display: block; color: var(--muted); font-size: .8rem; }
+
+/* ---- Tableros en petróleo: el marcador de la planilla y el encabezado de los formularios ---- */
+.sheet-head { background: var(--dark); color: var(--on-dark); border-bottom: 0; border-radius: 4px 4px 0 0; }
+.sheet-head span:last-child { color: var(--on-dark-muted); }
+.dt-board { background: var(--dark); color: var(--on-dark); border-bottom: 0; backdrop-filter: none;
+            box-shadow: 0 6px 16px rgba(18, 48, 58, .25); }
+.dt-board .dt-team b, .dt-board .dt-goals { color: var(--on-dark); }
+.dt-board .dt-team span, .dt-board .dt-goals i, .dt-board .dt-adjust, .dt-board .dt-sync { color: var(--on-dark-muted); }
+.dt-board .dt-period { border-color: rgba(255, 255, 255, .25); color: var(--on-dark-muted); }
+.dt-board .dt-clock { color: var(--on-dark-muted); }
+.dt-board .dt-clock.on { color: var(--accent-on-dark); }
+.dt-board .dt-play.on, .dt-board .dt-play.ghost { background: rgba(255, 255, 255, .08); color: var(--on-dark);
+                                                  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
+.dt-board .dt-adjust button { background: rgba(255, 255, 255, .08); color: var(--on-dark); border-color: rgba(255, 255, 255, .25); }
+.dt-board .dt-sync.pend { color: var(--accent-on-dark); }
+.dt-board .dt-sync.off { color: #fcd34d; }
+.dt-board .dt-aviso { background: rgba(255, 102, 102, .18); border-left-color: var(--coral); color: #ffd4d4; }
+.dt-board :focus-visible { outline-color: var(--accent-on-dark); }
