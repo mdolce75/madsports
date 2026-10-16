@@ -125,7 +125,9 @@
 <script src="/js/app.js"></script>
 <script>
     // Cada sección tiene su registro: Informes ofrece los perfiles Club y Jugador; DT, solo el perfil DT.
-    const SECCION = new URLSearchParams(location.search).get("seccion") === "dt" ? "dt" : "informes";
+    // Por ahora solo se crean cuentas de Métricas DT: si llegan por Informes, el aviso y el registro de DT.
+    const PIDIO_INFORMES = new URLSearchParams(location.search).get("seccion") === "informes";
+    const SECCION = "dt";
     document.body.dataset.seccion = SECCION;
     if (SECCION === "dt") {
         document.querySelectorAll("input[name=rol]").forEach(r => {
@@ -137,6 +139,13 @@
             + "según tu plan. Después vas a registrar las estadísticas de cada partido en vivo.";
         $("volver").href = $("volver-top").href = "/dt-inicio.html";
         $("volver-top").textContent = "← Volver a Métricas DT";
+        if (PIDIO_INFORMES) {
+            const aviso = document.createElement("div");
+            aviso.className = "notice proximo";
+            aviso.innerHTML = "<b>Informes: próximamente</b><p>Las cuentas de Informes para clubes y jugadores estarán "
+                + "disponibles en breve. Por ahora podés crear tu cuenta de Métricas DT.</p>";
+            $("form").before(aviso);
+        }
     } else {
         document.querySelector("input[name=rol][value=DT]").closest("label").remove();
         document.querySelector(".profiles.three").classList.remove("three");

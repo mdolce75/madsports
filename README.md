@@ -217,8 +217,11 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 
 - **Dos secciones:** la portada (`/`) presenta **Informes** (`/informes.html`: perfiles Club y Jugador, informes de
   ejemplo) y **DT** (`/dt-inicio.html`: Métricas DT, las estadísticas en vivo, y su plan). El menú "Informes / DT" está arriba en todas
-  las páginas. Cada sección tiene su registro: `/registro.html?seccion=informes` ofrece Club o Jugador y
-  `/registro.html?seccion=dt`, solo DT. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
+  las páginas. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
+- **Alta de cuentas, por ahora solo de Métricas DT:** Informes figura como "Próximamente" y el registro
+  (`/registro.html?seccion=dt`) solo crea cuentas de DT. El servidor rechaza el alta de Club y Jugador mientras
+  `REGISTRO_INFORMES` (`rinkmetrics.registro.informes`) sea `false`, el valor por defecto; los usuarios que ya
+  existen siguen ingresando.
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
   No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
@@ -360,6 +363,7 @@ Abrir http://localhost:8080.
 | `DOLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
 | `DOLAR_RESPALDO` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
+| `REGISTRO_INFORMES` | `false` | Habilita el alta de cuentas de Club y Jugador |
 | `RECORDARME_DIAS` | `30` | Días que queda recordado un dispositivo |
 | `RECORDARME_CLAVE` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |
 
