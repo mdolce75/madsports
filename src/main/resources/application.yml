@@ -37,6 +37,10 @@ spring:
 
 server:
   port: ${PORT:8080}
+  servlet:
+    session:
+      # Sesión sin actividad: 8 h (por defecto eran 30 min). Con "Recordarme", al vencer se vuelve a entrar solo.
+      timeout: ${SESSION_TIMEOUT:8h}
 
 rinkmetrics:
   mail:
@@ -64,6 +68,11 @@ rinkmetrics:
     timeout: 120s
   # Precios en pesos: el precio base de los planes está en dólares y se convierte con el dólar oficial del BNA
   # (venta) del día. Si DolarAPI no responde se usa la última cotización conocida o, si nunca respondió, el respaldo.
+  # "Recordarme" en el ingreso: dura 30 días en el dispositivo. La clave firma la sesión que arma (si falta, se genera
+  # una al arrancar; los dispositivos recordados siguen valiendo porque el token está en la base).
+  recordarme:
+    clave: ${RECORDARME_CLAVE:}
+    dias: ${RECORDARME_DIAS:30}
   dolar:
     url: ${DOLAR_URL:https://dolarapi.com/v1/dolares/oficial}
     respaldo: ${DOLAR_RESPALDO:1500}

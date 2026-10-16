@@ -17,6 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.core.env.Environment;
+import jakarta.servlet.http.Cookie;
 
 import org.mockito.ArgumentCaptor;
 
@@ -64,6 +69,8 @@ class SecurityTest {
     @Autowired UsuarioRepository usuarios;
     @Autowired PasswordEncoder encoder;
     @Autowired ObjectMapper json;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired Environment env;
 
     @MockitoBean CatalogService catalog;
     @MockitoBean RosterService roster;
@@ -146,6 +153,88 @@ class SecurityTest {
                 "Pérez", 74, "VELEZ", "CAVS", EnumSet.of(perfil), Instant.now()));
     }
 
+    /** Ingreso con "Mantener la sesión iniciada": devuelve la respuesta (con la cookie RECORDARME y la sesión). */
+    MvcResult loginRecordando(String usuario) throws Exception {
+        return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", "clave-segura")
+                .param("recordarme", "true")).andExpect(status().isOk()).andReturn();
+    }
+
+    int recordados(String usuario) {
+        return jdbc.queryForObject("select count(*) from persistent_logins where username = ?", Integer.class, usuario);
+    }
+
+    @Test
+    void recordarmeVuelveAEntrarAunqueSePierdaLaSesion() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        confirmar("ana@example.com");
+        Cookie c = loginRecordando("ana").getResponse().getCookie("RECORDARME");
+        assertThat(c).isNotNull();
+        assertThat(c.getMaxAge()).isEqualTo(30 * 24 * 3600);
+        assertThat(c.isHttpOnly()).isTrue();
+        assertThat(recordados("ana")).isEqualTo(1);
+
+        // Sin sesión (venció, se cerró el navegador o se reinició la app): la cookie vuelve a entrar sola.
+        MvcResult r = mvc.perform(get("/api/sesion").cookie(c))
+                .andExpect(jsonPath("$.autenticado").value(true))
+                .andExpect(jsonPath("$.usuario").value("ana")).andReturn();
+        // El token cambia en cada uso; con el nuevo, también las pantallas y la API del perfil.
+        Cookie nueva = r.getResponse().getCookie("RECORDARME");
+        assertThat(nueva.getValue()).isNotEqualTo(c.getValue());
+        mvc.perform(get("/club.html").cookie(nueva)).andExpect(status().isOk());
+
+        // Sin marcar la casilla no queda recordado.
+        register(club("beto")).andExpect(status().isCreated());
+        confirmar("beto@example.com");
+        assertThat(login("beto", "clave-segura").andExpect(status().isOk()).andReturn().getResponse()
+                .getCookie("RECORDARME")).isNull();
+        assertThat(recordados("beto")).isZero();
+    }
+
+    @Test
+    void salirYCambiarLaClaveDejanDeRecordar() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        confirmar("ana@example.com");
+
+        // Salir borra el dispositivo recordado.
+        MvcResult r = loginRecordando("ana");
+        Cookie c = r.getResponse().getCookie("RECORDARME");
+        mvc.perform(post("/api/logout").with(csrf()).session((MockHttpSession) r.getRequest().getSession()).cookie(c))
+                .andExpect(status().isOk())
+                .andExpect(result -> assertThat(result.getResponse().getCookie("RECORDARME").getMaxAge()).isZero());
+        assertThat(recordados("ana")).isZero();
+        mvc.perform(get("/api/sesion").cookie(c)).andExpect(jsonPath("$.autenticado").value(false));
+
+        // Cambiar la clave también: hay que volver a ingresar con la nueva en cada dispositivo.
+        Cookie otra = loginRecordando("ana").getResponse().getCookie("RECORDARME");
+        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"ana@example.com\"}")).andExpect(status().isOk());
+        String token = token("ana@example.com", "/restablecer.html");
+        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"%s\",\"clave\":\"otra-clave-segura\"}".formatted(token)))
+                .andExpect(status().isOk());
+        assertThat(recordados("ana")).isZero();
+        mvc.perform(get("/api/sesion").cookie(otra)).andExpect(jsonPath("$.autenticado").value(false));
+    }
+
+    @Test
+    void sinConfirmarElEmailTampocoQuedaRecordado() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        MvcResult r = mvc.perform(post("/api/login").with(csrf()).param("usuario", "ana").param("clave", "clave-segura")
+                        .param("recordarme", "true"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("EMAIL_NO_VERIFICADO")).andReturn();
+        // Si el ingreso llegó a crear la cookie, la respuesta la borra después (el navegador aplica la última).
+        Cookie ultima = java.util.Arrays.stream(r.getResponse().getCookies())
+                .filter(x -> x.getName().equals("RECORDARME")).reduce((a, b) -> b).orElse(null);
+        assertThat(ultima == null || ultima.getMaxAge() == 0).isTrue();
+        assertThat(recordados("ana")).isZero();
+    }
+
+    @Test
+    void laSesionDura8HorasSinActividad() {
+        assertThat(env.getProperty("server.servlet.session.timeout")).isEqualTo("8h");
+    }
+
     @Test
     void sinSesionLasPaginasVanAlLoginYLaApiResponde401() throws Exception {
         // La home es pública (con los informes de ejemplo); la pantalla de club pide sesión.
@@ -155,8 +244,10 @@ class SecurityTest {
         mvc.perform(get("/madsports")).andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/madsports.html"));
         mvc.perform(get("/madsports.html")).andExpect(status().isOk());
-        mvc.perform(get("/club.html")).andExpect(status().is3xxRedirection()).andExpect(redirectedUrlPattern("**/login.html"));
-        mvc.perform(get("/jugador.html")).andExpect(redirectedUrlPattern("**/login.html"));
+        // Al ingreso, con la pantalla a la que volver después.
+        mvc.perform(get("/club.html")).andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login.html?volver=%2Fclub.html"));
+        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/login.html?volver=%2Fjugador.html"));
         mvc.perform(get("/login.html")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());
         mvc.perform(get("/api/ejemplo-jugador.pdf")).andExpect(status().isOk());

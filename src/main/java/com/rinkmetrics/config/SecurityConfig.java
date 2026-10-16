@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -25,7 +26,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -35,9 +38,14 @@ import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import javax.sql.DataSource;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.Map;
 
 /**
@@ -45,6 +53,11 @@ import java.util.Map;
  * jugador (/jugador.html) PLAYERFPP o PLAYERAMP, y la del DT (/dt.html) DTFPP o DTAMP; la federación sale del perfil
  * del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
+ * <p>
+ * La sesión dura 8 h sin actividad. Con "Recordarme" (parámetro {@code recordarme} del login) queda además la cookie
+ * RECORDARME por 30 días: si la sesión se pierde (venció, se cerró el navegador o se reinició la app), el próximo
+ * pedido vuelve a entrar solo. El token se guarda en la base ({@code persistent_logins}), cambia en cada uso y se borra
+ * al salir o al cambiar la clave.
  */
 @Configuration
 @EnableWebSecurity
@@ -53,8 +66,8 @@ public class SecurityConfig {
     private static final RequestMatcher API = req -> req.getRequestURI().startsWith(req.getContextPath() + "/api/");
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper json, UsuarioRepository usuarios)
-            throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper json, UsuarioRepository usuarios,
+                                            PersistentTokenBasedRememberMeServices recordarme) throws Exception {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/index.html", "/madsports", "/madsports.html", "/login.html", "/registro.html", "/olvido.html",
@@ -84,6 +97,7 @@ public class SecurityConfig {
                             // Clave correcta pero email sin confirmar: no se ingresa. Se chequea después de la clave
                             // para no revelar a quien no la sabe si la cuenta existe.
                             if (usuarios.findByUsuario(auth.getName()).filter(u -> !u.isEmailVerificado()).isPresent()) {
+                                recordarme.logout(req, res, auth);   // sin confirmar, tampoco queda recordado
                                 SecurityContextHolder.clearContext();
                                 HttpSession session = req.getSession(false);
                                 if (session != null) {
@@ -98,12 +112,16 @@ public class SecurityConfig {
                         .failureHandler((req, res, e) -> write(res, json, HttpStatus.UNAUTHORIZED,
                                 Map.of("detail", "Usuario o clave incorrectos.")))
                         .permitAll())
+                .rememberMe(r -> r.rememberMeServices(recordarme))
                 .logout(l -> l
                         .logoutUrl("/api/logout")
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
                 .exceptionHandling(e -> e
                         .defaultAuthenticationEntryPointFor(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), API)
-                        .defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login.html"),
+                        // Una pantalla sin sesión va al ingreso, que después vuelve a esa misma pantalla.
+                        .defaultAuthenticationEntryPointFor((req, res, ex) -> res.sendRedirect(req.getContextPath()
+                                        + "/login.html?volver=" + URLEncoder.encode(req.getRequestURI().substring(
+                                        req.getContextPath().length()), StandardCharsets.UTF_8)),
                                 AnyRequestMatcher.INSTANCE)
                         .accessDeniedHandler((req, res, ex) -> {
                             if (API.matches(req)) {
@@ -149,6 +167,26 @@ public class SecurityConfig {
                         .authorities(u.getPerfiles().stream().map(p -> new SimpleGrantedAuthority(p.name())).toList())
                         .build())
                 .orElseThrow(() -> new UsernameNotFoundException(username));
+    }
+
+    /** Dispositivos recordados, en la tabla {@code persistent_logins} (V13). */
+    @Bean
+    PersistentTokenRepository dispositivosRecordados(DataSource dataSource) {
+        JdbcTokenRepositoryImpl repo = new JdbcTokenRepositoryImpl();
+        repo.setDataSource(dataSource);
+        return repo;
+    }
+
+    @Bean
+    PersistentTokenBasedRememberMeServices recordarme(UserDetailsService usuarios, PersistentTokenRepository tokens,
+                                                      @Value("${rinkmetrics.recordarme.clave:}") String clave,
+                                                      @Value("${rinkmetrics.recordarme.dias:30}") int dias) {
+        PersistentTokenBasedRememberMeServices s = new PersistentTokenBasedRememberMeServices(
+                clave.isBlank() ? UUID.randomUUID().toString() : clave, usuarios, tokens);
+        s.setParameter("recordarme");
+        s.setCookieName("RECORDARME");
+        s.setTokenValiditySeconds((int) Duration.ofDays(dias).toSeconds());
+        return s;
     }
 
     @Bean
