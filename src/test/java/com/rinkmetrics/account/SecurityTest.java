@@ -378,7 +378,7 @@ class SecurityTest {
         confirmar("profe@example.com");
         login("profe", "clave-segura").andExpect(jsonPath("$.inicio").value("/dt.html"));
         mvc.perform(get("/api/sesion").with(user("profe").authorities(() -> "DTFPP")))
-                .andExpect(jsonPath("$.suscripcion.partidosPorMes").value(20));
+                .andExpect(jsonPath("$.suscripcion.partidosPorMes").value(25));
 
         // DT de la AMP.
         Map<String, Object> amp = dt("profe.amp");
@@ -412,11 +412,11 @@ class SecurityTest {
                 .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("DT_FREE", "DT_MENSUAL")))
                 .andExpect(jsonPath("$[0].precio").value(0))
                 .andExpect(jsonPath("$[0].equiposMax").value(1))
-                .andExpect(jsonPath("$[0].partidosPorMes").value(0))   // sin límite
+                .andExpect(jsonPath("$[0].partidosPorMes").value(5))
                 .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
                 .andExpect(jsonPath("$[1].vigenteHasta").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$[1].equiposMax").value(2))
-                .andExpect(jsonPath("$[1].partidosPorMes").value(20))
+                .andExpect(jsonPath("$[1].equiposMax").value(3))
+                .andExpect(jsonPath("$[1].partidosPorMes").value(25))
                 // USD 12, en pesos al dólar de respaldo de los tests ($ 1.500).
                 .andExpect(jsonPath("$[1].precioUsd").value(12.0))
                 .andExpect(jsonPath("$[1].precio").value(18000));

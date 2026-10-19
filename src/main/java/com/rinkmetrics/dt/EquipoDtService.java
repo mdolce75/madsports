@@ -1,5 +1,6 @@
 package com.rinkmetrics.dt;
 
+import com.rinkmetrics.account.SuscripcionType;
 import com.rinkmetrics.account.Usuario;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,8 +11,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Equipos del DT (el ABM de equipos de la sección Equipo): un nombre libre y sin límite de cantidad. Cada partido y
- * cada jugador son de un equipo; un equipo con partidos no se puede borrar.
+ * Equipos del DT (el ABM de equipos de la sección Equipo): un nombre libre, hasta los que permite su plan (free 1,
+ * mensual 3). Cada partido y cada jugador son de un equipo; un equipo con partidos no se puede borrar.
  */
 @Service
 public class EquipoDtService {
@@ -59,6 +60,13 @@ public class EquipoDtService {
     @Transactional
     public EquipoView crear(Usuario u, String nombre) {
         String n = nombre(u, nombre, null);
+        SuscripcionType plan = u.getSuscripcionType();
+        int max = plan == null ? 0 : plan.getEquiposMax();
+        if (max > 0 && equipos.findByUsuarioIdOrderByIdAsc(u.getId()).size() >= max) {
+            throw new DtService.Conflicto("Tu plan " + plan.getNombre() + " permite " + (max == 1 ? "1 equipo" : "hasta " + max
+                    + " equipos") + ". Para sumar otro, borrá uno sin partidos"
+                    + ("DT_FREE".equals(plan.getCodigo()) ? " o pasate al plan mensual." : "."));
+        }
         Equipo e = equipos.save(new Equipo(u.getId(), n, clock.instant()));
         return new EquipoView(e.getId(), e.getNombre(), 0, 0, 0, 0);
     }
