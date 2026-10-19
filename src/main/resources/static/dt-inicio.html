@@ -122,16 +122,24 @@
 <script>
     $("brand").outerHTML = BRAND;
 
-    // Planes del DT (el free y el mensual) con su precio en pesos del día. Cada uno se elige: lleva al registro con ese
-    // plan ya marcado.
+    // Planes del DT (el free y el mensual) con su precio en pesos del día. El free se elige y lleva al registro; el
+    // mensual (pago) figura con el cintillo "Próximamente" hasta que se habilite el cobro.
     fetch("/api/suscripciones?perfil=DTFPP").then(r => r.ok ? r.json() : []).then(planes => {
         const box = $("plan-dt");
         for (const p of planes) {
             const gratis = Number(p.precio) === 0;
-            const card = document.createElement("a");
-            card.className = "plan plan-elegir";
-            card.href = "/registro.html?seccion=dt&plan=" + encodeURIComponent(p.codigo);
-            card.setAttribute("aria-label", `Elegir el plan ${p.nombre} y crear la cuenta`);
+            const card = document.createElement(p.disponible === false ? "div" : "a");
+            if (p.disponible === false) {
+                card.className = "plan proximamente no-disponible";
+                const cinta = document.createElement("span");
+                cinta.className = "cintillo";
+                cinta.textContent = "Próximamente";
+                card.append(cinta);
+            } else {
+                card.className = "plan plan-elegir";
+                card.href = "/registro.html?seccion=dt&plan=" + encodeURIComponent(p.codigo);
+                card.setAttribute("aria-label", `Elegir el plan ${p.nombre} y crear la cuenta`);
+            }
             const nombre = document.createElement("span");
             nombre.className = "plan-name";
             nombre.textContent = "Plan " + p.nombre;
@@ -147,10 +155,13 @@
             nota.className = "plan-month";
             nota.textContent = p.vigenteHasta ? "Sin costo hasta el " + p.vigenteHasta.split("-").reverse().join("/") + "."
                 : "Mensual, sin permanencia. En pesos al dólar oficial del día.";
-            const elegir = document.createElement("span");
-            elegir.className = "btn primary plan-cta";
-            elegir.textContent = gratis ? "Empezar gratis" : "Elegir plan " + p.nombre.replace(/^DT /, "");
-            card.append(nombre, precio, cupo, nota, elegir);
+            card.append(nombre, precio, cupo, nota);
+            if (p.disponible !== false) {
+                const elegir = document.createElement("span");
+                elegir.className = "btn primary plan-cta";
+                elegir.textContent = gratis ? "Empezar gratis" : "Elegir plan " + p.nombre.replace(/^DT /, "");
+                card.append(elegir);
+            }
             box.append(card);
         }
         box.hidden = !planes.length;
