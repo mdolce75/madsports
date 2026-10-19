@@ -228,7 +228,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   la sección muestra capturas de la demo ("Así se ve Métricas DT", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
 - **Alta de cuentas de jugador y de DT; la de club, próximamente:** el registro de Informes
-  (`/registro.html?seccion=informes`) crea cuentas de jugador (FPP o AMP) y el de Métricas DT
+  (`/registro.html?seccion=informes`) crea cuentas de jugador de la FPP (las de la AMP, próximamente:
+  `REGISTRO_JUGADOR_AMP`) y el de Métricas DT
   (`/registro.html?seccion=dt`), de DT. El servidor rechaza el alta de club mientras `REGISTRO_CLUB`
   (`rinkmetrics.registro.club`) sea `false`, el valor por defecto; los usuarios que ya existen siguen ingresando.
 - **Planes del jugador:** el **Jugador free** (sin costo hasta el 31/12/2026, 4 informes por mes) y el **Jugador
@@ -421,6 +422,7 @@ Abrir http://localhost:8080.
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
 | `REGISTRO_CLUB` | `false` | Habilita el alta de cuentas de club (las de jugador y DT están abiertas) |
 | `REGISTRO_JUGADOR_PAGO` | `false` | Habilita elegir el plan Jugador mensual (pago) |
+| `REGISTRO_JUGADOR_AMP` | `false` | Habilita el alta de jugadores de la AMP (por ahora, solo de la FPP) |
 | `REGISTRO_DT_PAGO` | `false` | Habilita elegir el plan DT mensual (pago) |
 | `RECORDARME_DIAS` | `30` | Días que queda recordado un dispositivo |
 | `RECORDARME_CLAVE` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |

@@ -767,5 +767,7 @@ a.plan-elegir:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 /* Plan que todavía no se puede elegir (los mensuales del DT y del jugador): con el cintillo "Próximamente", apagado y
    borroneado. */
 .plan.no-disponible { cursor: default; user-select: none; }
+/* Opción que todavía no se puede elegir (los jugadores de la AMP). */
+.profiles label.no-disponible { opacity: .5; cursor: not-allowed; }
 .plan.no-disponible > :not(.cintillo) { opacity: .55; filter: blur(2.5px); }
 .dt-plan a.plan-elegir { cursor: pointer; }

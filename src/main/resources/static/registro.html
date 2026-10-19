@@ -137,8 +137,14 @@
         });
         $("perfil-field").hidden = true;
         $("reg-tag").textContent = "Informes · Jugador";
-        $("reg-lead").textContent = "Creá tu cuenta de jugador: elegí tu federación (FPP o AMP), tu club, la categoría "
-            + "en que jugás y tu nombre en la planilla. Después generás tu informe en PDF.";
+        $("reg-lead").textContent = "Creá tu cuenta de jugador de la FPP: elegí tu club, la categoría en que jugás y tu "
+            + "nombre en la planilla. Después generás tu informe en PDF.";
+        // Jugadores de la AMP: próximamente. La FPP queda elegida.
+        const amp = document.querySelector("input[name=federacion][value=AMP]");
+        amp.disabled = true;
+        amp.closest("label").classList.add("no-disponible");
+        amp.closest("label").querySelector("small").textContent = "Próximamente.";
+        document.querySelector("input[name=federacion][value=FPP]").checked = true;
         $("volver").href = $("volver-top").href = "/informes.html";
         const aviso = document.createElement("div");
         aviso.className = "notice proximo";
@@ -401,6 +407,8 @@
         $("dt-fields").hidden = false;
         loadPlans();
         loadClubsDt();
+    } else {
+        toggleProfile();   // la FPP ya está elegida: clubes, categorías y planes del jugador
     }
     $("equipo").addEventListener("change", loadPlayers);
 

@@ -50,12 +50,16 @@ public class RegistroService {
     private final boolean dtPago;
     /** ¿Se puede elegir un plan pago del jugador (el mensual)? Por ahora no: el jugador empieza con el free. */
     private final boolean jugadorPago;
+    /** ¿Se pueden crear cuentas de jugador de la AMP? Por ahora no: solo de la FPP. */
+    private final boolean jugadorAmp;
 
     public RegistroService(UsuarioRepository usuarios, SuscripcionTypeRepository planes, CatalogService catalog,
                            RosterService roster, PasswordEncoder encoder, Clock clock,
                            @Value("${rinkmetrics.registro.club:false}") boolean altaClub,
                            @Value("${rinkmetrics.registro.dt-pago:false}") boolean dtPago,
-                           @Value("${rinkmetrics.registro.jugador-pago:false}") boolean jugadorPago) {
+                           @Value("${rinkmetrics.registro.jugador-pago:false}") boolean jugadorPago,
+                           @Value("${rinkmetrics.registro.jugador-amp:false}") boolean jugadorAmp) {
+        this.jugadorAmp = jugadorAmp;
         this.altaClub = altaClub;
         this.dtPago = dtPago;
         this.jugadorPago = jugadorPago;
@@ -75,6 +79,10 @@ public class RegistroService {
         if (!r.perfil().dt() && !r.perfil().player() && !altaClub) {
             throw new IllegalArgumentException("Las cuentas de club estarán disponibles próximamente. Por ahora podés "
                     + "crear tu cuenta de jugador o de Métricas DT.");
+        }
+        if (r.perfil() == Perfil.PLAYERAMP && !jugadorAmp) {
+            throw new IllegalArgumentException("Las cuentas de jugador de la AMP estarán disponibles próximamente. Por "
+                    + "ahora, las de la FPP.");
         }
         String usuario = r.usuario().trim().toLowerCase(Locale.ROOT);
         String email = r.email().trim();

@@ -82,6 +82,8 @@ rinkmetrics:
     club: ${REGISTRO_CLUB:false}
     dt-pago: ${REGISTRO_DT_PAGO:false}
     jugador-pago: ${REGISTRO_JUGADOR_PAGO:false}
+    # Jugadores de la AMP: próximamente (por ahora, solo de la FPP).
+    jugador-amp: ${REGISTRO_JUGADOR_AMP:false}
   # Límite de intentos (LimiteIntentos): ingresos fallidos por usuario y por IP en 15 minutos; altas de cuenta y pedidos
   # de mails por IP en 1 hora. Al llegar al máximo, la API responde 429 hasta que vence la ventana.
   limites:
