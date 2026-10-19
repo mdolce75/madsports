@@ -10,3 +10,6 @@ target/
 Thumbs.db
 informes/
 data/
+node_modules/
+test-results/
+playwright-report/

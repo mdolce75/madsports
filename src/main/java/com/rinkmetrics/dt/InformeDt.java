@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 /**
  * Informe del DT: de un partido o de varios (un mes, un bimestre, un semestre o un campeonato). Lleva las métricas del
  * equipo, las de cada jugador y, en el de un partido, la lista de eventos. Con un jugador elegido, todo es de ese
- * jugador. La pantalla arma lo mismo en {@code js/dt-informe.js} (para mostrarlo en vivo y sin señal); este es el del
+ * jugador. La pantalla arma lo mismo en {@code js/dt/informe.js} (para mostrarlo en vivo y sin señal); este es el del
  * PDF.
  *
  * @param titulo    "VELEZ 3 - 2 HURACAN" o "Octubre 2026"
@@ -160,7 +160,7 @@ public record InformeDt(String titulo, String detalle, String club, String equip
                     Metricas.de(e.getValue())));
         }
         jugadores.sort(Comparator.comparingInt((JugadorFila j) -> numero(j.numero()))
-                .thenComparing(JugadorFila::nombre, String.CASE_INSENSITIVE_ORDER));
+                .thenComparing(JugadorFila::nombre, PlantelDtService.ALFABETICO));
 
         JugadorFila elegido = null;
         List<AccionDt> lasDel = acciones;

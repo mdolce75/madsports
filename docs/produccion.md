@@ -130,4 +130,4 @@ usuario. Un respaldo que nunca se restauró no está probado.
 
 `.github/workflows/ci.yml` corre `./mvnw verify` (unitarios con H2, integración con PostgreSQL 16 y cobertura) en cada
 PR y en cada push a `main`. Para que no se pueda mergear con tests rotos, en GitHub: **Settings → Branches → Branch
-protection rule** para `main`, con "Require status checks to pass" y el check `Backend`.
+protection rule** para `main`, con "Require status checks to pass" y los checks `Backend` y `Pantallas`.

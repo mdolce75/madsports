@@ -1,14 +1,20 @@
 package com.rinkmetrics.dt;
 
 import com.rinkmetrics.account.Usuario;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import java.text.Collator;
 import java.time.Clock;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
 /**
@@ -20,6 +26,20 @@ import java.util.regex.Pattern;
 public class PlantelDtService {
 
     private static final Pattern NUMERO = Pattern.compile("\\d{1,3}");
+    /** Intentos de un alta si otra simultánea del mismo DT toma el mismo id (un doble toque, dos dispositivos). */
+    static final int INTENTOS_ALTA = 10;
+
+    /**
+     * Orden alfabético en castellano, sin distinguir mayúsculas ni acentos (Álvarez antes que Gómez): el mismo que usan
+     * la pantalla y la demo ({@code localeCompare(..., "es", {sensitivity: "base"})}).
+     */
+    static final Comparator<String> ALFABETICO = alfabetico();
+
+    private static Comparator<String> alfabetico() {
+        Collator c = Collator.getInstance(Locale.forLanguageTag("es"));
+        c.setStrength(Collator.PRIMARY);
+        return c::compare;
+    }
 
     /**
      * Un jugador.
@@ -45,18 +65,21 @@ public class PlantelDtService {
     private final JugadorDtRepository jugadores;
     private final EquipoDtService equipos;
     private final Clock clock;
+    private final TransactionTemplate tx;
 
-    public PlantelDtService(JugadorDtRepository jugadores, EquipoDtService equipos, Clock clock) {
+    public PlantelDtService(JugadorDtRepository jugadores, EquipoDtService equipos, Clock clock,
+                            PlatformTransactionManager transacciones) {
         this.jugadores = jugadores;
         this.equipos = equipos;
         this.clock = clock;
+        this.tx = new TransactionTemplate(transacciones);
     }
 
     /** Todos los jugadores activos del DT, por apellido. */
     public List<JugadorPlantel> jugadores(Usuario u) {
         return jugadores.findByUsuarioIdAndActivoTrue(u.getId()).stream()
-                .sorted(Comparator.comparing(JugadorDt::getApellido, String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(JugadorDt::getNombre, String.CASE_INSENSITIVE_ORDER))
+                .sorted(Comparator.comparing(JugadorDt::getApellido, ALFABETICO)
+                        .thenComparing(JugadorDt::getNombre, ALFABETICO))
                 .map(JugadorPlantel::of).toList();
     }
 
@@ -66,14 +89,41 @@ public class PlantelDtService {
         return delEquipo(u, e.getId()).stream().map(JugadorPlantel::of).toList();
     }
 
-    @Transactional
+    /**
+     * Alta de un jugador. El id es el siguiente al último del DT: si dos altas simultáneas toman el mismo, la base
+     * rechaza la segunda (id único por DT) y se reintenta en una transacción nueva, que ya ve a la primera (y, si tienen
+     * el mismo número, avisa que el número ya es de ese jugador).
+     */
     public JugadorPlantel alta(Usuario u, DatosJugador d) {
+        for (int intento = 1; ; intento++) {
+            try {
+                return tx.execute(s -> altaUnaVez(u, d));
+            } catch (DataIntegrityViolationException e) {
+                if (intento == INTENTOS_ALTA) {
+                    throw new DtService.Conflicto("No se pudo dar de alta al jugador: probá de nuevo.");
+                }
+                esperar(intento);
+            }
+        }
+    }
+
+    /** Una espera corta y al azar antes de reintentar, para que las altas que chocaron no vuelvan a chocar. */
+    private static void esperar(int intento) {
+        try {
+            Thread.sleep(ThreadLocalRandom.current().nextLong(5, 20L * intento));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new DtService.Conflicto("No se pudo dar de alta al jugador: probá de nuevo.");
+        }
+    }
+
+    private JugadorPlantel altaUnaVez(Usuario u, DatosJugador d) {
         Set<Long> suyos = equiposValidos(u, d.equipos());
         String numero = numero(d.numero());
         verificarNumero(u, suyos, numero, -1);
         int id = jugadores.findTopByUsuarioIdOrderByJugadorIdDesc(u.getId()).map(JugadorDt::getJugadorId)
                 .filter(n -> n >= JugadorDt.PRIMER_ID_PROPIO).map(n -> n + 1).orElse(JugadorDt.PRIMER_ID_PROPIO);
-        JugadorDt j = jugadores.save(new JugadorDt(u.getId(), id, texto(d.nombre(), "nombre"),
+        JugadorDt j = jugadores.saveAndFlush(new JugadorDt(u.getId(), id, texto(d.nombre(), "nombre"),
                 texto(d.apellido(), "apellido"), numero, Boolean.TRUE.equals(d.arquero()), suyos, clock.instant()));
         return JugadorPlantel.of(j);
     }
@@ -98,7 +148,7 @@ public class PlantelDtService {
     private List<JugadorDt> delEquipo(Usuario u, Long equipoId) {
         return jugadores.findByUsuarioIdAndActivoTrue(u.getId()).stream().filter(j -> j.juegaEn(equipoId))
                 .sorted(Comparator.comparingInt((JugadorDt j) -> orden(j.getNumero()))
-                        .thenComparing(JugadorDt::getApellido, String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(JugadorDt::getApellido, ALFABETICO))
                 .toList();
     }
 

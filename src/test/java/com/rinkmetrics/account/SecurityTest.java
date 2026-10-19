@@ -49,6 +49,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -267,8 +268,10 @@ class SecurityTest {
         // Las presentaciones de las dos secciones (Informes y DT) se ven sin sesión.
         mvc.perform(get("/informes.html")).andExpect(status().isOk());
         mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
-        // La demo de Métricas DT y sus capturas, también.
-        mvc.perform(get("/dt-demo.html")).andExpect(status().isOk());
+        // La demo de Métricas DT y sus capturas, también. La demo es la misma página que /dt.html (sin copia).
+        mvc.perform(get("/dt-demo.html")).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/dt/main.js")));
         mvc.perform(get("/por-que.html")).andExpect(status().isOk());
         mvc.perform(get("/img/demo/carga-web.png")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());
@@ -424,7 +427,7 @@ class SecurityTest {
         mvc.perform(get("/api/dt/partidos").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
         // El service worker de la planilla (para abrirla sin señal) se baja sin sesión, como el resto de los estáticos.
         mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
-        mvc.perform(get("/js/dt.js")).andExpect(status().isOk());
+        mvc.perform(get("/js/dt/main.js")).andExpect(status().isOk());
     }
 
     @Test

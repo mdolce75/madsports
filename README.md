@@ -223,7 +223,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Por qué RinkMetrics** (`/por-que.html`, en el menú): las ventajas de la plataforma, en su propia página.
 - **Demo de Métricas DT** (`/dt-demo.html`, en el menú "Demo"): Métricas DT completo con datos de ejemplo, sin
   cuenta: arranca en el Control panel y se recorren todas las pantallas (Partidos, con un partido en juego para cargar
-  acciones; Estadísticas; Informes y Equipo, con sus ABM). `js/dt-demo.js` contesta en el navegador las llamadas a la API (nada se guarda). La página de
+  acciones; Estadísticas; Informes y Equipo, con sus ABM). Es la misma página que `/dt.html` (sin copia): en la demo,
+  `js/dt/demo-api.js` contesta en el navegador las llamadas a la API, igual que el servidor (nada se guarda). La página de
   la sección muestra capturas de la demo ("Así se ve Métricas DT", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
 - **Alta de cuentas, por ahora solo de Métricas DT:** Informes figura como "Próximamente" y el registro
@@ -263,23 +264,27 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   - **Estadísticas > Jugadores:** la ficha de cada uno, con índice (0 a 100) y un pentágono de cinco ejes comparados con el plantel
     (100 = el mejor del equipo): ataque, precisión, desequilibrio (faltas recibidas), recuperación (balance con las
     pérdidas) y disciplina. Los arqueros se comparan entre sí con sus ejes: atajadas, efectividad, pelota parada,
-    valla y disciplina. Todo se calcula en el navegador (`js/dt-fichas.js`) con `GET /api/dt/acciones` (las acciones
+    valla y disciplina. Todo se calcula en el navegador (`js/dt/fichas.js`) con `GET /api/dt/acciones` (las acciones
     activas de todos los partidos del equipo), el plantel y la lista de partidos; los gráficos son SVG propios.
   - **Informes:** la lista de los partidos finalizados (terminados o cerrados), cada uno con su informe, y los
     informes de un mes, un bimestre, un semestre o un campeonato (el que se carga, opcional, al crear el partido; los
     que no tienen van a "Sin campeonato"). Cada informe trae goles, goles recibidos, tiros y su efectividad,
     atajadas, pérdidas, recuperaciones, faltas recibidas y cometidas, tarjetas azul, amarilla y roja, y la
     efectividad de penales y libres; la tabla por jugador y, en el de un partido, la lista de eventos (minuto,
-    jugador y acción). Se puede elegir un jugador para ver solo sus estadísticas. En pantalla se arma en el
-    navegador (`js/dt-informe.js`); el PDF lo arma el servidor (`DtInformeService`, `InformeDt`, plantilla
-    `templates/dt-informe.html`) con las mismas métricas.
+    jugador y acción). Se puede elegir un jugador para ver solo sus estadísticas. Con conexión, la pantalla muestra
+    el informe del servidor (`GET /api/dt/partidos/{id}/informe` y `GET /api/dt/informes`: el mismo JSON del PDF,
+    `DtInformeService`, `InformeDt`, plantilla `templates/dt-informe.html`); sin señal, el que se arma en el navegador
+    (`js/dt/informe.js`). Los dos cálculos se prueban contra los mismos casos (ver [Tests](#tests)).
   - **Equipo:** el ABM de equipos (un nombre libre, hasta los del plan; la lista muestra los partidos finalizados jugados,
     ganados, empatados y perdidos; un equipo con partidos no se borra) y el ABM de jugadores: nombre, apellido,
     número, si es arquero y en qué equipos juega (uno o más). Los jugadores no salen de SIDGAD: los carga el DT, y
     antes tiene que existir un equipo. El número no se repite dentro de un equipo. Un jugador dado de baja ya no
     aparece para cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre
     corregido.
-- **Métricas DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
+- **Métricas DT (pantalla, `/dt.html`):** módulos ES sin build en `js/dt/`: `main.js` (menú y arranque),
+  `panel.js`, `partidos.js`, `partido.js` (la carga en vivo), `estadisticas.js`, `informes.js`, `equipo.js`, y los
+  compartidos `acciones.js` (botones y reglas de goles), `informe.js`, `fichas.js`, `cola.js` y `comun.js`. Al volver
+  a la pestaña se vuelven a pedir los equipos (por si cambiaron en otro dispositivo). En el celular va en una columna; en tablet y web (desde 760 px de ancho)
   la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
   columna) y entra entera en la pantalla, sin bajar.
   - **Partidos:** equipo, rival (escrito, con los ya usados para elegir), fecha, local / visitante, minutos por
@@ -293,7 +298,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   - **Informe:** el informe del partido en vivo (con lo que todavía no se envió), del equipo o de un jugador, con
     los eventos y "Exportar PDF"; y el cierre del partido (o reabrirlo). Al tocar "Fin del partido", la pantalla pasa
     sola a esta pestaña.
-  - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt-cola.js`) y se
+  - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt/cola.js`) y se
     mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
     (`dt-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin
     señal. El reloj (iniciar, pausar, fin del tiempo) y el cierre sí necesitan conexión.
@@ -502,19 +507,32 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 ```bash
 ./mvnw test     # unitarios (*Test), con H2 en memoria: no necesitan Docker
 ./mvnw verify   # unitarios + integración (*IT) contra PostgreSQL 16 real (Testcontainers; requiere Docker) + cobertura
+npm install     # una vez (Node 22 o más nuevo): Playwright para los E2E
+npm test        # módulos de js/dt y contrato de la API contra la demo (node:test, sin navegador)
+npm run e2e     # E2E de la demo con Playwright (celular y escritorio; usa el Chrome instalado)
+npm run demo    # la demo sin levantar la app: http://localhost:8099/dt-demo.html
 ```
 
 | Suite | Plugin | Base | Qué cubre |
 |---|---|---|---|
 | `*Test` | surefire | H2 en memoria | Parsers contra fixtures, motor de estadísticas, informes, servicios y la API completa con MockMvc |
-| `*IT` | failsafe | PostgreSQL 16 (un contenedor por clase) | `MigracionesIT` (las dos carpetas de migraciones tienen las mismas versiones, se aplican todas y el esquema queda con zona horaria, cascadas y únicos) y los flujos de la API sobre la base de producción: `SecurityIT`, `AltaInformesCerradaIT`, `LimiteIntentosIT`, `DtControllerIT` (heredan los casos de su `*Test`) |
+| `*IT` | failsafe | PostgreSQL 16 (un contenedor por clase) | `MigracionesIT` (las dos carpetas de migraciones tienen las mismas versiones, se aplican todas y el esquema queda con zona horaria, cascadas y únicos) y los flujos de la API sobre la base de producción: `SecurityIT`, `AltaInformesCerradaIT`, `LimiteIntentosIT`, `DtControllerIT`, `ContratoApiDtIT` (heredan los casos de su `*Test`) |
+| `src/test/js/*.test.mjs` | node:test | — | Los módulos de `js/dt` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
+| `src/test/e2e/*.spec.mjs` | Playwright | — | La demo en un navegador (celular y escritorio): carga de acciones, deshacer, arquero en cancha, sin señal, fin del partido con su informe, Control panel, Partidos, Estadísticas, Informes, ABM de Equipo y equipos que cambian en otro dispositivo |
+
+**Contrato de la API de Métricas DT** (`src/test/resources/dt/contrato-api.json`): escenarios de pedidos y respuestas
+(equipos, jugadores, partido en vivo e informes, con las métricas calculadas a mano) que corren el servidor
+(`ContratoApiDtTest` con H2 y `ContratoApiDtIT` con PostgreSQL) y la API simulada de la demo (`js/dt/demo-api.js`,
+que arma los informes con `js/dt/informe.js`, el mismo cálculo de la pantalla sin señal). Así la demo, la pantalla
+sin señal y el servidor no se separan: un cambio en uno sin el otro rompe el CI.
 
 La cobertura de JaCoCo suma las dos suites y queda en `target/site/jacoco/index.html`.
 
-El CI de GitHub Actions (`.github/workflows/ci.yml`, job **Backend**) corre `./mvnw verify` en cada PR y en cada push
-a `main`: publica el resumen de cobertura en la corrida, el reporte como artefacto y, si algo falla, los reportes de
-surefire y failsafe. Dependabot (`.github/dependabot.yml`) abre PRs semanales con las dependencias de Maven y las
-acciones de GitHub, que valida el mismo CI.
+El CI de GitHub Actions (`.github/workflows/ci.yml`) corre en cada PR y en cada push a `main` dos jobs: **Backend**
+(`./mvnw verify`: publica el resumen de cobertura en la corrida, el reporte como artefacto y, si algo falla, los
+reportes de surefire y failsafe) y **Pantallas** (`npm test` y los E2E con el Chromium de Playwright; si fallan,
+publica el reporte con trazas y capturas). Dependabot (`.github/dependabot.yml`) abre PRs semanales con las
+dependencias de Maven, de npm y las acciones de GitHub, que valida el mismo CI.
 
 Los parsers y el motor se prueban contra HTML real guardado en `src/test/resources/fixtures` (octubre de 2026:
 actas, calendarios, posiciones, la ficha de temporada de un jugador y el catálogo 2026 con la FPP y la AMP). Si SIDGAD
