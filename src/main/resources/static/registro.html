@@ -288,9 +288,20 @@
                     <span class="plan-quota"></span>
                     <ul></ul>`;
                 card.querySelector("input").value = plan.codigo;
-                // El plan elegido en la página de la sección (?plan=DT_MENSUAL); si no, el primero.
+                // El plan elegido en la página de la sección (?plan=DT_FREE); si no, el primero que se puede elegir.
+                // Los que todavía no se pueden elegir (el DT mensual) van con el cintillo "Próximamente".
+                const elegibles = planes.filter(x => x.disponible !== false);
                 const pedido = new URLSearchParams(location.search).get("plan");
-                card.querySelector("input").checked = planes.some(x => x.codigo === pedido) ? plan.codigo === pedido : i === 0;
+                const elegido = elegibles.find(x => x.codigo === pedido) || elegibles[0];
+                card.querySelector("input").checked = plan === elegido;
+                if (plan.disponible === false) {
+                    card.classList.add("proximamente", "no-disponible");
+                    card.querySelector("input").disabled = true;
+                    const cinta = document.createElement("span");
+                    cinta.className = "cintillo";
+                    cinta.textContent = "Próximamente";
+                    card.prepend(cinta);
+                }
                 card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador|DT) /, "");
                 const gratis = Number(plan.precio) === 0;
                 card.querySelector(".plan-price b").textContent = gratis ? "Gratis" : pesos(plan.precio);

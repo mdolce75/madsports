@@ -762,3 +762,8 @@ a.plan-elegir:hover { border-color: var(--accent); transform: translateY(-2px); 
 a.plan-elegir:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .plan-cta { margin-top: 12px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { a.plan-elegir { transition: none; } a.plan-elegir:hover { transform: none; } }
+
+/* Plan que todavía no se puede elegir (el DT mensual): con el cintillo "Próximamente" y apagado. */
+.plan.no-disponible { cursor: default; }
+.plan.no-disponible > :not(.cintillo) { opacity: .55; }
+.dt-plan a.plan-elegir { cursor: pointer; }
