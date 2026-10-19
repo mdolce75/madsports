@@ -236,8 +236,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   usuario.
 - **DT** (Métricas DT, en vivo): elige su club y su plan; sus equipos y sus jugadores los arma después, en la
   sección Equipo (el registro ya no los pide). Entra a `/dt.html`, la pantalla de Métricas DT (sin equipos, empieza
-  por Equipo). Elige el plan free (`DT_FREE`: partidos sin límite, sin costo hasta el 31/12/2026) o el mensual
-  (`DT_MENSUAL`: 20 partidos por mes) (`partidos_por_mes` en `suscripcion_type`). Los equipos no tienen límite.
+  por Equipo). Elige el plan free (`DT_FREE`: 1 equipo y 5 partidos por mes, sin costo hasta el 31/12/2026) o el
+  mensual (`DT_MENSUAL`: hasta 3 equipos y 25 partidos por mes) (`equipos_max` y `partidos_por_mes` en
+  `suscripcion_type`, V17).
 - **Métricas DT (servidor):** cada partido es de un equipo del DT; el rival se escribe (con los ya usados para
   elegir), con la fecha, si es local o visitante, los minutos de cada tiempo (25 si no se eligen) y el campeonato. El
   mismo rival en la misma fecha retoma el partido en vez de crear otro. Un partido se puede eliminar con todas sus
@@ -270,7 +271,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     jugador y acción). Se puede elegir un jugador para ver solo sus estadísticas. En pantalla se arma en el
     navegador (`js/dt-informe.js`); el PDF lo arma el servidor (`DtInformeService`, `InformeDt`, plantilla
     `templates/dt-informe.html`) con las mismas métricas.
-  - **Equipo:** el ABM de equipos (un nombre libre, sin límite; la lista muestra los partidos finalizados jugados,
+  - **Equipo:** el ABM de equipos (un nombre libre, hasta los del plan; la lista muestra los partidos finalizados jugados,
     ganados, empatados y perdidos; un equipo con partidos no se borra) y el ABM de jugadores: nombre, apellido,
     número, si es arquero y en qué equipos juega (uno o más). Los jugadores no salen de SIDGAD: los carga el DT, y
     antes tiene que existir un equipo. El número no se repite dentro de un equipo. Un jugador dado de baja ya no
@@ -316,8 +317,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   |---|---|---|
   | Club (`CLUB_MENSUAL`) | U$S 20 | 8 informes por mes |
   | Jugador (`PLAYER_MENSUAL`) | U$S 7 | 4 informes por mes |
-  | DT free (`DT_FREE`) | Gratis hasta el 31/12/2026 | Equipos y partidos sin límite |
-  | DT (`DT_MENSUAL`) | U$S 12 | Equipos sin límite y 20 partidos por mes |
+  | DT free (`DT_FREE`) | Gratis hasta el 31/12/2026 | 1 equipo y 5 partidos por mes |
+  | DT (`DT_MENSUAL`) | U$S 12 | Hasta 3 equipos y 25 partidos por mes |
 
 - **Suscripciones:** la tabla `suscripcion_type` (con `precio_usd`, `informes_por_mes`, `equipos_max` y
   `partidos_por_mes`) tiene un plan mensual por tipo de usuario: `PLAYER_MENSUAL`, `CLUB_MENSUAL` y `DT_MENSUAL`, y el DT además el
@@ -445,7 +446,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
 - Métricas DT (DTFPP o DTAMP; sin `equipo`, el primer equipo del DT; lo de otro DT da 404):
   - `GET /api/dt/equipos`: los equipos con `jugados`, `ganados`, `empatados` y `perdidos` (partidos finalizados);
-    `POST /api/dt/equipos` `{"nombre"}` → `201`; `PUT /api/dt/equipos/{id}`; `DELETE /api/dt/equipos/{id}` → `204`
+    `POST /api/dt/equipos` `{"nombre"}` → `201` (`409` si ya tiene los equipos del plan); `PUT /api/dt/equipos/{id}`; `DELETE /api/dt/equipos/{id}` → `204`
     (`409` si tiene partidos)
   - `GET /api/dt/jugadores`: todos los jugadores con sus `equipos`; `POST /api/dt/jugadores`
     `{"nombre","apellido","numero","arquero","equipos":[1,2]}` → `201` (id desde 900000000); `PUT /api/dt/jugadores/{id}`

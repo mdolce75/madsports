@@ -288,7 +288,9 @@
                     <span class="plan-quota"></span>
                     <ul></ul>`;
                 card.querySelector("input").value = plan.codigo;
-                card.querySelector("input").checked = i === 0;
+                // El plan elegido en la página de la sección (?plan=DT_MENSUAL); si no, el primero.
+                const pedido = new URLSearchParams(location.search).get("plan");
+                card.querySelector("input").checked = planes.some(x => x.codigo === pedido) ? plan.codigo === pedido : i === 0;
                 card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador|DT) /, "");
                 const gratis = Number(plan.precio) === 0;
                 card.querySelector(".plan-price b").textContent = gratis ? "Gratis" : pesos(plan.precio);
@@ -296,8 +298,7 @@
                 card.querySelector(".plan-month").textContent = plan.vigenteHasta
                     ? "Hasta el " + fecha(plan.vigenteHasta) : "Sin permanencia";
                 card.querySelector(".plan-quota").textContent = plan.partidosPorMes > 0
-                    ? `Equipos sin límite y ${plan.partidosPorMes} partidos por mes`
-                    : p.startsWith("DT") ? "Equipos y partidos sin límite"
+                    ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"} y ${plan.partidosPorMes} partidos por mes`
                     : `Hasta ${plan.informesPorMes} informes por mes`;
                 const ul = card.querySelector("ul");
                 BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("DT") ? "DT" : "CLUB"].forEach(b => {

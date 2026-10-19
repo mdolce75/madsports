@@ -8,7 +8,7 @@
     const SESION = {
         autenticado: true, usuario: "demo", nombre: "DT", apellido: "Demo", email: null, perfiles: ["DTFPP"],
         club: {id: 0, nombre: "CLUB DEMO", codigo: "DEMO"}, jugador: null, inicio: "/dt-demo.html",
-        suscripcion: {codigo: "DT_MENSUAL", nombre: "DT mensual", equiposMax: 2, partidosPorMes: 20},
+        suscripcion: {codigo: "DT_MENSUAL", nombre: "DT mensual", equiposMax: 3, partidosPorMes: 25},
         informesPedidos: 0, federacion: "FPP",
     };
     const EQUIPOS = [{id: 1, nombre: "Primera Masculino"}];
@@ -80,6 +80,8 @@
         if (!nombre) throw [400, "Escribí el nombre del equipo."];
         if (EQUIPOS.some(e => e.id !== id && e.nombre.toLowerCase() === nombre.toLowerCase())) throw [409, `Ya tenés un equipo llamado ${nombre}.`];
         if (method === "POST") {
+            if (EQUIPOS.length >= SESION.suscripcion.equiposMax) throw [409, `Tu plan DT mensual permite hasta `
+                + `${SESION.suscripcion.equiposMax} equipos. Para sumar otro, borrá uno sin partidos.`];
             const e = {id: proximoEquipo++, nombre};
             EQUIPOS.push(e);
             return json(201, equiposConBalance().find(x => x.id === e.id));

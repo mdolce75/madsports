@@ -754,3 +754,11 @@ body.dt-vivo .dt-menu { display: none; }
 /* Panel: los gráficos de estado y de partidos por mes, de tamaño contenido (no crecen con el ancho de la pantalla). */
 #d-estados .grafico { max-width: 360px; }
 #d-meses .grafico { max-width: 440px; max-height: 160px; margin: 0 auto; }
+
+/* Planes de la página de Métricas DT: cada uno se elige y lleva al registro con ese plan. */
+a.plan-elegir { display: flex; flex-direction: column; color: inherit; text-decoration: none; cursor: pointer;
+                transition: border-color .15s, transform .15s; }
+a.plan-elegir:hover { border-color: var(--accent); transform: translateY(-2px); }
+a.plan-elegir:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.plan-cta { margin-top: 12px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { a.plan-elegir { transition: none; } a.plan-elegir:hover { transform: none; } }

@@ -164,8 +164,11 @@ class DtControllerTest {
                 .andExpect(jsonPath("$.detail").value("Ya tenés un equipo llamado primera a."));
         enviar(post("/api/dt/equipos"), "profe", Map.of("nombre", " ")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Escribí el nombre del equipo."));
-        // Sin límite de equipos (el plan mensual decía 2).
+        // El plan mensual permite hasta 3 equipos.
         equipo("profe", "Juveniles");
+        enviar(post("/api/dt/equipos"), "profe", Map.of("nombre", "Cuarto")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Tu plan DT mensual permite hasta 3 equipos. Para sumar otro, borrá "
+                        + "uno sin partidos."));
         enviar(put("/api/dt/equipos/" + infantil), "profe", Map.of("nombre", "Infantil B")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Infantil B"));
 
@@ -345,30 +348,34 @@ class DtControllerTest {
     }
 
     @Test
-    void cupoDe20PartidosPorMes() throws Exception {
-        for (int i = 0; i < 20; i++) {
+    void cupoDe25PartidosPorMes() throws Exception {
+        for (int i = 0; i < 25; i++) {
             enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Rival " + i, "local", false))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.local").value(false))
                     .andExpect(jsonPath("$.minutosTiempo").value(25));
         }
         enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Uno más")).andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Ya cargaste los 20 partidos de este mes. El cupo se renueva el 15/11."));
-        mvc.perform(get("/api/dt/partidos").with(como("profe"))).andExpect(jsonPath("$", hasSize(20)));
+                .andExpect(jsonPath("$.detail").value("Ya cargaste los 25 partidos de este mes. El cupo se renueva el 15/11."));
+        mvc.perform(get("/api/dt/partidos").with(como("profe"))).andExpect(jsonPath("$", hasSize(25)));
         // El mes siguiente de la suscripción vuelve a tener cupo.
         reloj.ahora = Instant.parse("2026-11-15T12:00:00Z");
         enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Nuevo mes")).andExpect(status().isCreated());
     }
 
     @Test
-    void elPlanFreeNoTieneLimiteDePartidosHastaFinDe2026() throws Exception {
+    void elPlanFreeEsDeUnEquipoYCincoPartidosPorMesHastaFinDe2026() throws Exception {
         dt("gratis", "DT_FREE");
         equipo("gratis", "Mi equipo");
-        // Más que los 20 del plan mensual: el free no tiene límite.
-        for (int i = 0; i < 25; i++) {
+        enviar(post("/api/dt/equipos"), "gratis", Map.of("nombre", "Otro")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Tu plan DT free permite 1 equipo. Para sumar otro, borrá uno sin "
+                        + "partidos o pasate al plan mensual."));
+        for (int i = 0; i < 5; i++) {
             enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Rival " + i)).andExpect(status().isCreated());
         }
-        // El 31/12/2026 todavía vale; el 1/1/2027 ya no se pueden empezar partidos.
+        enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Uno más")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya cargaste los 5 partidos de este mes. El cupo se renueva el 15/11."));
+        // El 31/12/2026 (otro mes de la suscripción) todavía vale; el 1/1/2027 ya no se pueden empezar partidos.
         reloj.ahora = Instant.parse("2026-12-31T20:00:00Z");
         enviar(post("/api/dt/partidos"), "gratis", Map.of("rival", "Fin de año")).andExpect(status().isCreated());
         reloj.ahora = Instant.parse("2027-01-01T13:00:00Z");
