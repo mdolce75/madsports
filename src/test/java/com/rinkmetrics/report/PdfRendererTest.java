@@ -51,8 +51,8 @@ class PdfRendererTest {
 
     @Test
     void generaElPdfDelJugador() throws Exception {
-        PlayerReport.Line primera = new PlayerReport.Line("Primera Masculino", 2, 1, 0, 1, 4, 1, 1, 0, 1, 2, 1, 1, 0);
-        PlayerReport.Line juniors = new PlayerReport.Line("Juniors Masculino", 1, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1);
+        PlayerReport.Line primera = new PlayerReport.Line("Primera Masculino", 2, 1, 0, 1, 4, 1, 1, 0, 1, 2, 1, 1, 0, 10);
+        PlayerReport.Line juniors = new PlayerReport.Line("Juniors Masculino", 1, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 5);
         List<PlayerReport.Bucket> buckets = new java.util.ArrayList<>();
         for (int i = 0; i < 10; i++) {
             buckets.add(new PlayerReport.Bucket((i < 5 ? "1T " : "2T ") + (i % 5) * 5 + "-" + ((i % 5) * 5 + 5) + "'",
@@ -75,7 +75,7 @@ class PdfRendererTest {
         PlayerReport report = new PlayerReport(3851, "Ignacio J Graiño", "Ignacio Graiño",
                 new ReportData.ClubInfo(74, "CAVS", "VELEZ", Crests.sample("CV")), 2026, "Apertura + Clausura",
                 StatsEngineTest.HOY, List.of(juniors, primera),
-                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1), minutes, sh, List.of(partido),
+                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1, 15), minutes, sh, List.of(partido),
                 List.of("Juniors Masculino: 1 partido del equipo no tiene acta publicada; si jugó, no está contado."),
                 blocks);
 
@@ -87,7 +87,9 @@ class PdfRendererTest {
                 "Goles con uno menos por sus sanciones",
                 "Goles que le hicieron a su equipo mientras cumplía su sanción: 1.", "1T 12:30", "1T 13:40",
                 "No cumplió sanciones (azul o roja) con minuto registrado",
-                "Todas las categorías", "COMUNICACIONES *", "Partido sin acta publicada");
+                "Todas las categorías", "COMUNICACIONES *", "Partido sin acta publicada",
+                // Incidencia de sus goles: 4 de 10 en Primera, 3 de 5 en Juniors, 7 de 15 en total.
+                "Incid.", "De los goles del equipo (4 de 10)", "De los goles del equipo (3 de 5)", ">40%<", ">60%<", ">47%<");
         // Agrupado por categoría: un bloque por cada una (Juniors antes que Primera) y después el total.
         assertThat(html.indexOf(">Juniors Masculino</h2>")).isPositive()
                 .isLessThan(html.indexOf(">Primera Masculino</h2>"));
