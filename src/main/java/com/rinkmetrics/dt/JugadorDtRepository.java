@@ -7,11 +7,10 @@ import java.util.Optional;
 
 public interface JugadorDtRepository extends JpaRepository<JugadorDt, Long> {
 
-    /** Plantel del equipo del DT, también los dados de baja. */
-    List<JugadorDt> findByUsuarioIdAndCategoriaAndRamaOrderByIdAsc(Long usuarioId, String categoria, String rama);
+    /** Jugadores activos del DT (de todos sus equipos). */
+    List<JugadorDt> findByUsuarioIdAndActivoTrue(Long usuarioId);
 
-    Optional<JugadorDt> findByUsuarioIdAndCategoriaAndRamaAndJugadorId(Long usuarioId, String categoria, String rama,
-                                                                      int jugadorId);
+    Optional<JugadorDt> findByUsuarioIdAndJugadorIdAndActivoTrue(Long usuarioId, int jugadorId);
 
     /** El jugador con el id más alto del DT (para numerar los que agrega). */
     Optional<JugadorDt> findTopByUsuarioIdOrderByJugadorIdDesc(Long usuarioId);

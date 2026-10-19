@@ -1,7 +1,5 @@
 package com.rinkmetrics.dt;
 
-import com.rinkmetrics.account.AccountController;
-import com.rinkmetrics.account.EquipoDt;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
 import com.rinkmetrics.report.PdfRenderer;
@@ -34,14 +32,16 @@ public class DtInformeService {
     private final PartidoDtRepository partidos;
     private final AccionDtRepository acciones;
     private final PlantelDtService planteles;
+    private final EquipoDtService equipos;
     private final PdfRenderer pdf;
     private final Clock clock;
 
     public DtInformeService(PartidoDtRepository partidos, AccionDtRepository acciones, PlantelDtService planteles,
-                            PdfRenderer pdf, Clock clock) {
+                            EquipoDtService equipos, PdfRenderer pdf, Clock clock) {
         this.partidos = partidos;
         this.acciones = acciones;
         this.planteles = planteles;
+        this.equipos = equipos;
         this.pdf = pdf;
         this.clock = clock;
     }
@@ -55,29 +55,29 @@ public class DtInformeService {
         PartidoDt p = partidos.findByIdAndUsuarioId(id, u.getId())
                 .orElseThrow(() -> new DtService.NoEncontrado("No existe ese partido."));
         String titulo = u.getClubNombre() + " " + p.getGolesFavor() + " - " + p.getGolesContra() + " " + p.getRival();
-        String detalle = String.join(" · ", Stream.of(nombre(p.getCategoria(), p.getRama()),
+        String detalle = String.join(" · ", Stream.of(equipos.equipo(u, p.getEquipoId()).getNombre(),
                 p.isLocal() ? "Local" : "Visitante", p.getTorneo(), p.getFecha().format(FECHA))
                 .filter(s -> s != null && !s.isBlank()).toList());
         return armar(u, titulo, detalle, true, List.of(p), jugador);
     }
 
     /** Informe de los partidos finalizados del equipo en el período. */
-    public InformeDt periodo(Usuario u, String categoria, String rama, Periodo periodo, String valor, String jugador) {
+    public InformeDt periodo(Usuario u, Long equipoId, Periodo periodo, String valor, String jugador) {
         if (periodo == null) {
             throw new IllegalArgumentException("Elegí el período del informe.");
         }
-        EquipoDt e = DtService.equipo(u, categoria, rama);
+        Equipo e = equipos.equipo(u, equipoId);
         String v = valor == null ? "" : valor.trim();
         String titulo = periodo.nombre(v);
         List<PartidoDt> ps = partidos.findByUsuarioIdOrderByFechaDescIdDesc(u.getId()).stream()
-                .filter(p -> p.getCategoria().equals(e.categoria()) && p.getRama().equals(e.rama()))
+                .filter(p -> p.getEquipoId().equals(e.getId()))
                 .filter(DtInformeService::finalizado)
                 .filter(p -> periodo.valor(p.getFecha(), p.getTorneo()).equals(v))
                 .toList().reversed();
         if (ps.isEmpty()) {
             throw new IllegalArgumentException("No hay partidos finalizados en " + titulo + ".");
         }
-        String detalle = nombre(e.categoria(), e.rama()) + " · " + ps.size() + (ps.size() == 1 ? " partido" : " partidos");
+        String detalle = e.getNombre() + " · " + ps.size() + (ps.size() == 1 ? " partido" : " partidos");
         return armar(u, periodo == Periodo.CAMPEONATO && !v.isEmpty() ? "Campeonato " + titulo : titulo, detalle,
                 false, ps, jugador);
     }
@@ -101,18 +101,14 @@ public class DtInformeService {
         List<AccionDt> lista = acciones.findByPartidoIdInOrderByPartidoIdAscTiempoAscSegundoAscCreadaAsc(
                 ps.stream().map(PartidoDt::getId).toList()).stream().filter(AccionDt::activa).toList();
         PartidoDt primero = ps.getFirst();
-        return InformeDt.armar(titulo, detalle, u.getClubNombre(), nombre(primero.getCategoria(), primero.getRama()),
-                LocalDate.now(clock), unPartido, ps, lista, plantel(u, primero), jugador);
+        return InformeDt.armar(titulo, detalle, u.getClubNombre(), equipos.equipo(u, primero.getEquipoId()).getNombre(),
+                LocalDate.now(clock), unPartido, ps, lista, plantel(u), jugador);
     }
 
-    /** Plantel del equipo (el de la sección Equipo) para el nombre, el número y los arqueros. */
-    private Map<Integer, JugadorPlantel> plantel(Usuario u, PartidoDt p) {
-        return planteles.plantel(u, p.getCategoria(), p.getRama()).stream()
+    /** Jugadores del DT (sección Equipo) para el nombre, el número y los arqueros. */
+    private Map<Integer, JugadorPlantel> plantel(Usuario u) {
+        return planteles.jugadores(u).stream()
                 .collect(Collectors.toMap(JugadorPlantel::id, Function.identity(), (a, b) -> a));
-    }
-
-    private static String nombre(String categoria, String rama) {
-        return AccountController.equipoNombre(new EquipoDt(categoria, rama));
     }
 
     static String slug(String s) {

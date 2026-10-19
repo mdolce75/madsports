@@ -13,8 +13,9 @@
 </head>
 <body class="dt-page demo" data-seccion="demo">
 <div class="wrap">
-    <div class="demo-aviso" role="note"><b>Demo</b> Partido y plantel de ejemplo: probá cargar acciones, mover el
-        reloj y ver el informe. Nada se guarda. <a href="/registro.html?seccion=dt">Crear mi cuenta de DT</a></div>
+    <div class="demo-aviso" role="note"><b>Demo</b> Métricas DT completo, con datos de ejemplo: recorré el panel, tus
+        partidos (abrí el que está en juego para cargar acciones), las estadísticas, los informes y tu equipo. Nada se
+        guarda. <a href="/registro.html?seccion=dt">Crear mi cuenta de DT</a></div>
     <div class="topbar">
         <div id="brand"></div>
         <div class="userbar" id="userbar"></div>
@@ -67,15 +68,33 @@
         </div>
     </section>
 
-    <!-- Equipo: el plantel (alta, baja y cambios de jugadores) -->
+    <!-- Equipo: ABM de equipos y de jugadores -->
     <section id="v-plantel" class="dt-vista" hidden>
-        <div class="dt-line"><h2 class="section-title">Equipo</h2>
-            <select id="pl-equipo" aria-label="Equipo" hidden></select></div>
-        <p class="hint">El plantel de tu equipo. La primera vez se arma con las actas de SIDGAD; desde acá agregás,
-            corregís o das de baja jugadores. Los que das de baja conservan sus acciones en los partidos y los informes.</p>
+        <h2 class="section-title">Equipo</h2>
+        <p class="hint">Primero creá tus equipos; después cargá los jugadores y asignalos a uno o más equipos. Los
+            jugadores que das de baja conservan sus acciones en los partidos y los informes.</p>
+
+        <h3 class="inf-sub">Equipos</h3>
+        <div class="partidos-grid">
+            <form class="sheet" id="eq-form" novalidate>
+                <div class="sheet-head"><span id="eq-titulo">Nuevo equipo</span><span></span></div>
+                <div class="field"><label for="eq-nombre">Nombre</label>
+                    <input type="text" id="eq-nombre" maxlength="60" autocomplete="off" placeholder="Primera A, Infantil…"></div>
+                <button type="submit" class="go" id="eq-guardar">Agregar equipo</button>
+                <button type="button" class="dt-link pl-cancelar" id="eq-cancelar" hidden>Cancelar</button>
+                <div id="eq-status" class="abm-status" role="status"></div>
+            </form>
+            <div class="sheet">
+                <div class="sheet-head"><span>Tus equipos</span><span id="eq-n"></span></div>
+                <ul class="pl-lista eq-lista" id="eq-lista"><li class="dt-vacio">Cargando…</li></ul>
+            </div>
+        </div>
+
+        <h3 class="inf-sub">Jugadores</h3>
         <div class="partidos-grid">
             <form class="sheet" id="pl-form" novalidate>
                 <div class="sheet-head"><span id="pl-titulo">Nuevo jugador</span><span></span></div>
+                <p class="dt-aviso-equipo" id="pl-sin-equipos" hidden>Creá un equipo antes de cargar jugadores.</p>
                 <div class="grid2">
                     <div class="field"><label for="pl-nombre">Nombre</label>
                         <input type="text" id="pl-nombre" maxlength="40" autocomplete="off"></div>
@@ -87,12 +106,17 @@
                         <input type="text" id="pl-numero" maxlength="3" inputmode="numeric" autocomplete="off" placeholder="Sin número"></div>
                     <div class="field pl-check"><label for="pl-arquero"><input type="checkbox" id="pl-arquero"> Arquero</label></div>
                 </div>
+                <fieldset class="field pl-equipos">
+                    <legend>Equipos</legend>
+                    <div id="pl-equipos"></div>
+                </fieldset>
                 <button type="submit" class="go" id="pl-guardar">Agregar jugador</button>
                 <button type="button" class="dt-link pl-cancelar" id="pl-cancelar" hidden>Cancelar</button>
-                <div id="pl-status" role="status"></div>
+                <div id="pl-status" class="abm-status" role="status"></div>
             </form>
             <div class="sheet">
-                <div class="sheet-head"><span>Plantel</span><span id="pl-n"></span></div>
+                <div class="sheet-head"><span>Jugadores</span><span id="pl-n"></span></div>
+                <div class="pl-filtro"><select id="pl-filtro" aria-label="Ver los jugadores de"></select></div>
                 <ul class="pl-lista" id="pl-lista"><li class="dt-vacio">Cargando…</li></ul>
             </div>
         </div>
@@ -135,18 +159,16 @@
         <div class="partidos-grid">
         <div class="sheet">
             <div class="sheet-head"><span>Nuevo partido</span><span id="cupo"></span></div>
-            <div class="field" id="f-equipo" hidden>
+            <p class="dt-aviso-equipo" id="sin-equipos" hidden>Para cargar un partido, primero creá tu equipo y sus
+                jugadores en <a href="#equipo">Equipo</a>.</p>
+            <div class="field">
                 <label for="equipo">Equipo</label>
                 <select id="equipo"></select>
             </div>
             <div class="field">
                 <label for="rival">Rival</label>
-                <select id="rival" disabled><option>Cargando los clubes…</option></select>
-                <p class="hint" id="rival-hint"></p>
-            </div>
-            <div class="field" id="f-otro" hidden>
-                <label for="otro">Nombre del rival</label>
-                <input type="text" id="otro" maxlength="60" autocomplete="off" placeholder="Escribí el rival">
+                <input type="text" id="rival" maxlength="60" autocomplete="off" list="rivales" placeholder="Escribí el rival">
+                <datalist id="rivales"></datalist>
             </div>
             <div class="grid2">
                 <div class="field">
@@ -157,6 +179,13 @@
                     <label for="local">Condición</label>
                     <select id="local"><option value="true">Local</option><option value="false">Visitante</option></select>
                 </div>
+            </div>
+            <div class="field">
+                <label for="minutos">Minutos por tiempo</label>
+                <select id="minutos">
+                    <option value="15">15 minutos</option><option value="20">20 minutos</option>
+                    <option value="25" selected>25 minutos</option><option value="30">30 minutos</option>
+                </select>
             </div>
             <div class="field">
                 <label for="torneo">Campeonato <small>(opcional)</small></label>

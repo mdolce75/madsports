@@ -3,7 +3,6 @@ package com.rinkmetrics.account;
 import com.rinkmetrics.account.RegistroService.ConflictException;
 import com.rinkmetrics.account.RegistroService.Registro;
 import com.rinkmetrics.catalog.CatalogService;
-import com.rinkmetrics.sidgad.model.Competition;
 import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.config.SecurityConfig;
 import com.rinkmetrics.player.RosterService;
@@ -58,8 +57,7 @@ public class AccountController {
             String categoria,
             String rama,
             Integer jugadorId,
-            @NotBlank(message = "Elegí un plan de suscripción.") String suscripcion,
-            List<EquipoDt> equipos) {
+            @NotBlank(message = "Elegí un plan de suscripción.") String suscripcion) {
     }
 
     /**
@@ -81,22 +79,14 @@ public class AccountController {
 
     /**
      * @param federacion sigla de la federación de sus perfiles (FPP, AMP)
-     * @param equipos    equipos del DT: {categoria, rama, nombre} ("Juvenil A Masculino"); vacío si no es DT
      */
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
                               List<String> perfiles, Map<String, Object> club, Map<String, Object> jugador,
                               String inicio, Map<String, Object> suscripcion, int informesPedidos,
-                              String federacion, List<Map<String, String>> equipos) {
+                              String federacion) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
-                "/", null, 0, null, List.of());
-    }
-
-    /** "JUVENIL:A" + "MASCULINO" -> "Juvenil A Masculino". */
-    public static String equipoNombre(EquipoDt e) {
-        CatalogService.CategoryOption o = CatalogService.CategoryOption.parse(e.categoria());
-        return new Competition.Category(o.level(), e.rama()).levelLabel() + (o.letter() == null ? "" : " " + o.letter())
-                + " " + new Competition.Category(o.level(), e.rama()).branchLabel();
+                "/", null, 0, null);
     }
 
     private final RegistroService registro;
@@ -139,8 +129,7 @@ public class AccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> registrar(@Valid @RequestBody RegistroRequest req) {
         Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(),
-                req.clubId(), req.categoria(), req.rama(), req.jugadorId(), req.suscripcion(),
-                req.equipos() == null ? List.of() : req.equipos()));
+                req.clubId(), req.categoria(), req.rama(), req.jugadorId(), req.suscripcion()));
         cuenta.enviarVerificacion(u);
         return Map.of("usuario", u.getUsuario(), "email", u.getEmail());
     }
@@ -212,9 +201,7 @@ public class AccountController {
                                 "hasta", u.getSuscripcionHasta().toString(),
                                 "equiposMax", u.getSuscripcionType().getEquiposMax(),
                                 "partidosPorMes", u.getSuscripcionType().getPartidosPorMes()),
-                        u.getInformesPedidos(), u.federacion().name(),
-                        u.getEquiposDt().stream().map(e -> Map.of("categoria", e.categoria(), "rama", e.rama(),
-                                "nombre", equipoNombre(e))).toList()))
+                        u.getInformesPedidos(), u.federacion().name()))
                 .orElse(SessionView.ANONYMOUS);
     }
 

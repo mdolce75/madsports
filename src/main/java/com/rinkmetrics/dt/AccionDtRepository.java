@@ -9,6 +9,9 @@ public interface AccionDtRepository extends JpaRepository<AccionDt, String> {
     /** Acciones del partido (también las borradas), en orden de juego. */
     List<AccionDt> findByPartidoIdOrderByTiempoAscSegundoAscCreadaAsc(Long partidoId);
 
+    /** Borra todas las acciones de un partido (al eliminar el partido). */
+    void deleteByPartidoId(Long partidoId);
+
     /** Las acciones de varios partidos (las de un equipo del DT), en orden de juego. */
     List<AccionDt> findByPartidoIdInOrderByPartidoIdAscTiempoAscSegundoAscCreadaAsc(java.util.Collection<Long> partidoIds);
 }

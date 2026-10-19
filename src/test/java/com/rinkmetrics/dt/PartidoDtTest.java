@@ -14,7 +14,7 @@ class PartidoDtTest {
     static final Instant T0 = Instant.parse("2026-10-16T18:00:00Z");
 
     static PartidoDt partido() {
-        return new PartidoDt(1L, "FPP", 74, "PRIMERA", "MASCULINO", 500, 9001, "Apertura", "HURACAN",
+        return new PartidoDt(1L, "FPP", 74, 1L, 500, 9001, "Apertura", "HURACAN",
                 LocalDate.of(2026, 10, 16), true, 25, T0);
     }
 

@@ -1,22 +1,20 @@
 package com.rinkmetrics.dt;
 
-import com.rinkmetrics.account.EquipoDt;
 import com.rinkmetrics.account.Usuario;
-import com.rinkmetrics.catalog.CatalogService;
-import com.rinkmetrics.player.RosterService;
-import com.rinkmetrics.player.RosterService.PlantelJugador;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Plantel de cada equipo del DT (el ABM de la sección Equipo). La primera vez que se pide, se arma con el de las actas
- * de SIDGAD y se guarda; desde ahí, el DT da de alta, corrige y da de baja jugadores. Las acciones nombran al jugador
- * por su id: el de SIDGAD o, para los que agrega el DT, uno propio.
+ * Jugadores del DT (el ABM de jugadores de la sección Equipo): nombre, apellido, número, si es arquero y en qué equipos
+ * juega (uno o más). El plantel de un equipo son sus jugadores activos; no sale de SIDGAD. Las acciones nombran al
+ * jugador por su id.
  */
 @Service
 public class PlantelDtService {
@@ -24,118 +22,113 @@ public class PlantelDtService {
     private static final Pattern NUMERO = Pattern.compile("\\d{1,3}");
 
     /**
-     * Un jugador del plantel.
+     * Un jugador.
      *
      * @param id      el id con el que lo nombran las acciones
      * @param nombre  nombre y apellido, para mostrar
      * @param nombres solo el nombre (para editarlo)
+     * @param equipos ids de los equipos en que juega
      */
     public record JugadorPlantel(int id, String numero, String nombre, String nombres, String apellido,
-                                 boolean arquero) {
+                                 boolean arquero, List<Long> equipos) {
 
         static JugadorPlantel of(JugadorDt j) {
             return new JugadorPlantel(j.getJugadorId(), j.getNumero() == null ? "" : j.getNumero(), j.completo(),
-                    j.getNombre(), j.getApellido(), j.isArquero());
+                    j.getNombre(), j.getApellido(), j.isArquero(), j.getEquipos().stream().sorted().toList());
         }
     }
 
-    /** Alta o cambio de un jugador; categoría y rama dicen de qué equipo del DT (sin ellas, el primero). */
-    public record DatosJugador(String categoria, String rama, String nombre, String apellido, String numero,
-                               Boolean arquero) {
+    /** Alta o cambio de un jugador: sus datos y los equipos en que juega (al menos uno). */
+    public record DatosJugador(String nombre, String apellido, String numero, Boolean arquero, List<Long> equipos) {
     }
 
     private final JugadorDtRepository jugadores;
-    private final RosterService roster;
-    private final CatalogService catalog;
+    private final EquipoDtService equipos;
     private final Clock clock;
 
-    public PlantelDtService(JugadorDtRepository jugadores, RosterService roster, CatalogService catalog, Clock clock) {
+    public PlantelDtService(JugadorDtRepository jugadores, EquipoDtService equipos, Clock clock) {
         this.jugadores = jugadores;
-        this.roster = roster;
-        this.catalog = catalog;
+        this.equipos = equipos;
         this.clock = clock;
     }
 
-    /** Los jugadores activos del equipo, por número. */
-    @Transactional
-    public List<JugadorPlantel> plantel(Usuario u, String categoria, String rama) {
-        EquipoDt e = DtService.equipo(u, categoria, rama);
-        return activos(u, e).stream().map(JugadorPlantel::of).toList();
+    /** Todos los jugadores activos del DT, por apellido. */
+    public List<JugadorPlantel> jugadores(Usuario u) {
+        return jugadores.findByUsuarioIdAndActivoTrue(u.getId()).stream()
+                .sorted(Comparator.comparing(JugadorDt::getApellido, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(JugadorDt::getNombre, String.CASE_INSENSITIVE_ORDER))
+                .map(JugadorPlantel::of).toList();
+    }
+
+    /** El plantel de un equipo (sin id, el primero): sus jugadores activos, por número. */
+    public List<JugadorPlantel> plantel(Usuario u, Long equipoId) {
+        Equipo e = equipos.equipo(u, equipoId);
+        return delEquipo(u, e.getId()).stream().map(JugadorPlantel::of).toList();
     }
 
     @Transactional
     public JugadorPlantel alta(Usuario u, DatosJugador d) {
-        EquipoDt e = DtService.equipo(u, d.categoria(), d.rama());
-        List<JugadorDt> actuales = activos(u, e);
+        Set<Long> suyos = equiposValidos(u, d.equipos());
         String numero = numero(d.numero());
-        verificarNumero(actuales, numero, -1);
+        verificarNumero(u, suyos, numero, -1);
         int id = jugadores.findTopByUsuarioIdOrderByJugadorIdDesc(u.getId()).map(JugadorDt::getJugadorId)
                 .filter(n -> n >= JugadorDt.PRIMER_ID_PROPIO).map(n -> n + 1).orElse(JugadorDt.PRIMER_ID_PROPIO);
-        JugadorDt j = jugadores.save(new JugadorDt(u.getId(), e.categoria(), e.rama(), id, texto(d.nombre(), "nombre"),
-                texto(d.apellido(), "apellido"), numero, Boolean.TRUE.equals(d.arquero()), clock.instant()));
+        JugadorDt j = jugadores.save(new JugadorDt(u.getId(), id, texto(d.nombre(), "nombre"),
+                texto(d.apellido(), "apellido"), numero, Boolean.TRUE.equals(d.arquero()), suyos, clock.instant()));
         return JugadorPlantel.of(j);
     }
 
     @Transactional
     public JugadorPlantel modificar(Usuario u, int jugadorId, DatosJugador d) {
-        EquipoDt e = DtService.equipo(u, d.categoria(), d.rama());
-        List<JugadorDt> actuales = activos(u, e);
-        JugadorDt j = suyo(actuales, jugadorId);
+        JugadorDt j = suyo(u, jugadorId);
+        Set<Long> suyos = equiposValidos(u, d.equipos());
         String numero = numero(d.numero());
-        verificarNumero(actuales, numero, jugadorId);
-        j.cambiar(texto(d.nombre(), "nombre"), texto(d.apellido(), "apellido"), numero, Boolean.TRUE.equals(d.arquero()));
+        verificarNumero(u, suyos, numero, jugadorId);
+        j.cambiar(texto(d.nombre(), "nombre"), texto(d.apellido(), "apellido"), numero, Boolean.TRUE.equals(d.arquero()),
+                suyos);
         return JugadorPlantel.of(j);
     }
 
-    /** Baja: el jugador sale del plantel; sus acciones quedan en los partidos e informes. */
+    /** Baja: el jugador sale de sus equipos; sus acciones quedan en los partidos e informes. */
     @Transactional
-    public void baja(Usuario u, String categoria, String rama, int jugadorId) {
-        EquipoDt e = DtService.equipo(u, categoria, rama);
-        suyo(activos(u, e), jugadorId).baja();
+    public void baja(Usuario u, int jugadorId) {
+        suyo(u, jugadorId).baja();
     }
 
-    /** Los activos del equipo; si el plantel nunca se armó, primero lo trae de las actas de SIDGAD. */
-    private List<JugadorDt> activos(Usuario u, EquipoDt e) {
-        List<JugadorDt> todos = jugadores.findByUsuarioIdAndCategoriaAndRamaOrderByIdAsc(u.getId(), e.categoria(), e.rama());
-        if (todos.isEmpty()) {
-            todos = desdeSidgad(u, e);
-        }
-        return todos.stream().filter(JugadorDt::isActivo)
+    private List<JugadorDt> delEquipo(Usuario u, Long equipoId) {
+        return jugadores.findByUsuarioIdAndActivoTrue(u.getId()).stream().filter(j -> j.juegaEn(equipoId))
                 .sorted(Comparator.comparingInt((JugadorDt j) -> orden(j.getNumero()))
                         .thenComparing(JugadorDt::getApellido, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 
-    /** Plantel de las actas: nombre y apellido separados en la última palabra (se pueden corregir después). */
-    private List<JugadorDt> desdeSidgad(Usuario u, EquipoDt e) {
-        List<PlantelJugador> sidgad;
-        try {
-            sidgad = roster.plantel(u.federacion(), u.getClubId(), catalog.defaultYear(), e.categoria(), e.rama());
-        } catch (RuntimeException ex) {
-            return List.of();   // sin SIDGAD, se vuelve a intentar la próxima vez
+    private JugadorDt suyo(Usuario u, int jugadorId) {
+        return jugadores.findByUsuarioIdAndJugadorIdAndActivoTrue(u.getId(), jugadorId)
+                .orElseThrow(() -> new DtService.NoEncontrado("Ese jugador no está en tus equipos."));
+    }
+
+    /** Al menos un equipo, y todos del DT. */
+    private Set<Long> equiposValidos(Usuario u, List<Long> pedidos) {
+        Set<Long> ids = new LinkedHashSet<>(pedidos == null ? List.of() : pedidos);
+        ids.remove(null);
+        if (ids.isEmpty()) {
+            throw new IllegalArgumentException("Asigná el jugador a un equipo.");
         }
-        return sidgad.stream().map(p -> {
-            String completo = p.nombre() == null ? "" : p.nombre().trim().replaceAll("\\s+", " ");
-            int corte = completo.lastIndexOf(' ');
-            String nombre = corte < 0 ? "" : completo.substring(0, corte);
-            String apellido = corte < 0 ? completo : completo.substring(corte + 1);
-            return jugadores.save(new JugadorDt(u.getId(), e.categoria(), e.rama(), p.id(), corto(nombre), corto(apellido),
-                    numeroSidgad(p.numero()), p.arquero(), clock.instant()));
-        }).toList();
+        ids.forEach(id -> equipos.equipo(u, id));
+        return ids;
     }
 
-    private static JugadorDt suyo(List<JugadorDt> actuales, int jugadorId) {
-        return actuales.stream().filter(j -> j.getJugadorId() == jugadorId).findFirst()
-                .orElseThrow(() -> new DtService.NoEncontrado("Ese jugador no está en el plantel."));
-    }
-
-    private static void verificarNumero(List<JugadorDt> actuales, String numero, int salvo) {
+    /** El número no se repite dentro de un mismo equipo. */
+    private void verificarNumero(Usuario u, Set<Long> equiposDelJugador, String numero, int salvo) {
         if (numero == null) {
             return;
         }
-        actuales.stream().filter(j -> j.getJugadorId() != salvo && numero.equals(j.getNumero())).findFirst()
+        jugadores.findByUsuarioIdAndActivoTrue(u.getId()).stream()
+                .filter(j -> j.getJugadorId() != salvo && numero.equals(j.getNumero()))
+                .filter(j -> j.getEquipos().stream().anyMatch(equiposDelJugador::contains))
+                .findFirst()
                 .ifPresent(j -> {
-                    throw new DtService.Conflicto("El número " + numero + " ya es de " + j.completo() + ".");
+                    throw new DtService.Conflicto("El número " + numero + " ya es de " + j.completo() + " en ese equipo.");
                 });
     }
 
@@ -160,18 +153,6 @@ public class PlantelDtService {
             throw new IllegalArgumentException("El número es de 1 a 3 cifras.");
         }
         return String.valueOf(Integer.parseInt(t));
-    }
-
-    private static String numeroSidgad(String s) {
-        try {
-            return numero(s);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    private static String corto(String s) {
-        return s.length() > 40 ? s.substring(0, 40) : s;
     }
 
     private static int orden(String numero) {

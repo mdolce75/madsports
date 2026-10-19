@@ -15,8 +15,8 @@ const CHROME = process.env.CHROME || "C:\\Program Files\\Google\\Chrome\\Applica
 const PUERTO = 9333;
 
 const CAPTURAS = [
-    {archivo: "carga-web.png", url: "/dt-demo.html", ancho: 1280, alto: 800, escala: 1.5, celular: false},
-    {archivo: "carga-celular.png", url: "/dt-demo.html", ancho: 390, alto: 844, escala: 2, celular: true},
+    {archivo: "carga-web.png", url: "/dt-demo.html#partido=1", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "carga-celular.png", url: "/dt-demo.html#partido=1", ancho: 390, alto: 844, escala: 2, celular: true},
     {archivo: "resumen.png", url: "/dt-demo.html?tab=resumen", ancho: 1280, alto: 800, escala: 1.5, celular: false},
     {archivo: "dashboard.png", url: "/dt-demo.html#dashboard", ancho: 1280, alto: 800, escala: 1.5, celular: false},
     {archivo: "equipo.png", url: "/dt-demo.html#estadisticas-equipo", ancho: 1280, alto: 960, escala: 1.5, celular: false},

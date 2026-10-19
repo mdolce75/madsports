@@ -14,13 +14,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OrderColumn;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -64,12 +61,6 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(name = "perfil")
     private Set<Perfil> perfiles = EnumSet.noneOf(Perfil.class);
-
-    /** Equipos del DT (perfiles DT), como máximo los que permite su plan. */
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "usuario_equipo_dt", joinColumns = @JoinColumn(name = "usuario_id"))
-    @OrderColumn(name = "orden")
-    private List<EquipoDt> equiposDt = new ArrayList<>();
 
     protected Usuario() {
     }
@@ -115,14 +106,6 @@ public class Usuario {
     public LocalDate getSuscripcionDesde() { return suscripcionDesde; }
     public LocalDate getSuscripcionHasta() { return suscripcionHasta; }
     public int getInformesPedidos() { return informesPedidos; }
-
-    /** Equipos del DT (vacío si no es DT). */
-    public List<EquipoDt> getEquiposDt() { return List.copyOf(equiposDt); }
-
-    /** Asigna los equipos del DT (ya validados contra el catálogo y el plan). */
-    public void asignarEquiposDt(List<EquipoDt> equipos) {
-        this.equiposDt = new ArrayList<>(equipos);
-    }
 
     /**
      * Asigna la suscripción desde una fecha; el fin sale de la duración del tipo.

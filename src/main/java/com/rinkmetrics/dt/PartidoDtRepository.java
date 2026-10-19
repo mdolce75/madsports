@@ -15,8 +15,10 @@ public interface PartidoDtRepository extends JpaRepository<PartidoDt, Long> {
     Optional<PartidoDt> findByIdAndUsuarioId(Long id, Long usuarioId);
 
     /** El partido del equipo contra ese rival en esa fecha, si el DT ya lo empezó a cargar. */
-    Optional<PartidoDt> findByUsuarioIdAndCategoriaAndRamaAndRivalAndFecha(Long usuarioId, String categoria, String rama,
-                                                                       String rival, LocalDate fecha);
+    Optional<PartidoDt> findByUsuarioIdAndEquipoIdAndRivalAndFecha(Long usuarioId, Long equipoId, String rival,
+                                                                   LocalDate fecha);
+
+    long countByEquipoId(Long equipoId);
 
     /** Partidos que el DT empezó a cargar desde una fecha (para el cupo del mes). */
     long countByUsuarioIdAndCreadoGreaterThanEqual(Long usuarioId, Instant desde);

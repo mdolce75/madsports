@@ -220,8 +220,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   las páginas, salvo en la pantalla de Métricas DT (y su demo): ahí la barra superior lleva solo el menú del DT
   (Dashboard · Partidos · Jugadores · Informes) y el logo vuelve a la portada. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
 - **Por qué RinkMetrics** (`/por-que.html`, en el menú): las ventajas de la plataforma, en su propia página.
-- **Demo de Métricas DT** (`/dt-demo.html`, en el menú "Demo"): la pantalla de carga con un partido y un plantel de
-  ejemplo, sin cuenta. `js/dt-demo.js` contesta en el navegador las llamadas a la API (nada se guarda). La página de
+- **Demo de Métricas DT** (`/dt-demo.html`, en el menú "Demo"): Métricas DT completo con datos de ejemplo, sin
+  cuenta: arranca en el Control panel y se recorren todas las pantallas (Partidos, con un partido en juego para cargar
+  acciones; Estadísticas; Informes y Equipo, con sus ABM). `js/dt-demo.js` contesta en el navegador las llamadas a la API (nada se guarda). La página de
   la sección muestra capturas de la demo ("Así se ve Métricas DT", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
 - **Alta de cuentas, por ahora solo de Métricas DT:** Informes figura como "Próximamente" y el registro
@@ -233,19 +234,22 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
-- **DT** (Métricas DT, en vivo): elige uno o dos equipos de su club (categoría con su letra y rama),
-  hasta los que permite su plan; se guardan en `usuario_equipo_dt`. Entra a `/dt.html`, la pantalla de Métricas DT. Elige
-  el plan free (`DT_FREE`: 1 equipo y partidos sin límite, sin costo hasta el 31/12/2026) o el mensual (`DT_MENSUAL`: 2 equipos y 20
-  partidos por mes) (`equipos_max`, `partidos_por_mes` en `suscripcion_type`).
-- **Métricas DT (servidor):** el DT elige el rival de un combo con los equipos de los demás clubes que juegan su
-  categoría y rama en la federación (si un club tiene A y B, van los dos), o lo escribe; y la fecha y si es local o
-  visitante. El mismo rival en la misma fecha retoma el partido en vez de crear otro. Cada partido nuevo cuenta para
+- **DT** (Métricas DT, en vivo): elige su club y su plan; sus equipos y sus jugadores los arma después, en la
+  sección Equipo (el registro ya no los pide). Entra a `/dt.html`, la pantalla de Métricas DT (sin equipos, empieza
+  por Equipo). Elige el plan free (`DT_FREE`: partidos sin límite, sin costo hasta el 31/12/2026) o el mensual
+  (`DT_MENSUAL`: 20 partidos por mes) (`partidos_por_mes` en `suscripcion_type`). Los equipos no tienen límite.
+- **Métricas DT (servidor):** cada partido es de un equipo del DT; el rival se escribe (con los ya usados para
+  elegir), con la fecha, si es local o visitante, los minutos de cada tiempo (25 si no se eligen) y el campeonato. El
+  mismo rival en la misma fecha retoma el partido en vez de crear otro. Un partido se puede eliminar con todas sus
+  acciones (deja de contar en las estadísticas y los informes). Cada partido nuevo cuenta para
   el cupo del mes de suscripción (suscripto el 15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a
-  00:00, o lo que dure el tiempo en las competiciones de la categoría) y se
+  00:00, o los minutos elegidos) y se
   calcula con la hora de inicio y los segundos acumulados, así un teléfono bloqueado no pierde el minuto. Cada acción
   es de un jugador del plantel del equipo (el de la sección Equipo) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
-  las acciones. Tablas `partido_dt` y `accion_dt` (V12) y `jugador_dt` (V15, el plantel). Un partido cerrado se puede reabrir durante 48 h.
+  las acciones. Tablas `partido_dt` y `accion_dt` (V12), `jugador_dt` (V15) y `equipo_dt` con
+  `jugador_equipo_dt` (V16: los equipos de antes pasaron con su nombre y sus partidos; los jugadores traídos de SIDGAD
+  salieron, y sus acciones conservan el nombre). Un partido cerrado se puede reabrir durante 48 h.
 - **Métricas DT: menú, panel, estadísticas, informes y plantel.** La pantalla del DT tiene un menú Control panel ·
   Partidos · Estadísticas (submenú Equipo y Jugadores) · Informes · Equipo (entra al Control panel).
   - **Control panel (dashboard general):** partidos cargados y del mes; estado de los partidos (programados = creados con fecha
@@ -266,15 +270,17 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     jugador y acción). Se puede elegir un jugador para ver solo sus estadísticas. En pantalla se arma en el
     navegador (`js/dt-informe.js`); el PDF lo arma el servidor (`DtInformeService`, `InformeDt`, plantilla
     `templates/dt-informe.html`) con las mismas métricas.
-  - **Equipo (plantel):** el ABM de los jugadores del equipo: nombre, apellido, número y si es arquero. La primera vez
-    se arma con las actas de SIDGAD (el apellido es la última palabra; se puede corregir); después el DT agrega,
-    corrige o da de baja jugadores. El número no se repite en el plantel. Un jugador dado de baja ya no aparece para
-    cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre corregido.
+  - **Equipo:** el ABM de equipos (un nombre libre, sin límite; la lista muestra los partidos finalizados jugados,
+    ganados, empatados y perdidos; un equipo con partidos no se borra) y el ABM de jugadores: nombre, apellido,
+    número, si es arquero y en qué equipos juega (uno o más). Los jugadores no salen de SIDGAD: los carga el DT, y
+    antes tiene que existir un equipo. El número no se repite dentro de un equipo. Un jugador dado de baja ya no
+    aparece para cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre
+    corregido.
 - **Métricas DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
   la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
   columna) y entra entera en la pantalla, sin bajar.
-  - **Partidos:** combo de rivales (o "Otro", escrito a mano), fecha, local / visitante y campeonato (opcional, con
-    los ya usados para elegir), y la lista de partidos cargados.
+  - **Partidos:** equipo, rival (escrito, con los ya usados para elegir), fecha, local / visitante, minutos por
+    tiempo y campeonato (opcional, con los ya usados), y la lista de partidos cargados, cada uno con "Eliminar".
   - **Marcador y reloj fijos arriba:** iniciar, pausar / reanudar, fin del 1T, iniciar 2T, fin del partido y ajuste
     de ±1′ y ±10″. Al llegar a 00:00 avisa y vibra. Mientras el reloj corre, la pantalla no se apaga (Wake Lock, si
     el teléfono lo permite).
@@ -310,8 +316,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   |---|---|---|
   | Club (`CLUB_MENSUAL`) | U$S 20 | 8 informes por mes |
   | Jugador (`PLAYER_MENSUAL`) | U$S 7 | 4 informes por mes |
-  | DT free (`DT_FREE`) | Gratis hasta el 31/12/2026 | 1 equipo, partidos sin límite |
-  | DT (`DT_MENSUAL`) | U$S 12 | 2 equipos y 20 partidos por mes |
+  | DT free (`DT_FREE`) | Gratis hasta el 31/12/2026 | Equipos y partidos sin límite |
+  | DT (`DT_MENSUAL`) | U$S 12 | Equipos sin límite y 20 partidos por mes |
 
 - **Suscripciones:** la tabla `suscripcion_type` (con `precio_usd`, `informes_por_mes`, `equipos_max` y
   `partidos_por_mes`) tiene un plan mensual por tipo de usuario: `PLAYER_MENSUAL`, `CLUB_MENSUAL` y `DT_MENSUAL`, y el DT además el
@@ -426,29 +432,31 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973,"suscripcion":"PLAYER_MENSUAL"}` → `201`
 - `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO&federacion=FPP`: plantel del equipo según
   sus actas (`federacion` FPP o AMP; sin ella, FPP)
-- `POST /api/registro` de un DT: `"perfil":"DTFPP"`, `"suscripcion":"DT_MENSUAL"` y
-  `"equipos":[{"categoria":"JUVENIL:A","rama":"MASCULINO"}]` (uno o dos)
+- `POST /api/registro` de un DT: `"perfil":"DTFPP"` y `"suscripcion":"DT_MENSUAL"` (sin equipos)
 - `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`, `DTAMP`...): el plan mensual del perfil, con el precio en
-  pesos (y el precio base en dólares, la cotización usada y su fecha), los informes por mes y, para el DT, equipos y
+  pesos (y el precio base en dólares, la cotización usada y su fecha), los informes por mes y, para el DT, los
   partidos por mes
 - `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
-- `GET /api/sesion`: usuario, perfiles, federación, club, jugador o equipos del DT, y la suscripción
+- `GET /api/sesion`: usuario, perfiles, federación, club, jugador y la suscripción
   (`autenticado: false` sin sesión)
 - `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
   `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
 - `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
-- Métricas DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
-  - `GET /api/dt/rivales?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`clubId`, `nombre`: "GEBA B")
-  - `GET /api/dt/plantel?categoria=&rama=`: el plantel (`id`, `numero`, `nombre` completo, `nombres`, `apellido`,
-    `arquero`). La primera vez se arma con las actas de SIDGAD y se guarda.
-  - `POST /api/dt/plantel` `{"categoria","rama","nombre","apellido","numero","arquero"}` → `201` (id propio desde
-    900000000); `PUT /api/dt/plantel/{id}` (mismo cuerpo); `DELETE /api/dt/plantel/{id}?categoria=&rama=` → `204`
-    (baja: sus acciones quedan). `409` si el número ya es de otro jugador del plantel.
-  - `GET /api/dt/acciones?categoria=&rama=`: acciones activas de todos los partidos del equipo (con `partidoId`), para las fichas
-  - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false,"torneo":"Apertura"}`
-    → `201` (sin `fecha`, hoy; `torneo` opcional); con el mismo rival y fecha devuelve el ya empezado; `409` si se
-    acabó el cupo del mes
+- Métricas DT (DTFPP o DTAMP; sin `equipo`, el primer equipo del DT; lo de otro DT da 404):
+  - `GET /api/dt/equipos`: los equipos con `jugados`, `ganados`, `empatados` y `perdidos` (partidos finalizados);
+    `POST /api/dt/equipos` `{"nombre"}` → `201`; `PUT /api/dt/equipos/{id}`; `DELETE /api/dt/equipos/{id}` → `204`
+    (`409` si tiene partidos)
+  - `GET /api/dt/jugadores`: todos los jugadores con sus `equipos`; `POST /api/dt/jugadores`
+    `{"nombre","apellido","numero","arquero","equipos":[1,2]}` → `201` (id desde 900000000); `PUT /api/dt/jugadores/{id}`
+    (mismo cuerpo); `DELETE /api/dt/jugadores/{id}` → `204` (baja: sus acciones quedan). `409` si el número ya es
+    de otro jugador del mismo equipo.
+  - `GET /api/dt/plantel?equipo=1`: los jugadores activos del equipo (`id`, `numero`, `nombre` completo, `nombres`,
+    `apellido`, `arquero`, `equipos`)
+  - `GET /api/dt/acciones?equipo=1`: acciones activas de todos los partidos del equipo (con `partidoId`), para las fichas
+  - `POST /api/dt/partidos` `{"equipo":1,"rival":"HURACAN","fecha":"2026-10-18","local":false,"torneo":"Apertura","minutos":20}`
+    → `201` (sin `fecha`, hoy; sin `minutos`, 25; `torneo` opcional); con el mismo rival y fecha devuelve el ya
+    empezado; `409` si se acabó el cupo del mes; `DELETE /api/dt/partidos/{id}` → `204` lo elimina con sus acciones
   - `GET /api/dt/partidos`, `GET /api/dt/partidos/{id}` (con `reloj {tiempo, jugados, restante, corriendo}` y las
     acciones)
   - `POST /api/dt/partidos/{id}/acciones` `[{"id":"<uuid>","jugadorId":11,"tipo":"TIRO","resultado":"GOL","tiempo":1,"segundo":390}]`
@@ -458,7 +466,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
     `segundos`); `POST /api/dt/partidos/{id}/cerrar` y `/reabrir`
   - `GET /api/dt/partidos/{id}/informe?jugador=j11` y `/informe.pdf`: informe del partido (`jugador`: "j" + id del
     plantel, o "m" + nombre de un jugador agregado a mano; sin él, todo el equipo)
-  - `GET /api/dt/informes?categoria=&rama=&periodo=MES&valor=2026-10&jugador=` y `/api/dt/informes.pdf`: informe de los
+  - `GET /api/dt/informes?equipo=1&periodo=MES&valor=2026-10&jugador=` y `/api/dt/informes.pdf`: informe de los
     partidos finalizados del período (`periodo`: `MES` "2026-10", `BIMESTRE` "2026-5" = septiembre-octubre,
     `SEMESTRE` "2026-2", `CAMPEONATO` con el nombre); `400` si no hay partidos finalizados
 - `GET /api/catalogo?anio=2026&federacion=AMP` — clubes con sus categorías y ramas del año en la federación (sin

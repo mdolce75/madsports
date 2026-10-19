@@ -6,7 +6,7 @@ import com.rinkmetrics.dt.DtService.AccionNueva;
 import com.rinkmetrics.dt.DtService.AccionReloj;
 import com.rinkmetrics.dt.DtService.NuevoPartido;
 import com.rinkmetrics.dt.DtService.PartidoView;
-import com.rinkmetrics.dt.DtService.Rival;
+import com.rinkmetrics.dt.EquipoDtService.EquipoView;
 import com.rinkmetrics.dt.PlantelDtService.DatosJugador;
 import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
@@ -35,8 +35,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.List;
 
 /**
- * Métricas DT en vivo (perfiles DTFPP y DTAMP): rivales posibles, plantel, partidos, acciones y reloj. Cada DT ve solo
- * sus equipos y sus partidos; el partido de otro DT responde 404.
+ * Métricas DT en vivo (perfiles DTFPP y DTAMP): equipos y jugadores (ABM), partidos, acciones, reloj e informes. Cada
+ * DT ve solo sus equipos, sus jugadores y sus partidos; los de otro DT responden 404.
  */
 @RestController
 @RequestMapping("/api/dt")
@@ -46,54 +46,80 @@ public class DtController {
     public record RelojRequest(AccionReloj accion, Integer segundos) {
     }
 
+    public record EquipoRequest(String nombre) {
+    }
+
     private final DtService dt;
     private final DtInformeService informes;
     private final PlantelDtService planteles;
+    private final EquipoDtService equipos;
     private final UsuarioRepository usuarios;
 
-    public DtController(DtService dt, DtInformeService informes, PlantelDtService planteles, UsuarioRepository usuarios) {
+    public DtController(DtService dt, DtInformeService informes, PlantelDtService planteles, EquipoDtService equipos,
+                        UsuarioRepository usuarios) {
         this.dt = dt;
         this.informes = informes;
         this.planteles = planteles;
+        this.equipos = equipos;
         this.usuarios = usuarios;
     }
 
-    @GetMapping("/rivales")
-    public List<Rival> rivales(@RequestParam(required = false) String categoria,
-                               @RequestParam(required = false) String rama, Authentication auth) {
-        return dt.rivales(usuario(auth), categoria, rama);
+    /** Equipos del DT, con su balance de partidos finalizados (jugados, ganados, empatados y perdidos). */
+    @GetMapping("/equipos")
+    public List<EquipoView> equipos(Authentication auth) {
+        return equipos.lista(usuario(auth));
     }
 
-    /** Acciones de todos los partidos del equipo, para las fichas de los jugadores. */
-    @GetMapping("/acciones")
-    public List<DtService.AccionDeEquipo> acciones(@RequestParam(required = false) String categoria,
-                                                   @RequestParam(required = false) String rama, Authentication auth) {
-        return dt.accionesDelEquipo(usuario(auth), categoria, rama);
+    @PostMapping("/equipos")
+    public ResponseEntity<EquipoView> crearEquipo(@RequestBody EquipoRequest req, Authentication auth) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(equipos.crear(usuario(auth), req.nombre()));
     }
 
-    /** Plantel del equipo: la primera vez sale de las actas de SIDGAD; después, el que edita el DT. */
-    @GetMapping("/plantel")
-    public List<JugadorPlantel> plantel(@RequestParam(required = false) String categoria,
-                                        @RequestParam(required = false) String rama, Authentication auth) {
-        return planteles.plantel(usuario(auth), categoria, rama);
+    @PutMapping("/equipos/{id}")
+    public EquipoView renombrarEquipo(@PathVariable Long id, @RequestBody EquipoRequest req, Authentication auth) {
+        return equipos.renombrar(usuario(auth), id, req.nombre());
     }
 
-    @PostMapping("/plantel")
+    /** Solo un equipo sin partidos (409 si tiene). */
+    @DeleteMapping("/equipos/{id}")
+    public ResponseEntity<Void> borrarEquipo(@PathVariable Long id, Authentication auth) {
+        equipos.borrar(usuario(auth), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Todos los jugadores del DT, con los equipos en que juega cada uno. */
+    @GetMapping("/jugadores")
+    public List<JugadorPlantel> jugadores(Authentication auth) {
+        return planteles.jugadores(usuario(auth));
+    }
+
+    @PostMapping("/jugadores")
     public ResponseEntity<JugadorPlantel> altaJugador(@RequestBody DatosJugador req, Authentication auth) {
         return ResponseEntity.status(HttpStatus.CREATED).body(planteles.alta(usuario(auth), req));
     }
 
-    @PutMapping("/plantel/{jugadorId}")
+    @PutMapping("/jugadores/{jugadorId}")
     public JugadorPlantel modificarJugador(@PathVariable int jugadorId, @RequestBody DatosJugador req,
                                            Authentication auth) {
         return planteles.modificar(usuario(auth), jugadorId, req);
     }
 
-    @DeleteMapping("/plantel/{jugadorId}")
-    public ResponseEntity<Void> bajaJugador(@PathVariable int jugadorId, @RequestParam(required = false) String categoria,
-                                            @RequestParam(required = false) String rama, Authentication auth) {
-        planteles.baja(usuario(auth), categoria, rama, jugadorId);
+    @DeleteMapping("/jugadores/{jugadorId}")
+    public ResponseEntity<Void> bajaJugador(@PathVariable int jugadorId, Authentication auth) {
+        planteles.baja(usuario(auth), jugadorId);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Plantel de un equipo (sin equipo, el primero): sus jugadores activos, por número. */
+    @GetMapping("/plantel")
+    public List<JugadorPlantel> plantel(@RequestParam(required = false) Long equipo, Authentication auth) {
+        return planteles.plantel(usuario(auth), equipo);
+    }
+
+    /** Acciones de todos los partidos del equipo, para las estadísticas y las fichas de los jugadores. */
+    @GetMapping("/acciones")
+    public List<DtService.AccionDeEquipo> acciones(@RequestParam(required = false) Long equipo, Authentication auth) {
+        return dt.accionesDelEquipo(usuario(auth), equipo);
     }
 
     @PostMapping("/partidos")
@@ -131,6 +157,13 @@ public class DtController {
         return dt.cerrar(usuario(auth), id);
     }
 
+    /** Elimina el partido y todas sus acciones (también de las estadísticas y los informes). */
+    @DeleteMapping("/partidos/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id, Authentication auth) {
+        dt.eliminar(usuario(auth), id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/partidos/{id}/reabrir")
     public PartidoView reabrir(@PathVariable Long id, Authentication auth) {
         return dt.reabrir(usuario(auth), id);
@@ -151,21 +184,19 @@ public class DtController {
 
     /** Informe de los partidos finalizados del equipo en un mes, bimestre, semestre o campeonato. */
     @GetMapping("/informes")
-    public InformeDt informePeriodo(@RequestParam(required = false) String categoria,
-                                    @RequestParam(required = false) String rama, @RequestParam Periodo periodo,
+    public InformeDt informePeriodo(@RequestParam(required = false) Long equipo, @RequestParam Periodo periodo,
                                     @RequestParam(required = false) String valor,
                                     @RequestParam(required = false) String jugador, Authentication auth) {
-        return informes.periodo(usuario(auth), categoria, rama, periodo, valor, jugador);
+        return informes.periodo(usuario(auth), equipo, periodo, valor, jugador);
     }
 
     @GetMapping("/informes.pdf")
-    public ResponseEntity<byte[]> informePeriodoPdf(@RequestParam(required = false) String categoria,
-                                                    @RequestParam(required = false) String rama,
+    public ResponseEntity<byte[]> informePeriodoPdf(@RequestParam(required = false) Long equipo,
                                                     @RequestParam Periodo periodo,
                                                     @RequestParam(required = false) String valor,
                                                     @RequestParam(required = false) String jugador,
                                                     Authentication auth) {
-        return pdf(informes.pdf(informes.periodo(usuario(auth), categoria, rama, periodo, valor, jugador)));
+        return pdf(informes.pdf(informes.periodo(usuario(auth), equipo, periodo, valor, jugador)));
     }
 
     /** El PDF se abre en el navegador (inline); desde ahí se guarda o se comparte. */
