@@ -22,10 +22,14 @@ spring:
       mail.smtp.starttls.enable: true
       mail.smtp.connectiontimeout: 10000
       mail.smtp.timeout: 10000
+  # Migraciones por motor: db/migration/h2 (desarrollo) y db/migration/postgresql (producción). Flyway elige la carpeta
+  # según la base a la que se conecta.
+  flyway:
+    locations: classpath:db/migration/{vendor}
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate   # el esquema lo crea Flyway (db/migration)
+      ddl-auto: validate   # el esquema lo crea Flyway (db/migration/{vendor})
   web:
     resources:
       cache:
@@ -37,6 +41,9 @@ spring:
 
 server:
   port: ${PORT:8080}
+  # Detrás del proxy del proveedor (Render, Railway...), "native" toma la IP real del cliente de X-Forwarded-For: la
+  # usan los límites de intentos. Sin proxy, "none" (un cliente no puede falsear su IP).
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
   servlet:
     session:
       # Sesión sin actividad: 8 h (por defecto eran 30 min). Con "Recordarme", al vencer se vuelve a entrar solo.
@@ -73,6 +80,13 @@ rinkmetrics:
   registro:
     informes: ${REGISTRO_INFORMES:false}
     dt-pago: ${REGISTRO_DT_PAGO:false}
+  # Límite de intentos (LimiteIntentos): ingresos fallidos por usuario y por IP en 15 minutos; altas de cuenta y pedidos
+  # de mails por IP en 1 hora. Al llegar al máximo, la API responde 429 hasta que vence la ventana.
+  limites:
+    login-usuario: ${LIMITE_LOGIN_USUARIO:5}
+    login-ip: ${LIMITE_LOGIN_IP:20}
+    registro-ip: ${LIMITE_REGISTRO_IP:5}
+    mails-ip: ${LIMITE_MAILS_IP:10}
   # "Recordarme" en el ingreso: dura 30 días en el dispositivo. La clave firma la sesión que arma (si falta, se genera
   # una al arrancar; los dispositivos recordados siguen valiendo porque el token está en la base).
   recordarme:
@@ -81,3 +95,28 @@ rinkmetrics:
   dolar:
     url: ${DOLAR_URL:https://dolarapi.com/v1/dolares/oficial}
     respaldo: ${DOLAR_RESPALDO:1500}
+  # Chequeo diario de SIDGAD (SidgadMonitor): recorre portal, catálogo, calendario y acta; el resultado queda en
+  # /actuator/health (componente "sidgad") y, si falla o se recupera, se avisa por mail a ALERTAS_EMAIL (vacío = solo log).
+  # El cron se evalúa en hora argentina; "-" lo apaga.
+  monitor:
+    cron: ${MONITOR_SIDGAD_CRON:0 0 8 * * *}
+  alertas:
+    email: ${ALERTAS_EMAIL:}
+
+# Health check público en /actuator/health: solo el estado general y el de cada componente (db, sidgad...), sin
+# detalles. Para la sonda de vida de la plataforma usar /actuator/health/liveness, que no depende de SIDGAD ni de la base.
+# El SMTP no se chequea: abriría una conexión al proveedor de mails en cada consulta del health.
+management:
+  health:
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-components: always
+      show-details: never
+      probes:
+        enabled: true

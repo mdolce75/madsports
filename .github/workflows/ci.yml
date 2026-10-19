@@ -1,0 +1,66 @@
+# CI de RinkMetrics: tests unitarios (*Test, H2 en memoria), de integración (*IT, PostgreSQL real con Testcontainers)
+# y reporte de cobertura de JaCoCo, en cada PR y en cada push a main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Solo lectura: el pipeline no publica nada ni escribe en el repositorio.
+permissions:
+  contents: read
+
+# Un push nuevo a la misma rama/PR cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Unitarios (*Test) + integración (*IT, PostgreSQL 16 con Testcontainers; Docker ya está disponible en el
+      # runner) + reporte de cobertura de JaCoCo.
+      - name: Build y tests
+        run: ./mvnw -B -ntp verify
+
+      - name: Resumen de cobertura
+        if: always()
+        run: |
+          csv=target/site/jacoco/jacoco.csv
+          [ -f "$csv" ] || exit 0
+          awk -F, 'NR > 1 { lm += $8; lc += $9; bm += $6; bc += $7 }
+            END { printf "### Cobertura\n\n| Líneas | Ramas |\n|---|---|\n| %.1f %% | %.1f %% |\n",
+                  100 * lc / (lc + lm), 100 * bc / (bc + bm) }' "$csv" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cobertura
+          path: target/site/jacoco
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publicar reportes de tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reportes-tests
+          path: |
+            target/surefire-reports
+            target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14

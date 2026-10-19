@@ -30,6 +30,7 @@ import org.springframework.security.web.authentication.rememberme.JdbcTokenRepos
 import org.springframework.security.web.authentication.rememberme.PersistentTokenBasedRememberMeServices;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -54,6 +55,9 @@ import java.util.Map;
  * del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
  * <p>
+ * Los intentos de ingreso fallidos, las altas de cuenta y los pedidos de mails tienen un límite por usuario o por IP
+ * ({@link LimiteIntentos}): al superarlo, la API responde 429.
+ * <p>
  * La sesión dura 8 h sin actividad. Con "Recordarme" (parámetro {@code recordarme} del login) queda además la cookie
  * RECORDARME por 30 días: si la sesión se pierde (venció, se cerró el navegador o se reinició la app), el próximo
  * pedido vuelve a entrar solo. El token se guarda en la base ({@code persistent_logins}), cambia en cada uso y se borra
@@ -67,13 +71,15 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper json, UsuarioRepository usuarios,
-                                            PersistentTokenBasedRememberMeServices recordarme) throws Exception {
+                                            PersistentTokenBasedRememberMeServices recordarme,
+                                            LimiteIntentos limites) throws Exception {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/index.html", "/informes.html", "/dt-inicio.html", "/dt-demo.html", "/por-que.html", "/madsports", "/madsports.html", "/login.html", "/registro.html", "/olvido.html",
                                 "/restablecer.html", "/css/**", "/js/**", "/img/**", "/dt-sw.js", "/error",
                                 "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
-                                "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**", "/api/suscripciones")
+                                "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**", "/api/suscripciones",
+                                "/actuator/health", "/actuator/health/**")
                         .permitAll()
                         .requestMatchers("/club.html", "/api/informes", "/api/informes/**")
                         .hasAnyAuthority(Perfil.CLUBFPP.name(), Perfil.CLUBAMP.name())
@@ -88,6 +94,7 @@ public class SecurityConfig {
                         .usernameParameter("usuario")
                         .passwordParameter("clave")
                         .successHandler((req, res, auth) -> {
+                            limites.limpiar(LimiteIntentos.Tipo.LOGIN_USUARIO, auth.getName());
                             // Al ingresar, Spring cambia el token CSRF: se genera ya para que la cookie nueva
                             // viaje en esta respuesta (también si se rechaza por email sin confirmar).
                             CsrfToken token = (CsrfToken) req.getAttribute(CsrfToken.class.getName());
@@ -109,8 +116,13 @@ public class SecurityConfig {
                             }
                             write(res, json, HttpStatus.OK, Map.of("inicio", home(auth.getAuthorities())));
                         })
-                        .failureHandler((req, res, e) -> write(res, json, HttpStatus.UNAUTHORIZED,
-                                Map.of("detail", "Usuario o clave incorrectos.")))
+                        .failureHandler((req, res, e) -> {
+                            // Cuenta el intento fallido para el usuario y para la IP (LimiteIntentosFilter corta
+                            // los siguientes al llegar al máximo).
+                            limites.sumar(LimiteIntentos.Tipo.LOGIN_USUARIO, req.getParameter("usuario"));
+                            limites.sumar(LimiteIntentos.Tipo.LOGIN_IP, req.getRemoteAddr());
+                            write(res, json, HttpStatus.UNAUTHORIZED, Map.of("detail", "Usuario o clave incorrectos."));
+                        })
                         .permitAll())
                 .rememberMe(r -> r.rememberMeServices(recordarme))
                 .logout(l -> l
@@ -137,7 +149,8 @@ public class SecurityConfig {
                 .csrf(c -> c
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
-                .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
+                .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+                .addFilterBefore(new LimiteIntentosFilter(limites, json), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

@@ -1,0 +1,28 @@
+# Actualizaciones de dependencias: PRs semanales, validados por el CI.
+#
+# Política:
+# - Versiones menores y parches: agrupadas en un PR por ecosistema.
+# - Versiones mayores: llegan de a una, salvo las que requieren una migración planificada (abajo, con el motivo).
+#   Esas se ignoran para no generar PRs que el CI rechaza semana tras semana; la migración se hace a mano.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      maven-menores:
+        update-types: [minor, patch]
+    ignore:
+      # Spring Boot 4 es una migración mayor (Spring Framework 7, Jakarta EE 11): se planifica aparte.
+      - dependency-name: org.springframework.boot:spring-boot-starter-parent
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
