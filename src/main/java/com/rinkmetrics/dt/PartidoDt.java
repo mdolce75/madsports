@@ -4,9 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.Duration;
@@ -35,7 +38,12 @@ public class PartidoDt {
     private String federacion;
     private int clubId;
     /** El equipo del DT (sección Equipo). */
+    @Column(name = "equipo_id")
     private Long equipoId;
+    /** El mismo equipo, para leer su nombre (se escribe por {@code equipoId}). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "equipo_id", insertable = false, updatable = false)
+    private Equipo equipo;
     /** Competición y partido de SIDGAD (null en un amistoso). */
     private Integer idc;
     private Integer idp;
@@ -199,6 +207,8 @@ public class PartidoDt {
     public String getFederacion() { return federacion; }
     public int getClubId() { return clubId; }
     public Long getEquipoId() { return equipoId; }
+    /** El equipo, si se leyó con el partido (null en uno recién creado). */
+    public Equipo getEquipo() { return equipo; }
     public Integer getIdc() { return idc; }
     public Integer getIdp() { return idp; }
     public String getTorneo() { return torneo; }

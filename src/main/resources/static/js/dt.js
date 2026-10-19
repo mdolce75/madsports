@@ -72,8 +72,16 @@
 
     // ---------- Equipos del DT ----------
 
-    async function traerEquipos() {
+    let equiposCargados = false;
+
+    /**
+     * Los equipos del DT. Se piden una vez y quedan en memoria para los combos de todas las vistas; la sección Equipo
+     * los vuelve a pedir (forzar) porque muestra el balance y es donde cambian.
+     */
+    async function traerEquipos(forzar = false) {
+        if (equiposCargados && !forzar) return equipos;
         equipos = (await getJson("/api/dt/equipos")).data;
+        equiposCargados = true;
         return equipos;
     }
 
@@ -672,7 +680,12 @@
             await traerEquipos();
             llenarEquipos(sel);
             const e = equipoDe(sel);
-            if (!e) { sinEquipos($("e-kpis")); return; }
+            if (!e) {
+                // Sin equipos: nada de lo que se mostraba antes queda en pantalla.
+                sinEquipos($("e-kpis"));
+                for (const id of ["e-balance", "e-goleadores", "e-penales", "e-libres"]) $(id).replaceChildren();
+                return;
+            }
             const q = `equipo=${e.id}`;
             const [lista, acc, pl] = await Promise.all([getJson("/api/dt/partidos").then(r => r.data),
                 getJson("/api/dt/acciones?" + q).then(r => r.data), getJson("/api/dt/plantel?" + q).then(r => r.data).catch(() => [])]);
@@ -742,16 +755,12 @@
             await traerEquipos();
             llenarEquipos(sel);
             if (!equipos.length) { lista.replaceChildren(); sinEquipos(box); return; }
-            if (id) {
-                const p = (await getJson(`/api/dt/partidos/${id}`)).data;
-                if (String(p.equipoId) !== sel.value) sel.value = String(p.equipoId);
-            }
+            // El informe de un partido: se pide una vez, para elegir su equipo y armar el informe.
+            const pedido = id ? (await getJson(`/api/dt/partidos/${id}`)).data : null;
+            if (pedido && String(pedido.equipoId) !== sel.value) sel.value = String(pedido.equipoId);
             const [todos, acc, plantelEq] = await datosDelEquipo();
             const equipo = equipoDe(sel);
-            if (id) {
-                const p = todos.find(x => x.id === id) || (await getJson(`/api/dt/partidos/${id}`)).data;
-                return informeDePartido(p, acc.filter(a => a.partidoId === p.id), plantelEq);
-            }
+            if (pedido) return informeDePartido(pedido, acc.filter(a => a.partidoId === pedido.id), plantelEq);
             $("i-volver").hidden = true;
             document.querySelectorAll("#i-tipo button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tipo === infTipo)));
             const fin = todos.filter(DtInforme.finalizado);
@@ -844,7 +853,7 @@
 
     async function cargarPlantel() {
         try {
-            const [, js] = await Promise.all([traerEquipos(), getJson("/api/dt/jugadores").then(r => r.data)]);
+            const [, js] = await Promise.all([traerEquipos(true), getJson("/api/dt/jugadores").then(r => r.data)]);
             jugadoresDt = js;
             pintarEquipos();
             pintarJugadores();
