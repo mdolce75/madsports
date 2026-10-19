@@ -44,17 +44,21 @@ public class RegistroService {
     private final RosterService roster;
     private final PasswordEncoder encoder;
     private final Clock clock;
-    /** ¿Se pueden crear cuentas de Informes (Club y Jugador)? Por ahora no: solo de Métricas DT. */
-    private final boolean altaInformes;
+    /** ¿Se pueden crear cuentas de club (Informes)? Por ahora no: sí las de jugador y las de Métricas DT. */
+    private final boolean altaClub;
     /** ¿Se puede elegir un plan pago del DT (el mensual)? Por ahora no: el DT empieza con el free. */
     private final boolean dtPago;
+    /** ¿Se puede elegir un plan pago del jugador (el mensual)? Por ahora no: el jugador empieza con el free. */
+    private final boolean jugadorPago;
 
     public RegistroService(UsuarioRepository usuarios, SuscripcionTypeRepository planes, CatalogService catalog,
                            RosterService roster, PasswordEncoder encoder, Clock clock,
-                           @Value("${rinkmetrics.registro.informes:false}") boolean altaInformes,
-                           @Value("${rinkmetrics.registro.dt-pago:false}") boolean dtPago) {
-        this.altaInformes = altaInformes;
+                           @Value("${rinkmetrics.registro.club:false}") boolean altaClub,
+                           @Value("${rinkmetrics.registro.dt-pago:false}") boolean dtPago,
+                           @Value("${rinkmetrics.registro.jugador-pago:false}") boolean jugadorPago) {
+        this.altaClub = altaClub;
         this.dtPago = dtPago;
+        this.jugadorPago = jugadorPago;
         this.usuarios = usuarios;
         this.planes = planes;
         this.catalog = catalog;
@@ -68,9 +72,9 @@ public class RegistroService {
         if (r.perfil() == null) {
             throw new IllegalArgumentException("Elegí el perfil: Club, Jugador o DT, de la FPP o de la AMP.");
         }
-        if (!r.perfil().dt() && !altaInformes) {
-            throw new IllegalArgumentException("Las cuentas de Informes (Club y Jugador) estarán disponibles "
-                    + "próximamente. Por ahora podés crear tu cuenta de Métricas DT.");
+        if (!r.perfil().dt() && !r.perfil().player() && !altaClub) {
+            throw new IllegalArgumentException("Las cuentas de club estarán disponibles próximamente. Por ahora podés "
+                    + "crear tu cuenta de jugador o de Métricas DT.");
         }
         String usuario = r.usuario().trim().toLowerCase(Locale.ROOT);
         String email = r.email().trim();
@@ -115,15 +119,28 @@ public class RegistroService {
             throw new IllegalArgumentException("El plan " + plan.getNombre() + " ya no está disponible.");
         }
         if (!disponible(plan)) {
+            String gratis = planes.findByTipoUsuarioOrderByPrecioUsdAscIdAsc(plan.getTipoUsuario()).stream()
+                    .filter(p -> p.getPrecioUsd().signum() == 0).map(SuscripcionType::getNombre).findFirst().orElse("free");
             throw new IllegalArgumentException("El plan " + plan.getNombre() + " estará disponible próximamente. "
-                    + "Por ahora, empezá con el plan DT free.");
+                    + "Por ahora, empezá con el plan " + gratis + ".");
         }
         return plan;
     }
 
-    /** ¿Se puede elegir el plan? Los planes pagos del DT, solo con {@code rinkmetrics.registro.dt-pago}. */
+    /**
+     * ¿Se puede elegir el plan? Los gratuitos, siempre (mientras estén vigentes); los pagos del DT, con
+     * {@code rinkmetrics.registro.dt-pago}, y los del jugador, con {@code rinkmetrics.registro.jugador-pago}: hasta
+     * que se habilite el cobro figuran como "Próximamente".
+     */
     public boolean disponible(SuscripcionType plan) {
-        return dtPago || !"DT".equals(plan.getTipoUsuario()) || plan.getPrecioUsd().signum() == 0;
+        if (plan.getPrecioUsd().signum() == 0) {
+            return true;
+        }
+        return switch (plan.getTipoUsuario()) {
+            case "DT" -> dtPago;
+            case "PLAYER" -> jugadorPago;
+            default -> true;
+        };
     }
 
     /** Jugador: el nombre y el apellido son los de SIDGAD (el jugador elegido de la planilla de su equipo). */

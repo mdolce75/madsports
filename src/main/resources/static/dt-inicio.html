@@ -131,6 +131,7 @@
             const card = document.createElement(p.disponible === false ? "div" : "a");
             if (p.disponible === false) {
                 card.className = "plan proximamente no-disponible";
+                card.setAttribute("aria-disabled", "true");
                 const cinta = document.createElement("span");
                 cinta.className = "cintillo";
                 cinta.textContent = "Próximamente";

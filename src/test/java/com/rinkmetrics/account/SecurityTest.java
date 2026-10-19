@@ -566,7 +566,7 @@ class SecurityTest {
     }
 
     @Test
-    void soloSeOfreceElPlanMensual() throws Exception {
+    void planesDeClubYDeJugador() throws Exception {
         mvc.perform(get("/api/suscripciones").param("perfil", "CLUBFPP")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("CLUB_MENSUAL")))
                 .andExpect(jsonPath("$[0].precioUsd").value(20.0))
@@ -574,11 +574,16 @@ class SecurityTest {
                 // En pesos al dólar de respaldo de los tests ($ 1.500), redondeado hacia abajo a centenas.
                 .andExpect(jsonPath("$[0].precio").value(30000))
                 .andExpect(jsonPath("$[0].dolar").value(1500));
+        // El jugador: el free (hasta el 31/12/2026) y el mensual.
         mvc.perform(get("/api/suscripciones").param("perfil", "PLAYERFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("PLAYER_MENSUAL")))
-                .andExpect(jsonPath("$[0].precioUsd").value(7.0))
-                .andExpect(jsonPath("$[0].precio").value(10500))
-                .andExpect(jsonPath("$[0].informesPorMes").value(4));
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("PLAYER_FREE", "PLAYER_MENSUAL")))
+                .andExpect(jsonPath("$[0].precio").value(0))
+                .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
+                .andExpect(jsonPath("$[0].informesPorMes").value(4))
+                .andExpect(jsonPath("$[1].precioUsd").value(7.0))
+                .andExpect(jsonPath("$[1].precio").value(10500))
+                .andExpect(jsonPath("$[1].informesPorMes").value(4))
+                .andExpect(jsonPath("$[1].vigenteHasta").value(org.hamcrest.Matchers.nullValue()));
 
         // Solo existen los planes mensuales.
         Map<String, Object> otro = club("ana.otro");
@@ -639,9 +644,10 @@ class SecurityTest {
 
     @Test
     void tiposDeSuscripcionYVigencia() throws Exception {
-        // Un plan mensual por tipo de usuario, y el DT además tiene el free.
+        // Un plan mensual por tipo de usuario, y el jugador y el DT además tienen el free.
         assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getTipoUsuario)
                 .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_FREE", "PLAYER"),
                         org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", "PLAYER"),
                         org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", "CLUB"),
                         org.assertj.core.groups.Tuple.tuple("DT_FREE", "DT"),
