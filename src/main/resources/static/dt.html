@@ -12,7 +12,18 @@
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body class="dt-page" data-seccion="dt">
+<script>
+    // La demo (/dt-demo.html) es esta misma página, con datos de ejemplo que no salen del navegador (js/dt/demo.js).
+    if (location.pathname === "/dt-demo.html") {
+        document.body.classList.add("demo");
+        document.body.dataset.seccion = "demo";
+        document.title = "Demo de Métricas DT · RinkMetrics";
+    }
+</script>
 <div class="wrap">
+    <div class="demo-aviso" role="note"><b>Demo</b> Métricas DT completo, con datos de ejemplo: recorré el panel, tus
+        partidos (abrí el que está en juego para cargar acciones), las estadísticas, los informes y tu equipo. Nada se
+        guarda. <a href="/registro.html?seccion=dt">Crear mi cuenta de DT</a></div>
     <div class="topbar">
         <div id="brand"></div>
         <div class="userbar" id="userbar"></div>
@@ -279,9 +290,6 @@
 <div class="dt-toast" id="toast" role="status" hidden><span id="toast-txt"></span><button type="button" id="toast-undo">Deshacer</button></div>
 
 <script src="/js/app.js"></script>
-<script src="/js/dt-cola.js"></script>
-<script src="/js/dt-fichas.js"></script>
-<script src="/js/dt-informe.js"></script>
-<script src="/js/dt.js"></script>
+<script type="module" src="/js/dt/main.js"></script>
 </body>
 </html>

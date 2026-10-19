@@ -65,7 +65,7 @@ public class RegistroService {
 
     @Transactional
     public Usuario registrar(Registro r) {
-        if (r.perfil() == null || !r.perfil().registrable()) {
+        if (r.perfil() == null) {
             throw new IllegalArgumentException("Elegí el perfil: Club, Jugador o DT, de la FPP o de la AMP.");
         }
         if (!r.perfil().dt() && !altaInformes) {

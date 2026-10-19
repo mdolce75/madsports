@@ -25,11 +25,19 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -91,6 +99,7 @@ class DtControllerTest {
     @Autowired PartidoDtRepository partidos;
     @Autowired AccionDtRepository acciones;
     @Autowired RelojDePrueba reloj;
+    @Autowired PlantelDtService planteles;
 
     /** El plantel ya no sale de SIDGAD: si alguien lo pidiera, el test lo detecta. */
     @MockitoBean RosterService roster;
@@ -194,6 +203,31 @@ class DtControllerTest {
         // Los equipos de un DT no son de otro.
         mvc.perform(get("/api/dt/equipos").with(como("otro"))).andExpect(jsonPath("$", hasSize(0)));
         enviar(put("/api/dt/equipos/" + primera), "otro", Map.of("nombre", "Mío")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void altasSimultaneasDelMismoDtNoChocan() throws Exception {
+        // Las altas toman el id siguiente al último del DT: las que chocan se reintentan, ninguna termina en error.
+        Usuario profe = usuarios.findByUsuario("profe").orElseThrow();
+        int n = 6;
+        ExecutorService pool = Executors.newFixedThreadPool(n);
+        CountDownLatch largada = new CountDownLatch(1);
+        List<Future<PlantelDtService.JugadorPlantel>> altas = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            var datos = new PlantelDtService.DatosJugador("Suplente" + i, "Ríos", null, false, List.of(primera));
+            altas.add(pool.submit(() -> {
+                largada.await();
+                return planteles.alta(profe, datos);
+            }));
+        }
+        largada.countDown();
+        Set<Integer> ids = new HashSet<>();
+        for (var alta : altas) {
+            ids.add(alta.get(30, TimeUnit.SECONDS).id());
+        }
+        pool.shutdown();
+        assertThat(ids).hasSize(n).doesNotContain(arquero, delantero);
+        assertThat(planteles.plantel(profe, primera)).hasSize(n + 2);
     }
 
     @Test

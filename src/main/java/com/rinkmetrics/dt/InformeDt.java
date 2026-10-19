@@ -160,7 +160,7 @@ public record InformeDt(String titulo, String detalle, String club, String equip
                     Metricas.de(e.getValue())));
         }
         jugadores.sort(Comparator.comparingInt((JugadorFila j) -> numero(j.numero()))
-                .thenComparing(JugadorFila::nombre, String.CASE_INSENSITIVE_ORDER));
+                .thenComparing(JugadorFila::nombre, PlantelDtService.ALFABETICO));
 
         JugadorFila elegido = null;
         List<AccionDt> lasDel = acciones;

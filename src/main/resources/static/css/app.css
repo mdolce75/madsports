@@ -509,6 +509,7 @@ body.home .brand small { font-size: .85rem; margin-top: 6px; }
 .split > .main > .notice.proximo:first-child { margin-top: 0; margin-bottom: 16px; }
 
 /* Demo de Métricas DT: aviso arriba de todo */
+body:not(.demo) .demo-aviso { display: none; }
 .demo-aviso { margin: -8px 0 12px; padding: 8px 14px; border-radius: var(--radius-sm); background: rgba(200, 241, 53, .1);
               border: 1px solid rgba(200, 241, 53, .35); font-size: .85rem; color: var(--ink-2); }
 .demo-aviso b { margin-right: 6px; font: 700 .78rem/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--lime); }

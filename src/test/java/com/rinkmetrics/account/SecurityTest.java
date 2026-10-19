@@ -49,6 +49,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -267,8 +268,10 @@ class SecurityTest {
         // Las presentaciones de las dos secciones (Informes y DT) se ven sin sesión.
         mvc.perform(get("/informes.html")).andExpect(status().isOk());
         mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
-        // La demo de Métricas DT y sus capturas, también.
-        mvc.perform(get("/dt-demo.html")).andExpect(status().isOk());
+        // La demo de Métricas DT y sus capturas, también. La demo es la misma página que /dt.html (sin copia).
+        mvc.perform(get("/dt-demo.html")).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/dt/main.js")));
         mvc.perform(get("/por-que.html")).andExpect(status().isOk());
         mvc.perform(get("/img/demo/carga-web.png")).andExpect(status().isOk());
         mvc.perform(get("/registro.html")).andExpect(status().isOk());

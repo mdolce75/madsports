@@ -3,16 +3,11 @@ package com.rinkmetrics.account;
 import com.rinkmetrics.sidgad.model.Federacion;
 
 /**
- * Perfiles que puede tener un usuario. A futuro se compran (un usuario puede sumar varios); por ahora el registro
- * ofrece club, jugador o DT de la FPP o de la AMP, y uno excluye al resto.
+ * Perfiles que puede tener un usuario: club, jugador o DT, de la FPP o de la AMP. A futuro se compran (un usuario puede
+ * sumar varios); por ahora el registro ofrece uno, que excluye al resto.
  */
 public enum Perfil {
-    CLUBFPP, CLUBFSP, CLUBCNT, CLUBAMP, PLAYERFPP, PLAYERFSP, PLAYERCNT, PLAYERAMP, DTFPP, DTAMP;
-
-    /** ¿Se puede elegir en la pantalla de registro? */
-    public boolean registrable() {
-        return federacion() != null;
-    }
+    CLUBFPP, CLUBAMP, PLAYERFPP, PLAYERAMP, DTFPP, DTAMP;
 
     public boolean player() {
         return name().startsWith("PLAYER");
@@ -28,12 +23,11 @@ public enum Perfil {
         return player() ? "PLAYER" : dt() ? "DT" : "CLUB";
     }
 
-    /** Federación cuyos datos usa el perfil (FPP o AMP); null si todavía no se releva (FSP, CNT). */
+    /** Federación cuyos datos usa el perfil: FPP o AMP. */
     public Federacion federacion() {
         return switch (this) {
             case CLUBFPP, PLAYERFPP, DTFPP -> Federacion.FPP;
             case CLUBAMP, PLAYERAMP, DTAMP -> Federacion.AMP;
-            default -> null;
         };
     }
 

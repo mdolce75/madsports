@@ -1,5 +1,8 @@
-# CI de RinkMetrics: tests unitarios (*Test, H2 en memoria), de integración (*IT, PostgreSQL real con Testcontainers)
-# y reporte de cobertura de JaCoCo, en cada PR y en cada push a main.
+# CI de RinkMetrics, en cada PR y en cada push a main:
+# - Backend: tests unitarios (*Test, H2 en memoria), de integración (*IT, PostgreSQL real con Testcontainers) y
+#   cobertura de JaCoCo.
+# - Pantallas: tests de los módulos de Métricas DT y del contrato de la API contra la demo (node:test), y E2E de la
+#   demo con Playwright.
 name: CI
 
 on:
@@ -62,5 +65,43 @@ jobs:
           path: |
             target/surefire-reports
             target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+  pantallas:
+    name: Pantallas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias y Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # Unitarios de js/dt y el contrato de la API contra la API simulada de la demo (el mismo que corre el backend).
+      - name: Tests de los módulos y contrato de la demo
+        run: npm test
+
+      # La demo en un navegador real (celular y escritorio): carga en vivo, sin señal, informes y ABM.
+      - name: E2E con Playwright
+        env:
+          E2E_BROWSER_CHANNEL: chromium
+        run: npm run e2e
+
+      - name: Publicar reportes de E2E
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-reportes
+          path: |
+            playwright-report
+            test-results
           if-no-files-found: ignore
           retention-days: 14
