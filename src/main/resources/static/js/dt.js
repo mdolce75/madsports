@@ -329,25 +329,41 @@
         actualizarWakeLock();
     }
 
-    async function reloj(accion, segundos) {
+    /**
+     * POST del partido abierto. "Sin señal" solo si el pedido no llegó al servidor (fetch falla con TypeError); un
+     * error del servidor muestra su detalle. Lo que pasa después (pintar la respuesta) queda fuera del try: un error
+     * de la pantalla no se confunde con falta de señal.
+     */
+    async function enviarPartido(ruta, body, sinSenal) {
+        let p;
         try {
-            recibir(await postJson(`/api/dt/partidos/${partido.id}/reloj`, {accion, segundos}), Date.now());
+            p = await postJson(`/api/dt/partidos/${partido.id}/${ruta}`, body);
         } catch (err) {
-            toast(err instanceof TypeError ? "Sin señal: el reloj necesita conexión. Las acciones se siguen guardando."
-                : err.message);
+            toast(err instanceof TypeError ? sinSenal : err.message);
+            return;
         }
+        const antes = partido.estado;
+        recibir(p, Date.now());
+        // Al terminar el partido (fin del 2T), directo al informe.
+        if (antes === "EN_JUEGO" && p.estado === "TERMINADO") {
+            tab("t-resumen");
+            window.scrollTo(0, 0);
+        }
+    }
+
+    function reloj(accion, segundos) {
+        return enviarPartido("reloj", {accion, segundos},
+            "Sin señal: el reloj necesita conexión. Las acciones se siguen guardando.");
     }
 
     async function cerrar() {
         if (!confirm("¿Cerrar el partido? Ya no se podrán cargar acciones (se puede reabrir durante 48 horas).")) return;
         if (pend.length) { toast("Esperá a que se envíe lo cargado antes de cerrar."); DtCola.enviar(); return; }
-        try { recibir(await postJson(`/api/dt/partidos/${partido.id}/cerrar`, {}), Date.now()); }
-        catch (err) { toast(err instanceof TypeError ? "Sin señal: para cerrar el partido hace falta conexión." : err.message); }
+        await enviarPartido("cerrar", {}, "Sin señal: para cerrar el partido hace falta conexión.");
     }
 
-    async function reabrir() {
-        try { recibir(await postJson(`/api/dt/partidos/${partido.id}/reabrir`, {}), Date.now()); }
-        catch (err) { toast(err instanceof TypeError ? "Sin señal: para reabrir hace falta conexión." : err.message); }
+    function reabrir() {
+        return enviarPartido("reabrir", {}, "Sin señal: para reabrir hace falta conexión.");
     }
 
     function renderSync() {
@@ -573,30 +589,41 @@
         }
     }
 
-    /** #partido=ID abre la carga; #partidos, #equipo, #jugadores, #informes o #dashboard (sin nada) muestran esa vista. */
+    /** Submenú Estadísticas (Equipo y Jugadores): se abre con su botón y se cierra al elegir o al tocar afuera. */
+    function submenu(abrir) {
+        $("dt-sub-est-menu").hidden = !abrir;
+        document.querySelector("#dt-sub-est .dt-sub-btn").setAttribute("aria-expanded", String(abrir));
+    }
+
+    /**
+     * #partido=ID abre la carga; #dashboard (sin nada), #partidos, #estadisticas-equipo, #estadisticas-jugadores,
+     * #informes y #equipo (el plantel) muestran esa vista.
+     */
     function ruta() {
         const m = location.hash.match(/^#partido=(\d+)$/);
-        if (m) { $("dt-menu").hidden = true; for (const v of ["v-dashboard", "v-equipo", "v-jugadores", "v-informes"]) $(v).hidden = true; abrir(Number(m[1])); return; }
+        if (m) { $("dt-menu").hidden = true; for (const v of ["v-dashboard", "v-equipo", "v-jugadores", "v-informes", "v-plantel"]) $(v).hidden = true; abrir(Number(m[1])); return; }
         partido = null;
         actualizarWakeLock();
         $("v-partido").hidden = true;
         document.body.classList.remove("dt-vivo");
         const inf = location.hash.match(/^#informe=(\d+)$/);
-        const vista = inf ? "informes" : (location.hash.slice(1) || "dashboard");
-        const v = ["dashboard", "partidos", "equipo", "jugadores", "informes"].includes(vista) ? vista : "dashboard";
+        // #jugadores es el enlace de antes a las fichas.
+        const vista = inf ? "informes" : location.hash === "#jugadores" ? "estadisticas-jugadores" : (location.hash.slice(1) || "dashboard");
+        const VISTAS = {"dashboard": "v-dashboard", "partidos": "v-elegir", "estadisticas-equipo": "v-equipo",
+            "estadisticas-jugadores": "v-jugadores", "informes": "v-informes", "equipo": "v-plantel"};
+        const v = VISTAS[vista] ? vista : "dashboard";
         $("dt-menu").hidden = false;
         document.querySelectorAll("#dt-menu a").forEach(a =>
             a.dataset.vista === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-        $("v-dashboard").hidden = v !== "dashboard";
-        $("v-elegir").hidden = v !== "partidos";
-        $("v-jugadores").hidden = v !== "jugadores";
-        $("v-equipo").hidden = v !== "equipo";
-        $("v-informes").hidden = v !== "informes";
+        $("dt-sub-est").classList.toggle("activo", v.startsWith("estadisticas-"));
+        submenu(false);
+        for (const [k, id] of Object.entries(VISTAS)) $(id).hidden = k !== v;
         if (v === "informes") cargarInformes(inf ? Number(inf[1]) : null);
         if (v === "dashboard") cargarDashboard();
         if (v === "partidos") cargarMis();
-        if (v === "jugadores") cargarFichas();
-        if (v === "equipo") cargarEquipo();
+        if (v === "estadisticas-jugadores") cargarFichas();
+        if (v === "estadisticas-equipo") cargarEquipo();
+        if (v === "equipo") cargarPlantel();
     }
 
     // ---------- Dashboard general ----------
@@ -796,6 +823,112 @@
         });
     }
 
+    // ---------- Equipo: el plantel (ABM de jugadores) ----------
+
+    let plEditando = null;   // id del jugador que se está editando (null: alta)
+
+    function plEquipo() {
+        return sesion.equipos[Number($("pl-equipo").value) || 0];
+    }
+
+    async function cargarPlantel() {
+        const sel = $("pl-equipo");
+        if (!sel.options.length) {
+            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
+            sel.hidden = sesion.equipos.length < 2;
+            sel.addEventListener("change", () => { plFormulario(null); cargarPlantel(); });
+        }
+        const e = plEquipo();
+        const ul = $("pl-lista");
+        try {
+            const lista = (await getJson(`/api/dt/plantel?categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`)).data;
+            $("pl-n").textContent = lista.length ? `${lista.length} ${lista.length === 1 ? "jugador" : "jugadores"}` : "";
+            ul.replaceChildren();
+            if (!lista.length) ul.append(el("li", "dt-vacio", "Todavía no hay jugadores en el plantel: agregá el primero."));
+            for (const j of lista) {
+                const li = el("li");
+                li.classList.toggle("editando", j.id === plEditando);
+                const quien = el("div", "quien");
+                quien.append(el("b", null, j.nombre));
+                if (j.arquero) quien.append(el("span", "inf-ar", "Arquero"));
+                const editar = el("button", "dt-link", "Editar");
+                editar.type = "button";
+                editar.setAttribute("aria-label", "Editar a " + j.nombre);
+                editar.addEventListener("click", () => plFormulario(j));
+                const baja = el("button", "dt-link pl-baja", "Dar de baja");
+                baja.type = "button";
+                baja.setAttribute("aria-label", "Dar de baja a " + j.nombre);
+                baja.addEventListener("click", () => plBaja(j));
+                const acciones = el("div", "acc");
+                acciones.append(editar, baja);
+                li.append(el("span", "pl-num", j.numero ? "#" + j.numero : "s/n"), quien, acciones);
+                ul.append(li);
+            }
+        } catch (err) {
+            ul.replaceChildren(el("li", "dt-vacio", "No se pudo cargar el plantel: " + err.message));
+        }
+    }
+
+    /** El formulario en modo alta (j null) o para editar a j. */
+    function plFormulario(j) {
+        plEditando = j ? j.id : null;
+        $("pl-titulo").textContent = j ? "Editar jugador" : "Nuevo jugador";
+        $("pl-guardar").textContent = j ? "Guardar cambios" : "Agregar jugador";
+        $("pl-cancelar").hidden = !j;
+        $("pl-nombre").value = j ? j.nombres : "";
+        $("pl-apellido").value = j ? j.apellido : "";
+        $("pl-numero").value = j ? j.numero : "";
+        $("pl-arquero").checked = j ? j.arquero : false;
+        plStatus("");
+        document.querySelectorAll("#pl-lista li").forEach(li => li.classList.remove("editando"));
+        if (j) { $("pl-nombre").focus(); cargarPlantel(); }
+    }
+
+    function plStatus(txt, error) {
+        $("pl-status").textContent = txt;
+        $("pl-status").className = txt ? "status" + (error ? " error" : " ok") : "";
+    }
+
+    async function plGuardar(ev) {
+        ev.preventDefault();
+        const e = plEquipo();
+        const body = {categoria: e.categoria, rama: e.rama, nombre: $("pl-nombre").value, apellido: $("pl-apellido").value,
+            numero: $("pl-numero").value, arquero: $("pl-arquero").checked};
+        if (!body.nombre.trim()) { plStatus("Escribí el nombre del jugador.", true); $("pl-nombre").focus(); return; }
+        if (!body.apellido.trim()) { plStatus("Escribí el apellido del jugador.", true); $("pl-apellido").focus(); return; }
+        $("pl-guardar").disabled = true;
+        try {
+            const editando = plEditando;
+            const res = await api(editando ? `/api/dt/plantel/${editando}` : "/api/dt/plantel",
+                {method: editando ? "PUT" : "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.detail || res.statusText);
+            plFormulario(null);
+            plStatus(editando ? `Guardado: ${data.nombre}.` : `Agregado: ${data.nombre}.`);
+            $("pl-nombre").focus();
+            await cargarPlantel();
+        } catch (err) {
+            plStatus(err instanceof TypeError ? "Sin señal: para editar el plantel hace falta conexión." : err.message, true);
+        } finally {
+            $("pl-guardar").disabled = false;
+        }
+    }
+
+    async function plBaja(j) {
+        if (!confirm(`¿Dar de baja a ${j.nombre}? Sale del plantel; sus acciones quedan en los partidos y los informes.`)) return;
+        const e = plEquipo();
+        try {
+            const res = await api(`/api/dt/plantel/${j.id}?categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`,
+                {method: "DELETE"});
+            if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.detail || res.statusText); }
+            if (plEditando === j.id) plFormulario(null);
+            plStatus(`${j.nombre} salió del plantel.`);
+            await cargarPlantel();
+        } catch (err) {
+            plStatus(err instanceof TypeError ? "Sin señal: para editar el plantel hace falta conexión." : err.message, true);
+        }
+    }
+
     // ---------- Jugadores: fichas ----------
 
     async function cargarFichas() {
@@ -858,6 +991,14 @@
     // ---------- Inicio ----------
 
     $("brand").outerHTML = BRAND;
+    document.querySelector("#dt-sub-est .dt-sub-btn").addEventListener("click", ev => {
+        ev.stopPropagation();
+        submenu($("dt-sub-est-menu").hidden);
+    });
+    document.addEventListener("click", ev => { if (!ev.target.closest("#dt-sub-est")) submenu(false); });
+    document.addEventListener("keydown", ev => { if (ev.key === "Escape") submenu(false); });
+    $("pl-form").addEventListener("submit", plGuardar);
+    $("pl-cancelar").addEventListener("click", () => plFormulario(null));
     // Un solo menú arriba: el del DT va en la barra superior, al lado de la marca.
     document.querySelector(".topbar header.brand").after($("dt-menu"));
     document.querySelectorAll("#i-tipo button").forEach(b => b.addEventListener("click", () => {

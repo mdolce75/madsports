@@ -21,11 +21,17 @@
 
     <!-- Menú del DT -->
     <nav class="dt-menu" id="dt-menu" aria-label="Métricas DT">
-        <a href="#dashboard" data-vista="dashboard">Dashboard</a>
+        <a href="#dashboard" data-vista="dashboard">Control panel</a>
         <a href="#partidos" data-vista="partidos">Partidos</a>
-        <a href="#equipo" data-vista="equipo">Equipo</a>
-        <a href="#jugadores" data-vista="jugadores">Jugadores</a>
+        <div class="dt-sub" id="dt-sub-est">
+            <button type="button" class="dt-sub-btn" aria-expanded="false" aria-controls="dt-sub-est-menu">Estadísticas</button>
+            <div class="dt-sub-menu" id="dt-sub-est-menu" hidden>
+                <a href="#estadisticas-equipo" data-vista="estadisticas-equipo">Equipo</a>
+                <a href="#estadisticas-jugadores" data-vista="estadisticas-jugadores">Jugadores</a>
+            </div>
+        </div>
         <a href="#informes" data-vista="informes">Informes</a>
+        <a href="#equipo" data-vista="equipo">Equipo</a>
     </nav>
 
     <!-- Dashboard general -->
@@ -45,12 +51,12 @@
 
     <!-- Equipo: estadísticas consolidadas, goleadores y pelota parada -->
     <section id="v-equipo" class="dt-vista" hidden>
-        <div class="dt-line"><h2 class="section-title">Equipo</h2>
+        <div class="dt-line"><h2 class="section-title">Estadísticas del equipo</h2>
             <select id="e-equipo" aria-label="Equipo" hidden></select></div>
         <p class="hint">Estadísticas consolidadas de todos los partidos cargados del equipo. El balance cuenta los
             partidos finalizados.</p>
         <div class="dt-kpis eq-balance" id="e-balance"></div>
-        <h4 class="inf-sub">Estadísticas del equipo</h4>
+        <h4 class="inf-sub">Métricas de todos los partidos</h4>
         <div class="inf-kpis" id="e-kpis"></div>
         <div class="dash-grid eq-rankings">
             <div class="dash-box"><h3>Goleadores</h3><ol class="dash-ranking" id="e-goleadores"></ol></div>
@@ -59,9 +65,40 @@
         </div>
     </section>
 
+    <!-- Equipo: el plantel (alta, baja y cambios de jugadores) -->
+    <section id="v-plantel" class="dt-vista" hidden>
+        <div class="dt-line"><h2 class="section-title">Equipo</h2>
+            <select id="pl-equipo" aria-label="Equipo" hidden></select></div>
+        <p class="hint">El plantel de tu equipo. La primera vez se arma con las actas de SIDGAD; desde acá agregás,
+            corregís o das de baja jugadores. Los que das de baja conservan sus acciones en los partidos y los informes.</p>
+        <div class="partidos-grid">
+            <form class="sheet" id="pl-form" novalidate>
+                <div class="sheet-head"><span id="pl-titulo">Nuevo jugador</span><span></span></div>
+                <div class="grid2">
+                    <div class="field"><label for="pl-nombre">Nombre</label>
+                        <input type="text" id="pl-nombre" maxlength="40" autocomplete="off"></div>
+                    <div class="field"><label for="pl-apellido">Apellido</label>
+                        <input type="text" id="pl-apellido" maxlength="40" autocomplete="off"></div>
+                </div>
+                <div class="grid2">
+                    <div class="field"><label for="pl-numero">Número</label>
+                        <input type="text" id="pl-numero" maxlength="3" inputmode="numeric" autocomplete="off" placeholder="Sin número"></div>
+                    <div class="field pl-check"><label for="pl-arquero"><input type="checkbox" id="pl-arquero"> Arquero</label></div>
+                </div>
+                <button type="submit" class="go" id="pl-guardar">Agregar jugador</button>
+                <button type="button" class="dt-link pl-cancelar" id="pl-cancelar" hidden>Cancelar</button>
+                <div id="pl-status" role="status"></div>
+            </form>
+            <div class="sheet">
+                <div class="sheet-head"><span>Plantel</span><span id="pl-n"></span></div>
+                <ul class="pl-lista" id="pl-lista"><li class="dt-vacio">Cargando…</li></ul>
+            </div>
+        </div>
+    </section>
+
     <!-- Jugadores: la ficha de cada uno -->
     <section id="v-jugadores" class="dt-vista" hidden>
-        <div class="dt-line"><h2 class="section-title">Jugadores</h2>
+        <div class="dt-line"><h2 class="section-title">Estadísticas de los jugadores</h2>
             <select id="j-equipo" aria-label="Equipo" hidden></select></div>
         <p class="hint">Cada eje va de 0 a 100 comparado con el plantel (100 = el mejor del equipo en ese aspecto); los
             arqueros se comparan entre sí. El índice es el promedio de los cinco ejes. Sale de las acciones cargadas en
@@ -208,6 +245,7 @@
         </section>
     </section>
 
+    <footer>© 2026 RinkMetrics. Todos los derechos reservados.</footer>
 </div>
 
 <div class="dt-toast" id="toast" role="status" hidden><span id="toast-txt"></span><button type="button" id="toast-undo">Deshacer</button></div>

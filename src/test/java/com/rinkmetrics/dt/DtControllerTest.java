@@ -48,6 +48,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -401,5 +402,57 @@ class DtControllerTest {
         // Otro DT no tiene partidos en ese mes.
         mvc.perform(get("/api/dt/informes").param("periodo", "MES").param("valor", "2026-10").with(como("otro")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void abmDelPlantel() throws Exception {
+        // La primera vez, el plantel sale de las actas (nombre y apellido separados en la última palabra).
+        mvc.perform(get("/api/dt/plantel").with(como("profe"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].nombre").value(contains("Juan Arquero", "Pedro Delantero")))
+                .andExpect(jsonPath("$[0].nombres").value("Juan"))
+                .andExpect(jsonPath("$[0].apellido").value("Arquero"))
+                .andExpect(jsonPath("$[0].arquero").value(true));
+
+        // Alta: un jugador que no está en las actas, con un id propio.
+        String body = enviar(post("/api/dt/plantel"), "profe", Map.of("nombre", "Tomás", "apellido", "Nuevo",
+                "numero", "09", "arquero", false)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nombre").value("Tomás Nuevo"))
+                .andExpect(jsonPath("$.numero").value("9"))
+                .andReturn().getResponse().getContentAsString();
+        int nuevo = json.readTree(body).get("id").asInt();
+        assertThat(nuevo).isGreaterThanOrEqualTo(900_000_000);
+        enviar(post("/api/dt/plantel"), "profe", Map.of("nombre", "Otro", "apellido", "Más", "numero", "7"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("El número 7 ya es de Pedro Delantero."));
+        enviar(post("/api/dt/plantel"), "profe", Map.of("nombre", "Sin", "apellido", " ")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Escribí el apellido del jugador."));
+        enviar(post("/api/dt/plantel"), "profe", Map.of("nombre", "A", "apellido", "B", "numero", "1234"))
+                .andExpect(status().isBadRequest());
+
+        // El nuevo ya puede tener acciones.
+        long id = crear("profe", "HURACAN");
+        enviar(post("/api/dt/partidos/" + id + "/acciones"), "profe", List.of(accion(nuevo, "TIRO", "GOL", 1, 30),
+                accion(11, "TIRO", "NO_GOL", 1, 40))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.acciones[0].jugadorNombre").value("Tomás Nuevo"));
+
+        // Modificación: el informe muestra el nombre corregido.
+        enviar(put("/api/dt/plantel/11"), "profe", Map.of("nombre", "Pedro José", "apellido", "Delantero",
+                "numero", "17", "arquero", false)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Pedro José Delantero"));
+        mvc.perform(get("/api/dt/partidos/" + id + "/informe").with(como("profe")))
+                .andExpect(jsonPath("$.jugadores[*].nombre").value(contains("Tomás Nuevo", "Pedro José Delantero")));
+
+        // Baja: sale del plantel y ya no se le cargan acciones; las suyas quedan en el informe.
+        mvc.perform(delete("/api/dt/plantel/" + nuevo).with(como("profe")).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/dt/plantel").with(como("profe")))
+                .andExpect(jsonPath("$[*].nombre").value(contains("Juan Arquero", "Pedro José Delantero")));
+        enviar(post("/api/dt/partidos/" + id + "/acciones"), "profe", List.of(accion(nuevo, "FALTA", "COMETIDA", 1, 50)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/dt/partidos/" + id + "/informe").with(como("profe")))
+                .andExpect(jsonPath("$.totales.goles").value(1));
+        mvc.perform(delete("/api/dt/plantel/" + nuevo).with(como("profe")).with(csrf())).andExpect(status().isNotFound());
+        // El plantel de un DT no es el de otro.
+        enviar(put("/api/dt/plantel/" + nuevo), "otro", Map.of("nombre", "X", "apellido", "Y"))
+                .andExpect(status().isNotFound());
     }
 }

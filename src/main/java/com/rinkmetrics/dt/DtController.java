@@ -7,7 +7,8 @@ import com.rinkmetrics.dt.DtService.AccionReloj;
 import com.rinkmetrics.dt.DtService.NuevoPartido;
 import com.rinkmetrics.dt.DtService.PartidoView;
 import com.rinkmetrics.dt.DtService.Rival;
-import com.rinkmetrics.player.RosterService.PlantelJugador;
+import com.rinkmetrics.dt.PlantelDtService.DatosJugador;
+import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -46,11 +48,13 @@ public class DtController {
 
     private final DtService dt;
     private final DtInformeService informes;
+    private final PlantelDtService planteles;
     private final UsuarioRepository usuarios;
 
-    public DtController(DtService dt, DtInformeService informes, UsuarioRepository usuarios) {
+    public DtController(DtService dt, DtInformeService informes, PlantelDtService planteles, UsuarioRepository usuarios) {
         this.dt = dt;
         this.informes = informes;
+        this.planteles = planteles;
         this.usuarios = usuarios;
     }
 
@@ -67,10 +71,29 @@ public class DtController {
         return dt.accionesDelEquipo(usuario(auth), categoria, rama);
     }
 
+    /** Plantel del equipo: la primera vez sale de las actas de SIDGAD; después, el que edita el DT. */
     @GetMapping("/plantel")
-    public List<PlantelJugador> plantel(@RequestParam(required = false) String categoria,
+    public List<JugadorPlantel> plantel(@RequestParam(required = false) String categoria,
                                         @RequestParam(required = false) String rama, Authentication auth) {
-        return dt.plantel(usuario(auth), categoria, rama);
+        return planteles.plantel(usuario(auth), categoria, rama);
+    }
+
+    @PostMapping("/plantel")
+    public ResponseEntity<JugadorPlantel> altaJugador(@RequestBody DatosJugador req, Authentication auth) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(planteles.alta(usuario(auth), req));
+    }
+
+    @PutMapping("/plantel/{jugadorId}")
+    public JugadorPlantel modificarJugador(@PathVariable int jugadorId, @RequestBody DatosJugador req,
+                                           Authentication auth) {
+        return planteles.modificar(usuario(auth), jugadorId, req);
+    }
+
+    @DeleteMapping("/plantel/{jugadorId}")
+    public ResponseEntity<Void> bajaJugador(@PathVariable int jugadorId, @RequestParam(required = false) String categoria,
+                                            @RequestParam(required = false) String rama, Authentication auth) {
+        planteles.baja(usuario(auth), categoria, rama, jugadorId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/partidos")

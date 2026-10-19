@@ -243,17 +243,17 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   el cupo del mes de suscripción (suscripto el 15: del 15 al 14). El reloj cuenta hacia atrás cada tiempo (25:00 a
   00:00, o lo que dure el tiempo en las competiciones de la categoría) y se
   calcula con la hora de inicio y los segundos acumulados, así un teléfono bloqueado no pierde el minuto. Cada acción
-  es de un jugador del plantel (sale de las actas, con su número y los arqueros marcados) y guarda el tiempo y el
+  es de un jugador del plantel del equipo (el de la sección Equipo) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
-  las acciones. Tablas `partido_dt` y `accion_dt` (V12). Un partido cerrado se puede reabrir durante 48 h.
-- **Métricas DT: menú, dashboard, fichas e informes.** La pantalla del DT tiene un menú Dashboard · Partidos ·
-  Equipo · Jugadores · Informes (entra al dashboard).
-  - **Dashboard general:** partidos cargados y del mes; estado de los partidos (programados = creados con fecha
+  las acciones. Tablas `partido_dt` y `accion_dt` (V12) y `jugador_dt` (V15, el plantel). Un partido cerrado se puede reabrir durante 48 h.
+- **Métricas DT: menú, panel, estadísticas, informes y plantel.** La pantalla del DT tiene un menú Control panel ·
+  Partidos · Estadísticas (submenú Equipo y Jugadores) · Informes · Equipo (entra al Control panel).
+  - **Control panel (dashboard general):** partidos cargados y del mes; estado de los partidos (programados = creados con fecha
     futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6) y los próximos partidos.
-  - **Equipo:** las estadísticas consolidadas de todos los partidos cargados del equipo (las mismas métricas del
+  - **Estadísticas > Equipo:** las estadísticas consolidadas de todos los partidos cargados del equipo (las mismas métricas del
     informe), el balance de los finalizados (jugados, ganados, empatados, perdidos y goles), los goleadores (los 5
     con más goles) y el top 3 en efectividad de penales y de libres a favor (a igual efectividad, el que más pateó).
-  - **Jugadores:** la ficha de cada uno, con índice (0 a 100) y un pentágono de cinco ejes comparados con el plantel
+  - **Estadísticas > Jugadores:** la ficha de cada uno, con índice (0 a 100) y un pentágono de cinco ejes comparados con el plantel
     (100 = el mejor del equipo): ataque, precisión, desequilibrio (faltas recibidas), recuperación (balance con las
     pérdidas) y disciplina. Los arqueros se comparan entre sí con sus ejes: atajadas, efectividad, pelota parada,
     valla y disciplina. Todo se calcula en el navegador (`js/dt-fichas.js`) con `GET /api/dt/acciones` (las acciones
@@ -266,6 +266,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     jugador y acción). Se puede elegir un jugador para ver solo sus estadísticas. En pantalla se arma en el
     navegador (`js/dt-informe.js`); el PDF lo arma el servidor (`DtInformeService`, `InformeDt`, plantilla
     `templates/dt-informe.html`) con las mismas métricas.
+  - **Equipo (plantel):** el ABM de los jugadores del equipo: nombre, apellido, número y si es arquero. La primera vez
+    se arma con las actas de SIDGAD (el apellido es la última palabra; se puede corregir); después el DT agrega,
+    corrige o da de baja jugadores. El número no se repite en el plantel. Un jugador dado de baja ya no aparece para
+    cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre corregido.
 - **Métricas DT (pantalla, `/dt.html`):** en el celular va en una columna; en tablet y web (desde 760 px de ancho)
   la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
   columna) y entra entera en la pantalla, sin bajar.
@@ -278,7 +282,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     penal en contra) van al arquero en cancha. Se pueden agregar jugadores que no figuran en las actas. Cada carga
     muestra "Deshacer" por 4 segundos, y las últimas acciones se pueden borrar.
   - **Informe:** el informe del partido en vivo (con lo que todavía no se envió), del equipo o de un jugador, con
-    los eventos y "Exportar PDF"; y el cierre del partido (o reabrirlo).
+    los eventos y "Exportar PDF"; y el cierre del partido (o reabrirlo). Al tocar "Fin del partido", la pantalla pasa
+    sola a esta pestaña.
   - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt-cola.js`) y se
     mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
     (`dt-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin
@@ -435,7 +440,11 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
 - Métricas DT (DTFPP o DTAMP; sin `categoria`/`rama`, el primer equipo del DT; el partido de otro DT da 404):
   - `GET /api/dt/rivales?categoria=PRIMERA&rama=MASCULINO`: combo de rivales (`clubId`, `nombre`: "GEBA B")
-  - `GET /api/dt/plantel?categoria=&rama=`: jugadores con número y `arquero`
+  - `GET /api/dt/plantel?categoria=&rama=`: el plantel (`id`, `numero`, `nombre` completo, `nombres`, `apellido`,
+    `arquero`). La primera vez se arma con las actas de SIDGAD y se guarda.
+  - `POST /api/dt/plantel` `{"categoria","rama","nombre","apellido","numero","arquero"}` → `201` (id propio desde
+    900000000); `PUT /api/dt/plantel/{id}` (mismo cuerpo); `DELETE /api/dt/plantel/{id}?categoria=&rama=` → `204`
+    (baja: sus acciones quedan). `409` si el número ya es de otro jugador del plantel.
   - `GET /api/dt/acciones?categoria=&rama=`: acciones activas de todos los partidos del equipo (con `partidoId`), para las fichas
   - `POST /api/dt/partidos` `{"categoria":"PRIMERA","rama":"MASCULINO","rival":"HURACAN","fecha":"2026-10-18","local":false,"torneo":"Apertura"}`
     → `201` (sin `fecha`, hoy; `torneo` opcional); con el mismo rival y fecha devuelve el ya empezado; `409` si se

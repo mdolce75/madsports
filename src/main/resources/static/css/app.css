@@ -678,3 +678,43 @@ body.dt-vivo .dt-menu { display: none; }
 @media (min-width: 860px) { .partidos-grid { grid-template-columns: minmax(320px, 5fr) minmax(0, 7fr); gap: 24px; } }
 /* Los títulos de las vistas del DT, todos del mismo color (dentro de .dt-line heredaban el gris). */
 .dt-vista .section-title { color: var(--ink); }
+
+/* Menú del DT con el submenú Estadísticas (Equipo y Jugadores). */
+.dt-menu { overflow: visible; flex-wrap: wrap; align-items: center; }
+.dt-sub { position: relative; }
+.dt-sub-btn { padding: 8px 18px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); cursor: pointer;
+              white-space: nowrap; font: 700 .82rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
+.dt-sub-btn::after { content: ""; display: inline-block; margin-left: 7px; border: 4px solid transparent;
+                     border-top-color: currentColor; border-bottom: 0; vertical-align: 2px; }
+.dt-sub-btn:hover { color: var(--accent); }
+.dt-sub.activo .dt-sub-btn { background: var(--accent); color: var(--accent-ink); }
+.dt-sub-btn:focus-visible, .dt-menu a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dt-sub-menu { position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; min-width: 180px; display: grid; gap: 2px;
+               padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-lg); }
+.dt-sub-menu[hidden] { display: none; }
+.dt-sub-menu a { border-radius: 8px; }
+@media (max-width: 760px) { .topbar .dt-menu { justify-content: flex-start; border-radius: 18px; } }
+@media (max-width: 480px) {
+    .topbar .dt-menu a, .topbar .dt-sub-btn { padding: 8px 9px; font-size: .72rem; letter-spacing: .06em; }
+    .topbar .dt-menu > a { flex: 0 1 auto; }
+}
+
+/* Equipo: ABM del plantel. */
+.pl-check { display: flex; align-items: flex-end; }
+.pl-check label { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; cursor: pointer; }
+.pl-check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.pl-cancelar { display: block; margin: 12px auto 0; }
+#pl-status { margin-top: 12px; min-height: 20px; color: var(--muted); font-size: .9rem; }
+#pl-status.error { color: var(--err); }
+#pl-status.ok { color: var(--good); }
+.pl-lista { list-style: none; margin: 0; padding: 0; }
+.pl-lista li { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 2px;
+               border-top: 1px solid var(--line); }
+.pl-lista li:first-child { border-top: 0; }
+.pl-lista li.dt-vacio { display: block; }
+.pl-lista li.editando { background: var(--accent-soft); border-radius: 8px; }
+.pl-lista .pl-num { font: 700 1rem/1 var(--display); color: var(--accent); text-align: center; }
+.pl-lista .quien { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.pl-lista .quien b { font-weight: 600; color: var(--ink); }
+.pl-lista .acc { display: flex; gap: 14px; }
+.pl-lista .pl-baja { color: var(--err); }

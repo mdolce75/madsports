@@ -52,7 +52,7 @@ const DtInforme = (() => {
         const conocidos = new Map(jugadores.map(j => [j.key, j]));
         let filas = [...porJugador].map(([key, acc]) => {
             const j = conocidos.get(key);
-            return {clave: key, numero: j && j.numero || "", nombre: acc[0].jugadorNombre || (j && j.nombre) || "",
+            return {clave: key, numero: j && j.numero || "", nombre: (j && j.nombre) || acc[0].jugadorNombre || "",
                 arquero: j ? !!j.arquero : acc.some(a => ARCO.has(a.tipo)),
                 partidos: new Set(acc.map(a => a.partidoId)).size, metricas: metricas(acc)};
         });
@@ -62,13 +62,14 @@ const DtInforme = (() => {
         const lasDel = elegido ? porJugador.get(elegido.clave) : acciones;
         if (elegido) filas = [elegido];
         const nums = new Map(filas.map(f => [f.clave, f.numero]));
+        const nombres = new Map(filas.map(f => [f.clave, f.nombre]));
         const dur = (partidos[0] && partidos[0].minutosTiempo || 25) * 60;
         const eventos = !unPartido ? [] : lasDel.slice()
             .sort((a, b) => a.tiempo - b.tiempo || a.segundo - b.segundo)
             .map(a => {
                 const n = nombreAccion(a.tipo, a.resultado);
                 return {tiempo: a.tiempo, segundo: a.segundo, minuto: `${a.tiempo}T ${mmss(Math.min(a.segundo, dur))}`,
-                    clave: clave(a), numero: nums.get(clave(a)) || "", jugador: a.jugadorNombre, accion: n.nombre,
+                    clave: clave(a), numero: nums.get(clave(a)) || "", jugador: nombres.get(clave(a)) || a.jugadorNombre, accion: n.nombre,
                     color: n.col, pendiente: !!a.pendiente};
             });
         const ps = partidos.map(p => ({id: p.id, fecha: p.fecha, rival: p.rival, local: p.local, torneo: p.torneo,
