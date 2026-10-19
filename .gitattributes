@@ -1,0 +1,6 @@
+# Scripts de shell siempre con LF (se ejecutan en Linux/macOS y en el runner del CI).
+mvnw text eol=lf
+*.sh text eol=lf
+# Scripts de Windows con CRLF.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

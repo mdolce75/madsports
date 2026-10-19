@@ -22,8 +22,8 @@ Flyway crea y actualiza el esquema al arrancar. Las migraciones están separadas
   `position(...)`).
 
 **Regla:** cada cambio de esquema se agrega como `V<n>__<nombre>.sql` en **las dos carpetas**, con el mismo número.
-El CI corre todos los tests contra H2 y contra PostgreSQL (Testcontainers), así que una migración que falte o falle en
-un motor rompe el build. Una migración ya aplicada no se edita: Flyway compara el checksum y no arranca.
+`MigracionesIT` verifica que las dos carpetas tengan las mismas versiones, y los tests unitarios (H2) y de integración
+(PostgreSQL con Testcontainers) aplican cada una, así que una migración que falte o falle en un motor rompe el build. Una migración ya aplicada no se edita: Flyway compara el checksum y no arranca.
 
 Hibernate valida el esquema contra las entidades (`ddl-auto: validate`): si no coinciden, la app no arranca.
 
@@ -128,6 +128,6 @@ usuario. Un respaldo que nunca se restauró no está probado.
 
 ## Integración continua
 
-`.github/workflows/ci.yml` corre `./mvnw verify` en cada PR y en cada push a `main`, contra H2 y contra PostgreSQL 16.
-Para que no se pueda mergear con tests rotos, en GitHub: **Settings → Branches → Branch protection rule** para `main`,
-con "Require status checks to pass" y los checks `Tests (H2)` y `Tests (PostgreSQL)`.
+`.github/workflows/ci.yml` corre `./mvnw verify` (unitarios con H2, integración con PostgreSQL 16 y cobertura) en cada
+PR y en cada push a `main`. Para que no se pueda mergear con tests rotos, en GitHub: **Settings → Branches → Branch
+protection rule** para `main`, con "Require status checks to pass" y el check `Backend`.

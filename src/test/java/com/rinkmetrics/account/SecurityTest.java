@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Registro, login y acceso por perfil, con la base H2 en memoria y SIDGAD simulado. */
-@SpringBootTest(properties = "spring.datasource.url=${rinkmetrics.test.db:jdbc:h2:mem:seguridad;DB_CLOSE_DELAY=-1}")
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:seguridad;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 class SecurityTest {
 

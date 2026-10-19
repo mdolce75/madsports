@@ -23,6 +23,7 @@
         <openhtmltopdf.version>1.1.97</openhtmltopdf.version>
         <!-- Docker Engine 29 exige Testcontainers 1.21.4 o posterior (la versión de Spring Boot no lo detecta). -->
         <testcontainers.version>1.21.4</testcontainers.version>
+        <jacoco.version>0.8.15</jacoco.version>
     </properties>
 
     <dependencies>
@@ -106,7 +107,17 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Tests contra PostgreSQL real en Docker (jdbc:tc:postgresql:...). -->
+        <!-- Tests de integración (*IT) contra PostgreSQL real en Docker. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
@@ -119,6 +130,59 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Tests unitarios: *Test (H2 en memoria). Tests de integración (PostgreSQL con Testcontainers/Docker): *IT -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*IT.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+            <!--
+              Cobertura: el agente de JaCoCo instrumenta los tests unitarios (surefire) y los de integración
+              (failsafe) sobre el mismo target/jacoco.exec; el reporte (target/site/jacoco) se genera en verify,
+              después de failsafe, así que suma ambas suites. Va después de failsafe porque en una misma fase
+              Maven ejecuta los plugins en el orden del POM.
+            -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

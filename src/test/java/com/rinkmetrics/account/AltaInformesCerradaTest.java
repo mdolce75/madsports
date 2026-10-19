@@ -10,7 +10,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Mientras Informes no esté disponible, el registro solo acepta cuentas de Métricas DT. */
-@SpringBootTest(properties = {"spring.datasource.url=${rinkmetrics.test.db:jdbc:h2:mem:alta-informes;DB_CLOSE_DELAY=-1}",
+@SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:alta-informes;DB_CLOSE_DELAY=-1",
         "rinkmetrics.registro.informes=false"})
 class AltaInformesCerradaTest {
 

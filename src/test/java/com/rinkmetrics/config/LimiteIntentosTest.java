@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Límite de intentos: ingresos fallidos por usuario y por IP, altas de cuenta y pedidos de mails por IP. */
-@SpringBootTest(properties = {"spring.datasource.url=${rinkmetrics.test.db:jdbc:h2:mem:limites;DB_CLOSE_DELAY=-1}",
+@SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:limites;DB_CLOSE_DELAY=-1",
         "rinkmetrics.limites.login-usuario=3", "rinkmetrics.limites.login-ip=5",
         "rinkmetrics.limites.registro-ip=2", "rinkmetrics.limites.mails-ip=2"})
 @AutoConfigureMockMvc

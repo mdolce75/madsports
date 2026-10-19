@@ -500,12 +500,21 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 ## Tests
 
 ```bash
-./mvnw test
-# Los mismos tests contra PostgreSQL 16 (Testcontainers; requiere Docker)
-./mvnw test -Drinkmetrics.test.db=jdbc:tc:postgresql:16-alpine:///rinkmetrics
+./mvnw test     # unitarios (*Test), con H2 en memoria: no necesitan Docker
+./mvnw verify   # unitarios + integración (*IT) contra PostgreSQL 16 real (Testcontainers; requiere Docker) + cobertura
 ```
 
-El CI de GitHub Actions (`.github/workflows/ci.yml`) corre las dos variantes en cada PR y en cada push a `main`.
+| Suite | Plugin | Base | Qué cubre |
+|---|---|---|---|
+| `*Test` | surefire | H2 en memoria | Parsers contra fixtures, motor de estadísticas, informes, servicios y la API completa con MockMvc |
+| `*IT` | failsafe | PostgreSQL 16 (un contenedor por clase) | `MigracionesIT` (las dos carpetas de migraciones tienen las mismas versiones, se aplican todas y el esquema queda con zona horaria, cascadas y únicos) y los flujos de la API sobre la base de producción: `SecurityIT`, `AltaInformesCerradaIT`, `LimiteIntentosIT`, `DtControllerIT` (heredan los casos de su `*Test`) |
+
+La cobertura de JaCoCo suma las dos suites y queda en `target/site/jacoco/index.html`.
+
+El CI de GitHub Actions (`.github/workflows/ci.yml`, job **Backend**) corre `./mvnw verify` en cada PR y en cada push
+a `main`: publica el resumen de cobertura en la corrida, el reporte como artefacto y, si algo falla, los reportes de
+surefire y failsafe. Dependabot (`.github/dependabot.yml`) abre PRs semanales con las dependencias de Maven y las
+acciones de GitHub, que valida el mismo CI.
 
 Los parsers y el motor se prueban contra HTML real guardado en `src/test/resources/fixtures` (octubre de 2026:
 actas, calendarios, posiciones, la ficha de temporada de un jugador y el catálogo 2026 con la FPP y la AMP). Si SIDGAD
