@@ -236,8 +236,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   usuario.
 - **DT** (Métricas DT, en vivo): elige su club y su plan; sus equipos y sus jugadores los arma después, en la
   sección Equipo (el registro ya no los pide). Entra a `/dt.html`, la pantalla de Métricas DT (sin equipos, empieza
-  por Equipo). Elige el plan free (`DT_FREE`: 1 equipo y 5 partidos por mes, sin costo hasta el 31/12/2026) o el
-  mensual (`DT_MENSUAL`: hasta 3 equipos y 25 partidos por mes) (`equipos_max` y `partidos_por_mes` en
+  por Equipo). Empieza con el plan free (`DT_FREE`: 1 equipo y 5 partidos por mes, sin costo hasta el 31/12/2026);
+  el mensual (`DT_MENSUAL`: hasta 3 equipos y 25 partidos por mes) figura como "Próximamente" y no se puede elegir
+  mientras `REGISTRO_DT_PAGO` (`rinkmetrics.registro.dt-pago`) sea `false`, el valor por defecto (`equipos_max` y `partidos_por_mes` en
   `suscripcion_type`, V17).
 - **Métricas DT (servidor):** cada partido es de un equipo del DT; el rival se escribe (con los ya usados para
   elegir), con la fecha, si es local o visitante, los minutos de cada tiempo (25 si no se eligen) y el campeonato. El

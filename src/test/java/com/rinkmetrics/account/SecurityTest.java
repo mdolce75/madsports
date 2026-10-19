@@ -362,7 +362,7 @@ class SecurityTest {
 
     Map<String, Object> dt(String usuario) {
         Map<String, Object> m = club(usuario);
-        m.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_MENSUAL"));
+        m.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_FREE"));
         return m;
     }
 
@@ -373,12 +373,19 @@ class SecurityTest {
         Usuario u = usuarios.findByUsuario("profe").orElseThrow();
         assertThat(u.getPerfiles()).containsExactly(Perfil.DTFPP);
         assertThat(u.esDt()).isTrue();
-        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_MENSUAL");
+        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_FREE");
 
         confirmar("profe@example.com");
         login("profe", "clave-segura").andExpect(jsonPath("$.inicio").value("/dt.html"));
         mvc.perform(get("/api/sesion").with(user("profe").authorities(() -> "DTFPP")))
-                .andExpect(jsonPath("$.suscripcion.partidosPorMes").value(25));
+                .andExpect(jsonPath("$.suscripcion.partidosPorMes").value(5));
+
+        // El mensual (pago) todavía no se puede elegir: el DT empieza con el free.
+        Map<String, Object> mensual = dt("dt.mensual");
+        mensual.put("suscripcion", "DT_MENSUAL");
+        register(mensual).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El plan DT mensual estará disponible próximamente. Por ahora, "
+                        + "empezá con el plan DT free."));
 
         // DT de la AMP.
         Map<String, Object> amp = dt("profe.amp");
@@ -415,6 +422,8 @@ class SecurityTest {
                 .andExpect(jsonPath("$[0].partidosPorMes").value(5))
                 .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
                 .andExpect(jsonPath("$[1].vigenteHasta").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$[0].disponible").value(true))
+                .andExpect(jsonPath("$[1].disponible").value(false))
                 .andExpect(jsonPath("$[1].equiposMax").value(3))
                 .andExpect(jsonPath("$[1].partidosPorMes").value(25))
                 // USD 12, en pesos al dólar de respaldo de los tests ($ 1.500).

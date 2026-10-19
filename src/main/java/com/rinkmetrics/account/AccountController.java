@@ -71,10 +71,11 @@ public class AccountController {
     /**
      * @param partidosPorMes DT: partidos por mes (0 = sin límite)
      * @param vigenteHasta   último día de un plan con fecha fija de fin (el DT free); null en los mensuales
+     * @param disponible     false si todavía no se puede elegir (el DT mensual: próximamente)
      */
     public record PlanView(String codigo, String nombre, BigDecimal precio, BigDecimal precioUsd, int informesPorMes,
                            BigDecimal dolar, LocalDate dolarFecha, int equiposMax, int partidosPorMes,
-                           LocalDate vigenteHasta) {
+                           LocalDate vigenteHasta, boolean disponible) {
     }
 
     /**
@@ -120,7 +121,7 @@ public class AccountController {
                 .filter(p -> p.vigente(hoy))   // el DT free deja de ofrecerse después del 31/12/2026
                 .map(p -> new PlanView(p.getCodigo(), p.getNombre(), Cotizacion.enPesos(p.getPrecioUsd(), dolar),
                         p.getPrecioUsd(), p.getInformesPorMes(), dolar.pesosPorDolar(), dolar.fecha(),
-                        p.getEquiposMax(), p.getPartidosPorMes(), p.getVigenteHasta()))
+                        p.getEquiposMax(), p.getPartidosPorMes(), p.getVigenteHasta(), registro.disponible(p)))
                 .toList();
     }
 

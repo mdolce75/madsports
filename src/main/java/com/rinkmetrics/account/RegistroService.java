@@ -46,11 +46,15 @@ public class RegistroService {
     private final Clock clock;
     /** ¿Se pueden crear cuentas de Informes (Club y Jugador)? Por ahora no: solo de Métricas DT. */
     private final boolean altaInformes;
+    /** ¿Se puede elegir un plan pago del DT (el mensual)? Por ahora no: el DT empieza con el free. */
+    private final boolean dtPago;
 
     public RegistroService(UsuarioRepository usuarios, SuscripcionTypeRepository planes, CatalogService catalog,
                            RosterService roster, PasswordEncoder encoder, Clock clock,
-                           @Value("${rinkmetrics.registro.informes:false}") boolean altaInformes) {
+                           @Value("${rinkmetrics.registro.informes:false}") boolean altaInformes,
+                           @Value("${rinkmetrics.registro.dt-pago:false}") boolean dtPago) {
         this.altaInformes = altaInformes;
+        this.dtPago = dtPago;
         this.usuarios = usuarios;
         this.planes = planes;
         this.catalog = catalog;
@@ -110,7 +114,16 @@ public class RegistroService {
         if (!plan.vigente(LocalDate.now(clock))) {
             throw new IllegalArgumentException("El plan " + plan.getNombre() + " ya no está disponible.");
         }
+        if (!disponible(plan)) {
+            throw new IllegalArgumentException("El plan " + plan.getNombre() + " estará disponible próximamente. "
+                    + "Por ahora, empezá con el plan DT free.");
+        }
         return plan;
+    }
+
+    /** ¿Se puede elegir el plan? Los planes pagos del DT, solo con {@code rinkmetrics.registro.dt-pago}. */
+    public boolean disponible(SuscripcionType plan) {
+        return dtPago || !"DT".equals(plan.getTipoUsuario()) || plan.getPrecioUsd().signum() == 0;
     }
 
     /** Jugador: el nombre y el apellido son los de SIDGAD (el jugador elegido de la planilla de su equipo). */
