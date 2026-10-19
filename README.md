@@ -223,7 +223,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Por qué RinkMetrics** (`/por-que.html`, en el menú): las ventajas de la plataforma, en su propia página.
 - **Demo de Métricas DT** (`/dt-demo.html`, en el menú "Demo"): Métricas DT completo con datos de ejemplo, sin
   cuenta: arranca en el Control panel y se recorren todas las pantallas (Partidos, con un partido en juego para cargar
-  acciones; Estadísticas; Informes y Equipo, con sus ABM). Es la misma página que `/dt.html` (sin copia): en la demo,
+  acciones; Equipo, con sus ABM; Estadísticas e Informes). Es la misma página que `/dt.html` (sin copia): en la demo,
   `js/dt/demo-api.js` contesta en el navegador las llamadas a la API, igual que el servidor (nada se guarda). La página de
   la sección muestra capturas de la demo ("Así se ve Métricas DT", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
@@ -255,7 +255,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   `jugador_equipo_dt` (V16: los equipos de antes pasaron con su nombre y sus partidos; los jugadores traídos de SIDGAD
   salieron, y sus acciones conservan el nombre). Un partido cerrado se puede reabrir durante 48 h.
 - **Métricas DT: menú, panel, estadísticas, informes y plantel.** La pantalla del DT tiene un menú Control panel ·
-  Partidos · Estadísticas (submenú Equipo y Jugadores) · Informes · Equipo (entra al Control panel).
+  Partidos · Equipo · Estadísticas (submenú Equipo y Jugadores) · Informes (entra al Control panel).
   - **Control panel (dashboard general):** partidos cargados y del mes; estado de los partidos (programados = creados con fecha
     futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6) y los próximos partidos.
   - **Estadísticas > Equipo:** las estadísticas consolidadas de todos los partidos cargados del equipo (las mismas métricas del
