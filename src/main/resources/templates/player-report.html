@@ -228,6 +228,10 @@
                     <td class="l">Sin minuto registrado *</td><td th:text="${u.goals}"></td>
                     <td th:text="${u.yellowCards}"></td><td th:text="${u.blueCards}"></td><td th:text="${u.redCards}"></td>
                 </tr>
+                <tr class="total" th:with="tt=${mn.total()}">
+                    <td class="l">Total</td><td th:text="${tt.goals}"></td>
+                    <td th:text="${tt.yellowCards}"></td><td th:text="${tt.blueCards}"></td><td th:text="${tt.redCards}"></td>
+                </tr>
             </table>
         </th:block>
 
@@ -290,6 +294,9 @@
             <div class="nobreak" th:if="${c.playerCardsByBucket(mn.buckets) != null}">
                 <img class="chart wide" th:src="${c.playerCardsByBucket(mn.buckets)}" alt="Tarjetas por tramo de 5 minutos, por color"/>
             </div>
+            <p class="muted" th:if="${mn.unrecorded.goals + mn.unrecorded.cards() > 0}"
+               th:with="u=${mn.unrecorded}, tt=${mn.total()}"
+               th:text="|Sin minuto registrado (fuera de los gráficos): ${u.goals} goles y ${u.cards()} tarjetas. En total: ${tt.goals} goles y ${tt.cards()} tarjetas.|">Sin minuto</p>
         </th:block>
         <h3>Goles con uno menos por sus sanciones</h3>
         <div th:replace="~{fragments/player-short-handed :: concededGoals(${r.shortHanded})}"></div>
