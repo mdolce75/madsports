@@ -345,6 +345,11 @@ class DtControllerTest {
         mvc.perform(get("/api/dt/partidos").with(como("profe"))).andExpect(jsonPath("$", hasSize(1)));
         mvc.perform(get("/api/dt/acciones").with(como("profe"))).andExpect(jsonPath("$", hasSize(1)));
         assertThat(acciones.findAll()).hasSize(1);
+
+        // Borrar al DT borra en cascada sus equipos, sus partidos (con sus acciones) y sus jugadores.
+        usuarios.delete(usuarios.findByUsuario("profe").orElseThrow());
+        assertThat(partidos.findAll()).isEmpty();
+        assertThat(acciones.findAll()).isEmpty();
     }
 
     @Test
@@ -358,6 +363,10 @@ class DtControllerTest {
         enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Uno más")).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("Ya cargaste los 25 partidos de este mes. El cupo se renueva el 15/11."));
         mvc.perform(get("/api/dt/partidos").with(como("profe"))).andExpect(jsonPath("$", hasSize(25)));
+        // Eliminar un partido no devuelve el lugar en el cupo.
+        long uno = partidos.findAll().getFirst().getId();
+        mvc.perform(delete("/api/dt/partidos/" + uno).with(como("profe")).with(csrf())).andExpect(status().isNoContent());
+        enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Otra vez")).andExpect(status().isConflict());
         // El mes siguiente de la suscripción vuelve a tener cupo.
         reloj.ahora = Instant.parse("2026-11-15T12:00:00Z");
         enviar(post("/api/dt/partidos"), "profe", Map.of("rival", "Nuevo mes")).andExpect(status().isCreated());

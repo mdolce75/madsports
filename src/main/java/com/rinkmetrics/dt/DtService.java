@@ -92,16 +92,16 @@ public class DtService {
     private final AccionDtRepository acciones;
     private final PlantelDtService planteles;
     private final EquipoDtService equipos;
-    private final EquipoRepository equipoRepo;
+    private final PartidoCreadoRepository creados;
     private final Clock clock;
 
     public DtService(PartidoDtRepository partidos, AccionDtRepository acciones, PlantelDtService planteles,
-                     EquipoDtService equipos, EquipoRepository equipoRepo, Clock clock) {
+                     EquipoDtService equipos, PartidoCreadoRepository creados, Clock clock) {
         this.partidos = partidos;
         this.acciones = acciones;
         this.planteles = planteles;
         this.equipos = equipos;
-        this.equipoRepo = equipoRepo;
+        this.creados = creados;
         this.clock = clock;
     }
 
@@ -135,14 +135,13 @@ public class DtService {
         verificarCupo(u);
         PartidoDt p = new PartidoDt(u.getId(), u.federacion().name(), u.getClubId(), e.getId(), null, null,
                 torneo.isEmpty() ? null : torneo, rival, fecha, n.local() == null || n.local(), minutos, clock.instant());
-        return view(partidos.save(p), true);
+        creados.save(new PartidoCreado(u.getId(), p.getCreado()));
+        return view(partidos.save(p), true, e.getNombre());
     }
 
     /** Partidos cargados por el DT, los más recientes primero (sin las acciones). */
     public List<PartidoView> lista(Usuario u) {
-        Map<Long, String> nombres = nombres(u);
-        return partidos.findByUsuarioIdOrderByFechaDescIdDesc(u.getId()).stream().map(p -> view(p, false, nombres))
-                .toList();
+        return partidos.findByUsuarioIdOrderByFechaDescIdDesc(u.getId()).stream().map(p -> view(p, false)).toList();
     }
 
     /**
@@ -251,14 +250,12 @@ public class DtService {
     }
 
     /**
-     * Elimina el partido y todas sus acciones: deja de contar en las estadísticas, las fichas y los informes. No se
-     * puede deshacer.
+     * Elimina el partido y todas sus acciones (la base las borra en cascada): deja de contar en las estadísticas, las
+     * fichas y los informes, pero sigue contando para el cupo del mes. No se puede deshacer.
      */
     @Transactional
     public void eliminar(Usuario u, Long id) {
-        PartidoDt p = suyo(u, id);
-        acciones.deleteByPartidoId(p.getId());
-        partidos.delete(p);
+        partidos.delete(suyo(u, id));
     }
 
     @Transactional
@@ -288,7 +285,7 @@ public class DtService {
             return;
         }
         LocalDate desde = inicioDelMes(u.getSuscripcionDesde() == null ? hoy : u.getSuscripcionDesde(), hoy);
-        long usados = partidos.countByUsuarioIdAndCreadoGreaterThanEqual(u.getId(),
+        long usados = creados.countByUsuarioIdAndCreadoGreaterThanEqual(u.getId(),
                 desde.atStartOfDay(clock.getZone()).toInstant());
         if (usados >= plan.getPartidosPorMes()) {
             throw new Conflicto("Ya cargaste los " + plan.getPartidosPorMes() + " partidos de este mes. El cupo se "
@@ -334,23 +331,18 @@ public class DtService {
                 .orElseThrow(() -> new NoEncontrado("No existe ese partido."));
     }
 
-    private Map<Long, String> nombres(Usuario u) {
-        return equipoRepo.findByUsuarioIdOrderByIdAsc(u.getId()).stream()
-                .collect(Collectors.toMap(Equipo::getId, Equipo::getNombre));
-    }
-
+    /** Vista de un partido leído con su equipo. */
     private PartidoView view(PartidoDt p, boolean conAcciones) {
-        return view(p, conAcciones, equipoRepo.findById(p.getEquipoId())
-                .map(e -> Map.of(e.getId(), e.getNombre())).orElse(Map.of()));
+        return view(p, conAcciones, p.getEquipo() == null ? "" : p.getEquipo().getNombre());
     }
 
-    private PartidoView view(PartidoDt p, boolean conAcciones, Map<Long, String> nombres) {
+    private PartidoView view(PartidoDt p, boolean conAcciones, String equipo) {
         Instant ahora = clock.instant();
         List<AccionView> lista = conAcciones && p.getId() != null
                 ? acciones.findByPartidoIdOrderByTiempoAscSegundoAscCreadaAsc(p.getId()).stream()
                         .filter(AccionDt::activa).map(AccionView::of).toList()
                 : List.of();
-        return new PartidoView(p.getId(), p.getEquipoId(), nombres.getOrDefault(p.getEquipoId(), ""), p.getIdp(),
+        return new PartidoView(p.getId(), p.getEquipoId(), equipo, p.getIdp(),
                 p.getTorneo(), p.getRival(),
                 p.getFecha(), p.isLocal(), p.getMinutosTiempo(), p.getEstado(), p.getGolesFavor(), p.getGolesContra(),
                 new RelojView(p.getTiempoActual(), p.jugados(ahora), p.restante(ahora), p.corriendo()), lista);
