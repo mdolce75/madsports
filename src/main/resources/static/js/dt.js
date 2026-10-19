@@ -855,7 +855,14 @@
 
     function pintarEquipos() {
         const ul = $("eq-lista");
-        $("eq-n").textContent = equipos.length ? `${equipos.length} ${equipos.length === 1 ? "equipo" : "equipos"}` : "";
+        // Cuántos equipos usa de los que permite su plan (free 1, mensual 3).
+        const max = sesion.suscripcion && sesion.suscripcion.equiposMax;
+        $("eq-n").textContent = max ? `${equipos.length} de ${max} ${max === 1 ? "equipo" : "equipos"}`
+            : equipos.length ? `${equipos.length} ${equipos.length === 1 ? "equipo" : "equipos"}` : "";
+        const lleno = max && equipos.length >= max && eqEditando == null;
+        $("eq-nombre").disabled = $("eq-guardar").disabled = !!lleno;
+        if (lleno && !$("eq-status").textContent) abmStatus("eq-status", `Tu plan permite ${max === 1 ? "1 equipo" : max + " equipos"}: `
+            + "para sumar otro, borrá uno sin partidos" + (max === 1 ? " o pasate al plan mensual." : "."));
         ul.replaceChildren();
         if (!equipos.length) ul.append(el("li", "dt-vacio", "Todavía no creaste equipos: agregá el primero."));
         for (const e of equipos) {
@@ -977,7 +984,7 @@
         } catch (err) {
             abmStatus("eq-status", sinSenalAbm(err), true);
         } finally {
-            $("eq-guardar").disabled = false;
+            $("eq-guardar").disabled = $("eq-nombre").disabled;   // con el cupo de equipos lleno, sigue deshabilitado
         }
     }
 

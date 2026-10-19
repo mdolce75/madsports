@@ -38,8 +38,7 @@
     <p class="hint">Cada acción queda asociada al jugador, al tiempo de juego y al minuto exacto.</p>
 
     <div class="examples">
-        <article class="example proximamente">
-            <span class="cintillo">Próximamente</span>
+        <article class="example">
             <span class="tag">Acciones</span>
             <h3>Acciones de cada jugador</h3>
             <ul>
@@ -123,13 +122,16 @@
 <script>
     $("brand").outerHTML = BRAND;
 
-    // Planes del DT (el free y el mensual) con su precio en pesos del día.
+    // Planes del DT (el free y el mensual) con su precio en pesos del día. Cada uno se elige: lleva al registro con ese
+    // plan ya marcado.
     fetch("/api/suscripciones?perfil=DTFPP").then(r => r.ok ? r.json() : []).then(planes => {
         const box = $("plan-dt");
         for (const p of planes) {
             const gratis = Number(p.precio) === 0;
-            const card = document.createElement("div");
-            card.className = "plan";
+            const card = document.createElement("a");
+            card.className = "plan plan-elegir";
+            card.href = "/registro.html?seccion=dt&plan=" + encodeURIComponent(p.codigo);
+            card.setAttribute("aria-label", `Elegir el plan ${p.nombre} y crear la cuenta`);
             const nombre = document.createElement("span");
             nombre.className = "plan-name";
             nombre.textContent = "Plan " + p.nombre;
@@ -140,13 +142,15 @@
             precio.querySelector("small").textContent = gratis ? "" : "por mes";
             const cupo = document.createElement("span");
             cupo.className = "plan-quota";
-            cupo.textContent = p.partidosPorMes > 0 ? `Equipos sin límite y ${p.partidosPorMes} partidos por mes`
-                : "Equipos y partidos sin límite";
+            cupo.textContent = `${p.equiposMax === 1 ? "1 equipo" : "Hasta " + p.equiposMax + " equipos"} y ${p.partidosPorMes} partidos por mes`;
             const nota = document.createElement("span");
             nota.className = "plan-month";
             nota.textContent = p.vigenteHasta ? "Sin costo hasta el " + p.vigenteHasta.split("-").reverse().join("/") + "."
                 : "Mensual, sin permanencia. En pesos al dólar oficial del día.";
-            card.append(nombre, precio, cupo, nota);
+            const elegir = document.createElement("span");
+            elegir.className = "btn primary plan-cta";
+            elegir.textContent = gratis ? "Empezar gratis" : "Elegir plan " + p.nombre.replace(/^DT /, "");
+            card.append(nombre, precio, cupo, nota, elegir);
             box.append(card);
         }
         box.hidden = !planes.length;
