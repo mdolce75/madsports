@@ -115,10 +115,9 @@
 
 <script src="/js/app.js"></script>
 <script>
-    // Cada sección tiene su registro: Informes ofrece los perfiles Club y Jugador; DT, solo el perfil DT.
-    // Por ahora solo se crean cuentas de Métricas DT: si llegan por Informes, el aviso y el registro de DT.
-    const PIDIO_INFORMES = new URLSearchParams(location.search).get("seccion") === "informes";
-    const SECCION = "dt";
+    // Cada sección tiene su registro: Informes (?seccion=informes) ofrece el perfil Jugador (las cuentas de club, por
+    // ahora, próximamente); Métricas DT (cualquier otra), solo el perfil DT.
+    const SECCION = new URLSearchParams(location.search).get("seccion") === "informes" ? "informes" : "dt";
     document.body.dataset.seccion = SECCION;
     if (SECCION === "dt") {
         document.querySelectorAll("input[name=rol]").forEach(r => {
@@ -131,17 +130,27 @@
             + "registrás las estadísticas de cada partido en vivo.";
         $("volver").href = $("volver-top").href = "/dt-inicio.html";
         $("volver-top").textContent = "← Volver a Métricas DT";
-        if (PIDIO_INFORMES) {
-            const aviso = document.createElement("div");
-            aviso.className = "notice proximo";
-            aviso.innerHTML = "<b>Informes: próximamente</b><p>Las cuentas de Informes para clubes y jugadores estarán "
-                + "disponibles en breve. Por ahora podés crear tu cuenta de Métricas DT.</p>";
-            $("form").before(aviso);
-        }
     } else {
-        document.querySelector("input[name=rol][value=DT]").closest("label").remove();
-        document.querySelector(".profiles.three").classList.remove("three");
+        // Informes: solo jugadores por ahora.
+        document.querySelectorAll("input[name=rol]").forEach(r => {
+            if (r.value === "PLAYER") r.checked = true; else r.closest("label").remove();
+        });
+        $("perfil-field").hidden = true;
+        $("reg-tag").textContent = "Informes · Jugador";
+        $("reg-lead").textContent = "Creá tu cuenta de jugador de la FPP: elegí tu club, la categoría en que jugás y tu "
+            + "nombre en la planilla. Después generás tu informe en PDF.";
+        // Jugadores de la AMP: próximamente. La FPP queda elegida.
+        const amp = document.querySelector("input[name=federacion][value=AMP]");
+        amp.disabled = true;
+        amp.closest("label").classList.add("no-disponible");
+        amp.closest("label").querySelector("small").textContent = "Próximamente.";
+        document.querySelector("input[name=federacion][value=FPP]").checked = true;
         $("volver").href = $("volver-top").href = "/informes.html";
+        const aviso = document.createElement("div");
+        aviso.className = "notice proximo";
+        aviso.innerHTML = "<b>Clubes: próximamente</b><p>Las cuentas de club estarán disponibles en breve. Por ahora "
+            + "podés crear tu cuenta de jugador o de <a href=\"/registro.html?seccion=dt\">Métricas DT</a>.</p>";
+        $("form").before(aviso);
     }
     $("brand").outerHTML = BRAND;
 
@@ -398,6 +407,8 @@
         $("dt-fields").hidden = false;
         loadPlans();
         loadClubsDt();
+    } else {
+        toggleProfile();   // la FPP ya está elegida: clubes, categorías y planes del jugador
     }
     $("equipo").addEventListener("change", loadPlayers);
 

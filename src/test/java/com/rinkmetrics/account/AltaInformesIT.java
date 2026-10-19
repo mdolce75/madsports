@@ -6,9 +6,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** Alta de cuentas de Informes cerrada: los mismos casos de {@link AltaInformesCerradaTest}, contra PostgreSQL real (migraciones de {@code db/migration/postgresql}). */
+/** Alta de cuentas de Informes: los mismos casos de {@link AltaInformesTest}, contra PostgreSQL real (migraciones de {@code db/migration/postgresql}). */
 @Testcontainers
-class AltaInformesCerradaIT extends AltaInformesCerradaTest {
+class AltaInformesIT extends AltaInformesTest {
 
     @Container
     @ServiceConnection

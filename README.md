@@ -227,10 +227,15 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   `js/dt/demo-api.js` contesta en el navegador las llamadas a la API, igual que el servidor (nada se guarda). La página de
   la sección muestra capturas de la demo ("Así se ve Métricas DT", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
-- **Alta de cuentas, por ahora solo de Métricas DT:** Informes figura como "Próximamente" y el registro
-  (`/registro.html?seccion=dt`) solo crea cuentas de DT. El servidor rechaza el alta de Club y Jugador mientras
-  `REGISTRO_INFORMES` (`rinkmetrics.registro.informes`) sea `false`, el valor por defecto; los usuarios que ya
-  existen siguen ingresando.
+- **Alta de cuentas de jugador y de DT; la de club, próximamente:** el registro de Informes
+  (`/registro.html?seccion=informes`) crea cuentas de jugador de la FPP (las de la AMP, próximamente:
+  `REGISTRO_JUGADOR_AMP`) y el de Métricas DT
+  (`/registro.html?seccion=dt`), de DT. El servidor rechaza el alta de club mientras `REGISTRO_CLUB`
+  (`rinkmetrics.registro.club`) sea `false`, el valor por defecto; los usuarios que ya existen siguen ingresando.
+- **Planes del jugador:** el **Jugador free** (sin costo hasta el 31/12/2026, 4 informes por mes) y el **Jugador
+  mensual**, que figura con el cintillo "Próximamente", apagado y borroneado (como el DT mensual), mientras
+  `REGISTRO_JUGADOR_PAGO` (`rinkmetrics.registro.jugador-pago`) sea `false`. Los dos se muestran en `/informes.html` y
+  en el registro.
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
   No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
@@ -415,7 +420,10 @@ Abrir http://localhost:8080.
 | `DOLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
 | `DOLAR_RESPALDO` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
-| `REGISTRO_INFORMES` | `false` | Habilita el alta de cuentas de Club y Jugador |
+| `REGISTRO_CLUB` | `false` | Habilita el alta de cuentas de club (las de jugador y DT están abiertas) |
+| `REGISTRO_JUGADOR_PAGO` | `false` | Habilita elegir el plan Jugador mensual (pago) |
+| `REGISTRO_JUGADOR_AMP` | `false` | Habilita el alta de jugadores de la AMP (por ahora, solo de la FPP) |
+| `REGISTRO_DT_PAGO` | `false` | Habilita elegir el plan DT mensual (pago) |
 | `RECORDARME_DIAS` | `30` | Días que queda recordado un dispositivo |
 | `RECORDARME_CLAVE` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |
 | `FORWARD_HEADERS_STRATEGY` | `none` | `native` detrás de un proxy: IP real para el límite de intentos |
