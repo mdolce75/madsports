@@ -36,6 +36,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 - [Correr](#correr)
 - [API](#api)
 - [Tests](#tests)
+- [Producción](docs/produccion.md)
 
 ## Qué hace
 
@@ -92,7 +93,7 @@ goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no public
 | <img src="https://img.shields.io/badge/Spring%20Boot-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot"> | Framework | **Spring Boot 3.5.7** (Spring Framework 6.2, Tomcat 10.1 embebido) | Aplicación web, configuración e inyección de dependencias |
 | <img src="https://img.shields.io/badge/Spring%20MVC-6DB33F?style=flat-square&logo=spring&logoColor=white" alt="Spring MVC"> | API web | Spring Web MVC, Bean Validation, Jackson 2.19 | API REST en JSON (`/api/...`) |
 | <img src="https://img.shields.io/badge/Security-6DB33F?style=flat-square&logo=springsecurity&logoColor=white" alt="Security"> | Seguridad | **Spring Security 6.5** | Registro y login con sesión, perfiles por pantalla, CSRF con cookie `XSRF-TOKEN`, claves con BCrypt |
-| <img src="https://img.shields.io/badge/Hibernate-59666C?style=flat-square&logo=hibernate&logoColor=white" alt="Hibernate"> | Persistencia | **Spring Data JPA** con Hibernate 6.6, **Flyway 11.7** | Usuarios, perfiles, suscripciones y enlaces de los mails; esquema versionado en `db/migration` |
+| <img src="https://img.shields.io/badge/Hibernate-59666C?style=flat-square&logo=hibernate&logoColor=white" alt="Hibernate"> | Persistencia | **Spring Data JPA** con Hibernate 6.6, **Flyway 11.7** | Usuarios, perfiles, suscripciones y enlaces de los mails; esquema versionado en `db/migration/{h2,postgresql}` |
 | <img src="https://img.shields.io/badge/H2-0000BB?style=flat-square" alt="H2"> | Base de datos | **H2 2.3** en archivo (`./data`) | Desarrollo. En producción se configura otra base con `FPP_DB_URL` (por ejemplo PostgreSQL) |
 | <img src="https://img.shields.io/badge/jsoup-263238?style=flat-square" alt="jsoup"> | Extracción de datos | **jsoup 1.23** | Pedidos a server2.sidgad.es (tablas, calendarios, estadísticas y actas) y lectura del HTML |
 | <img src="https://img.shields.io/badge/Caffeine-6F4E37?style=flat-square" alt="Caffeine"> | Cache | **Caffeine 3.2** | Datos de SIDGAD (15 min, catálogo 6 h, actas 24 h), escudos, planteles e informes en curso |
@@ -371,8 +372,14 @@ del jugador con sus goles, azules, rojas, penales y libres. Esos partidos cuenta
 partido a partido; sus goles y tarjetas van a "Sin minuto registrado" (la ficha no trae amarillas, titularidad ni
 minutos). Un partido sin acta que no figura en su ficha se toma como no jugado.
 
-Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo crea Flyway
-(`db/migration`). En producción, `FPP_DB_URL` apunta a otra base.
+Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo crea Flyway con las migraciones de
+su motor (`db/migration/h2`). En producción la base es PostgreSQL (`db/migration/postgresql`), con `FPP_DB_URL`
+apuntando a ella: cada cambio de esquema va en las dos carpetas con el mismo número. Ver
+[docs/produccion.md](docs/produccion.md).
+
+**Límite de intentos:** 5 ingresos fallidos por usuario y 20 por IP en 15 minutos; 5 altas de cuenta y 10 pedidos de
+mails (confirmación, recuperar la clave) por IP por hora. Al llegar al máximo la API responde **429** con
+`Retry-After` hasta que vence la ventana; un ingreso correcto limpia los fallidos del usuario.
 
 ## Correr
 
@@ -406,6 +413,13 @@ Abrir http://localhost:8080.
 | `REGISTRO_INFORMES` | `false` | Habilita el alta de cuentas de Club y Jugador |
 | `RECORDARME_DIAS` | `30` | Días que queda recordado un dispositivo |
 | `RECORDARME_CLAVE` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |
+| `FORWARD_HEADERS_STRATEGY` | `none` | `native` detrás de un proxy: IP real para el límite de intentos |
+| `LIMITE_LOGIN_USUARIO`, `LIMITE_LOGIN_IP`, `LIMITE_REGISTRO_IP`, `LIMITE_MAILS_IP` | `5`, `20`, `5`, `10` | Límite de intentos |
+| `ALERTAS_EMAIL` | vacío | Recibe las alertas del chequeo diario de SIDGAD (vacío: solo log) |
+| `MONITOR_SIDGAD_CRON` | `0 0 8 * * *` | Hora del chequeo diario de SIDGAD (hora argentina; `-` lo apaga) |
+
+**Health check:** `GET /actuator/health` (público, sin detalles) con el estado de la base y del último chequeo diario
+de SIDGAD; `GET /actuator/health/liveness` para la sonda del proveedor.
 
 La configuración propia va bajo `rinkmetrics:` en `application.yml` (clase `RinkMetricsProperties`).
 
@@ -487,7 +501,11 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 
 ```bash
 ./mvnw test
+# Los mismos tests contra PostgreSQL 16 (Testcontainers; requiere Docker)
+./mvnw test -Drinkmetrics.test.db=jdbc:tc:postgresql:16-alpine:///rinkmetrics
 ```
+
+El CI de GitHub Actions (`.github/workflows/ci.yml`) corre las dos variantes en cada PR y en cada push a `main`.
 
 Los parsers y el motor se prueban contra HTML real guardado en `src/test/resources/fixtures` (octubre de 2026:
 actas, calendarios, posiciones, la ficha de temporada de un jugador y el catálogo 2026 con la FPP y la AMP). Si SIDGAD

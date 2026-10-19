@@ -1,0 +1,46 @@
+# Compila y corre los tests en cada PR y en cada push a main: una vez contra H2 (la base local) y otra contra
+# PostgreSQL 16 (la de producción, con Testcontainers), para que las migraciones de las dos carpetas no se separen.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.base }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - base: H2
+            db: ""
+          - base: PostgreSQL
+            db: jdbc:tc:postgresql:16-alpine:///rinkmetrics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Tests
+        run: |
+          if [ -n "${{ matrix.db }}" ]; then
+            ./mvnw -B -ntp verify -Drinkmetrics.test.db="${{ matrix.db }}"
+          else
+            ./mvnw -B -ntp verify
+          fi
+      - name: Reportes de tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-${{ matrix.base }}
+          path: target/surefire-reports/

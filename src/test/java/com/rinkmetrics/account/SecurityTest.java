@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Registro, login y acceso por perfil, con la base H2 en memoria y SIDGAD simulado. */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:seguridad;DB_CLOSE_DELAY=-1")
+@SpringBootTest(properties = "spring.datasource.url=${rinkmetrics.test.db:jdbc:h2:mem:seguridad;DB_CLOSE_DELAY=-1}")
 @AutoConfigureMockMvc
 class SecurityTest {
 
@@ -161,6 +161,21 @@ class SecurityTest {
 
     int recordados(String usuario) {
         return jdbc.queryForObject("select count(*) from persistent_logins where username = ?", Integer.class, usuario);
+    }
+
+    @Test
+    void healthCheckPublicoSinDetalles() throws Exception {
+        // Sin sesión: estado general y de cada componente; SIDGAD queda UNKNOWN hasta el primer chequeo diario.
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components.db.status").value("UP"))
+                .andExpect(jsonPath("$.components.sidgad.status").value("UNKNOWN"))
+                .andExpect(jsonPath("$.components.db.details").doesNotExist())
+                .andExpect(jsonPath("$.components.sidgad.details").doesNotExist());
+        mvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+        // El resto de los endpoints no se expone: ni con sesión existe.
+        mvc.perform(get("/actuator/env").with(user("ana"))).andExpect(status().isNotFound());
     }
 
     @Test
