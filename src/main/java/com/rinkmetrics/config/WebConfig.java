@@ -12,5 +12,8 @@ public class WebConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         // Home de Mad Sports, la empresa dueña de RinkMetrics.
         registry.addViewController("/madsports").setViewName("forward:/madsports.html");
+        // Métricas DT en React (frontend/, construida en static/dt-app): /dt-app/ abre su página.
+        registry.addViewController("/dt-app").setViewName("redirect:/dt-app/");
+        registry.addViewController("/dt-app/").setViewName("forward:/dt-app/index.html");
     }
 }

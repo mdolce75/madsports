@@ -71,19 +71,33 @@ const PARTIDOS = [
         estado: "PENDIENTE"},
 ];
 
-/** Instala la demo: los pedidos a /api/ los contesta la API simulada; el resto (fuentes, estilos) va a la red. */
-export function instalar() {
-    const api = crearApi({sesion: SESION, equipos: [{id: 1, nombre: "Primera Masculino"}], jugadores: PLANTEL,
+/** Los datos de ejemplo, nuevos en cada llamada (la API simulada los modifica): sesión, equipos, jugadores y partidos. */
+export function datosDemo() {
+    return structuredClone({sesion: SESION, equipos: [{id: 1, nombre: "Primera Masculino"}], jugadores: PLANTEL,
         partidos: PARTIDOS});
+}
+
+/**
+ * Hace que fetch conteste los pedidos a /api/ con la API simulada (con un instante de demora, como una respuesta real);
+ * el resto (fuentes, estilos) va a la red. Al salir, vuelve a la presentación de Métricas DT. Lo usan esta página y la
+ * versión en React.
+ */
+export function simularApi(demora = 60) {
+    const api = crearApi(datosDemo());
     const red = window.fetch.bind(window);
     window.fetch = async (input, init = {}) => {
-        const url = typeof input === "string" ? input : input.url;
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
         const u = new URL(url, location.origin);
         if (!u.pathname.startsWith("/api/")) return red(input, init);
         if (u.pathname === "/api/logout") { location.replace("/dt-inicio.html"); return new Response("{}"); }
-        await new Promise(r => setTimeout(r, 60));   // como una respuesta real, un instante después
+        if (demora) await new Promise(r => setTimeout(r, demora));
         return api((init.method || "GET").toUpperCase(), u.pathname + u.search, init.body ? JSON.parse(init.body) : null);
     };
+}
+
+/** Instala la demo en esta página: la API simulada y los enlaces directos de las capturas (?tab=, ?informe=). */
+export function instalar() {
+    simularApi();
 
     // La demo arranca en el Control panel, con el menú completo. Con ?tab= (capturas) abre directamente el partido en
     // esa pestaña; con ?informe=TIPO, ese tipo de informe.

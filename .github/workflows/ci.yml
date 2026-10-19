@@ -1,8 +1,8 @@
 # CI de RinkMetrics, en cada PR y en cada push a main:
 # - Backend: tests unitarios (*Test, H2 en memoria), de integración (*IT, PostgreSQL real con Testcontainers) y
 #   cobertura de JaCoCo.
-# - Pantallas: tests de los módulos de Métricas DT y del contrato de la API contra la demo (node:test), y E2E de la
-#   demo con Playwright.
+# - Pantallas (frontend/): lint, tipos, tests de React y de los módulos de Métricas DT (con el contrato de la API contra
+#   la demo), build, auditoría de dependencias y E2E de la demo con Playwright.
 name: CI
 
 on:
@@ -34,8 +34,8 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # Unitarios (*Test) + integración (*IT, PostgreSQL 16 con Testcontainers; Docker ya está disponible en el
-      # runner) + reporte de cobertura de JaCoCo.
+      # Construye Métricas DT en React (el plugin baja su propio Node) + unitarios (*Test) + integración (*IT,
+      # PostgreSQL 16 con Testcontainers; Docker ya está disponible en el runner) + reporte de cobertura de JaCoCo.
       - name: Build y tests
         run: ./mvnw -B -ntp verify
 
@@ -72,6 +72,9 @@ jobs:
     name: Pantallas
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v7
 
@@ -79,21 +82,35 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Instalar dependencias y Chromium
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
+      - name: Instalar dependencias
+        run: npm ci
 
-      # Unitarios de js/dt y el contrato de la API contra la API simulada de la demo (el mismo que corre el backend).
-      - name: Tests de los módulos y contrato de la demo
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      # Componentes de React (Vitest + Testing Library), módulos de js/dt y el contrato de la API contra la demo.
+      - name: Tests
         run: npm test
 
-      # La demo en un navegador real (celular y escritorio): carga en vivo, sin señal, informes y ABM.
+      - name: Build
+        run: npm run build
+
+      # Solo dependencias que llegan al navegador; falla con vulnerabilidades altas o críticas.
+      - name: Auditoría de dependencias
+        run: npm audit --omit=dev --audit-level=high
+
+      # La demo en un navegador real (celular y escritorio): la pantalla actual y la versión en React.
       - name: E2E con Playwright
         env:
           E2E_BROWSER_CHANNEL: chromium
-        run: npm run e2e
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e
 
       - name: Publicar reportes de E2E
         if: failure()
@@ -101,7 +118,7 @@ jobs:
         with:
           name: e2e-reportes
           path: |
-            playwright-report
-            test-results
+            frontend/playwright-report
+            frontend/test-results
           if-no-files-found: ignore
           retention-days: 14

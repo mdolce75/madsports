@@ -1,7 +1,8 @@
 // Períodos de los informes en la pantalla (js/dt/informe.js): los mismos valores y nombres que Periodo.java.
-import {test} from "node:test";
+// @vitest-environment node
+import {test} from "vitest";
 import assert from "node:assert/strict";
-import * as Informe from "../../main/resources/static/js/dt/informe.js";
+import * as Informe from "../../src/main/resources/static/js/dt/informe.js";
 
 const p = (id, fecha, torneo, estado = "CERRADO") => ({id, fecha, torneo, estado});
 const partidos = [p(1, "2026-03-10", "Apertura"), p(2, "2026-04-02", "Apertura"), p(3, "2026-09-30", "Clausura"),

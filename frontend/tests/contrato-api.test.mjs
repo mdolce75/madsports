@@ -1,11 +1,11 @@
 // La API simulada de la demo (js/dt/demo-api.js) contra el contrato de la API de Métricas DT: los mismos escenarios
 // que corre el servidor (ContratoApiDtTest), con las mismas respuestas.
-import {test} from "node:test";
+// @vitest-environment node
+import {test} from "vitest";
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
-import {crearApi} from "../../main/resources/static/js/dt/demo-api.js";
+import {crearApi} from "../../src/main/resources/static/js/dt/demo-api.js";
+import contrato from "../../src/test/resources/dt/contrato-api.json";
 
-const contrato = JSON.parse(readFileSync(new URL("../resources/dt/contrato-api.json", import.meta.url), "utf8"));
 const {inicio} = contrato;
 
 /** Reemplaza {nombre} por lo guardado: un valor entero ("{equipo}") conserva su tipo; dentro de un texto, se concatena. */

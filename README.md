@@ -103,6 +103,7 @@ goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no public
 | <img src="https://img.shields.io/badge/Java2D-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java2D"> | Gráficos | **Java2D** (AWT) | Barras y donas en PNG, embebidos en el PDF; también el logo de los mails y la placa de los escudos |
 | <img src="https://img.shields.io/badge/Resend-000000?style=flat-square&logo=resend&logoColor=white" alt="Resend"> | Mails | **Spring Mail** (Jakarta Mail 2.0) por SMTP, con **Resend** | Confirmación de email y recuperación de clave, en HTML con la identidad de la web |
 | <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white" alt="HTML5"> | Web | HTML, CSS y JavaScript sin frameworks, fuentes Oswald e Inter (Google Fonts) | Home pública, registro, login, pantallas de club y de jugador |
+| <img src="https://img.shields.io/badge/React%2019-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React 19"> | Web | **React 19** + **TypeScript 5.9** con **Vite 7** (`frontend/`), Vitest y Testing Library | Métricas DT, en migración desde `dt.html`: hoy el Control panel en `/dt-app/` (el resto de las vistas, en las próximas etapas) |
 | <img src="https://img.shields.io/badge/JUnit%205-25A162?style=flat-square&logo=junit5&logoColor=white" alt="JUnit 5"> | Tests | **JUnit 5.12**, AssertJ 3.27, Mockito 5.17, Spring Boot Test, MockMvc, Spring Security Test | Unitarios contra HTML real de SIDGAD (`src/test/resources/fixtures`) e integración de seguridad con H2 en memoria |
 | <img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"> | Repositorio | Git + GitHub (`gh` CLI) | Ramas y pull requests |
 
@@ -281,6 +282,14 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     antes tiene que existir un equipo. El número no se repite dentro de un equipo. Un jugador dado de baja ya no
     aparece para cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre
     corregido.
+- **Métricas DT en React (`/dt-app/`, demo en `/dt-app/?demo`), en migración por etapas:** la app está en
+  `frontend/` (React 19, TypeScript, Vite) y el build de Maven la construye en `static/dt-app` (con
+  `frontend-maven-plugin`, que baja su propio Node). Mientras dura la migración usa los mismos estilos (`css/app.css`)
+  y los mismos módulos de dominio que `dt.html` (`js/dt/`: métricas, informes, cola sin señal y la API de la demo), así
+  hay un solo cálculo. Etapa 1 (hecha): la base, la sesión, el menú, las rutas por `#` y el Control panel; las demás
+  vistas llevan a la pantalla actual. Etapa 2: la carga en vivo con sin señal. Etapa 3: el resto de las vistas, y
+  `/dt.html` y `/dt-demo.html` pasan a servir la app de React. En desarrollo: `cd frontend && npm run dev`
+  (http://localhost:5173/dt-app/, con la API de la app en el 8080).
 - **Métricas DT (pantalla, `/dt.html`):** módulos ES sin build en `js/dt/`: `main.js` (menú y arranque),
   `panel.js`, `partidos.js`, `partido.js` (la carga en vivo), `estadisticas.js`, `informes.js`, `equipo.js`, y los
   compartidos `acciones.js` (botones y reglas de goles), `informe.js`, `fichas.js`, `cola.js` y `comun.js`. Al volver
@@ -507,18 +516,21 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 ```bash
 ./mvnw test     # unitarios (*Test), con H2 en memoria: no necesitan Docker
 ./mvnw verify   # unitarios + integración (*IT) contra PostgreSQL 16 real (Testcontainers; requiere Docker) + cobertura
-npm install     # una vez (Node 22 o más nuevo): Playwright para los E2E
-npm test        # módulos de js/dt y contrato de la API contra la demo (node:test, sin navegador)
-npm run e2e     # E2E de la demo con Playwright (celular y escritorio; usa el Chrome instalado)
-npm run demo    # la demo sin levantar la app: http://localhost:8099/dt-demo.html
+cd frontend      # Métricas DT en React y los tests de las pantallas (Node 22 o más nuevo)
+npm install
+npm test         # Vitest: componentes de React, módulos de js/dt y contrato de la API contra la demo
+npm run build    # la app de React en frontend/dist (los E2E la usan)
+npm run e2e      # E2E de la demo con Playwright (celular y escritorio; usa el Chrome instalado)
+npm run demo     # la demo sin levantar la app: http://localhost:8099/dt-demo.html y /dt-app/?demo
 ```
 
 | Suite | Plugin | Base | Qué cubre |
 |---|---|---|---|
 | `*Test` | surefire | H2 en memoria | Parsers contra fixtures, motor de estadísticas, informes, servicios y la API completa con MockMvc |
 | `*IT` | failsafe | PostgreSQL 16 (un contenedor por clase) | `MigracionesIT` (las dos carpetas de migraciones tienen las mismas versiones, se aplican todas y el esquema queda con zona horaria, cascadas y únicos) y los flujos de la API sobre la base de producción: `SecurityIT`, `AltaInformesCerradaIT`, `LimiteIntentosIT`, `DtControllerIT`, `ContratoApiDtIT` (heredan los casos de su `*Test`) |
-| `src/test/js/*.test.mjs` | node:test | — | Los módulos de `js/dt` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
-| `src/test/e2e/*.spec.mjs` | Playwright | — | La demo en un navegador (celular y escritorio): carga de acciones, deshacer, arquero en cancha, sin señal, fin del partido con su informe, Control panel, Partidos, Estadísticas, Informes, ABM de Equipo y equipos que cambian en otro dispositivo |
+| `frontend/src/**/*.test.tsx` | Vitest + Testing Library | — | Métricas DT en React: rutas, menú, sesión (sin sesión, sin perfil de DT) y Control panel contra la API de la demo |
+| `frontend/tests/*.test.mjs` | Vitest | — | Los módulos de `js/dt` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
+| `frontend/e2e/*.spec.mjs` | Playwright | — | La demo en un navegador (celular y escritorio): carga de acciones, deshacer, arquero en cancha, sin señal, fin del partido con su informe, Control panel, Partidos, Estadísticas, Informes, ABM de Equipo y equipos que cambian en otro dispositivo; y la versión en React |
 
 **Contrato de la API de Métricas DT** (`src/test/resources/dt/contrato-api.json`): escenarios de pedidos y respuestas
 (equipos, jugadores, partido en vivo e informes, con las métricas calculadas a mano) que corren el servidor
@@ -530,8 +542,9 @@ La cobertura de JaCoCo suma las dos suites y queda en `target/site/jacoco/index.
 
 El CI de GitHub Actions (`.github/workflows/ci.yml`) corre en cada PR y en cada push a `main` dos jobs: **Backend**
 (`./mvnw verify`: publica el resumen de cobertura en la corrida, el reporte como artefacto y, si algo falla, los
-reportes de surefire y failsafe) y **Pantallas** (`npm test` y los E2E con el Chromium de Playwright; si fallan,
-publica el reporte con trazas y capturas). Dependabot (`.github/dependabot.yml`) abre PRs semanales con las
+reportes de surefire y failsafe) y **Pantallas** (en `frontend/`: lint, tipos, Vitest, build, auditoría de las
+dependencias que llegan al navegador y los E2E con el Chromium de Playwright; si fallan, publica el reporte con trazas
+y capturas). Dependabot (`.github/dependabot.yml`) abre PRs semanales con las
 dependencias de Maven, de npm y las acciones de GitHub, que valida el mismo CI.
 
 Los parsers y el motor se prueban contra HTML real guardado en `src/test/resources/fixtures` (octubre de 2026:

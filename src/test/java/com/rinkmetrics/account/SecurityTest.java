@@ -50,6 +50,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -428,6 +429,9 @@ class SecurityTest {
         // El service worker de la planilla (para abrirla sin señal) se baja sin sesión, como el resto de los estáticos.
         mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
         mvc.perform(get("/js/dt/main.js")).andExpect(status().isOk());
+        // Métricas DT en React (la arma el build de Maven): la página es pública; los datos piden la sesión de DT.
+        mvc.perform(get("/dt-app/index.html")).andExpect(status().isOk());
+        mvc.perform(get("/dt-app/")).andExpect(status().isOk()).andExpect(forwardedUrl("/dt-app/index.html"));
     }
 
     @Test

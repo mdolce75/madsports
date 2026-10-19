@@ -13,3 +13,6 @@ data/
 node_modules/
 test-results/
 playwright-report/
+frontend/dist/
+frontend/node/
+coverage/

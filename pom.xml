@@ -24,6 +24,9 @@
         <!-- Docker Engine 29 exige Testcontainers 1.21.4 o posterior (la versión de Spring Boot no lo detecta). -->
         <testcontainers.version>1.21.4</testcontainers.version>
         <jacoco.version>0.8.15</jacoco.version>
+        <!-- Métricas DT en React (frontend/): el plugin baja Node, instala y construye con Vite dentro del build. -->
+        <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
+        <node.version>v22.12.0</node.version>
     </properties>
 
     <dependencies>
@@ -130,6 +133,46 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!--
+              Métricas DT en React: Node propio (frontend/node, fuera de git), npm ci y vite build hacia
+              target/classes/static/dt-app, así el jar la sirve en /dt-app/. Los tests del front (Vitest, Playwright)
+              corren en el job Pantallas del CI. Para compilar sin el front: -Dskip.installnodenpm -Dskip.npm.
+            -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <configuration>
+                    <workingDirectory>frontend</workingDirectory>
+                    <nodeVersion>${node.version}</nodeVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>instalar-node</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>npm-ci</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>ci --no-audit --no-fund</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>build-react</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run build -- --outDir ${project.build.outputDirectory}/static/dt-app --emptyOutDir</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <!-- Tests unitarios: *Test (H2 en memoria). Tests de integración (PostgreSQL con Testcontainers/Docker): *IT -->
             <plugin>
