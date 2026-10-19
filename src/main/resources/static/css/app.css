@@ -718,3 +718,39 @@ body.dt-vivo .dt-menu { display: none; }
 .pl-lista .quien b { font-weight: 600; color: var(--ink); }
 .pl-lista .acc { display: flex; gap: 14px; }
 .pl-lista .pl-baja { color: var(--err); }
+
+/* Equipo: ABM de equipos (con su balance) y de jugadores (con sus equipos). */
+.dt-aviso-equipo { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 8px;
+                   background: rgba(245, 197, 24, .08); color: var(--ink); font-size: .9rem; }
+.dt-aviso-equipo a { color: var(--accent); font-weight: 600; }
+.abm-status { margin-top: 12px; min-height: 20px; color: var(--muted); font-size: .9rem; }
+.abm-status.error { color: var(--err); }
+.abm-status.ok { color: var(--good); }
+.eq-lista li.eq-fila { grid-template-columns: minmax(0, 1fr) auto auto; }
+.eq-balance { display: flex; gap: 4px; }
+.eq-dato { display: grid; justify-items: center; min-width: 36px; padding: 4px 6px; border-radius: 6px; background: var(--panel-2); }
+.eq-dato b { font: 700 .95rem/1 var(--display); color: var(--ink); }
+.eq-dato small { margin-top: 2px; font: 700 .6rem/1 var(--display); letter-spacing: .1em; color: var(--muted); }
+.pl-equipos { border: 0; padding: 0; margin: 16px 0 0; }
+.pl-equipos legend { padding: 0; margin-bottom: 7px; font: 700 .72rem/1 var(--display); letter-spacing: .14em;
+                     text-transform: uppercase; color: var(--muted); }
+#pl-equipos { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.pl-eq { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: .9rem; color: var(--ink); }
+.pl-eq input { width: 18px; height: 18px; accent-color: var(--accent); }
+.pl-filtro { padding: 10px 0 2px; }
+.pl-filtro select { width: auto; min-width: 220px; padding-top: 8px; padding-bottom: 8px; }
+.pl-lista .pl-de { flex-basis: 100%; color: var(--muted); font-size: .78rem; }
+@media (max-width: 560px) {
+    .eq-lista li.eq-fila { grid-template-columns: minmax(0, 1fr) auto; }
+    .eq-lista .eq-balance { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* Partidos: cada uno con su botón Eliminar. */
+.dt-lista li.con-borrar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: stretch; }
+.dt-borrar { padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted);
+             cursor: pointer; font: 600 .78rem/1 var(--body); }
+.dt-borrar:hover { border-color: var(--err); color: var(--err); }
+
+/* Panel: los gráficos de estado y de partidos por mes, de tamaño contenido (no crecen con el ancho de la pantalla). */
+#d-estados .grafico { max-width: 360px; }
+#d-meses .grafico { max-width: 440px; max-height: 160px; margin: 0 auto; }

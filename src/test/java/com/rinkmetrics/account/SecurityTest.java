@@ -360,57 +360,36 @@ class SecurityTest {
                 .andExpect(status().isForbidden());
     }
 
-    Map<String, Object> dt(String usuario, List<Map<String, String>> equipos) {
+    Map<String, Object> dt(String usuario) {
         Map<String, Object> m = club(usuario);
-        m.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_MENSUAL", "equipos", equipos));
+        m.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_MENSUAL"));
         return m;
     }
 
     @Test
-    void registroDeDtConSusEquipos() throws Exception {
-        register(dt("profe", List.of(Map.of("categoria", "PRIMERA", "rama", "MASCULINO"),
-                Map.of("categoria", "juniors:a", "rama", "femenino")))).andExpect(status().isCreated());
+    void registroDeDtSinEquipos() throws Exception {
+        // El DT ya no elige equipos al registrarse: los arma después en la sección Equipo.
+        register(dt("profe")).andExpect(status().isCreated());
         Usuario u = usuarios.findByUsuario("profe").orElseThrow();
         assertThat(u.getPerfiles()).containsExactly(Perfil.DTFPP);
         assertThat(u.esDt()).isTrue();
-        assertThat(u.getEquiposDt()).containsExactly(new EquipoDt("PRIMERA", "MASCULINO"),
-                new EquipoDt("JUNIORS:A", "FEMENINO"));
         assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_MENSUAL");
 
         confirmar("profe@example.com");
         login("profe", "clave-segura").andExpect(jsonPath("$.inicio").value("/dt.html"));
         mvc.perform(get("/api/sesion").with(user("profe").authorities(() -> "DTFPP")))
-                .andExpect(jsonPath("$.equipos[*].nombre").value(org.hamcrest.Matchers.contains(
-                        "Primera Masculino", "Juniors A Femenino")))
-                .andExpect(jsonPath("$.suscripcion.equiposMax").value(2))
                 .andExpect(jsonPath("$.suscripcion.partidosPorMes").value(20));
 
-        // DT de la AMP, con un solo equipo.
-        Map<String, Object> amp = dt("profe.amp", List.of(Map.of("categoria", "JUVENIL:A", "rama", "MASCULINO")));
+        // DT de la AMP.
+        Map<String, Object> amp = dt("profe.amp");
         amp.putAll(Map.of("perfil", "DTAMP", "clubId", 3));
         register(amp).andExpect(status().isCreated());
         assertThat(usuarios.findByUsuario("profe.amp").orElseThrow().federacion()).isEqualTo(Federacion.AMP);
-    }
 
-    @Test
-    void elDtEligeEntreUnoYDosEquiposDeSuClub() throws Exception {
-        register(dt("dt.a", List.of())).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Elegí el equipo que dirigís."));
-        Map<String, String> primera = Map.of("categoria", "PRIMERA", "rama", "MASCULINO");
-        Map<String, String> juniorsM = Map.of("categoria", "JUNIORS:A", "rama", "MASCULINO");
-        Map<String, String> juniorsF = Map.of("categoria", "JUNIORS:A", "rama", "FEMENINO");
-        register(dt("dt.b", List.of(primera, juniorsM, juniorsF))).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("El plan DT mensual permite hasta 2 equipos."));
-        register(dt("dt.c", List.of(Map.of("categoria", "PRIMERA", "rama", "FEMENINO")))).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("VELEZ no tiene equipo en PRIMERA FEMENINO."));
-        Map<String, Object> planDeClub = dt("dt.d", List.of(primera));
+        Map<String, Object> planDeClub = dt("dt.d");
         planDeClub.put("suscripcion", "CLUB_MENSUAL");
         register(planDeClub).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("El plan Club mensual es para clubes."));
-        // El mismo equipo dos veces cuenta como uno.
-        register(dt("dt.e", List.of(primera, primera))).andExpect(status().isCreated());
-        assertThat(usuarios.findByUsuario("dt.e").orElseThrow().getEquiposDt()).hasSize(1);
-        assertThat(usuarios.findAll()).extracting(Usuario::getUsuario).containsExactly("dt.e");
     }
 
     @Test
@@ -444,16 +423,10 @@ class SecurityTest {
     }
 
     @Test
-    void elPlanFreeDelDtEsDeUnSoloEquipo() throws Exception {
-        Map<String, String> primera = Map.of("categoria", "PRIMERA", "rama", "MASCULINO");
-        Map<String, String> juniors = Map.of("categoria", "JUNIORS:A", "rama", "MASCULINO");
-        Map<String, Object> dos = dt("dt.free", List.of(primera, juniors));
-        dos.put("suscripcion", "DT_FREE");
-        register(dos).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("El plan DT free permite hasta 1 equipo."));
-        Map<String, Object> uno = dt("dt.free", List.of(primera));
-        uno.put("suscripcion", "DT_FREE");
-        register(uno).andExpect(status().isCreated());
+    void elPlanFreeDelDtVenceAFinDe2026() throws Exception {
+        Map<String, Object> free = dt("dt.free");
+        free.put("suscripcion", "DT_FREE");
+        register(free).andExpect(status().isCreated());
         Usuario u = usuarios.findByUsuario("dt.free").orElseThrow();
         assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_FREE");
         // Vence el 31/12/2026, no al mes.

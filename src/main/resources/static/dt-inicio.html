@@ -54,7 +54,7 @@
             <span class="tag">En el partido</span>
             <h3>Pensado para el banco</h3>
             <ul>
-                <li>Plantel tomado de las actas oficiales de SIDGAD, con los arqueros identificados</li>
+                <li>Tus equipos y tus planteles, con los arqueros identificados</li>
                 <li>Reloj regresivo por tiempo y marcador en pantalla</li>
                 <li>Corrección y eliminación de cualquier acción</li>
                 <li>Registro sin conexión, con sincronización automática</li>
@@ -101,8 +101,8 @@
                 <figcaption><b>Equipo</b> Estadísticas consolidadas, goleadores y los mejores en penales y libres.</figcaption>
             </figure>
             <figure>
-                <img src="/img/demo/plantel.png" alt="Plantel del equipo: alta de jugadores con nombre, apellido, número y arquero, y la lista para editar o dar de baja" loading="lazy" width="1920" height="1200">
-                <figcaption><b>Plantel</b> Arranca con las actas de SIDGAD; agregás, corregís o das de baja jugadores.</figcaption>
+                <img src="/img/demo/plantel.png" alt="Sección Equipo: tus equipos con partidos jugados, ganados, empatados y perdidos, y tus jugadores con sus equipos" loading="lazy" width="1920" height="1200">
+                <figcaption><b>Equipos y jugadores</b> Creás tus equipos y cargás sus jugadores; uno puede estar en varios equipos.</figcaption>
             </figure>
             <figure>
                 <img src="/img/demo/jugadores.png" alt="Fichas de los jugadores: índice, pentágono de cinco ejes y datos clave" loading="lazy" width="1920" height="1440">
@@ -140,8 +140,8 @@
             precio.querySelector("small").textContent = gratis ? "" : "por mes";
             const cupo = document.createElement("span");
             cupo.className = "plan-quota";
-            cupo.textContent = `${p.equiposMax === 1 ? "1 equipo" : "Hasta " + p.equiposMax + " equipos"}`
-                + (p.partidosPorMes > 0 ? ` y ${p.partidosPorMes} partidos por mes` : ", partidos sin límite");
+            cupo.textContent = p.partidosPorMes > 0 ? `Equipos sin límite y ${p.partidosPorMes} partidos por mes`
+                : "Equipos y partidos sin límite";
             const nota = document.createElement("span");
             nota.className = "plan-month";
             nota.textContent = p.vigenteHasta ? "Sin costo hasta el " + p.vigenteHasta.split("-").reverse().join("/") + "."

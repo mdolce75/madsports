@@ -1,6 +1,6 @@
 // Demo de Métricas DT (/dt-demo.html): la misma pantalla de carga, con un partido de ejemplo y datos ficticios. Las
-// llamadas a la API no salen del navegador: este archivo las contesta como lo haría el servidor (sesión, plantel,
-// partido, acciones y reloj). Nada se guarda: al recargar, la demo vuelve a empezar.
+// llamadas a la API no salen del navegador: este archivo las contesta como lo haría el servidor (sesión, equipos,
+// jugadores, partidos, acciones y reloj). Nada se guarda: al recargar, la demo vuelve a empezar.
 (() => {
     window.DT_DEMO = true;   // dt.js no pide PDF en la demo
     const DUR = 25 * 60;
@@ -10,8 +10,8 @@
         club: {id: 0, nombre: "CLUB DEMO", codigo: "DEMO"}, jugador: null, inicio: "/dt-demo.html",
         suscripcion: {codigo: "DT_MENSUAL", nombre: "DT mensual", equiposMax: 2, partidosPorMes: 20},
         informesPedidos: 0, federacion: "FPP",
-        equipos: [{categoria: "PRIMERA", rama: "MASCULINO", nombre: "Primera Masculino"}],
     };
+    const EQUIPOS = [{id: 1, nombre: "Primera Masculino"}];
     const PLANTEL = [
         [101, "1", "Martín Acosta", true], [102, "12", "Lucas Benítez", true], [103, "3", "Tomás Ferreyra", false],
         [104, "5", "Joaquín Ríos", false], [105, "7", "Facundo Medina", false], [106, "8", "Nicolás Sosa", false],
@@ -19,39 +19,75 @@
         [110, "14", "Mateo Giménez", false],
     ].map(([id, numero, nombre, arquero]) => {
         const [nombres, apellido] = [nombre.split(" ")[0], nombre.split(" ").slice(1).join(" ")];
-        return {id, numero, nombre, nombres, apellido, arquero};
+        return {id, numero, nombre, nombres, apellido, arquero, equipos: [1]};
     });
-    const RIVALES = ["Atlético Norte", "Club Social Sur", "Deportivo Oeste", "Unión Patín", "Sporting Central"]
-        .map((nombre, i) => ({clubId: 900 + i, nombre}));
 
     const nombreDe = id => (PLANTEL.find(j => j.id === id) || {}).nombre;
     let proximoId = 900000000;
 
-    /** Alta, cambio y baja de jugadores del plantel, con las mismas validaciones que el servidor. */
-    function plantel(method, id, body) {
+    /** Alta, cambio y baja de jugadores, con las mismas validaciones que el servidor. */
+    function jugadores(method, id, body) {
         if (method === "DELETE") {
             const i = PLANTEL.findIndex(j => j.id === id);
-            if (i < 0) throw [404, "Ese jugador no está en el plantel."];
+            if (i < 0) throw [404, "Ese jugador no está en tus equipos."];
             PLANTEL.splice(i, 1);
             return new Response(null, {status: 204});
         }
         const nombres = (body.nombre || "").trim(), apellido = (body.apellido || "").trim(), num = (body.numero || "").trim();
+        const eqs = [...new Set(body.equipos || [])];
         if (!nombres) throw [400, "Escribí el nombre del jugador."];
         if (!apellido) throw [400, "Escribí el apellido del jugador."];
         if (num && !/^\d{1,3}$/.test(num)) throw [400, "El número es de 1 a 3 cifras."];
+        if (!eqs.length) throw [400, "Asigná el jugador a un equipo."];
+        if (eqs.some(e => !EQUIPOS.some(x => x.id === e))) throw [404, "No existe ese equipo."];
         const numero = num ? String(Number(num)) : "";
-        const otro = numero && PLANTEL.find(j => j.numero === numero && j.id !== id);
-        if (otro) throw [409, `El número ${numero} ya es de ${otro.nombre}.`];
-        const datos = {numero, nombres, apellido, nombre: nombres + " " + apellido, arquero: !!body.arquero};
+        const otro = numero && PLANTEL.find(j => j.numero === numero && j.id !== id && j.equipos.some(e => eqs.includes(e)));
+        if (otro) throw [409, `El número ${numero} ya es de ${otro.nombre} en ese equipo.`];
+        const datos = {numero, nombres, apellido, nombre: nombres + " " + apellido, arquero: !!body.arquero, equipos: eqs};
         if (method === "POST") {
             const j = Object.assign({id: proximoId++}, datos);
             PLANTEL.push(j);
             return json(201, j);
         }
         const j = PLANTEL.find(x => x.id === id);
-        if (!j) throw [404, "Ese jugador no está en el plantel."];
+        if (!j) throw [404, "Ese jugador no está en tus equipos."];
         Object.assign(j, datos);
         return json(200, j);
+    }
+
+    /** Equipos con su balance de partidos finalizados. */
+    function equiposConBalance() {
+        return EQUIPOS.map(e => {
+            const ps = partidos.filter(p => p.equipoId === e.id && ["TERMINADO", "CERRADO"].includes(p.estado)).map(p => vista(p, false));
+            return Object.assign({}, e, {jugados: ps.length, ganados: ps.filter(p => p.golesFavor > p.golesContra).length,
+                empatados: ps.filter(p => p.golesFavor === p.golesContra).length,
+                perdidos: ps.filter(p => p.golesFavor < p.golesContra).length});
+        });
+    }
+
+    let proximoEquipo = 2;
+    function equipos(method, id, body) {
+        if (method === "DELETE") {
+            const e = EQUIPOS.find(x => x.id === id);
+            if (!e) throw [404, "No existe ese equipo."];
+            const n = partidos.filter(p => p.equipoId === id).length;
+            if (n) throw [409, `${e.nombre} tiene ${n} ${n === 1 ? "partido cargado" : "partidos cargados"}: no se puede borrar.`];
+            EQUIPOS.splice(EQUIPOS.indexOf(e), 1);
+            PLANTEL.forEach(j => { j.equipos = j.equipos.filter(x => x !== id); });
+            return new Response(null, {status: 204});
+        }
+        const nombre = (body.nombre || "").trim().replace(/\s+/g, " ");
+        if (!nombre) throw [400, "Escribí el nombre del equipo."];
+        if (EQUIPOS.some(e => e.id !== id && e.nombre.toLowerCase() === nombre.toLowerCase())) throw [409, `Ya tenés un equipo llamado ${nombre}.`];
+        if (method === "POST") {
+            const e = {id: proximoEquipo++, nombre};
+            EQUIPOS.push(e);
+            return json(201, equiposConBalance().find(x => x.id === e.id));
+        }
+        const e = EQUIPOS.find(x => x.id === id);
+        if (!e) throw [404, "No existe ese equipo."];
+        e.nombre = nombre;
+        return json(200, equiposConBalance().find(x => x.id === e.id));
     }
     let seq = 0;
     const accion = (jugadorId, tipo, resultado, tiempo, segundo) =>
@@ -59,7 +95,7 @@
 
     // Partido de ejemplo ya empezado: 1T, 12' jugados, con algunas acciones cargadas.
     const partidos = [{
-        id: 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: "Clausura", rival: "Deportivo Oeste", fecha: hoy,
+        id: 1, equipoId: 1, idp: null, torneo: "Clausura", rival: "Deportivo Oeste", fecha: hoy,
         local: true, minutosTiempo: 25, estado: "EN_JUEGO", tiempo: 1, segundos: 12 * 60 + 18, desde: Date.now(),
         acciones: [
             accion(104, "RECUPERACION", "RIVAL", 1, 95), accion(104, "TIRO", "GOL", 1, 101),
@@ -92,29 +128,31 @@
             acciones.push(accion(j, tipo, res, 1 + (i % 2), Math.floor(azar() * DUR)));
         }
         for (let i = 0; i < 4; i++) acciones.push(accion(elegir([101, 101, 102]), elegir(["ATAJADA", "ATAJADA", "GOL_RECIBIDO"]), null, 1 + (i % 2), Math.floor(azar() * DUR)));
-        return {id, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo, rival, fecha, local,
+        return {id, equipoId: 1, idp: null, torneo, rival, fecha, local,
             minutosTiempo: 25, estado: "CERRADO", tiempo: 2, segundos: DUR, desde: null, acciones};
     }
     partidos.push(
         jugado(2, "Atlético Norte", dia(1, 20), false, "Clausura"), jugado(3, "Unión Patín", dia(1, 6), true, "Clausura"),
         jugado(4, "Sporting Central", dia(2, 24), true, "Clausura"), jugado(5, "Club Social Sur", dia(2, 9), false, "Apertura"),
         jugado(6, "Deportivo Oeste", dia(3, 15), false, "Apertura"), jugado(7, "Atlético Norte", dia(4, 18), true, "Apertura"),
-        {id: 8, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: "Clausura", rival: "Club Social Sur", fecha: enDias(3),
+        {id: 8, equipoId: 1, idp: null, torneo: "Clausura", rival: "Club Social Sur", fecha: enDias(3),
             local: true, minutosTiempo: 25, estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []},
-        {id: 9, categoria: "PRIMERA", rama: "MASCULINO", idp: null, torneo: "Clausura", rival: "Unión Patín", fecha: enDias(10),
+        {id: 9, equipoId: 1, idp: null, torneo: "Clausura", rival: "Unión Patín", fecha: enDias(10),
             local: false, minutosTiempo: 25, estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []});
 
     const golAFavor = a => a.resultado === "GOL" && ["TIRO", "LIBRE_FAVOR", "PENAL_FAVOR"].includes(a.tipo);
     const golEnContra = a => a.tipo === "GOL_RECIBIDO" || a.resultado === "GOL" && ["LIBRE_CONTRA", "PENAL_CONTRA"].includes(a.tipo);
-    const jugados = p => Math.max(0, Math.min(DUR, p.segundos + (p.desde ? Math.floor((Date.now() - p.desde) / 1000) : 0)));
+    const dur = p => p.minutosTiempo * 60;
+    const jugados = p => Math.max(0, Math.min(dur(p), p.segundos + (p.desde ? Math.floor((Date.now() - p.desde) / 1000) : 0)));
 
     function vista(p, conAcciones = true) {
         const j = jugados(p);
         return {
-            id: p.id, categoria: p.categoria, rama: p.rama, idp: p.idp, torneo: p.torneo, rival: p.rival, fecha: p.fecha,
+            id: p.id, equipoId: p.equipoId, equipo: (EQUIPOS.find(e => e.id === p.equipoId) || {}).nombre || "", idp: p.idp,
+            torneo: p.torneo, rival: p.rival, fecha: p.fecha,
             local: p.local, minutosTiempo: p.minutosTiempo, estado: p.estado,
             golesFavor: p.acciones.filter(golAFavor).length, golesContra: p.acciones.filter(golEnContra).length,
-            reloj: {tiempo: p.tiempo, jugados: j, restante: DUR - j, corriendo: !!p.desde},
+            reloj: {tiempo: p.tiempo, jugados: j, restante: dur(p) - j, corriendo: !!p.desde},
             acciones: conAcciones ? p.acciones.slice().sort((a, b) => a.tiempo - b.tiempo || a.segundo - b.segundo) : [],
         };
     }
@@ -131,11 +169,11 @@
             case "PAUSAR": enJuego(); p.segundos = jugados(p); p.desde = null; break;
             case "REANUDAR": enJuego(); p.desde = ahora; break;
             case "FIN_TIEMPO":
-                enJuego(); p.segundos = DUR; p.desde = null; p.estado = p.tiempo === 1 ? "ENTRETIEMPO" : "TERMINADO"; break;
+                enJuego(); p.segundos = dur(p); p.desde = null; p.estado = p.tiempo === 1 ? "ENTRETIEMPO" : "TERMINADO"; break;
             case "AJUSTAR": {
                 enJuego();
                 const corriendo = !!p.desde;
-                p.segundos = Math.max(0, Math.min(DUR, jugados(p) + (segundos || 0)));
+                p.segundos = Math.max(0, Math.min(dur(p), jugados(p) + (segundos || 0)));
                 p.desde = corriendo ? ahora : null;
                 break;
             }
@@ -149,21 +187,26 @@
         const r = url.pathname;
         if (r === "/api/sesion") return json(200, SESION);
         if (r === "/api/logout") { location.replace("/dt-inicio.html"); return json(200, {}); }
-        if (r === "/api/dt/rivales") return json(200, RIVALES);
-        if (r === "/api/dt/plantel" && method === "GET") return json(200, PLANTEL.slice()
+        const eq = Number(url.searchParams.get("equipo")) || (EQUIPOS[0] || {}).id;
+        if (r === "/api/dt/plantel") return json(200, PLANTEL.filter(j => j.equipos.includes(eq))
             .sort((a, b) => (Number(a.numero) || 9999) - (Number(b.numero) || 9999)));
-        const pl = r.match(/^\/api\/dt\/plantel(?:\/(\d+))?$/);
-        if (pl) {
-            try { return plantel(method, pl[1] ? Number(pl[1]) : null, body || {}); }
+        if (r === "/api/dt/jugadores" && method === "GET") return json(200, PLANTEL.slice()
+            .sort((a, b) => a.apellido.localeCompare(b.apellido, "es")));
+        if (r === "/api/dt/equipos" && method === "GET") return json(200, equiposConBalance());
+        const abm = r.match(/^\/api\/dt\/(jugadores|equipos)(?:\/(\d+))?$/);
+        if (abm) {
+            try { return (abm[1] === "jugadores" ? jugadores : equipos)(method, abm[2] ? Number(abm[2]) : null, body || {}); }
             catch (e) { if (Array.isArray(e)) return json(e[0], {detail: e[1]}); throw e; }
         }
         if (r === "/api/dt/partidos" && method === "GET") return json(200, partidos.slice()
             .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id).map(p => vista(p, false)));
-        if (r === "/api/dt/acciones") return json(200, partidos.flatMap(p => p.acciones.map(a => Object.assign({partidoId: p.id}, a))));
+        if (r === "/api/dt/acciones") return json(200, partidos.filter(p => p.equipoId === eq)
+            .flatMap(p => p.acciones.map(a => Object.assign({partidoId: p.id}, a))));
         if (r === "/api/dt/partidos" && method === "POST") {
-            const n = {id: Math.max(...partidos.map(x => x.id)) + 1, categoria: "PRIMERA", rama: "MASCULINO", idp: null,
+            if (!EQUIPOS.length) return json(400, {detail: "Primero creá un equipo en la sección Equipo."});
+            const n = {id: Math.max(0, ...partidos.map(x => x.id)) + 1, equipoId: body.equipo || EQUIPOS[0].id, idp: null,
                 torneo: body.torneo || null,
-                rival: body.rival, fecha: body.fecha || hoy, local: body.local !== false, minutosTiempo: 25,
+                rival: body.rival, fecha: body.fecha || hoy, local: body.local !== false, minutosTiempo: body.minutos || 25,
                 estado: "PENDIENTE", tiempo: 1, segundos: 0, desde: null, acciones: []};
             partidos.unshift(n);
             return json(201, vista(n));
@@ -172,6 +215,7 @@
         const p = m && partidos.find(x => x.id === Number(m[1]));
         if (!p) return json(404, {detail: "No existe ese partido."});
         try {
+            if (!m[2] && method === "DELETE") { partidos.splice(partidos.indexOf(p), 1); return new Response(null, {status: 204}); }
             if (!m[2]) return json(200, vista(p));
             if (m[2] === "acciones" && method === "POST") {
                 if (p.estado === "CERRADO") throw [409, "El partido está cerrado: reabrilo para cargar acciones."];
@@ -205,7 +249,10 @@
     };
 
     // La demo abre directamente el partido de ejemplo (o la pestaña pedida: ?tab=resumen).
-    if (!location.hash) history.replaceState(null, "", location.pathname + location.search + "#partido=1");
+    // La demo arranca en el Control panel, con el menú completo: Partidos, Estadísticas, Informes, Equipo y, desde
+    // Partidos, la carga en vivo del partido de ejemplo. Con ?tab= (capturas) abre directamente el partido.
+    if (!location.hash) history.replaceState(null, "", location.pathname + location.search
+        + (new URLSearchParams(location.search).get("tab") ? "#partido=1" : "#dashboard"));
     const tab = new URLSearchParams(location.search).get("tab");
     const informe = new URLSearchParams(location.search).get("informe");
     if (informe) document.addEventListener("DOMContentLoaded", () => setTimeout(() => {

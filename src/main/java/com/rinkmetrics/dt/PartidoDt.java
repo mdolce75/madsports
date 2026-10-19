@@ -34,9 +34,8 @@ public class PartidoDt {
     private Long usuarioId;
     private String federacion;
     private int clubId;
-    /** Categoría con la letra del equipo ("JUVENIL:A") y rama, como en los equipos del DT. */
-    private String categoria;
-    private String rama;
+    /** El equipo del DT (sección Equipo). */
+    private Long equipoId;
     /** Competición y partido de SIDGAD (null en un amistoso). */
     private Integer idc;
     private Integer idp;
@@ -59,14 +58,12 @@ public class PartidoDt {
     protected PartidoDt() {
     }
 
-    public PartidoDt(Long usuarioId, String federacion, int clubId, String categoria, String rama, Integer idc,
-                     Integer idp, String torneo, String rival, LocalDate fecha, boolean local, int minutosTiempo,
-                     Instant creado) {
+    public PartidoDt(Long usuarioId, String federacion, int clubId, Long equipoId, Integer idc, Integer idp,
+                     String torneo, String rival, LocalDate fecha, boolean local, int minutosTiempo, Instant creado) {
         this.usuarioId = usuarioId;
         this.federacion = federacion;
         this.clubId = clubId;
-        this.categoria = categoria;
-        this.rama = rama;
+        this.equipoId = equipoId;
         this.idc = idc;
         this.idp = idp;
         this.torneo = torneo;
@@ -201,8 +198,7 @@ public class PartidoDt {
     public Long getUsuarioId() { return usuarioId; }
     public String getFederacion() { return federacion; }
     public int getClubId() { return clubId; }
-    public String getCategoria() { return categoria; }
-    public String getRama() { return rama; }
+    public Long getEquipoId() { return equipoId; }
     public Integer getIdc() { return idc; }
     public Integer getIdp() { return idp; }
     public String getTorneo() { return torneo; }

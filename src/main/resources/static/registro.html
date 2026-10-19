@@ -99,15 +99,7 @@
         </div>
 
         <div id="dt-fields" hidden>
-            <div class="field">
-                <label for="dt-equipo1">Equipo que dirigís <span class="req">*</span></label>
-                <select id="dt-equipo1" disabled><option value="">Elegí el club</option></select>
-            </div>
-            <div class="field">
-                <label for="dt-equipo2">Segundo equipo (opcional)</label>
-                <select id="dt-equipo2" disabled><option value="">Elegí el club</option></select>
-                <p class="hint" id="dt-equipos-hint">Tu plan incluye hasta 2 equipos del club; el segundo lo podés sumar más adelante.</p>
-            </div>
+            <p class="hint">Tus equipos y sus jugadores los cargás después de ingresar, en la sección Equipo.</p>
         </div>
 
         <button class="go" id="go" type="submit" disabled>Registrarme</button>
@@ -135,8 +127,8 @@
         $("perfil-field").hidden = true;
         document.querySelector("input[name=federacion]").closest(".field").hidden = true;
         $("reg-tag").textContent = "Métricas DT";
-        $("reg-lead").textContent = "Creá tu cuenta de DT: seleccioná tu club y los equipos que dirigís, según tu plan. "
-            + "Después vas a registrar las estadísticas de cada partido en vivo.";
+        $("reg-lead").textContent = "Creá tu cuenta de DT: seleccioná tu club y tu plan. Después armás tus equipos y "
+            + "registrás las estadísticas de cada partido en vivo.";
         $("volver").href = $("volver-top").href = "/dt-inicio.html";
         $("volver-top").textContent = "← Volver a Métricas DT";
         if (PIDIO_INFORMES) {
@@ -198,11 +190,10 @@
         }
     }
 
-    // Equipos del club: cada categoría en cada rama ("Infantil B Femenino"). Los usan el jugador y el DT.
+    // Equipos del club: cada categoría en cada rama ("Infantil B Femenino"). Los usa el jugador.
     function loadTeams() {
         const club = catalog && catalog.clubs.find(c => String(c.id) === $("club").value);
-        for (const [id, empty] of [["equipo", "Elegí la categoría"], ["dt-equipo1", "Elegí el equipo"],
-                                   ["dt-equipo2", "Sin segundo equipo"]]) {
+        for (const [id, empty] of [["equipo", "Elegí la categoría"]]) {
             const sel = $(id);
             sel.innerHTML = "";
             sel.disabled = true;
@@ -297,9 +288,7 @@
                     <span class="plan-quota"></span>
                     <ul></ul>`;
                 card.querySelector("input").value = plan.codigo;
-                card.querySelector("input").dataset.equipos = plan.equiposMax;
                 card.querySelector("input").checked = i === 0;
-                card.querySelector("input").addEventListener("change", equiposDelPlan);
                 card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador|DT) /, "");
                 const gratis = Number(plan.precio) === 0;
                 card.querySelector(".plan-price b").textContent = gratis ? "Gratis" : pesos(plan.precio);
@@ -307,8 +296,8 @@
                 card.querySelector(".plan-month").textContent = plan.vigenteHasta
                     ? "Hasta el " + fecha(plan.vigenteHasta) : "Sin permanencia";
                 card.querySelector(".plan-quota").textContent = plan.partidosPorMes > 0
-                    ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"} y ${plan.partidosPorMes} partidos por mes`
-                    : plan.equiposMax > 0 ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"}, partidos sin límite`
+                    ? `Equipos sin límite y ${plan.partidosPorMes} partidos por mes`
+                    : p.startsWith("DT") ? "Equipos y partidos sin límite"
                     : `Hasta ${plan.informesPorMes} informes por mes`;
                 const ul = card.querySelector("ul");
                 BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("DT") ? "DT" : "CLUB"].forEach(b => {
@@ -318,22 +307,10 @@
                 });
                 box.append(card);
             });
-            equiposDelPlan();
         } catch (e) {
             box.innerHTML = "";
             status("No se pudieron cargar los planes: " + e.message, true);
         }
-    }
-
-    /** DT: con un plan de un solo equipo (el free), el segundo equipo no se puede elegir. */
-    function equiposDelPlan() {
-        const plan = document.querySelector("input[name=plan]:checked");
-        const max = plan ? Number(plan.dataset.equipos) : 2;
-        if (!isDt() || !max) return;
-        const uno = max < 2;
-        $("dt-equipo2").closest(".field").hidden = uno;
-        if (uno) $("dt-equipo2").value = "";
-        $("dt-equipos-hint").textContent = `Tu plan incluye hasta ${max} equipos del club; el segundo lo podés sumar más adelante.`;
     }
 
     let lastFed = null;
@@ -357,7 +334,7 @@
 
     /**
      * DT: un solo combo con los clubes de las dos federaciones (sin decir de cuál es cada uno). Al elegir el club se
-     * toma su federación, que define el perfil (DTFPP o DTAMP) y de dónde salen sus equipos.
+     * toma su federación, que define el perfil (DTFPP o DTAMP).
      */
     async function loadClubsDt() {
         const sel = $("club");
@@ -444,18 +421,6 @@
             }
             if (!data.jugadorId) {
                 status("Elegí tu nombre en la lista de jugadores.", true);
-                return;
-            }
-        }
-        if (isDt()) {
-            data.equipos = [$("dt-equipo1").value, $("dt-equipo2").value].filter(v => v)
-                .map(v => { const [categoria, rama] = v.split("|"); return {categoria, rama}; });
-            if (!$("dt-equipo1").value) {
-                status("Elegí el equipo que dirigís.", true);
-                return;
-            }
-            if ($("dt-equipo1").value === $("dt-equipo2").value) {
-                status("El segundo equipo tiene que ser distinto del primero.", true);
                 return;
             }
         }

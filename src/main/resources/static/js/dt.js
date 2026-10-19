@@ -47,6 +47,7 @@
     const golEnContra = a => a.tipo === "GOL_RECIBIDO" || a.resultado === "GOL" && ["LIBRE_CONTRA", "PENAL_CONTRA"].includes(a.tipo);
 
     let sesion = null;
+    let equipos = [];   // equipos del DT (sección Equipo): [{id, nombre, jugados, ganados, empatados, perdidos}]
     // Partido abierto: lo que devolvió el servidor, cuándo (para el reloj), plantel, pendientes de la cola.
     let partido = null, recibido = 0, plantel = [], pend = [], pendientesTotal = 0;
     let seleccionado = null, arquero = null;
@@ -69,55 +70,38 @@
         return {data, at: Number(res.headers.get("X-Guardado")) || Date.now()};
     }
 
-    // ---------- Elegir el partido ----------
+    // ---------- Equipos del DT ----------
 
-    function equipoActual() {
-        return sesion.equipos[Number($("equipo").value) || 0];
+    async function traerEquipos() {
+        equipos = (await getJson("/api/dt/equipos")).data;
+        return equipos;
     }
 
-    /** Combo de rivales: los equipos de los otros clubes en la categoría y rama del equipo, y "Otro". */
-    async function cargarRivales() {
-        const e = equipoActual();
-        const sel = $("rival");
-        sel.disabled = true;
-        sel.replaceChildren(el("option", null, "Cargando los clubes…"));
-        $("rival-hint").textContent = "";
-        let rivales = [];
-        try {
-            rivales = (await getJson(`/api/dt/rivales?categoria=${encodeURIComponent(e.categoria)}`
-                + `&rama=${encodeURIComponent(e.rama)}`)).data;
-        } catch (err) {
-            $("rival-hint").textContent = "No se pudo leer la lista de clubes (" + err.message + "). Escribí el rival.";
-        }
-        const vacio = el("option", null, "Elegí el rival…");
-        vacio.value = "";
-        sel.replaceChildren(vacio);
-        for (const r of rivales) {
-            const o = el("option", null, r.nombre);
-            o.value = r.nombre;
-            sel.append(o);
-        }
-        const otro = el("option", null, "Otro (lo escribo)");
-        otro.value = "*";
-        sel.append(otro);
-        sel.disabled = false;
-        if (!rivales.length) sel.value = "*";
-        elegirRival();
+    /** Llena un combo de equipos conservando el elegido; con un solo equipo, el combo se oculta (si ocultar). */
+    function llenarEquipos(sel, ocultar = true) {
+        const antes = sel.value;
+        sel.replaceChildren(...equipos.map(e => { const o = el("option", null, e.nombre); o.value = String(e.id); return o; }));
+        if (equipos.some(e => String(e.id) === antes)) sel.value = antes;
+        if (ocultar) sel.hidden = equipos.length < 2;
     }
 
-    function elegirRival() {
-        $("f-otro").hidden = $("rival").value !== "*";
-        if (!$("f-otro").hidden) $("otro").focus();
-        $("crear").disabled = !rivalElegido();
-    }
+    /** El equipo elegido en un combo (o el primero). */
+    const equipoDe = sel => equipos.find(e => String(e.id) === sel.value) || equipos[0];
 
-    const rivalElegido = () => $("rival").value === "*" ? $("otro").value.trim() : $("rival").value;
+    const nombreEquipo = p => p.equipo || "";
+
+    // ---------- Partidos: nuevo partido y lista ----------
+
+    function rivalElegido() {
+        return $("rival").value.trim();
+    }
 
     async function crear() {
-        const e = equipoActual();
-        const body = {categoria: e.categoria, rama: e.rama, rival: rivalElegido(), fecha: $("fecha").value || null,
-            local: $("local").value === "true", torneo: $("torneo").value.trim() || null};
-        if (!body.rival) { status("Elegí el rival.", true); return; }
+        const e = equipoDe($("equipo"));
+        if (!e) { status("Primero creá un equipo en Equipo.", true); return; }
+        const body = {equipo: e.id, rival: rivalElegido(), fecha: $("fecha").value || null,
+            local: $("local").value === "true", torneo: $("torneo").value.trim() || null, minutos: Number($("minutos").value)};
+        if (!body.rival) { status("Escribí el rival.", true); return; }
         $("crear").disabled = true;
         status("Creando el partido…");
         try {
@@ -127,22 +111,27 @@
         } catch (err) {
             status(err instanceof TypeError ? "Sin señal: para empezar un partido hace falta conexión." : err.message, true);
         } finally {
-            $("crear").disabled = !rivalElegido();
+            $("crear").disabled = !rivalElegido() || !equipos.length;
         }
     }
 
     async function cargarMis() {
         const ul = $("mis");
         try {
-            const lista = (await getJson("/api/dt/partidos")).data;
-            // Los campeonatos ya usados, para elegirlos al crear el próximo partido.
-            $("torneos").replaceChildren(...[...new Set(lista.map(p => p.torneo).filter(Boolean))]
-                .map(t => { const o = el("option"); o.value = t; return o; }));
+            const [lista] = await Promise.all([getJson("/api/dt/partidos").then(r => r.data), traerEquipos()]);
+            llenarEquipos($("equipo"), false);
+            $("sin-equipos").hidden = equipos.length > 0;
+            $("equipo").disabled = !equipos.length;
+            $("crear").disabled = !rivalElegido() || !equipos.length;
+            // Los campeonatos y rivales ya usados, para elegirlos al crear el próximo partido.
+            const opciones = valores => [...new Set(valores.filter(Boolean))].map(t => { const o = el("option"); o.value = t; return o; });
+            $("torneos").replaceChildren(...opciones(lista.map(p => p.torneo)));
+            $("rivales").replaceChildren(...opciones(lista.map(p => p.rival)));
             ul.replaceChildren();
             $("mis-n").textContent = lista.length ? String(lista.length) : "";
             if (!lista.length) ul.append(el("li", "dt-vacio", "Todavía no cargaste partidos."));
             for (const p of lista) {
-                const li = el("li");
+                const li = el("li", "con-borrar");
                 const b = el("button");
                 b.type = "button";
                 const t = el("span", null, `${diaMes(p.fecha)} · ${p.rival}`);
@@ -151,7 +140,11 @@
                     .filter(Boolean).join(" · "));
                 b.append(t, r, sub);
                 b.addEventListener("click", () => { location.hash = "partido=" + p.id; });
-                li.append(b);
+                const del = el("button", "dt-borrar", "Eliminar");
+                del.type = "button";
+                del.setAttribute("aria-label", `Eliminar el partido contra ${p.rival} del ${diaMes(p.fecha)}`);
+                del.addEventListener("click", () => eliminarPartido(p));
+                li.append(b, del);
                 ul.append(li);
             }
         } catch (err) {
@@ -159,9 +152,18 @@
         }
     }
 
-    function nombreEquipo(p) {
-        const e = sesion.equipos.find(x => x.categoria === p.categoria && x.rama === p.rama);
-        return e ? e.nombre : p.categoria + " " + p.rama;
+    /** Elimina el partido con todas sus acciones (no se puede deshacer). */
+    async function eliminarPartido(p) {
+        if (!confirm(`¿Eliminar el partido contra ${p.rival} del ${diaMes(p.fecha)}? Se borran todas sus acciones y deja `
+            + "de contar en las estadísticas y los informes. No se puede deshacer.")) return;
+        try {
+            const res = await api(`/api/dt/partidos/${p.id}`, {method: "DELETE"});
+            if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.detail || res.statusText); }
+            toast(`Partido contra ${p.rival} eliminado.`);
+            cargarMis();
+        } catch (err) {
+            toast(err instanceof TypeError ? "Sin señal: para eliminar un partido hace falta conexión." : err.message);
+        }
     }
 
     // ---------- Partido abierto ----------
@@ -183,8 +185,7 @@
             delete $("log").dataset.firma;
             avisado = "";
             try {
-                plantel = (await getJson(`/api/dt/plantel?categoria=${encodeURIComponent(r.data.categoria)}`
-                    + `&rama=${encodeURIComponent(r.data.rama)}`)).data;
+                plantel = (await getJson(`/api/dt/plantel?equipo=${r.data.equipoId}`)).data;
             } catch (e) {
                 plantel = [];
             }
@@ -382,7 +383,13 @@
         if (box.dataset.firma !== firma) {
             box.dataset.firma = firma;
             box.replaceChildren();
-            if (!lista.length) box.append(el("p", "dt-note", "No hay plantel en las actas de SIDGAD: agregá los jugadores a mano."));
+            if (!lista.length) {
+                const p = el("p", "dt-note");
+                const a = el("a", null, "Equipo");
+                a.href = "#equipo";
+                p.append("Este equipo no tiene jugadores: cargalos en ", a, ", o agregá uno solo para este partido.");
+                box.append(p);
+            }
             for (const j of lista) {
                 const b = el("button", "dt-player" + (j.arquero ? " gk" : ""));
                 b.type = "button";
@@ -660,18 +667,16 @@
     /** Vista Equipo: balance, las métricas de todos los partidos cargados del equipo y los rankings. */
     async function cargarEquipo() {
         const sel = $("e-equipo");
-        if (!sel.options.length) {
-            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
-            sel.hidden = sesion.equipos.length < 2;
-            sel.addEventListener("change", cargarEquipo);
-        }
-        const e = sesion.equipos[Number(sel.value) || 0];
-        const q = `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
         $("e-kpis").replaceChildren(el("p", "dt-vacio", "Cargando…"));
         try {
+            await traerEquipos();
+            llenarEquipos(sel);
+            const e = equipoDe(sel);
+            if (!e) { sinEquipos($("e-kpis")); return; }
+            const q = `equipo=${e.id}`;
             const [lista, acc, pl] = await Promise.all([getJson("/api/dt/partidos").then(r => r.data),
                 getJson("/api/dt/acciones?" + q).then(r => r.data), getJson("/api/dt/plantel?" + q).then(r => r.data).catch(() => [])]);
-            const fin = lista.filter(p => p.categoria === e.categoria && p.rama === e.rama && DtInforme.finalizado(p));
+            const fin = lista.filter(p => p.equipoId === e.id && DtInforme.finalizado(p));
             const plantelEq = pl.map(j => ({key: "j" + j.id, numero: j.numero, nombre: j.nombre, arquero: j.arquero}));
             const inf = DtInforme.armar({titulo: "", detalle: "", unPartido: false, partidos: fin, acciones: acc,
                 jugadores: plantelEq, nombreAccion: accion});
@@ -731,22 +736,20 @@
     /** Sección Informes: los partidos finalizados o el informe de un período; con id, el informe de ese partido. */
     async function cargarInformes(id) {
         const sel = $("i-equipo");
-        if (!sel.options.length) {
-            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
-            sel.hidden = sesion.equipos.length < 2;
-            sel.addEventListener("change", () => { infValor = null; infJugador = null; if (location.hash !== "#informes") location.hash = "informes"; else cargarInformes(null); });
-        }
         const box = $("i-informe"), lista = $("i-lista");
         box.replaceChildren(el("p", "dt-vacio", "Cargando…"));
         try {
+            await traerEquipos();
+            llenarEquipos(sel);
+            if (!equipos.length) { lista.replaceChildren(); sinEquipos(box); return; }
+            if (id) {
+                const p = (await getJson(`/api/dt/partidos/${id}`)).data;
+                if (String(p.equipoId) !== sel.value) sel.value = String(p.equipoId);
+            }
             const [todos, acc, plantelEq] = await datosDelEquipo();
-            const equipo = sesion.equipos[Number(sel.value) || 0];
+            const equipo = equipoDe(sel);
             if (id) {
                 const p = todos.find(x => x.id === id) || (await getJson(`/api/dt/partidos/${id}`)).data;
-                if (equipo.categoria !== p.categoria || equipo.rama !== p.rama) {
-                    const i = sesion.equipos.findIndex(e => e.categoria === p.categoria && e.rama === p.rama);
-                    if (i >= 0 && String(i) !== sel.value) { sel.value = String(i); return cargarInformes(id); }
-                }
                 return informeDePartido(p, acc.filter(a => a.partidoId === p.id), plantelEq);
             }
             $("i-volver").hidden = true;
@@ -789,7 +792,7 @@
                 jugadores: armar(null).jugadores,
                 onJugador: k => { infJugador = k; cargarInformes(null); },
                 onPartido: pid => { location.hash = "informe=" + pid; },
-                onPdf: () => exportarPdf(`/api/dt/informes.pdf?categoria=${encodeURIComponent(equipo.categoria)}&rama=${encodeURIComponent(equipo.rama)}`
+                onPdf: () => exportarPdf(`/api/dt/informes.pdf?equipo=${equipo.id}`
                     + `&periodo=${infTipo}&valor=${encodeURIComponent(infValor)}` + (infJugador ? "&jugador=" + encodeURIComponent(infJugador) : "")),
             });
         } catch (err) {
@@ -799,11 +802,11 @@
 
     /** Partidos del DT del equipo elegido en Informes, sus acciones y el plantel (con las claves de los jugadores). */
     async function datosDelEquipo() {
-        const e = sesion.equipos[Number($("i-equipo").value) || 0];
-        const q = `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
+        const e = equipoDe($("i-equipo"));
+        const q = `equipo=${e.id}`;
         const [lista, acc, pl] = await Promise.all([getJson("/api/dt/partidos").then(r => r.data),
             getJson("/api/dt/acciones?" + q).then(r => r.data), getJson("/api/dt/plantel?" + q).then(r => r.data).catch(() => [])]);
-        return [lista.filter(p => p.categoria === e.categoria && p.rama === e.rama), acc,
+        return [lista.filter(p => p.equipoId === e.id), acc,
             pl.map(j => ({key: "j" + j.id, numero: j.numero, nombre: j.nombre, arquero: j.arquero}))];
     }
 
@@ -823,53 +826,174 @@
         });
     }
 
-    // ---------- Equipo: el plantel (ABM de jugadores) ----------
+    // ---------- Equipo: ABM de equipos y de jugadores ----------
 
+    let eqEditando = null;   // id del equipo que se está renombrando (null: alta)
     let plEditando = null;   // id del jugador que se está editando (null: alta)
+    let jugadoresDt = [];
 
-    function plEquipo() {
-        return sesion.equipos[Number($("pl-equipo").value) || 0];
+    /** Aviso para las vistas que necesitan un equipo. */
+    function sinEquipos(box) {
+        const p = el("p", "dt-aviso-equipo");
+        p.append("Todavía no tenés equipos. Crealos en ");
+        const a = el("a", null, "Equipo");
+        a.href = "#equipo";
+        p.append(a, ", con sus jugadores.");
+        box.replaceChildren(p);
     }
 
     async function cargarPlantel() {
-        const sel = $("pl-equipo");
-        if (!sel.options.length) {
-            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
-            sel.hidden = sesion.equipos.length < 2;
-            sel.addEventListener("change", () => { plFormulario(null); cargarPlantel(); });
-        }
-        const e = plEquipo();
-        const ul = $("pl-lista");
         try {
-            const lista = (await getJson(`/api/dt/plantel?categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`)).data;
-            $("pl-n").textContent = lista.length ? `${lista.length} ${lista.length === 1 ? "jugador" : "jugadores"}` : "";
-            ul.replaceChildren();
-            if (!lista.length) ul.append(el("li", "dt-vacio", "Todavía no hay jugadores en el plantel: agregá el primero."));
-            for (const j of lista) {
-                const li = el("li");
-                li.classList.toggle("editando", j.id === plEditando);
-                const quien = el("div", "quien");
-                quien.append(el("b", null, j.nombre));
-                if (j.arquero) quien.append(el("span", "inf-ar", "Arquero"));
-                const editar = el("button", "dt-link", "Editar");
-                editar.type = "button";
-                editar.setAttribute("aria-label", "Editar a " + j.nombre);
-                editar.addEventListener("click", () => plFormulario(j));
-                const baja = el("button", "dt-link pl-baja", "Dar de baja");
-                baja.type = "button";
-                baja.setAttribute("aria-label", "Dar de baja a " + j.nombre);
-                baja.addEventListener("click", () => plBaja(j));
-                const acciones = el("div", "acc");
-                acciones.append(editar, baja);
-                li.append(el("span", "pl-num", j.numero ? "#" + j.numero : "s/n"), quien, acciones);
-                ul.append(li);
-            }
+            const [, js] = await Promise.all([traerEquipos(), getJson("/api/dt/jugadores").then(r => r.data)]);
+            jugadoresDt = js;
+            pintarEquipos();
+            pintarJugadores();
         } catch (err) {
-            ul.replaceChildren(el("li", "dt-vacio", "No se pudo cargar el plantel: " + err.message));
+            $("eq-lista").replaceChildren(el("li", "dt-vacio", "No se pudieron cargar los equipos: " + err.message));
         }
     }
 
-    /** El formulario en modo alta (j null) o para editar a j. */
+    function pintarEquipos() {
+        const ul = $("eq-lista");
+        $("eq-n").textContent = equipos.length ? `${equipos.length} ${equipos.length === 1 ? "equipo" : "equipos"}` : "";
+        ul.replaceChildren();
+        if (!equipos.length) ul.append(el("li", "dt-vacio", "Todavía no creaste equipos: agregá el primero."));
+        for (const e of equipos) {
+            const li = el("li", "eq-fila");
+            li.classList.toggle("editando", e.id === eqEditando);
+            const quien = el("div", "quien");
+            quien.append(el("b", null, e.nombre));
+            const bal = el("div", "eq-balance");
+            for (const [v, n, t] of [[e.jugados, "PJ", "Jugados"], [e.ganados, "G", "Ganados"], [e.empatados, "E", "Empatados"],
+                [e.perdidos, "P", "Perdidos"]]) {
+                const c = el("span", "eq-dato");
+                c.title = t;
+                c.append(el("b", null, String(v)), el("small", null, n));
+                bal.append(c);
+            }
+            const acc = el("div", "acc");
+            const editar = el("button", "dt-link", "Editar");
+            editar.type = "button";
+            editar.setAttribute("aria-label", "Cambiar el nombre de " + e.nombre);
+            editar.addEventListener("click", () => eqFormulario(e));
+            const borrar = el("button", "dt-link pl-baja", "Borrar");
+            borrar.type = "button";
+            borrar.setAttribute("aria-label", "Borrar el equipo " + e.nombre);
+            borrar.addEventListener("click", () => eqBorrar(e));
+            acc.append(editar, borrar);
+            li.append(quien, bal, acc);
+            ul.append(li);
+        }
+        // Equipos en el formulario de jugadores y en el filtro de la lista.
+        $("pl-sin-equipos").hidden = equipos.length > 0;
+        for (const id of ["pl-nombre", "pl-apellido", "pl-numero", "pl-arquero", "pl-guardar"]) $(id).disabled = !equipos.length;
+        const marcados = new Set([...document.querySelectorAll("#pl-equipos input:checked")].map(i => i.value));
+        $("pl-equipos").replaceChildren(...equipos.map(e => {
+            const l = el("label", "pl-eq");
+            const c = el("input");
+            c.type = "checkbox";
+            c.value = String(e.id);
+            c.checked = marcados.has(c.value) || equipos.length === 1;
+            l.append(c, " " + e.nombre);
+            return l;
+        }));
+        const f = $("pl-filtro"), antes = f.value;
+        const todos = el("option", null, "Todos los equipos");
+        todos.value = "";
+        f.replaceChildren(todos, ...equipos.map(e => { const o = el("option", null, e.nombre); o.value = String(e.id); return o; }));
+        f.value = equipos.some(e => String(e.id) === antes) ? antes : "";
+        f.hidden = equipos.length < 2;
+    }
+
+    function pintarJugadores() {
+        const ul = $("pl-lista");
+        const filtro = $("pl-filtro").value;
+        const lista = jugadoresDt.filter(j => !filtro || j.equipos.map(String).includes(filtro));
+        $("pl-n").textContent = jugadoresDt.length ? `${jugadoresDt.length} ${jugadoresDt.length === 1 ? "jugador" : "jugadores"}` : "";
+        ul.replaceChildren();
+        if (!lista.length) ul.append(el("li", "dt-vacio", jugadoresDt.length ? "No hay jugadores en ese equipo."
+            : "Todavía no hay jugadores: agregá el primero."));
+        const nombres = new Map(equipos.map(e => [e.id, e.nombre]));
+        for (const j of lista) {
+            const li = el("li");
+            li.classList.toggle("editando", j.id === plEditando);
+            const quien = el("div", "quien");
+            quien.append(el("b", null, j.nombre));
+            if (j.arquero) quien.append(el("span", "inf-ar", "Arquero"));
+            quien.append(el("small", "pl-de", j.equipos.map(id => nombres.get(id)).filter(Boolean).join(" · ")));
+            const editar = el("button", "dt-link", "Editar");
+            editar.type = "button";
+            editar.setAttribute("aria-label", "Editar a " + j.nombre);
+            editar.addEventListener("click", () => plFormulario(j));
+            const baja = el("button", "dt-link pl-baja", "Dar de baja");
+            baja.type = "button";
+            baja.setAttribute("aria-label", "Dar de baja a " + j.nombre);
+            baja.addEventListener("click", () => plBaja(j));
+            const acc = el("div", "acc");
+            acc.append(editar, baja);
+            li.append(el("span", "pl-num", j.numero ? "#" + j.numero : "s/n"), quien, acc);
+            ul.append(li);
+        }
+    }
+
+    function abmStatus(id, txt, error) {
+        $(id).textContent = txt;
+        $(id).className = "abm-status" + (txt ? (error ? " error" : " ok") : "");
+    }
+
+    /** Envía un alta (POST), un cambio (PUT) o un borrado (DELETE) del ABM; devuelve la respuesta o lanza el error. */
+    async function abm(method, url, body) {
+        const res = await api(url, Object.assign({method}, body ? {headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(body)} : {}));
+        const data = res.status === 204 ? {} : await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        return data;
+    }
+
+    const sinSenalAbm = err => err instanceof TypeError ? "Sin señal: para editar los equipos hace falta conexión." : err.message;
+
+    function eqFormulario(e) {
+        eqEditando = e ? e.id : null;
+        $("eq-titulo").textContent = e ? "Cambiar nombre" : "Nuevo equipo";
+        $("eq-guardar").textContent = e ? "Guardar cambios" : "Agregar equipo";
+        $("eq-cancelar").hidden = !e;
+        $("eq-nombre").value = e ? e.nombre : "";
+        abmStatus("eq-status", "");
+        pintarEquipos();
+        if (e) $("eq-nombre").focus();
+    }
+
+    async function eqGuardar(ev) {
+        ev.preventDefault();
+        const nombre = $("eq-nombre").value.trim();
+        if (!nombre) { abmStatus("eq-status", "Escribí el nombre del equipo.", true); $("eq-nombre").focus(); return; }
+        $("eq-guardar").disabled = true;
+        try {
+            const editando = eqEditando;
+            const data = await abm(editando ? "PUT" : "POST", editando ? `/api/dt/equipos/${editando}` : "/api/dt/equipos", {nombre});
+            eqFormulario(null);
+            abmStatus("eq-status", editando ? `Guardado: ${data.nombre}.` : `Equipo creado: ${data.nombre}. Ahora cargá sus jugadores.`);
+            await cargarPlantel();
+        } catch (err) {
+            abmStatus("eq-status", sinSenalAbm(err), true);
+        } finally {
+            $("eq-guardar").disabled = false;
+        }
+    }
+
+    async function eqBorrar(e) {
+        if (!confirm(`¿Borrar el equipo ${e.nombre}? Sus jugadores siguen en tus otros equipos.`)) return;
+        try {
+            await abm("DELETE", `/api/dt/equipos/${e.id}`);
+            if (eqEditando === e.id) eqFormulario(null);
+            abmStatus("eq-status", `${e.nombre} se borró.`);
+            await cargarPlantel();
+        } catch (err) {
+            abmStatus("eq-status", sinSenalAbm(err), true);
+        }
+    }
+
+    /** El formulario de jugadores en modo alta (j null) o para editar a j. */
     function plFormulario(j) {
         plEditando = j ? j.id : null;
         $("pl-titulo").textContent = j ? "Editar jugador" : "Nuevo jugador";
@@ -879,53 +1003,46 @@
         $("pl-apellido").value = j ? j.apellido : "";
         $("pl-numero").value = j ? j.numero : "";
         $("pl-arquero").checked = j ? j.arquero : false;
-        plStatus("");
-        document.querySelectorAll("#pl-lista li").forEach(li => li.classList.remove("editando"));
-        if (j) { $("pl-nombre").focus(); cargarPlantel(); }
-    }
-
-    function plStatus(txt, error) {
-        $("pl-status").textContent = txt;
-        $("pl-status").className = txt ? "status" + (error ? " error" : " ok") : "";
+        document.querySelectorAll("#pl-equipos input").forEach(c => {
+            c.checked = j ? j.equipos.map(String).includes(c.value) : equipos.length === 1;
+        });
+        abmStatus("pl-status", "");
+        pintarJugadores();
+        if (j) $("pl-nombre").focus();
     }
 
     async function plGuardar(ev) {
         ev.preventDefault();
-        const e = plEquipo();
-        const body = {categoria: e.categoria, rama: e.rama, nombre: $("pl-nombre").value, apellido: $("pl-apellido").value,
-            numero: $("pl-numero").value, arquero: $("pl-arquero").checked};
-        if (!body.nombre.trim()) { plStatus("Escribí el nombre del jugador.", true); $("pl-nombre").focus(); return; }
-        if (!body.apellido.trim()) { plStatus("Escribí el apellido del jugador.", true); $("pl-apellido").focus(); return; }
+        const body = {nombre: $("pl-nombre").value, apellido: $("pl-apellido").value, numero: $("pl-numero").value,
+            arquero: $("pl-arquero").checked,
+            equipos: [...document.querySelectorAll("#pl-equipos input:checked")].map(c => Number(c.value))};
+        if (!body.nombre.trim()) { abmStatus("pl-status", "Escribí el nombre del jugador.", true); $("pl-nombre").focus(); return; }
+        if (!body.apellido.trim()) { abmStatus("pl-status", "Escribí el apellido del jugador.", true); $("pl-apellido").focus(); return; }
+        if (!body.equipos.length) { abmStatus("pl-status", "Asigná el jugador a un equipo.", true); return; }
         $("pl-guardar").disabled = true;
         try {
             const editando = plEditando;
-            const res = await api(editando ? `/api/dt/plantel/${editando}` : "/api/dt/plantel",
-                {method: editando ? "PUT" : "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.detail || res.statusText);
+            const data = await abm(editando ? "PUT" : "POST", editando ? `/api/dt/jugadores/${editando}` : "/api/dt/jugadores", body);
             plFormulario(null);
-            plStatus(editando ? `Guardado: ${data.nombre}.` : `Agregado: ${data.nombre}.`);
+            abmStatus("pl-status", editando ? `Guardado: ${data.nombre}.` : `Agregado: ${data.nombre}.`);
             $("pl-nombre").focus();
             await cargarPlantel();
         } catch (err) {
-            plStatus(err instanceof TypeError ? "Sin señal: para editar el plantel hace falta conexión." : err.message, true);
+            abmStatus("pl-status", sinSenalAbm(err), true);
         } finally {
-            $("pl-guardar").disabled = false;
+            $("pl-guardar").disabled = !equipos.length;
         }
     }
 
     async function plBaja(j) {
-        if (!confirm(`¿Dar de baja a ${j.nombre}? Sale del plantel; sus acciones quedan en los partidos y los informes.`)) return;
-        const e = plEquipo();
+        if (!confirm(`¿Dar de baja a ${j.nombre}? Sale de sus equipos; sus acciones quedan en los partidos y los informes.`)) return;
         try {
-            const res = await api(`/api/dt/plantel/${j.id}?categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`,
-                {method: "DELETE"});
-            if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.detail || res.statusText); }
+            await abm("DELETE", `/api/dt/jugadores/${j.id}`);
             if (plEditando === j.id) plFormulario(null);
-            plStatus(`${j.nombre} salió del plantel.`);
+            abmStatus("pl-status", `${j.nombre} salió del plantel.`);
             await cargarPlantel();
         } catch (err) {
-            plStatus(err instanceof TypeError ? "Sin señal: para editar el plantel hace falta conexión." : err.message, true);
+            abmStatus("pl-status", sinSenalAbm(err), true);
         }
     }
 
@@ -933,16 +1050,14 @@
 
     async function cargarFichas() {
         const sel = $("j-equipo");
-        if (!sel.options.length) {
-            sesion.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); sel.append(o); });
-            sel.hidden = sesion.equipos.length < 2;
-            sel.addEventListener("change", cargarFichas);
-        }
-        const e = sesion.equipos[Number(sel.value) || 0];
         const box = $("fichas");
         box.replaceChildren(el("p", "dt-vacio", "Cargando…"));
         try {
-            const q = `categoria=${encodeURIComponent(e.categoria)}&rama=${encodeURIComponent(e.rama)}`;
+            await traerEquipos();
+            llenarEquipos(sel);
+            const e = equipoDe(sel);
+            if (!e) { sinEquipos(box); return; }
+            const q = `equipo=${e.id}`;
             const [plantelEq, acciones] = await Promise.all([getJson("/api/dt/plantel?" + q).then(r => r.data).catch(() => []),
                 getJson("/api/dt/acciones?" + q).then(r => r.data)]);
             const fichas = DtFichas.calcular(plantelEq, acciones);
@@ -998,6 +1113,11 @@
     document.addEventListener("click", ev => { if (!ev.target.closest("#dt-sub-est")) submenu(false); });
     document.addEventListener("keydown", ev => { if (ev.key === "Escape") submenu(false); });
     $("pl-form").addEventListener("submit", plGuardar);
+    $("eq-form").addEventListener("submit", eqGuardar);
+    $("eq-cancelar").addEventListener("click", () => eqFormulario(null));
+    $("pl-filtro").addEventListener("change", pintarJugadores);
+    for (const id of ["e-equipo", "j-equipo"]) $(id).addEventListener("change", () => ruta());
+    $("i-equipo").addEventListener("change", () => { infValor = null; infJugador = null; if (location.hash !== "#informes") location.hash = "informes"; else cargarInformes(null); });
     $("pl-cancelar").addEventListener("click", () => plFormulario(null));
     // Un solo menú arriba: el del DT va en la barra superior, al lado de la marca.
     document.querySelector(".topbar header.brand").after($("dt-menu"));
@@ -1010,9 +1130,7 @@
     $("i-valor").addEventListener("change", () => { infValor = $("i-valor").value; infJugador = null; cargarInformes(null); });
     $("i-volver-btn").addEventListener("click", () => { infTipo = "PARTIDOS"; location.hash = "informes"; });
     for (const t of ["t-cargar", "t-resumen", "t-partidos"]) $(t).addEventListener("click", () => tab(t));
-    $("rival").addEventListener("change", elegirRival);
-    $("equipo").addEventListener("change", cargarRivales);
-    $("otro").addEventListener("input", () => { $("crear").disabled = !rivalElegido(); });
+    $("rival").addEventListener("input", () => { $("crear").disabled = !rivalElegido() || !equipos.length; });
     $("fecha").value = hoy();
     $("crear").addEventListener("click", crear);
     document.querySelectorAll("#m-ajuste button").forEach(b =>
@@ -1067,9 +1185,6 @@
     requireProfile(["DTFPP", "DTAMP"]).then(async s => {
         if (!s) return;
         sesion = s;
-        const eq = $("equipo");
-        s.equipos.forEach((e, i) => { const o = el("option", null, e.nombre); o.value = String(i); eq.append(o); });
-        $("f-equipo").hidden = s.equipos.length < 2;
         if (s.suscripcion && s.suscripcion.partidosPorMes) $("cupo").textContent = `${s.suscripcion.partidosPorMes} partidos por mes`;
         await DtCola.iniciar(async ({partido: p, pendientes, error}) => {
             pendientesTotal = pendientes;
@@ -1077,7 +1192,10 @@
             if (error) toast(error);
             if (partido) await refrescarPend(); else if (!$("v-elegir").hidden && p) cargarMis();
         });
-        if (s.equipos.length) cargarRivales();
+        // Un DT sin equipos empieza por la sección Equipo: sin equipo ni jugadores no hay partido que cargar.
+        try {
+            if (!location.hash && !(await traerEquipos()).length) history.replaceState(null, "", location.pathname + location.search + "#equipo");
+        } catch (e) { /* sin señal: el panel avisa */ }
         ruta();
     });
 })();
