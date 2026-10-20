@@ -21,6 +21,7 @@
         <java.version>21</java.version>
         <jsoup.version>1.23.2</jsoup.version>
         <openhtmltopdf.version>1.1.97</openhtmltopdf.version>
+        <fastexcel.version>0.18.4</fastexcel.version>
         <!-- Docker Engine 29 exige Testcontainers 1.21.4 o posterior (la versión de Spring Boot no lo detecta). -->
         <testcontainers.version>1.21.4</testcontainers.version>
         <jacoco.version>0.8.15</jacoco.version>
@@ -51,6 +52,18 @@
             <version>${jsoup.version}</version>
         </dependency>
 
+        <!-- Excel (.xlsx) de los informes: liviano, sin Apache POI -->
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel</artifactId>
+            <version>${fastexcel.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel-reader</artifactId>
+            <version>${fastexcel.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- PDF: HTML (Thymeleaf) -> PDF -->
         <dependency>
             <groupId>io.github.openhtmltopdf</groupId>

@@ -73,7 +73,8 @@ function renderUserBar(s) {
         await api("/api/logout", {method: "POST"});
         // Métricas DT guarda copias para abrir sin señal: no quedan para el próximo usuario del teléfono.
         if (window.caches) await caches.delete("rinkmetrics-dt-v1").catch(() => {});
-        location.replace("/");
+        // A la portada del producto (RinkReports la indica en data-salir) o a la home.
+        location.replace(document.body.dataset.salir || "/");
     });
     bar.append(who, out);
 }
@@ -138,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
-    for (const [id, texto, href] of [["informes", "Informes", "/informes.html"], ["dt", "Métricas DT", "/dt-inicio.html"],
+    for (const [id, texto, href] of [["informes", "RinkReports", "/rinkreports"], ["dt", "Métricas DT", "/dt-inicio.html"],
                                      ["demo", "Demo", "/dt-demo.html"], ["por-que", "Por qué RinkMetrics", "/por-que.html"]]) {
         const a = document.createElement("a");
         a.href = href;

@@ -6,6 +6,7 @@ import com.rinkmetrics.config.RinkMetricsProperties;
 import com.rinkmetrics.player.PlayerReport.Line;
 import com.rinkmetrics.player.PlayerReport.MatchRow;
 import com.rinkmetrics.report.Crests;
+import com.rinkmetrics.report.ExcelExporter;
 import com.rinkmetrics.report.PdfRenderer;
 import com.rinkmetrics.report.ReportService;
 import com.rinkmetrics.report.ReportService.Scope;
@@ -115,6 +116,8 @@ public class PlayerReportService {
         private volatile Status status = Status.PENDIENTE;
         private volatile String message = "En cola";
         private volatile byte[] pdf;
+        private volatile String html;
+        private volatile byte[] xlsx;
         private volatile String fileName;
 
         Job(String owner) {
@@ -125,7 +128,13 @@ public class PlayerReportService {
         public Status status() { return status; }
         public String message() { return message; }
         public byte[] pdf() { return pdf; }
+        /** El informe para ver en pantalla: el mismo HTML que el PDF. */
+        public String html() { return html; }
+        public byte[] xlsx() { return xlsx; }
         public String fileName() { return fileName; }
+
+        /** El nombre del archivo con otra extensión ("xlsx"). */
+        public String fileName(String extension) { return fileName.substring(0, fileName.lastIndexOf('.') + 1) + extension; }
 
         void update(Status status, String message) {
             this.status = status;
@@ -172,15 +181,17 @@ public class PlayerReportService {
     private final CatalogService catalog;
     private final SidgadClient sidgad;
     private final PdfRenderer renderer;
+    private final ExcelExporter excel;
     private final Clock clock;
     private final Cache<UUID, Job> jobs = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build();
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
-    public PlayerReportService(CatalogService catalog, SidgadClient sidgad, PdfRenderer renderer, Clock clock,
-                               RinkMetricsProperties props) {
+    public PlayerReportService(CatalogService catalog, SidgadClient sidgad, PdfRenderer renderer, ExcelExporter excel,
+                               Clock clock, RinkMetricsProperties props) {
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.renderer = renderer;
+        this.excel = excel;
         this.clock = clock;
     }
 
@@ -207,6 +218,8 @@ public class PlayerReportService {
             PlayerReport report = build(q, job);
             job.update(Status.GENERANDO_PDF, "Generando el PDF");
             job.pdf = renderer.playerPdf(report);
+            job.html = renderer.playerHtml(report);
+            job.xlsx = excel.player(report);
             job.fileName = "informe-jugador-" + slug(q.playerName()) + "-" + q.year() + "-"
                     + q.scope().name().toLowerCase() + ".pdf";
             job.update(Status.LISTO, "Informe listo");

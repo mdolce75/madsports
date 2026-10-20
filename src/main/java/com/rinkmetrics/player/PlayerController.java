@@ -5,12 +5,11 @@ import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.sidgad.model.Federacion;
+import com.rinkmetrics.report.ApiController;
 import com.rinkmetrics.report.ApiController.JobView;
 import com.rinkmetrics.report.ReportService.Scope;
 import com.rinkmetrics.report.ReportService.Status;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -25,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -72,21 +72,29 @@ public class PlayerController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/informes/{id}/html")
+    public ResponseEntity<String> html(@PathVariable UUID id, Authentication auth) {
+        return ready(id, auth).map(j -> ApiController.html(j.html())).orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/informes/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
-        return reports.find(id, auth.getName())
-                .filter(j -> j.status() == Status.LISTO)
-                .map(j -> ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_PDF)
-                        .header(HttpHeaders.CONTENT_DISPOSITION,
-                                ContentDisposition.attachment().filename(j.fileName()).build().toString())
-                        .body(j.pdf()))
+        return ready(id, auth).map(j -> ApiController.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/informes/{id}/xlsx")
+    public ResponseEntity<byte[]> xlsx(@PathVariable UUID id, Authentication auth) {
+        return ready(id, auth).map(j -> ApiController.file(j.xlsx(), ApiController.XLSX, j.fileName("xlsx"), false))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    private Optional<PlayerReportService.Job> ready(UUID id, Authentication auth) {
+        return reports.find(id, auth.getName()).filter(j -> j.status() == Status.LISTO);
+    }
+
     private static JobView view(PlayerReportService.Job job) {
-        return new JobView(job.id(), job.status(), job.message(),
-                job.status() == Status.LISTO ? "/api/jugador/informes/" + job.id() + "/pdf" : null);
+        return JobView.of(job.id(), job.status(), job.message(), "/api/jugador/informes/" + job.id());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

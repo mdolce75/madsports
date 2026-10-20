@@ -3,93 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mi informe de jugador · RinkMetrics</title>
+    <title>Mi informe de jugador · RinkReports</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f5f4f'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%231f5f4f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%231f5f4f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+    <link rel="stylesheet" href="/css/reports.css">
 </head>
-<body data-seccion="informes">
-<div class="wrap">
-    <div class="topbar">
-        <div id="brand"></div>
-        <div class="userbar" id="userbar"></div>
-    </div>
-
-    <div class="split">
-    <div class="intro">
-    <section class="hero">
-        <span class="tag">Informe de jugador</span>
-        <h1>Tu temporada,<br><em>en números.</em></h1>
-        <p class="lead">Partidos jugados, ganados, empatados y perdidos, goles y tarjetas, en cada categoría disputada y en el total de la temporada.</p>
+<body data-rr="jugador">
+<main class="wrap">
+    <section class="rr-hero">
+        <span class="rr-kicker">Informe de jugador</span>
+        <h1>Tu temporada, en números.</h1>
+        <p>Partidos, goles y tarjetas en cada categoría que jugaste y en el total, con la incidencia en tu equipo,
+            pelota parada, goles por tramo y tus fortalezas.</p>
     </section>
 
-    <p class="sample">
-        <a class="btn ghost" href="/api/ejemplo-jugador.pdf" target="_blank" rel="noopener">Ver informe de ejemplo</a>
-        <span>Datos ficticios, para ver el formato.</span>
-    </p>
-    </div>
-    <div class="main">
-    <form class="sheet" id="form">
-        <div class="sheet-head"><span>Planilla del jugador</span><span id="season"></span></div>
-
-        <div class="field">
-            <label for="club">Club</label>
-            <input type="text" id="club" readonly>
-        </div>
-        <div class="grid2">
+    <form class="rr-form" id="form">
+        <div class="head"><span>Planilla del jugador</span><span id="season"></span></div>
+        <div class="notice" id="no-data" role="alert" hidden></div>
+        <div class="rows">
+            <div class="field">
+                <label for="club">Club</label>
+                <input type="text" id="club" readonly>
+            </div>
+            <div class="field">
+                <label for="categoria">Categoría</label>
+                <input type="text" id="categoria" readonly>
+            </div>
             <div class="field">
                 <label for="nombre">Nombre y apellido</label>
                 <input type="text" id="nombre" readonly>
             </div>
-            <div class="field">
-                <label for="jugador">Jugador en SIDGAD</label>
-                <input type="text" id="jugador" readonly>
-            </div>
         </div>
-        <div class="field">
-            <label for="categoria">Categoría</label>
-            <input type="text" id="categoria" readonly>
-            <p class="hint">El informe incluye tu categoría y las superiores en que podés jugar.</p>
-        </div>
-
-        <div class="grid2">
+        <div class="rows">
             <div class="field">
-                <label for="anio"><span class="num"><i>1</i></span>Año</label>
+                <label for="anio">Año</label>
                 <select id="anio" required disabled></select>
             </div>
             <div class="field">
-                <label for="periodo"><span class="num"><i>2</i></span>Período</label>
+                <label for="periodo">Período</label>
                 <select id="periodo" required>
-                    <option value="TEMPORADA" selected>Apertura + Clausura</option>
+                    <option value="TEMPORADA" selected>Temporada completa (Apertura + Clausura)</option>
                     <option value="APERTURA">Apertura</option>
                     <option value="CLAUSURA">Clausura</option>
                 </select>
             </div>
         </div>
-        <div class="notice" id="no-data" role="alert" hidden></div>
-
-        <button class="go" id="go" type="submit" disabled>Generar informe</button>
-
+        <div class="actions">
+            <button class="rr-btn" id="go" type="submit" disabled>Ver informe</button>
+            <span class="hint">Incluye tu categoría y las superiores en que podés jugar.</span>
+        </div>
         <ul class="steps" id="steps" hidden>
             <li data-s="EXTRAYENDO">Datos de SIDGAD</li>
-            <li data-s="GENERANDO_PDF">PDF</li>
+            <li data-s="GENERANDO_PDF">Armado del informe</li>
             <li data-s="LISTO">Listo</li>
         </ul>
         <div id="status" role="status" aria-live="polite"></div>
     </form>
-    </div>
-    </div>
 
-    <footer>© 2026 RinkMetrics. Todos los derechos reservados.</footer>
-</div>
+    <div id="visor" hidden></div>
+</main>
 
 <script src="/js/app.js"></script>
+<script src="/js/reports.js"></script>
 <script>
-    $("brand").outerHTML = BRAND;
-
     let federacion = "FPP";
+    let quien = "";
+    const PERIODO = {TEMPORADA: "Temporada completa", APERTURA: "Apertura", CLAUSURA: "Clausura"};
 
     // Años ofrecidos; si el año elegido no tiene datos en su federación, se avisa y no se genera.
     async function loadYears(year) {
@@ -116,6 +97,7 @@
         ev.preventDefault();
         $("go").disabled = true;
         $("steps").hidden = false;
+        $("visor").hidden = true;
         showStep("PENDIENTE");
         status("Enviando…");
         try {
@@ -123,9 +105,11 @@
                 anio: Number($("anio").value),
                 periodo: $("periodo").value
             });
-            showReady(await poll(`/api/jugador/informes/${body.id}`));
+            const job = await poll(`/api/jugador/informes/${body.id}`);
             showStep("LISTO");
             document.querySelector('#steps li[data-s="LISTO"]').className = "done";
+            status("");
+            rrShowReport($("visor"), job, `${quien} · ${PERIODO[$("periodo").value]} ${$("anio").value}`);
         } catch (e) {
             status(e.message, true);
         } finally {
@@ -136,9 +120,9 @@
     requireProfile(["PLAYERFPP", "PLAYERAMP"]).then(s => {
         if (!s) return;
         federacion = s.federacion;
+        quien = s.nombre ? `${s.nombre} ${s.apellido}` : (s.jugador ? s.jugador.nombre : s.usuario);
         $("club").value = s.club.nombre;
-        $("nombre").value = s.nombre ? `${s.nombre} ${s.apellido}` : "";
-        $("jugador").value = s.jugador ? s.jugador.nombre : "Sin jugador vinculado";
+        $("nombre").value = quien;
         if (s.jugador && s.jugador.categoria) {
             const cap = w => w.charAt(0) + w.slice(1).toLowerCase();
             $("categoria").value = `${cap(s.jugador.categoria)} ${cap(s.jugador.rama)}`;

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Informes de ejemplo · RinkReports</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f5f4f'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%231f5f4f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%231f5f4f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+    <link rel="stylesheet" href="/css/reports.css">
+</head>
+<body data-rr="ejemplos">
+<main class="wrap">
+    <section class="rr-hero">
+        <span class="rr-kicker">Informes de ejemplo</span>
+        <h1>Así se ve un informe.</h1>
+        <p>Con datos ficticios ("Club Ejemplo", "Tomás Ejemplo"), para que conozcas el formato. Exportalo a PDF o a
+            Excel como cualquier informe.</p>
+        <nav class="rr-tabs" aria-label="Tipo de informe">
+            <a href="?tipo=club" data-tipo="club">Club</a>
+            <a href="?tipo=jugador" data-tipo="jugador">Jugador</a>
+        </nav>
+    </section>
+    <div id="visor" hidden></div>
+</main>
+
+<script src="/js/app.js"></script>
+<script src="/js/reports.js"></script>
+<script>
+    rrSessionBar();
+    const tipo = new URLSearchParams(location.search).get("tipo") === "jugador" ? "jugador" : "club";
+    document.querySelector(`.rr-tabs [data-tipo="${tipo}"]`).setAttribute("aria-current", "page");
+    const base = tipo === "jugador" ? "/api/ejemplo-jugador" : "/api/ejemplo";
+    rrShowReport($("visor"), {htmlUrl: base + ".html", pdfUrl: base + ".pdf", xlsxUrl: base + ".xlsx"},
+        tipo === "jugador" ? "Informe de jugador · Tomás Ejemplo" : "Informe de club · Club Ejemplo");
+</script>
+</body>
+</html>

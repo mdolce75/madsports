@@ -112,7 +112,7 @@ class ClubReportTest {
     @Test
     void lasCategoriasDelClubPrimeroMasculinasYSoloLasQueJuegan() {
         CatalogService catalog = mock(CatalogService.class);
-        ReportService service = new ReportService(catalog, null, null, null, null, java.time.Clock.systemUTC());
+        ReportService service = new ReportService(catalog, null, null, null, null, null, java.time.Clock.systemUTC());
         ClubView club = new ClubView(74, "CAVS", "VELEZ", List.of(
                 new LevelView("INFANTIL:A", "Infantil A", List.of("MASCULINO", "FEMENINO")),
                 new LevelView("INFANTIL:B", "Infantil B", List.of("MASCULINO")),
