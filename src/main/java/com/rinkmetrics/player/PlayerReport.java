@@ -72,17 +72,27 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
     /**
      * @param withoutSheet partidos jugados por el equipo sin acta publicada (no se sabe si jugó)
      * @param teamGoals    goles de su equipo en los partidos que jugó (para la incidencia de sus goles)
+     * @param teamCards    tarjetas de su equipo en los partidos con acta que jugó (las de los sin acta no se conocen)
+     * @param sheetCards   sus tarjetas en esos mismos partidos con acta
      */
     public record Line(String category, int played, int won, int drawn, int lost, int goals,
                        int yellowCards, int blueCards, int redCards,
                        int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken,
-                       int withoutSheet, int teamGoals) {
+                       int withoutSheet, int teamGoals, int teamCards, int sheetCards) {
 
-        static final Line EMPTY = new Line("Total", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        static final Line EMPTY = new Line("Total", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
         /** Incidencia de sus goles: qué parte de los goles de su equipo en sus partidos hizo él (0 a 100). */
         public double goalShare() {
             return teamGoals == 0 ? 0 : 100.0 * goals / teamGoals;
+        }
+
+        /**
+         * Incidencia de sus tarjetas: qué parte de las tarjetas de su equipo recibió él (0 a 100), en los partidos con
+         * acta (de los sin acta, la ficha de temporada trae solo las suyas, no las del equipo).
+         */
+        public double cardShare() {
+            return teamCards == 0 ? 0 : 100.0 * sheetCards / teamCards;
         }
 
         public int cards() {
@@ -131,7 +141,8 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
                     yellowCards + o.yellowCards, blueCards + o.blueCards, redCards + o.redCards,
                     penaltiesScored + o.penaltiesScored, penaltiesTaken + o.penaltiesTaken,
                     directFreeScored + o.directFreeScored, directFreeTaken + o.directFreeTaken,
-                    withoutSheet + o.withoutSheet, teamGoals + o.teamGoals);
+                    withoutSheet + o.withoutSheet, teamGoals + o.teamGoals, teamCards + o.teamCards,
+                    sheetCards + o.sheetCards);
         }
     }
 

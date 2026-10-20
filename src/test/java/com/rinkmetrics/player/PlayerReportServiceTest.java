@@ -62,8 +62,8 @@ class PlayerReportServiceTest {
                 List.of(team(5581, "Primera Masculino", velezSheets())));
 
         // Vélez 2-4 Argentinos (2 goles de Graiño) y 7-0 Comunicaciones (2 goles).
-        assertThat(r.categories()).containsExactly(new Line("Primera Masculino", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 9));
-        assertThat(r.total()).isEqualTo(new Line("Total", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 9));
+        assertThat(r.categories()).containsExactly(new Line("Primera Masculino", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0));
+        assertThat(r.total()).isEqualTo(new Line("Total", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0));
         assertThat(r.total().goalsPerGame()).isEqualTo(2.0);
         // Incidencia: sus 4 goles sobre los 9 de Vélez en esos partidos (2 + 7).
         assertThat(r.total().teamGoals()).isEqualTo(9);
@@ -134,6 +134,11 @@ class PlayerReportServiceTest {
         assertThat(total.yellowCards()).isEqualTo(r.total().yellowCards());
         assertThat(total.blueCards()).isEqualTo(r.total().blueCards());
         assertThat(total.redCards()).isEqualTo(r.total().redCards());
+        // Incidencia de tarjetas: solo los partidos con acta (de los sin acta no se conocen las del equipo). La amarilla
+        // del 26390 es la única de Argentinos en esa acta; la azul del partido sin acta no entra.
+        assertThat(l.teamCards()).isEqualTo(1);
+        assertThat(l.sheetCards()).isEqualTo(1);
+        assertThat(l.cardShare()).isEqualTo(100.0);
         assertThat(r.notes()).singleElement().asString().contains("1 partido sin acta publicada se tomó",
                 "ficha de temporada");
     }
