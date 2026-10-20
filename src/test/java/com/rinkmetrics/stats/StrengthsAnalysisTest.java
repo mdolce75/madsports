@@ -82,6 +82,6 @@ class StrengthsAnalysisTest {
     }
 
     private static PlayerLine player(double share) {
-        return new PlayerLine(1, "Jugador", 10, 10, 1, share, 0, 0, 0, 0, 0, 0);
+        return new PlayerLine(1, "Jugador", 10, 10, 1, share, 0, 0, 0, 0, 0, 0, 0);
     }
 }

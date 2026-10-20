@@ -52,11 +52,19 @@ final class SampleData {
     }
 
     static ReportData build(LocalDate today) {
-        Random rnd = new Random(2026);
-        Category category = new Category("PRIMERA", "MASCULINO");
+        return build(today, new Category("PRIMERA", "MASCULINO"), 2026, 9001);
+    }
+
+    /**
+     * Una categoría del club del ejemplo, con sus partidos de Apertura y Clausura generados con la semilla dada.
+     *
+     * @param compId id de la competición del Apertura (el Clausura es el siguiente)
+     */
+    static ReportData build(LocalDate today, Category category, long seed, int compId) {
+        Random rnd = new Random(seed);
         List<CompetitionData> data = List.of(
-                competition(9001, Torneo.APERTURA, category, today.minusWeeks(30), APERTURA_ROUNDS_PLAYED, today, rnd),
-                competition(9002, Torneo.CLAUSURA, category,
+                competition(compId, Torneo.APERTURA, category, today.minusWeeks(30), APERTURA_ROUNDS_PLAYED, today, rnd),
+                competition(compId + 1, Torneo.CLAUSURA, category,
                         today.minusWeeks(CLAUSURA_ROUNDS_PLAYED).plusDays(1), CLAUSURA_ROUNDS_PLAYED, today, rnd));
         ReportData report = StatsEngine.build(CLUB, category.label(), "Temporada " + today.getYear() + " · Apertura + Clausura",
                 data, today);
@@ -72,7 +80,7 @@ final class SampleData {
         for (int i = 0; i < TEAMS.length; i++) {
             teams.add(new TeamRef(base + i, i + 1, TEAMS[i][0], TEAMS[i][1]));
         }
-        String name = "TORNEO " + torneo.name() + " PRIMERA MASCULINO (EJEMPLO)";
+        String name = "TORNEO " + torneo.name() + " " + category.label().toUpperCase() + " (EJEMPLO)";
         Competition comp = new Competition(id, name, 3, 40, torneo, category, 1, teams, PERIOD_MINUTES);
 
         List<Match> matches = new ArrayList<>();
@@ -149,7 +157,13 @@ final class SampleData {
                 ev.add(event(rnd.nextInt(2 * PERIOD_MINUTES), rnd, EventType.BLUE_CARD, team, ""));
             }
             if (rnd.nextInt(3) == 0) {
-                ev.add(event(rnd.nextInt(2 * PERIOD_MINUTES), rnd, EventType.YELLOW_CARD, team, ""));
+                // La amarilla del club, a un jugador según el minuto (sin sacar más números al azar: el resto del
+                // ejemplo queda igual).
+                int abs = rnd.nextInt(2 * PERIOD_MINUTES);
+                MatchEvent e = event(abs, rnd, EventType.YELLOW_CARD, team, "");
+                int p = abs % PLAYERS.length;
+                ev.add(ours ? new MatchEvent(e.period(), e.minute(), e.second(), e.type(), e.teamId(), e.clubId(),
+                        e.teamCode(), PLAYERS[p], 1000 + p) : e);
             }
             for (int i = 0; i < 4 + rnd.nextInt(7); i++) {
                 ev.add(event(rnd.nextInt(2 * PERIOD_MINUTES), rnd, EventType.FOUL, team, ""));

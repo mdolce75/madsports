@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="|Informe ${r.club.name} - ${r.period}|">Informe del club</title>
+    <style th:inline="css">
+        @page {
+            size: A4;
+            margin: 16mm 14mm 18mm 14mm;
+            @bottom-left { content: "Informe elaborado por RinkMetrics · Datos: [(${r.federacion.name()})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
+        }
+        body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
+        h1 { font-size: 22pt; margin: 2px 0 0 0; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { font-size: 13pt; color: #12303a; text-transform: uppercase; letter-spacing: 1px;
+             border-bottom: 3px solid #0a7ea4; padding-bottom: 3px; margin: 14px 0 8px 0; }
+        h3 { font-size: 10pt; color: #fff; background: #0a7ea4; text-transform: uppercase; letter-spacing: .5px;
+             padding: 3px 8px; margin: 12px 0 5px 0; }
+        .brandline { font-size: 7.5pt; font-weight: bold; color: #0a7ea4; text-transform: uppercase; letter-spacing: 2px; }
+        .subtitle { font-size: 11pt; color: #e3e8f1; margin-top: 3px; }
+        .meta { font-size: 8.5pt; color: #93a1b8; margin-top: 4px; }
+        .header { background: #12303a; border-left: 8px solid #0a7ea4; padding: 12px 14px; margin-bottom: 12px; }
+        .header table { margin: 0; }
+        .header td { border: none; padding: 0; text-align: left; vertical-align: middle; }
+        .header td.crest { width: 78px; padding-right: 14px; }
+        .crest img { width: 64px; height: 64px; }
+        .rama { background: #12303a; color: #fff; padding: 10px 14px; margin: 0 0 10px 0; font-size: 16pt; font-weight: bold;
+                text-transform: uppercase; letter-spacing: 2px; border-left: 8px solid #0a7ea4; }
+        .rama small { display: block; font-size: 8.5pt; color: #93a1b8; letter-spacing: .5px; font-weight: normal; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        th { background: #12303a; color: #fff; font-weight: bold; font-size: 8.5pt; padding: 3px 4px; text-align: center; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 3px 4px; text-align: center; font-size: 8.5pt; }
+        td.l, th.l { text-align: left; }
+        tr.total td { border-top: 2px solid #12303a; background: #edf2f7; font-weight: bold; }
+        .kpis { width: 100%; margin: 4px 0 4px 0; }
+        .kpis td { border: none; border-top: 3px solid #0a7ea4; background: #f4f6fa; padding: 6px 2px; }
+        .kpi-v { font-size: 14pt; font-weight: bold; color: #12303a; }
+        .kpi-l { font-size: 7pt; color: #718096; text-transform: uppercase; letter-spacing: .5px; }
+        .card { display: inline-block; width: 7px; height: 10px; border-radius: 1px; vertical-align: middle; }
+        .card.y { background: #ecc94b; } .card.b { background: #3182ce; } .card.r { background: #e53e3e; }
+        .two { width: 100%; }
+        .two > tbody > tr > td { width: 50%; vertical-align: top; border: none; padding: 0 6px 0 0; text-align: left; }
+        .verdict { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
+        .v-FORTALEZA { background: #c6f6d5; color: #22543d; }
+        .v-DEBILIDAD { background: #fed7d7; color: #822727; }
+        .v-EN_LINEA { background: #e2e8f0; color: #2d3748; }
+        .v-MUESTRA_CHICA { background: #f7fafc; color: #718096; font-weight: normal; }
+        .analysis { background: #f7fafc; border-left: 4px solid #0a7ea4; padding: 8px 10px; margin: 6px 0; }
+        .analysis ul { margin: 3px 0 3px 16px; padding: 0; }
+        .analysis h4 { margin: 6px 0 2px 0; font-size: 8.5pt; color: #12303a; text-transform: uppercase; }
+        .muted { color: #718096; font-size: 8pt; }
+        .pos { width: 18px; font-weight: bold; color: #0a7ea4; }
+        .categoria { page-break-before: always; }
+        .nobreak { page-break-inside: avoid; }
+        h2, h3 { page-break-after: avoid; }
+        tr { page-break-inside: avoid; }
+    </style>
+    <style th:if="${sample}">
+        @page {
+            @top-center { content: "INFORME DE EJEMPLO — DATOS FICTICIOS"; font-size: 9pt; font-weight: bold; color: #c53030; font-family: sans-serif; }
+        }
+        .sample-banner { border: 2px solid #c53030; color: #c53030; padding: 6px 10px; margin-bottom: 10px; font-size: 9pt; }
+    </style>
+</head>
+<body>
+
+<div class="sample-banner" th:if="${sample}">
+    <b>Informe de ejemplo.</b> Club, rivales, jugadores y resultados son ficticios: sirven solo para mostrar el
+    formato y las secciones de un informe de RinkMetrics. Los informes reales usan los datos publicados por la
+    <span th:text="${r.federacion.name()}">FPP</span> en SIDGAD.
+</div>
+
+<div class="header">
+    <table>
+        <tr>
+            <td class="crest" th:if="${r.club.logo != null}"><img th:src="${r.club.logo}" th:alt="|Escudo de ${r.club.name}|"/></td>
+            <td>
+                <div class="brandline">RinkMetrics · Hockey sobre patines · Informe del club</div>
+                <h1 th:text="|${r.club.name} (${r.club.code})|">Club</h1>
+                <div class="subtitle" th:text="${r.period}">Temporada</div>
+                <div class="meta" th:text="|Informe elaborado por RinkMetrics · ${f.date(r.generatedOn)}|">fecha</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<h2>Contenido</h2>
+<table>
+    <tr><th class="l">Rama</th><th class="l">Categoría</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Efectividad</th>
+        <th>GF</th><th>GC</th></tr>
+    <th:block th:each="b : ${r.branches}">
+        <tr th:each="k : ${b.categories}" th:with="t=${k.record()}">
+            <td class="l" th:text="${b.name}"></td><td class="l" th:text="${k.name}"></td>
+            <td th:text="${t.played}"></td><td th:text="${t.won}"></td><td th:text="${t.drawn}"></td><td th:text="${t.lost}"></td>
+            <td th:text="${f.pct(t.effectiveness())}"></td><td th:text="${t.goalsFor}"></td><td th:text="${t.goalsAgainst}"></td>
+        </tr>
+    </th:block>
+</table>
+<p class="muted">El informe sigue por rama y, dentro de cada rama, por categoría: partidos, goles, faltas, tarjetas,
+    los mejores promedios de gol, libres y penales, la disciplina y las fortalezas y debilidades de cada una.
+    Efectividad: puntos obtenidos sobre los posibles (3 por partido).</p>
+<p class="muted" th:if="${!r.notPublished.isEmpty()}"
+   th:text="|SIDGAD no publicó: ${#strings.listJoin(r.notPublished, '; ')}.|">No publicado</p>
+
+<th:block th:each="b : ${r.branches}">
+<div class="categoria" th:each="k, it : ${b.categories}" th:with="t=${k.record()}">
+    <div class="rama" th:if="${it.first}">Rama <span th:text="${b.name}">Masculino</span>
+        <small th:text="|${b.categories.size()} ${b.categories.size() == 1 ? 'categoría' : 'categorías'}|">categorías</small></div>
+    <h2 th:text="|${k.name} ${b.name}|">Categoría</h2>
+
+    <h3>Partidos</h3>
+    <table class="kpis nobreak">
+        <tr>
+            <td><div class="kpi-v" th:text="${t.played}">0</div><div class="kpi-l">Jugados</div></td>
+            <td><div class="kpi-v" th:text="${t.won}">0</div><div class="kpi-l">Ganados</div></td>
+            <td><div class="kpi-v" th:text="${t.drawn}">0</div><div class="kpi-l">Empatados</div></td>
+            <td><div class="kpi-v" th:text="${t.lost}">0</div><div class="kpi-l">Perdidos</div></td>
+            <td><div class="kpi-v" th:text="${f.pct(t.effectiveness())}">0</div><div class="kpi-l">Efectividad</div></td>
+        </tr>
+    </table>
+
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <h3>Goles</h3>
+                <table>
+                    <tr><th class="l"></th><th>Total</th><th>Por partido</th></tr>
+                    <tr><td class="l">A favor</td><td th:text="${t.goalsFor}"></td><td th:text="${f.dec(t.goalsForPerGame())}"></td></tr>
+                    <tr><td class="l">En contra</td><td th:text="${t.goalsAgainst}"></td><td th:text="${f.dec(t.goalsAgainstPerGame())}"></td></tr>
+                    <tr class="total"><td class="l">Diferencia</td><td th:text="${t.goalDiff()}"></td>
+                        <td th:text="${f.dec(t.played == 0 ? 0 : 1.0 * t.goalDiff() / t.played)}"></td></tr>
+                </table>
+            </td>
+            <td>
+                <h3>Faltas</h3>
+                <table>
+                    <tr><th class="l"></th><th>Total</th><th>Por partido</th></tr>
+                    <tr><td class="l">Cometidas</td><td th:text="${k.foulsOwn()}"></td><td th:text="${f.dec(k.foulsOwnPerGame())}"></td></tr>
+                    <tr><td class="l">Recibidas</td><td th:text="${k.foulsRival()}"></td><td th:text="${f.dec(k.foulsRivalPerGame())}"></td></tr>
+                </table>
+                <p class="muted" th:text="|De las actas de ${k.sheetMatches()} de los ${t.played} partidos.|">actas</p>
+            </td>
+        </tr>
+    </table>
+
+    <div class="nobreak">
+        <h3>Tarjetas</h3>
+        <table>
+            <tr><th class="l"></th><th><span class="card y"></span> Amarillas</th><th><span class="card b"></span> Azules</th>
+                <th><span class="card r"></span> Rojas</th></tr>
+            <tr><td class="l">Cantidad</td><td th:text="${k.yellowCards()}"></td><td th:text="${k.blueCards()}"></td>
+                <td th:text="${k.redCards()}"></td></tr>
+            <tr><td class="l">Por partido</td><td th:text="${f.dec(k.yellowPerGame())}"></td>
+                <td th:text="${f.dec(k.bluePerGame())}"></td><td th:text="${f.dec(k.redPerGame())}"></td></tr>
+        </table>
+        <p class="muted">Las amarillas salen de las actas (SIDGAD no las incluye en sus estadísticas): se promedian
+            sobre los partidos con acta. Azules y rojas, sobre todos los partidos jugados.</p>
+    </div>
+
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <h3>Top 3 · Promedio de gol</h3>
+                <table th:if="${!k.topScorers().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th>Goles</th><th>PJ</th><th>Promedio</th></tr>
+                    <tr th:each="x, i : ${k.topScorers()}">
+                        <td class="pos" th:text="${i.count}">1</td><td class="l" th:text="${x.player.name}"></td>
+                        <td th:text="${x.count}"></td><td th:text="${x.of}"></td><td th:text="${f.dec(x.value)}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topScorers().isEmpty()}">Sin goles de jugadores en esta categoría.</p>
+            </td>
+            <td>
+                <h3>Top 3 · Disciplina</h3>
+                <table th:if="${!k.topDiscipline().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th><span class="card y"></span></th><th><span class="card b"></span></th>
+                        <th><span class="card r"></span></th><th>Total</th></tr>
+                    <tr th:each="p, i : ${k.topDiscipline()}">
+                        <td class="pos" th:text="${i.count}">1</td><td class="l" th:text="${p.name}"></td>
+                        <td th:text="${p.yellowCards}"></td><td th:text="${p.blueCards}"></td><td th:text="${p.redCards}"></td>
+                        <td th:text="${p.cards()}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topDiscipline().isEmpty()}">Sin tarjetas en esta categoría.</p>
+            </td>
+        </tr>
+    </table>
+
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <h3>Top 3 · Libres directos</h3>
+                <table th:if="${!k.topDirectFree().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th>Convertidos</th><th>Efectividad</th></tr>
+                    <tr th:each="x, i : ${k.topDirectFree()}">
+                        <td class="pos" th:text="${i.count}">1</td><td class="l" th:text="${x.player.name}"></td>
+                        <td th:text="|${x.count} de ${x.of}|"></td><td th:text="${f.pct(x.value)}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topDirectFree().isEmpty()}">Sin libres directos a favor.</p>
+            </td>
+            <td>
+                <h3>Top 3 · Penales</h3>
+                <table th:if="${!k.topPenalties().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th>Convertidos</th><th>Efectividad</th></tr>
+                    <tr th:each="x, i : ${k.topPenalties()}">
+                        <td class="pos" th:text="${i.count}">1</td><td class="l" th:text="${x.player.name}"></td>
+                        <td th:text="|${x.count} de ${x.of}|"></td><td th:text="${f.pct(x.value)}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topPenalties().isEmpty()}">Sin penales a favor.</p>
+            </td>
+        </tr>
+    </table>
+
+    <h3>Fortalezas y debilidades</h3>
+    <table class="nobreak" th:if="${!k.team.indicators.isEmpty()}">
+        <tr><th class="l">Área</th><th class="l">Indicador</th><th>Equipo</th><th>Referencia</th><th>Evaluación</th></tr>
+        <tr th:each="i : ${k.team.indicators}">
+            <td class="l" th:text="${i.area}"></td>
+            <td class="l" th:text="${i.metric}"></td>
+            <td th:text="${f.indicator(i.value, i.unit)}"></td>
+            <td th:text="${i.unit.name() == 'DIFF' ? i.referenceLabel : i.referenceLabel + ' ' + f.indicator(i.reference, i.unit)}"></td>
+            <td><span th:class="|verdict v-${i.verdict}|" th:text="${i.verdict.label()}"></span></td>
+        </tr>
+    </table>
+    <div class="analysis nobreak" th:with="a=${k.analysis}">
+        <p th:text="${a.summary}">Resumen</p>
+        <table class="two">
+            <tr>
+                <td>
+                    <h4>Fortalezas</h4>
+                    <ul><li th:each="s : ${a.strengths}" th:text="${s}"></li></ul>
+                    <p class="muted" th:if="${a.strengths.isEmpty()}">Sin datos suficientes.</p>
+                </td>
+                <td>
+                    <h4>Aspectos a mejorar</h4>
+                    <ul><li th:each="s : ${a.weaknesses}" th:text="${s}"></li></ul>
+                    <p class="muted" th:if="${a.weaknesses.isEmpty()}">Sin datos suficientes.</p>
+                </td>
+            </tr>
+        </table>
+        <p class="muted" th:text="|Análisis: ${a.source}.|">Fuente</p>
+    </div>
+</div>
+</th:block>
+
+<p class="muted">Fortaleza o debilidad: más de un 10% mejor o peor que la referencia (por tiempo, más de 0,25 goles
+    por partido de diferencia; goleo: más del 35% de los goles en un jugador es dependencia, hasta 25% es reparto).
+    Con menos de 3 partidos o intentos, la muestra es chica para evaluar. Los arqueros no entran en el promedio de
+    gol; sí en libres, penales y disciplina.</p>
+<p class="muted" th:text="|Fuentes: competiciones de la ${r.federacion.name()} en SIDGAD (${r.sources.size()}).|">Fuentes</p>
+
+</body>
+</html>

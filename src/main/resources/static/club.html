@@ -48,7 +48,8 @@
         <div class="field">
             <label for="club"><span class="num"><i>2</i></span>Club</label>
             <select id="club" required disabled><option>Cargando catálogo…</option></select>
-            <p class="hint">Tu club: los informes son de sus equipos.</p>
+            <p class="hint">Tu club: el informe incluye todos sus equipos, por rama (Masculino y Femenino) y, dentro
+                de cada rama, por categoría.</p>
         </div>
 
         <div class="field">
@@ -59,20 +60,10 @@
                 <option value="CLAUSURA">Clausura</option>
                 <option value="ULTIMOS_5">Últimos 5 partidos</option>
             </select>
-            <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos: récord, resultados, tarjetas y análisis por
-                minuto de esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
+            <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos de cada categoría: récord, goles, faltas y
+                tarjetas de esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
         </div>
-
-        <div class="grid2">
-            <div class="field">
-                <label for="rama"><span class="num"><i>4</i></span>Rama</label>
-                <select id="rama" required disabled></select>
-            </div>
-            <div class="field">
-                <label for="categoria"><span class="num"><i>5</i></span>Categoría</label>
-                <select id="categoria" required disabled></select>
-            </div>
-        </div>
+        <p class="hint" id="categorias"></p>
 
         <button class="go" id="go" type="submit" disabled>Generar informe</button>
 
@@ -100,36 +91,24 @@
         return catalog.clubs.find(c => String(c.id) === $("club").value);
     }
 
-    // Club → Rama → Categoría: solo se ofrecen las ramas en que el club tiene equipo y, dentro de la rama,
-    // sus categorías (con "Infantil A" / "Infantil B" si tiene dos equipos).
-    function fillBranches() {
+    // Qué incluye el informe: las categorías del club en cada rama.
+    function showCategories() {
         const club = selectedClub();
-        const sel = $("rama");
-        sel.innerHTML = "";
-        const branches = club ? ["MASCULINO", "FEMENINO"].filter(b => club.categories.some(c => c.branches.includes(b))) : [];
-        branches.forEach(b => sel.add(new Option(BRANCH_LABEL[b] || b, b)));
-        sel.disabled = branches.length === 0;
-        fillCategories();
-    }
-
-    function fillCategories() {
-        const club = selectedClub();
-        const branch = $("rama").value;
-        const sel = $("categoria");
-        sel.innerHTML = "";
-        const options = club && branch ? club.categories.filter(c => c.branches.includes(branch)) : [];
-        options.forEach(c => sel.add(new Option(c.label, c.key)));
-        sel.disabled = options.length === 0;
-        $("go").disabled = options.length === 0;
+        const parts = club ? ["MASCULINO", "FEMENINO"].map(b => {
+            const cats = club.categories.filter(c => c.branches.includes(b)).map(c => c.label);
+            return cats.length ? `${BRANCH_LABEL[b]}: ${cats.join(", ")}` : null;
+        }).filter(Boolean) : [];
+        $("categorias").textContent = parts.length ? "Incluye " + parts.join(" · ") + ". Tarda unos minutos: lee las actas "
+            + "de todas las categorías." : "";
+        $("go").disabled = parts.length === 0;
     }
 
     // Carga el catálogo del año (sin año: el más reciente con datos) y arma los selectores.
     async function loadCatalog(year) {
-        ["club", "categoria", "rama"].forEach(id => { $(id).disabled = true; });
+        $("club").disabled = true;
         $("go").disabled = true;
         $("club").innerHTML = "<option>Cargando catálogo…</option>";
-        $("categoria").innerHTML = "";
-        $("rama").innerHTML = "";
+        $("categorias").textContent = "";
         try {
             // El catálogo es el de la federación del usuario (FPP o AMP).
             const res = await fetch("/api/catalogo?federacion=" + me.federacion + (year ? "&anio=" + year : ""));
@@ -155,7 +134,7 @@
                 return;
             }
             sel.add(new Option(`${mine.name} (${mine.code})`, mine.id));
-            fillBranches();
+            showCategories();
         } catch (e) {
             status("No se pudo cargar el catálogo: " + e.message, true);
         }
@@ -169,7 +148,6 @@
     }
 
     $("anio").addEventListener("change", () => { status(""); loadCatalog($("anio").value); });
-    $("rama").addEventListener("change", fillCategories);
     $("periodo").addEventListener("change", () => { $("periodo-hint").hidden = $("periodo").value !== "ULTIMOS_5"; });
     $("form").addEventListener("submit", async ev => {
         ev.preventDefault();
@@ -180,8 +158,6 @@
         try {
             const body = await postJson("/api/informes", {
                 clubId: Number($("club").value),
-                categoria: $("categoria").value,
-                rama: $("rama").value,
                 periodo: $("periodo").value,
                 anio: Number($("anio").value)
             });

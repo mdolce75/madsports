@@ -7,7 +7,6 @@ import com.rinkmetrics.catalog.CatalogService.CatalogView;
 import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -33,13 +32,17 @@ import java.util.UUID;
 public class ApiController {
 
     /**
-     * @param categoria INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA o PRIMERA
+     * @param categoria INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA o PRIMERA ("INFANTIL:B" si el club tiene dos
+     *                  equipos); sin categoría ni rama, el informe del club completo (todas sus ramas y categorías)
      * @param rama      MASCULINO o FEMENINO
      * @param periodo   APERTURA, CLAUSURA, TEMPORADA (Apertura + Clausura, por defecto) o ULTIMOS_5
      * @param anio      año (p. ej. 2026); si falta, el más reciente con datos
      */
-    public record ReportRequest(@Positive int clubId, @NotBlank String categoria, @NotBlank String rama, String periodo,
-                                Integer anio) {
+    public record ReportRequest(@Positive int clubId, String categoria, String rama, String periodo, Integer anio) {
+
+        boolean clubCompleto() {
+            return (categoria == null || categoria.isBlank()) && (rama == null || rama.isBlank());
+        }
     }
 
     public record JobView(UUID id, ReportService.Status estado, String mensaje, String pdfUrl) {
@@ -80,9 +83,16 @@ public class ApiController {
         if (u.getClubId() != req.clubId()) {
             throw new AccessDeniedException("Solo podés pedir informes de tu club (" + u.getClubNombre() + ").");
         }
-        ReportService.Job job = reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(),
-                ReportService.Scope.parse(req.periodo()), catalog.checkYear(req.anio()), u.federacion()),
-                u.getUsuario());
+        ReportService.Scope scope = ReportService.Scope.parse(req.periodo());
+        int year = catalog.checkYear(req.anio());
+        if (!req.clubCompleto() && (req.categoria() == null || req.categoria().isBlank()
+                || req.rama() == null || req.rama().isBlank())) {
+            throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
+        }
+        ReportService.Job job = req.clubCompleto()
+                ? reports.submitClub(req.clubId(), scope, year, u.federacion(), u.getUsuario())
+                : reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(), scope, year,
+                        u.federacion()), u.getUsuario());
         usuarios.contarInforme(u.getUsuario());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }

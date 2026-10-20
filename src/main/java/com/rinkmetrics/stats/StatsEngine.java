@@ -27,6 +27,7 @@ import com.rinkmetrics.stats.ReportData.TorneoLine;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -192,7 +193,18 @@ public final class StatsEngine {
         // por partido): sus porcentajes y promedios se calculan contra todos los partidos jugados, no contra el recorte.
         int seasonPlayed = allPlayed.size();
         int seasonGoals = allPlayed.stream().mapToInt(m -> ownGoals(m, entries)).sum();
-        List<PlayerLine> players = players(playersById, seasonGoals);
+        // Amarillas por jugador: solo las actas las traen (la tabla de SIDGAD no).
+        Map<Integer, Integer> yellows = new HashMap<>();
+        for (Entry e : entries) {
+            for (Match m : e.data().matches()) {
+                if (m.played() && m.involves(e.team().teamId())) {
+                    e.data().sheets().getOrDefault(m.idp(), List.of()).stream()
+                            .filter(ev -> ev.type() == EventType.YELLOW_CARD && ev.playerId() > 0)
+                            .forEach(ev -> yellows.merge(ev.playerId(), 1, Integer::sum));
+                }
+            }
+        }
+        List<PlayerLine> players = players(playersById, seasonGoals, yellows);
         SetPieces setPieces = new SetPieces(
                 players.stream().mapToInt(PlayerLine::directFreeScored).sum(),
                 players.stream().mapToInt(PlayerLine::directFreeTaken).sum(),
@@ -216,10 +228,10 @@ public final class StatsEngine {
         List<PlayerLine> scorers = players.stream().filter(p -> !goalkeepers.contains(p.playerId())).toList();
         TeamReport base = new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
                 biggestWin, worstLoss, scorers, setPieces, discipline, rivals(results), byTorneo, timeProfile, List.of(),
-                fouls);
+                fouls, players);
         return new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
                 biggestWin, worstLoss, scorers, setPieces, discipline, base.rivals(), byTorneo, timeProfile,
-                StrengthsAnalysis.evaluate(base, league), fouls);
+                StrengthsAnalysis.evaluate(base, league), fouls, players);
     }
 
     /**
@@ -488,7 +500,8 @@ public final class StatsEngine {
                 home, home ? m.awayName() : m.homeName(), gf, ga, outcome, m.venue());
     }
 
-    private static List<PlayerLine> players(Map<Integer, List<PlayerStats>> byId, int teamGoals) {
+    private static List<PlayerLine> players(Map<Integer, List<PlayerStats>> byId, int teamGoals,
+                                            Map<Integer, Integer> yellows) {
         List<PlayerLine> lines = new ArrayList<>();
         for (List<PlayerStats> ps : byId.values()) {
             PlayerStats first = ps.getFirst();
@@ -501,6 +514,7 @@ public final class StatsEngine {
                     ps.stream().mapToInt(PlayerStats::penaltiesTaken).sum(),
                     ps.stream().mapToInt(PlayerStats::directFreeScored).sum(),
                     ps.stream().mapToInt(PlayerStats::directFreeTaken).sum(),
+                    yellows.getOrDefault(first.playerId(), 0),
                     ps.stream().mapToInt(PlayerStats::blueCards).sum(),
                     ps.stream().mapToInt(PlayerStats::redCards).sum()));
         }

@@ -115,6 +115,8 @@ public class ReportService {
         private volatile String message = "En cola";
         private volatile byte[] pdf;
         private volatile String fileName;
+        /** En el informe del club: la categoría que se está armando ("Categoría 3 de 12 · Juvenil Masculino"). */
+        private volatile String stage;
 
         Job(Request request, String owner) {
             this.request = request;
@@ -130,7 +132,7 @@ public class ReportService {
 
         void update(Status status, String message) {
             this.status = status;
-            this.message = message;
+            this.message = stage == null ? message : stage + ": " + message;
         }
     }
 
@@ -183,6 +185,99 @@ public class ReportService {
         jobs.put(job.id(), job);
         executor.submit(() -> run(job, club, category, option));
         return job;
+    }
+
+    /** Una categoría del club (un equipo) en una rama, para el informe del club completo. */
+    record ClubCategory(Category category, CategoryOption option, String levelLabel) {
+    }
+
+    /**
+     * Informe del club completo: todas sus categorías, primero las masculinas y después las femeninas, en el período.
+     * Valida (falla rápido) y encola; cada categoría se arma como su informe y lleva su análisis.
+     */
+    public Job submitClub(int clubId, Scope scope, int year, Federacion fed, String owner) {
+        if (!catalog.available(fed, year)) {
+            throw new IllegalArgumentException(CatalogService.unavailableMessage(fed, year));
+        }
+        ClubView club = catalog.club(fed, clubId, year);
+        List<ClubCategory> categories = clubCategories(club, fed, scope, year);
+        if (categories.isEmpty()) {
+            throw new IllegalArgumentException(club.name() + " no tiene equipos"
+                    + (scope.torneo() == null ? "" : " en el " + scope.torneo().label()) + " en " + year + ".");
+        }
+        Job job = new Job(new Request(clubId, null, null, scope, year, fed), owner);
+        jobs.put(job.id(), job);
+        executor.submit(() -> runClub(job, club, categories));
+        return job;
+    }
+
+    /** Las categorías del club que juegan en el período: Masculino y después Femenino, cada una de Infantil a Primera. */
+    List<ClubCategory> clubCategories(ClubView club, Federacion fed, Scope scope, int year) {
+        List<ClubCategory> out = new ArrayList<>();
+        for (String branch : List.of("MASCULINO", "FEMENINO")) {
+            for (CatalogService.LevelView l : club.categories()) {
+                if (!l.branches().contains(branch)) {
+                    continue;
+                }
+                CategoryOption option = CategoryOption.parse(l.key());
+                Category category = catalog.category(fed, option.level(), branch);
+                if (!catalog.competitionsFor(fed, club.id(), category, scope.torneo(), year).isEmpty()) {
+                    out.add(new ClubCategory(category, option, l.label()));
+                }
+            }
+        }
+        return out;
+    }
+
+    private void runClub(Job job, ClubView club, List<ClubCategory> categories) {
+        try {
+            Map<String, List<ClubReport.CategoryBlock>> byBranch = new LinkedHashMap<>();
+            List<String> notPublished = new ArrayList<>();
+            List<ReportData.Source> sources = new ArrayList<>();
+            String logo = null;
+            String period = null;
+            for (int i = 0; i < categories.size(); i++) {
+                ClubCategory c = categories.get(i);
+                String label = label(c.category(), c.option());
+                job.stage = "Categoría " + (i + 1) + " de " + categories.size() + " · " + label;
+                ReportData data = extract(job, club, c.category(), c.option());
+                if (data.teams().isEmpty()) {
+                    continue;
+                }
+                job.update(Status.ANALIZANDO, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
+                AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
+                byBranch.computeIfAbsent(c.category().branchLabel(), k -> new ArrayList<>())
+                        .add(new ClubReport.CategoryBlock(c.levelLabel(), data, data.teams().getFirst(), analysis));
+                data.notPublished().forEach(n -> notPublished.add(label + ": " + n));
+                sources.addAll(data.sources());
+                logo = logo != null ? logo : data.club().logo();
+                period = period != null ? period : data.torneo();
+            }
+            job.stage = null;
+            job.update(Status.GENERANDO_PDF, "Generando el PDF");
+            ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(), logo);
+            ClubReport report = new ClubReport(info, clubPeriod(job.request()), LocalDate.now(clock),
+                    job.request().federacion(),
+                    byBranch.entrySet().stream().map(e -> new ClubReport.Branch(e.getKey(), e.getValue())).toList(),
+                    notPublished, sources);
+            job.pdf = renderer.clubPdf(report);
+            job.fileName = ("informe-club-" + club.code() + "-" + job.request().scope().name() + "-"
+                    + job.request().year() + ".pdf").toLowerCase().replaceAll("[^a-z0-9.-]+", "-");
+            job.update(Status.LISTO, "Informe listo");
+        } catch (RuntimeException e) {
+            log.error("Falló el informe del club {}", job.id(), e);
+            job.stage = null;
+            job.update(Status.ERROR, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
+        }
+    }
+
+    /** "Temporada 2026 · Apertura + Clausura", "Temporada 2026 · Apertura", "Últimos 5 partidos". */
+    static String clubPeriod(Request r) {
+        return switch (r.scope()) {
+            case ULTIMOS_5 -> "Temporada " + r.year() + " · Últimos 5 partidos de cada categoría";
+            default -> "Temporada " + r.year() + " · " + (r.scope().torneo() == null ? "Apertura + Clausura"
+                    : r.scope().torneo().label());
+        };
     }
 
     /** "Infantil B Femenino" (o "Infantil Femenino" si el club tiene un solo equipo). */
