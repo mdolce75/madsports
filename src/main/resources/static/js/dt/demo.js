@@ -71,10 +71,36 @@ const PARTIDOS = [
         estado: "PENDIENTE"},
 ];
 
+// El club de la demo en SIDGAD: sus categorías y el plantel de cada una (los jugadores de sus actas), para armar un
+// equipo desde una categoría. En Juvenil juega también Santiago Herrera, que ya está en Primera.
+const sidgad = (id, numero, nombres, apellido, arquero = false) =>
+    ({id, numero, nombre: nombres + " " + apellido, nombres, apellido, arquero});
+const CLUB = {
+    categorias: [
+        {clave: "PRIMERA", rama: "MASCULINO", nombre: "Primera Masculino"},
+        {clave: "JUVENIL", rama: "MASCULINO", nombre: "Juvenil Masculino"},
+        {clave: "INFANTIL", rama: "FEMENINO", nombre: "Infantil Femenino"},
+    ],
+    planteles: {
+        "PRIMERA|MASCULINO": PLANTEL.map(j => sidgad(j.id, j.numero, j.nombres, j.apellido, j.arquero)),
+        "JUVENIL|MASCULINO": [
+            sidgad(3001, "1", "Gonzalo", "Vera", true), sidgad(3002, "2", "Ramiro", "Ortiz"),
+            sidgad(3003, "4", "Iván", "Luna"), sidgad(3004, "6", "Thiago", "Romero"),
+            sidgad(3005, "8", "Lautaro", "Molina"), sidgad(3006, "11", "Benjamín", "Suárez"),
+            sidgad(108, "10", "Santiago", "Herrera"), sidgad(3007, "13", "Valentín", "Acuña"),
+        ],
+        "INFANTIL|FEMENINO": [
+            sidgad(4001, "1", "Sofía", "Méndez", true), sidgad(4002, "3", "Martina", "Rojas"),
+            sidgad(4003, "5", "Camila", "Torres"), sidgad(4004, "7", "Julieta", "Ibáñez"),
+            sidgad(4005, "9", "Lucía", "Farías"),
+        ],
+    },
+};
+
 /** Instala la demo: los pedidos a /api/ los contesta la API simulada; el resto (fuentes, estilos) va a la red. */
 export function instalar() {
-    const api = crearApi({sesion: SESION, equipos: [{id: 1, nombre: "Primera Masculino"}], jugadores: PLANTEL,
-        partidos: PARTIDOS});
+    const api = crearApi({sesion: SESION, equipos: [{id: 1, nombre: "Primera Masculino", categoriaSidgad: "PRIMERA",
+        ramaSidgad: "MASCULINO"}], jugadores: PLANTEL, partidos: PARTIDOS, club: CLUB});
     const red = window.fetch.bind(window);
     window.fetch = async (input, init = {}) => {
         const url = typeof input === "string" ? input : input.url;

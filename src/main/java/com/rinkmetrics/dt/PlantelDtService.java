@@ -1,6 +1,14 @@
 package com.rinkmetrics.dt;
 
 import com.rinkmetrics.account.Usuario;
+import com.rinkmetrics.catalog.CatalogService;
+import com.rinkmetrics.catalog.CatalogService.ClubView;
+import com.rinkmetrics.catalog.CatalogService.LevelView;
+import com.rinkmetrics.dt.EquipoDtService.EquipoView;
+import com.rinkmetrics.player.RosterService;
+import com.rinkmetrics.player.RosterService.PlantelJugador;
+import com.rinkmetrics.player.RosterService.RosterPlayer;
+import com.rinkmetrics.sidgad.model.Competition;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -9,18 +17,25 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.text.Collator;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
 /**
  * Jugadores del DT (el ABM de jugadores de la sección Equipo): nombre, apellido, número, si es arquero y en qué equipos
  * juega (uno o más). El plantel de un equipo son sus jugadores activos; no sale de SIDGAD. Las acciones nombran al
- * jugador por su id.
+ * jugador por su id. Un equipo se puede armar desde una categoría del club en SIDGAD: su plantel (los jugadores de las
+ * actas del equipo) entra entero, salvo los que el DT deja afuera, que quedan como "no incluidos" para sumarlos después.
  */
 @Service
 public class PlantelDtService {
@@ -47,15 +62,40 @@ public class PlantelDtService {
      * @param id      el id con el que lo nombran las acciones
      * @param nombre  nombre y apellido, para mostrar
      * @param nombres solo el nombre (para editarlo)
-     * @param equipos ids de los equipos en que juega
+     * @param equipos    ids de los equipos en que juega
+     * @param pendientes ids de los equipos en cuyo plantel de SIDGAD figura pero no fue incluido
      */
     public record JugadorPlantel(int id, String numero, String nombre, String nombres, String apellido,
-                                 boolean arquero, List<Long> equipos) {
+                                 boolean arquero, List<Long> equipos, List<Long> pendientes) {
 
         static JugadorPlantel of(JugadorDt j) {
             return new JugadorPlantel(j.getJugadorId(), j.getNumero() == null ? "" : j.getNumero(), j.completo(),
-                    j.getNombre(), j.getApellido(), j.isArquero(), j.getEquipos().stream().sorted().toList());
+                    j.getNombre(), j.getApellido(), j.isArquero(), j.getEquipos().stream().sorted().toList(),
+                    j.getPendientes().stream().sorted().toList());
         }
+    }
+
+    /**
+     * Una categoría del club del DT en SIDGAD (un equipo del club), para armar un equipo con su plantel.
+     *
+     * @param clave  nivel y, si el club tiene más de un equipo, la letra: "PRIMERA" o "INFANTIL:B"
+     * @param rama   MASCULINO o FEMENINO
+     * @param nombre "Primera Masculino", "Infantil B Femenino"
+     */
+    public record CategoriaClub(String clave, String rama, String nombre) {
+    }
+
+    /**
+     * Un jugador del plantel de SIDGAD de una categoría del club: los que figuran en las actas del equipo.
+     *
+     * @param numero  su número más usado en las actas (vacío si no figura)
+     * @param arquero figura como arquero en sus planillas
+     */
+    public record JugadorSidgad(int id, String numero, String nombre, String nombres, String apellido, boolean arquero) {
+    }
+
+    /** Equipo nuevo: nombre y, si sale de SIDGAD, la categoría del club y los jugadores de su plantel que no van. */
+    public record NuevoEquipo(String nombre, String categoria, String rama, List<Integer> excluidos) {
     }
 
     /** Alta o cambio de un jugador: sus datos y los equipos en que juega (al menos uno). */
@@ -64,15 +104,127 @@ public class PlantelDtService {
 
     private final JugadorDtRepository jugadores;
     private final EquipoDtService equipos;
+    private final CatalogService catalog;
+    private final RosterService roster;
     private final Clock clock;
     private final TransactionTemplate tx;
 
-    public PlantelDtService(JugadorDtRepository jugadores, EquipoDtService equipos, Clock clock,
-                            PlatformTransactionManager transacciones) {
+    public PlantelDtService(JugadorDtRepository jugadores, EquipoDtService equipos, CatalogService catalog,
+                            RosterService roster, Clock clock, PlatformTransactionManager transacciones) {
         this.jugadores = jugadores;
         this.equipos = equipos;
+        this.catalog = catalog;
+        this.roster = roster;
         this.clock = clock;
         this.tx = new TransactionTemplate(transacciones);
+    }
+
+    // ---------- Equipos desde SIDGAD ----------
+
+    /** Las categorías del club del DT en SIDGAD (cada equipo del club en cada rama), primero las masculinas. */
+    public List<CategoriaClub> categoriasDelClub(Usuario u) {
+        ClubView club = catalog.club(u.federacion(), u.getClubId(), catalog.defaultYear());
+        List<CategoriaClub> out = new ArrayList<>();
+        for (String rama : List.of("MASCULINO", "FEMENINO")) {
+            for (LevelView lv : club.categories()) {
+                if (lv.branches().contains(rama)) {
+                    out.add(new CategoriaClub(lv.key(), rama,
+                            lv.label() + " " + new Competition.Category("", rama).branchLabel()));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** El plantel de SIDGAD de la categoría del club: los jugadores de las actas del equipo, por apellido. */
+    public List<JugadorSidgad> plantelSidgad(Usuario u, String categoria, String rama) {
+        CategoriaClub c = categoriaDelClub(u, categoria, rama);
+        int year = catalog.defaultYear();
+        Map<Integer, PlantelJugador> datos = roster.plantel(u.federacion(), u.getClubId(), year, c.clave(), c.rama())
+                .stream().collect(Collectors.toMap(PlantelJugador::id, Function.identity(), (a, b) -> a));
+        return roster.players(u.federacion(), u.getClubId(), year, c.clave(), c.rama()).stream()
+                .map(p -> {
+                    PlantelJugador d = datos.get(p.id());
+                    return new JugadorSidgad(p.id(), d == null ? "" : numeroSidgad(d.numero()), p.name(),
+                            corto(p.firstName()), corto(p.lastName()), d != null && d.arquero());
+                })
+                .sorted(Comparator.comparing(JugadorSidgad::apellido, ALFABETICO)
+                        .thenComparing(JugadorSidgad::nombres, ALFABETICO))
+                .toList();
+    }
+
+    private CategoriaClub categoriaDelClub(Usuario u, String categoria, String rama) {
+        String clave = categoria == null ? "" : categoria.trim().toUpperCase(Locale.ROOT);
+        String r = rama == null ? "" : rama.trim().toUpperCase(Locale.ROOT);
+        return categoriasDelClub(u).stream().filter(c -> c.clave().equals(clave) && c.rama().equals(r)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Esa categoría no es de tu club."));
+    }
+
+    /**
+     * Crea un equipo. Con una categoría del club, se arma con su plantel de SIDGAD: entran todos sus jugadores salvo
+     * los {@code excluidos}, que quedan como "no incluidos" en el equipo (figuran en la lista y se suman después). Un
+     * jugador que el DT ya tiene (por otro equipo) no se duplica: suma este equipo. Sin nombre, el de la categoría.
+     */
+    @Transactional
+    public EquipoView crearEquipo(Usuario u, NuevoEquipo n) {
+        if (n.categoria() == null || n.categoria().isBlank()) {
+            return equipos.crear(u, n.nombre());
+        }
+        CategoriaClub c = categoriaDelClub(u, n.categoria(), n.rama());
+        List<JugadorSidgad> plantel = plantelSidgad(u, c.clave(), c.rama());
+        String nombre = n.nombre() == null || n.nombre().isBlank() ? c.nombre() : n.nombre();
+        Equipo e = equipos.nuevo(u, nombre, c.clave(), c.rama());
+        Set<Integer> fuera = new HashSet<>(n.excluidos() == null ? List.of() : n.excluidos());
+        Set<String> numerosUsados = new HashSet<>();
+        // Primero los incluidos: si dos tienen el mismo número, se lo queda uno que juega.
+        List<JugadorSidgad> orden = plantel.stream()
+                .sorted(Comparator.comparing((JugadorSidgad p) -> fuera.contains(p.id()))).toList();
+        for (JugadorSidgad p : orden) {
+            boolean incluido = !fuera.contains(p.id());
+            JugadorDt j = jugadores.findByUsuarioIdAndJugadorId(u.getId(), p.id()).orElse(null);
+            if (j == null) {
+                // El número, si no lo usa ya otro del plantel (dos con el mismo número más usado): el segundo, sin número.
+                String numero = p.numero().isEmpty() || !numerosUsados.add(p.numero()) ? null : p.numero();
+                j = new JugadorDt(u.getId(), p.id(), p.nombres(), p.apellido(), numero, p.arquero(),
+                        incluido ? List.of(e.getId()) : List.of(), clock.instant());
+            } else {
+                if (!j.isActivo()) {
+                    j.reactivar();
+                }
+                if (j.getNumero() != null) {
+                    numerosUsados.add(j.getNumero());
+                }
+            }
+            if (incluido) {
+                j.incluirEn(e.getId());
+            } else {
+                j.dejarPendienteEn(e.getId());
+            }
+            jugadores.save(j);
+        }
+        return equipos.lista(u).stream().filter(v -> v.id().equals(e.getId())).findFirst().orElseThrow();
+    }
+
+    /** Suma al equipo a un jugador "no incluido" (o a cualquiera de sus jugadores), si su número está libre ahí. */
+    @Transactional
+    public JugadorPlantel incluir(Usuario u, int jugadorId, Long equipoId) {
+        JugadorDt j = suyo(u, jugadorId);
+        Equipo e = equipos.equipo(u, equipoId);
+        verificarNumero(u, Set.of(e.getId()), j.getNumero(), jugadorId);
+        j.incluirEn(e.getId());
+        return JugadorPlantel.of(j);
+    }
+
+    /** Número de las actas ("07") como lo guarda el DT ("7"); vacío si no es un número de camiseta. */
+    private static String numeroSidgad(String n) {
+        String t = n == null ? "" : n.trim();
+        return NUMERO.matcher(t).matches() ? String.valueOf(Integer.parseInt(t)) : "";
+    }
+
+    /** Nombre o apellido de SIDGAD, hasta 40 letras (lo que guarda el plantel). */
+    private static String corto(String s) {
+        String t = s == null ? "" : s.trim().replaceAll("\\s+", " ");
+        return t.length() > 40 ? t.substring(0, 40).trim() : t;
     }
 
     /** Todos los jugadores activos del DT, por apellido. */

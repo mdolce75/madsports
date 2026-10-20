@@ -28,14 +28,17 @@ const fechaCorta = f => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`;
 /**
  * Crea la API. sesion: la de /api/sesion (con club y suscripcion: equiposMax y partidosPorMes); datos iniciales:
  * equipos [{id, nombre}], jugadores [{id, numero, nombres, apellido, arquero, equipos}] y partidos (con sus acciones;
- * desde = cuándo arrancó el reloj, en ms). ahora: el reloj (ms), para los tests.
+ * desde = cuándo arrancó el reloj, en ms). club: el club en SIDGAD, para armar equipos desde una categoría:
+ * {categorias: [{clave, rama, nombre}], planteles: {"CLAVE|RAMA": [{id, numero, nombre, nombres, apellido, arquero}]}}.
+ * ahora: el reloj (ms), para los tests.
  */
-export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], ahora = () => Date.now()}) {
+export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], club = {categorias: [], planteles: {}},
+                          ahora = () => Date.now()}) {
     const hoy = () => { const d = new Date(ahora()); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
     let proximoEquipo = Math.max(0, ...equipos.map(e => e.id)) + 1;
     let proximoPartido = Math.max(0, ...partidos.map(p => p.id)) + 1;
     let creados = 0;
-    jugadores = jugadores.map(j => Object.assign({activo: true}, j, {numero: j.numero || null}));
+    jugadores = jugadores.map(j => Object.assign({activo: true, pendientes: []}, j, {numero: j.numero || null}));
     partidos = partidos.map(p => Object.assign({idp: null, torneo: null, tiempo: 1, segundos: 0, desde: null,
         cerrado: null, acciones: []}, p));
 
@@ -48,7 +51,8 @@ export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], a
     function equipoView(e) {
         const ps = partidos.filter(p => p.equipoId === e.id && finalizado(p));
         return {id: e.id, nombre: e.nombre, jugados: ps.length, ganados: ps.filter(p => gf(p) > gc(p)).length,
-            empatados: ps.filter(p => gf(p) === gc(p)).length, perdidos: ps.filter(p => gf(p) < gc(p)).length};
+            empatados: ps.filter(p => gf(p) === gc(p)).length, perdidos: ps.filter(p => gf(p) < gc(p)).length,
+            categoriaSidgad: e.categoriaSidgad || null, ramaSidgad: e.ramaSidgad || null};
     }
 
     /** El equipo pedido; sin id, el primero. */
@@ -71,24 +75,86 @@ export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], a
         return n;
     }
 
+    /** Equipo nuevo: con nombre libre, o desde una categoría del club con su plantel de SIDGAD (menos los excluidos). */
     function crearEquipo(body) {
-        const n = nombreEquipo(body.nombre, null);
+        if (body.categoria) return crearEquipoDesdeSidgad(body);
+        return json(201, equipoView(nuevoEquipo(body.nombre, null, null)));
+    }
+
+    function nuevoEquipo(nombre, categoria, rama) {
+        const n = nombreEquipo(nombre, null);
         const plan = sesion.suscripcion || {};
         const max = plan.equiposMax || 0;
         if (max > 0 && equipos.length >= max) {
             throw conflicto(`Tu plan ${plan.nombre} permite ${max === 1 ? "1 equipo" : "hasta " + max + " equipos"}. Para sumar `
                 + `otro, borrá uno sin partidos${plan.codigo === "DT_FREE" ? " o pasate al plan mensual." : "."}`);
         }
-        const e = {id: proximoEquipo++, nombre: n};
+        const e = {id: proximoEquipo++, nombre: n, categoriaSidgad: categoria, ramaSidgad: rama};
         equipos.push(e);
+        return e;
+    }
+
+    // ---------- Equipos desde SIDGAD ----------
+
+    function categoriaDelClub(categoria, rama) {
+        const c = club.categorias.find(x => x.clave === String(categoria || "").trim().toUpperCase()
+            && x.rama === String(rama || "").trim().toUpperCase());
+        if (!c) throw malPedido("Esa categoría no es de tu club.");
+        return c;
+    }
+
+    const plantelSidgad = (categoria, rama) => {
+        const c = categoriaDelClub(categoria, rama);
+        return (club.planteles[c.clave + "|" + c.rama] || []).slice()
+            .sort((a, b) => porTexto(a.apellido, b.apellido) || porTexto(a.nombres, b.nombres));
+    };
+
+    function crearEquipoDesdeSidgad(body) {
+        const c = categoriaDelClub(body.categoria, body.rama);
+        const plantelEq = plantelSidgad(c.clave, c.rama);
+        const e = nuevoEquipo(limpio(body.nombre) ? body.nombre : c.nombre, c.clave, c.rama);
+        const fuera = new Set(body.excluidos || []);
+        const usados = new Set();
+        // Primero los incluidos: si dos tienen el mismo número, se lo queda uno que juega.
+        for (const p of plantelEq.slice().sort((a, b) => fuera.has(a.id) - fuera.has(b.id))) {
+            const incluido = !fuera.has(p.id);
+            let j = jugadores.find(x => x.id === p.id);
+            if (!j) {
+                const num = !p.numero || usados.has(p.numero) ? null : p.numero;
+                if (num) usados.add(num);
+                j = {id: p.id, nombres: p.nombres, apellido: p.apellido, numero: num, arquero: p.arquero, equipos: [],
+                    pendientes: [], activo: true};
+                jugadores.push(j);
+            } else {
+                j.activo = true;
+                if (j.numero) usados.add(j.numero);
+            }
+            if (incluido) incluirEn(j, e.id); else if (!j.equipos.includes(e.id) && !j.pendientes.includes(e.id)) j.pendientes.push(e.id);
+        }
         return json(201, equipoView(e));
+    }
+
+    function incluirEn(j, equipoId) {
+        j.pendientes = j.pendientes.filter(x => x !== equipoId);
+        if (!j.equipos.includes(equipoId)) j.equipos.push(equipoId);
+    }
+
+    function incluir(jugadorId, equipoId) {
+        const j = suyo(jugadorId);
+        const e = equipo(equipoId);
+        verificarNumero([e.id], j.numero, jugadorId);
+        incluirEn(j, e.id);
+        return json(200, jugadorView(j));
     }
 
     function borrarEquipo(id) {
         const e = equipo(id);
         const n = partidos.filter(p => p.equipoId === e.id).length;
         if (n) throw conflicto(`${e.nombre} tiene ${n}${n === 1 ? " partido cargado" : " partidos cargados"}: no se puede borrar.`);
-        jugadores.forEach(j => { j.equipos = j.equipos.filter(x => x !== e.id); });
+        jugadores.forEach(j => {
+            j.equipos = j.equipos.filter(x => x !== e.id);
+            j.pendientes = j.pendientes.filter(x => x !== e.id);
+        });
         equipos.splice(equipos.indexOf(e), 1);
         return new Response(null, {status: 204});
     }
@@ -97,7 +163,8 @@ export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], a
 
     const completo = j => (j.nombres + " " + j.apellido).trim();
     const jugadorView = j => ({id: j.id, numero: j.numero || "", nombre: completo(j), nombres: j.nombres, apellido: j.apellido,
-        arquero: j.arquero, equipos: j.equipos.slice().sort((a, b) => a - b)});
+        arquero: j.arquero, equipos: j.equipos.slice().sort((a, b) => a - b),
+        pendientes: j.pendientes.slice().sort((a, b) => a - b)});
     const activos = () => jugadores.filter(j => j.activo);
 
     function suyo(id) {
@@ -139,7 +206,8 @@ export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], a
         verificarNumero(suyos, num, -1);
         const ultimo = Math.max(0, ...jugadores.map(j => j.id));
         const j = {id: ultimo >= PRIMER_ID_PROPIO ? ultimo + 1 : PRIMER_ID_PROPIO, nombres: texto(body.nombre, "nombre"),
-            apellido: texto(body.apellido, "apellido"), numero: num, arquero: body.arquero === true, equipos: suyos, activo: true};
+            apellido: texto(body.apellido, "apellido"), numero: num, arquero: body.arquero === true, equipos: suyos,
+            pendientes: [], activo: true};
         jugadores.push(j);
         return json(201, jugadorView(j));
     }
@@ -150,7 +218,7 @@ export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], a
         const num = numero(body.numero);
         verificarNumero(suyos, num, id);
         Object.assign(j, {nombres: texto(body.nombre, "nombre"), apellido: texto(body.apellido, "apellido"), numero: num,
-            arquero: body.arquero === true, equipos: suyos});
+            arquero: body.arquero === true, equipos: suyos, pendientes: j.pendientes.filter(x => !suyos.includes(x))});
         return json(200, jugadorView(j));
     }
 
@@ -348,6 +416,13 @@ export function crearApi({sesion, equipos = [], jugadores = [], partidos = [], a
         if (r === "/api/sesion") return json(200, sesion);
         if (r === "/api/dt/equipos" && method === "GET") return json(200, equipos.slice().sort((a, b) => a.id - b.id).map(equipoView));
         if (r === "/api/dt/equipos" && method === "POST") return crearEquipo(body || {});
+        if (r === "/api/dt/club/categorias") return json(200, club.categorias);
+        if (r === "/api/dt/club/plantel") {
+            if (!q.get("categoria") || !q.get("rama")) throw malPedido("El pedido no es válido.");
+            return json(200, plantelSidgad(q.get("categoria"), q.get("rama")));
+        }
+        const inc = r.match(/^\/api\/dt\/jugadores\/(\d+)\/equipos\/(\d+)$/);
+        if (inc && method === "POST") return incluir(Number(inc[1]), Number(inc[2]));
         let m = r.match(/^\/api\/dt\/equipos\/(\d+)$/);
         if (m && method === "PUT") { const e = equipo(Number(m[1])); e.nombre = nombreEquipo((body || {}).nombre, e); return json(200, equipoView(e)); }
         if (m && method === "DELETE") return borrarEquipo(Number(m[1]));

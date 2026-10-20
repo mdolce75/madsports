@@ -280,10 +280,16 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     el informe del servidor (`GET /api/dt/partidos/{id}/informe` y `GET /api/dt/informes`: el mismo JSON del PDF,
     `DtInformeService`, `InformeDt`, plantilla `templates/dt-informe.html`); sin señal, el que se arma en el navegador
     (`js/dt/informe.js`). Los dos cálculos se prueban contra los mismos casos (ver [Tests](#tests)).
-  - **Equipo:** el ABM de equipos (un nombre libre, hasta los del plan; la lista muestra los partidos finalizados jugados,
-    ganados, empatados y perdidos; un equipo con partidos no se borra) y el ABM de jugadores: nombre, apellido,
-    número, si es arquero y en qué equipos juega (uno o más). Los jugadores no salen de SIDGAD: los carga el DT, y
-    antes tiene que existir un equipo. El número no se repite dentro de un equipo. Un jugador dado de baja ya no
+  - **Equipo:** el ABM de equipos (hasta los del plan; la lista muestra los partidos finalizados jugados, ganados,
+    empatados y perdidos; un equipo con partidos no se borra) y el ABM de jugadores: nombre, apellido, número, si es
+    arquero y en qué equipos juega (uno o más). Un equipo nuevo se arma desde una **categoría del club** en SIDGAD
+    (`GET /api/dt/club/categorias`, las del club con el que se registró el DT): su plantel (`GET /api/dt/club/plantel`,
+    los jugadores de las actas del equipo, con su número más usado y si es arquero) viene tildado y el DT destilda a
+    los que no van. Esos quedan como **no incluidos** en el equipo: figuran en su lista de jugadores, no aparecen para
+    cargar acciones y se suman después con "Incluir" (`POST /api/dt/jugadores/{id}/equipos/{equipo}`). Un jugador que
+    el DT ya tiene en otro equipo no se duplica (lo identifica su id de SIDGAD). También se puede crear un equipo de
+    nombre libre ("Otro"), sin jugadores de SIDGAD, y cargar jugadores a mano. El número no se repite dentro de un
+    equipo. Un jugador dado de baja ya no
     aparece para cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre
     corregido.
 - **Métricas DT (pantalla, `/dt.html`):** módulos ES sin build en `js/dt/`: `main.js` (menú y arranque),
