@@ -69,13 +69,21 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
         return total.played() > 0;
     }
 
-    /** @param withoutSheet partidos jugados por el equipo sin acta publicada (no se sabe si jugó) */
+    /**
+     * @param withoutSheet partidos jugados por el equipo sin acta publicada (no se sabe si jugó)
+     * @param teamGoals    goles de su equipo en los partidos que jugó (para la incidencia de sus goles)
+     */
     public record Line(String category, int played, int won, int drawn, int lost, int goals,
                        int yellowCards, int blueCards, int redCards,
                        int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken,
-                       int withoutSheet) {
+                       int withoutSheet, int teamGoals) {
 
-        static final Line EMPTY = new Line("Total", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        static final Line EMPTY = new Line("Total", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        /** Incidencia de sus goles: qué parte de los goles de su equipo en sus partidos hizo él (0 a 100). */
+        public double goalShare() {
+            return teamGoals == 0 ? 0 : 100.0 * goals / teamGoals;
+        }
 
         public int cards() {
             return yellowCards + blueCards + redCards;
@@ -123,7 +131,7 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
                     yellowCards + o.yellowCards, blueCards + o.blueCards, redCards + o.redCards,
                     penaltiesScored + o.penaltiesScored, penaltiesTaken + o.penaltiesTaken,
                     directFreeScored + o.directFreeScored, directFreeTaken + o.directFreeTaken,
-                    withoutSheet + o.withoutSheet);
+                    withoutSheet + o.withoutSheet, teamGoals + o.teamGoals);
         }
     }
 

@@ -62,9 +62,12 @@ class PlayerReportServiceTest {
                 List.of(team(5581, "Primera Masculino", velezSheets())));
 
         // Vélez 2-4 Argentinos (2 goles de Graiño) y 7-0 Comunicaciones (2 goles).
-        assertThat(r.categories()).containsExactly(new Line("Primera Masculino", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0));
-        assertThat(r.total()).isEqualTo(new Line("Total", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0));
+        assertThat(r.categories()).containsExactly(new Line("Primera Masculino", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 9));
+        assertThat(r.total()).isEqualTo(new Line("Total", 2, 1, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 9));
         assertThat(r.total().goalsPerGame()).isEqualTo(2.0);
+        // Incidencia: sus 4 goles sobre los 9 de Vélez en esos partidos (2 + 7).
+        assertThat(r.total().teamGoals()).isEqualTo(9);
+        assertThat(r.total().goalShare()).isCloseTo(44.44, org.assertj.core.data.Offset.offset(0.01));
         assertThat(r.matches()).extracting(PlayerReport.MatchRow::rival)
                 .containsExactly("ARGENTINOS JUNIORS", "COMUNICACIONES");
         assertThat(r.matches()).extracting(PlayerReport.MatchRow::result).containsExactly("P", "G");
