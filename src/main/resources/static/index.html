@@ -1,95 +1,397 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>RinkMetrics · Estadísticas de hockey sobre patines</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/css/app.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mad Sports · Métricas, estadísticas e informes deportivos</title>
+<meta name="description" content="Mad Sports desarrolla aplicaciones de métricas, estadísticas e informes deportivos: RinkReports y RinkMetrics, para el hockey sobre patines.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1a2b'/%3E %3Cg fill='none' stroke='%23fff' stroke-opacity='.9' stroke-width='2.4'%3E %3Crect x='9' y='15' width='46' height='34' rx='7'/%3E %3Cpath d='M32 15 V49'/%3E %3Ccircle cx='32' cy='32' r='6'/%3E %3C/g%3E %3Cpath d='M14 43 Q26 6 46 22' fill='none' stroke='%23ff5a1f' stroke-width='2.4' stroke-linecap='round' stroke-dasharray='0.5 4.5'/%3E %3Ccircle cx='47' cy='23' r='5' fill='%23ff5a1f' stroke='%230f1a2b' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Home de Mad Sports, la compañía: se lee como un acta de partido. Cada producto conserva su color. */
+:root {
+  --paper: #eef1f4;
+  --sheet: #ffffff;
+  --ink: #0f1a2b;
+  --muted: #5b6577;
+  --rule: #d3d9e2;
+  --accent: #ff5a1f;     /* naranja Mad Sports */
+  --accent-ink: #1a0a03;
+  --rink: #1a9fd6;       /* celeste RinkMetrics */
+  --rink-soft: #e2f4fc;
+  --ledger: #1f5f4f;     /* verde contable RinkReports */
+  --ledger-soft: #e6f0ec;
+  --display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0b111c; --sheet: #121b2b; --ink: #eef2f8; --muted: #9aa6ba; --rule: #26324a;
+    --accent: #ff6a33; --rink: #3cc4f5; --rink-soft: #0f2a3a; --ledger: #5fbf9f; --ledger-soft: #10261f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0b111c; --sheet: #121b2b; --ink: #eef2f8; --muted: #9aa6ba; --rule: #26324a;
+  --accent: #ff6a33; --rink: #3cc4f5; --rink-soft: #0f2a3a; --ledger: #5fbf9f; --ledger-soft: #10261f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 400 1.05rem/1.6 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+h1, h2, h3 { font-family: var(--display); text-transform: uppercase; letter-spacing: .01em; line-height: .95; margin: 0; text-wrap: balance; }
+.eyebrow { font: 500 .78rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+/* Barra superior */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 22px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand svg { width: 40px; height: 40px; flex: none; }
+.brand b { font: 900 1.6rem/1 var(--display); letter-spacing: .04em; text-transform: uppercase; }
+.top nav { display: flex; gap: 22px; flex-wrap: wrap; font: 500 .92rem/1 var(--body); }
+.top nav a { text-decoration: none; color: var(--muted); }
+.top nav a:hover { color: var(--ink); }
+
+/* Hero */
+.hero { padding-block: clamp(28px, 6vw, 64px) 28px; display: grid; gap: 28px; }
+.hero h1 { font-size: clamp(3rem, 9vw, 6.4rem); font-weight: 900; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero p.lead { max-width: 62ch; font-size: 1.15rem; color: var(--muted); margin: 0; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 20px; text-decoration: none;
+       font: 800 1.05rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase; border: 2px solid var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost:hover { background: var(--ink); color: var(--paper); }
+
+/* Planilla del partido (timeline) */
+.sheet { background: var(--sheet); border: 1px solid var(--rule); padding: clamp(16px, 3vw, 26px); display: grid; gap: 14px; }
+.sheet-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.score { font: 900 2.2rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.score span { color: var(--muted); font-weight: 600; font-size: 1.2rem; letter-spacing: .06em; }
+.hero > *, .sheet > * { min-width: 0; }
+.timeline-box { overflow-x: auto; }
+#timeline { display: block; width: 100%; min-width: 620px; height: auto; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font: 400 .82rem/1.2 var(--mono); color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+.ticker { font: 500 .9rem/1.4 var(--mono); color: var(--ink); min-height: 1.4em; }
+.ticker b { color: var(--accent); font-weight: 500; }
+
+/* Secciones como filas de planilla */
+section { padding-block: clamp(44px, 7vw, 80px); border-top: 1px solid var(--rule); }
+.sec-head { display: grid; gap: 10px; margin-bottom: 28px; max-width: 62ch; }
+.sec-head h2 { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 800; }
+.sec-head p { margin: 0; color: var(--muted); }
+
+/* Productos: cada tarjeta abre su producto */
+.products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.product { --c: var(--ink); --soft: var(--paper); position: relative; display: grid; grid-template-rows: auto 1fr auto;
+           background: var(--sheet); border: 1px solid var(--rule); border-top: 6px solid var(--c); text-decoration: none;
+           transition: transform .15s ease, box-shadow .15s ease; }
+.products > * { min-width: 0; }
+.product:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -18px rgba(15, 26, 43, .45); }
+.product.reports { --c: var(--ledger); --soft: var(--ledger-soft); }
+.product.metrics { --c: var(--rink); --soft: var(--rink-soft); }
+.product .head { display: flex; align-items: center; gap: 14px; padding: clamp(18px, 3vw, 28px) clamp(18px, 3vw, 28px) 0; }
+.product .head svg { width: 56px; height: 56px; flex: none; }
+.product .head b { display: block; font: 900 clamp(1.4rem, 7vw, 2.3rem)/1 var(--display); text-transform: uppercase; letter-spacing: .02em; }
+.product .head small { display: block; font: 500 .76rem/1 var(--mono); color: var(--c); letter-spacing: .12em; text-transform: uppercase; margin-top: 6px; }
+.product .body { padding: 18px clamp(18px, 3vw, 28px); display: grid; gap: 14px; align-content: start; }
+.product .body p { margin: 0; color: var(--muted); }
+.product ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.product li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; font-size: .98rem; }
+.product li::before { content: ""; width: 9px; height: 9px; margin-top: .55em; background: var(--c); }
+.product .for { display: flex; gap: 8px; flex-wrap: wrap; }
+.product .for span { font: 500 .78rem/1 var(--mono); letter-spacing: .06em; padding: 7px 10px; background: var(--soft); color: var(--ink); }
+.product .go { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px clamp(18px, 3vw, 28px);
+               background: var(--soft); border-top: 1px solid var(--rule); font: 800 1.1rem/1 var(--display);
+               letter-spacing: .1em; text-transform: uppercase; }
+.product .go i { font-style: normal; color: var(--c); transition: transform .15s ease; }
+.product:hover .go i { transform: translateX(4px); }
+
+.flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--rule); background: var(--sheet); }
+.flow article { padding: 22px; display: grid; gap: 10px; align-content: start; }
+.flow article + article { border-left: 1px solid var(--rule); }
+.flow .step { font: 500 .8rem/1 var(--mono); color: var(--accent); letter-spacing: .1em; }
+.flow h3 { font-size: 1.7rem; font-weight: 800; }
+.flow p { margin: 0; color: var(--muted); font-size: .98rem; }
+.flow .src { font: 400 .8rem/1.4 var(--mono); color: var(--muted); border-top: 1px dashed var(--rule); padding-top: 10px; }
+
+/* Contacto */
+.contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: end; }
+.mail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--sheet); border: 1px solid var(--rule); padding: 16px; }
+.mail code { font: 500 1.15rem/1.2 var(--mono); user-select: all; word-break: break-all; }
+.mail button { margin-left: auto; font: 800 .95rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase;
+               background: var(--ink); color: var(--paper); border: 0; padding: 11px 14px; cursor: pointer; }
+.mail button:hover { background: var(--accent); color: var(--accent-ink); }
+#copied { font: 400 .85rem/1 var(--mono); color: var(--muted); min-height: 1em; }
+
+footer { border-top: 1px solid var(--rule); padding-block: 26px 40px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+         font: 400 .85rem/1.4 var(--mono); color: var(--muted); }
+
+@media (max-width: 760px) {
+  .products, .flow, .contact { grid-template-columns: minmax(0, 1fr); }
+  .flow article + article { border-left: 0; border-top: 1px solid var(--rule); }
+  .top nav { gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
 </head>
-<body class="home">
+<body>
+
 <div class="wrap">
-    <div class="topbar">
-        <div id="brand"></div>
-        <div class="userbar" id="userbar">
-            <a class="btn ghost" href="/login.html">Ingresar</a>
+  <header class="top">
+    <a class="brand" href="/" aria-label="Mad Sports, inicio">
+      <!-- Logo: una cancha vista desde arriba y la trayectoria de la pelota (la jugada que medimos) -->
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#0f1a2b"/>
+        <g fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2.4">
+          <rect x="9" y="15" width="46" height="34" rx="7"/>
+          <path d="M32 15 V49"/>
+          <circle cx="32" cy="32" r="6"/>
+        </g>
+        <path d="M14 43 Q26 6 46 22" fill="none" stroke="#ff5a1f" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="0.5 4.5"/>
+        <circle cx="47" cy="23" r="5" fill="#ff5a1f" stroke="#0f1a2b" stroke-width="2"/>
+      </svg>
+      <b>Mad Sports</b>
+    </a>
+    <nav aria-label="Secciones">
+      <a href="#productos">Productos</a>
+      <a href="#que-hacemos">Qué hacemos</a>
+      <a href="#contacto">Contacto</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <span class="eyebrow">Métricas · Estadísticas · Informes deportivos</span>
+      <h1>Cada partido deja datos. <em>Nosotros los leemos.</em></h1>
+      <p class="lead">Mad Sports es una compañía que desarrolla aplicaciones de métricas, estadísticas e informes deportivos.
+        Convertimos actas, planillas y resultados oficiales en información que entienden los clubes, los cuerpos técnicos
+        y los jugadores.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#productos">Ver productos</a>
+        <a class="btn ghost" href="#contacto">Hablemos</a>
+      </div>
+
+      <div class="sheet" aria-label="Ejemplo de partido minuto a minuto">
+        <div class="sheet-head">
+          <span class="eyebrow">Acta · Primera · 2 tiempos de 25'</span>
+          <span class="score">5 – 3 <span>Local · Visitante</span></span>
         </div>
+        <div class="timeline-box"><svg id="timeline" viewBox="0 0 1000 150" role="img"
+             aria-label="Línea de tiempo de un partido de 50 minutos con goles, tarjetas azules y el descanso"></svg></div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>Gol local</span>
+          <span><i style="background:var(--ink)"></i>Gol visitante</span>
+          <span><i style="background:var(--rink)"></i>Tarjeta azul · 2' con uno menos</span>
+        </div>
+        <div class="ticker" id="ticker" aria-live="polite">2T 13:40 · <b>Gol local</b> durante la azul del visitante (4 – 3)</div>
+      </div>
     </div>
 
-    <div class="split">
-    <div class="intro">
-    <section class="hero">
-        <span class="tag">Analítica para hockey sobre patines</span>
-        <h1>Datos que<br><em>ganan partidos.</em></h1>
-        <p class="lead">Información precisa para decidir mejor. RinkMetrics reúne las estadísticas oficiales de la competencia y el registro en vivo de cada partido para que clubes, jugadores y cuerpos técnicos analicen, corrijan y compitan con ventaja.</p>
-        <ul class="cualidades">
-            <li><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Datos en tiempo real</li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.6c3 .2 5 2.2 5 5.4"/></svg>Planteles y equipos organizados</li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5M12 2v3"/></svg>Seguimiento minuto a minuto</li>
-        </ul>
-        <p class="hint">Disponible para la Federación Porteña de Patín (FPP) y la Asociación Mendocina de Patín (AMP).</p>
+    <section id="productos">
+      <div class="sec-head">
+        <span class="eyebrow">Productos</span>
+        <h2>Elegí tu producto</h2>
+        <p>Dos aplicaciones para el hockey sobre patines, con los datos de la Federación Porteña de Patín y de la
+          Asociación Mendocina de Patín. Cada una tiene su propia cuenta.</p>
+      </div>
+      <div class="products">
+        <a class="product reports" href="/rinkreports" aria-label="Abrir RinkReports, informes de jugador y de club">
+          <div class="head">
+            <!-- Libro de informes: renglones y una columna de totales -->
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <rect width="64" height="64" rx="14" style="fill:var(--ledger)"/>
+              <rect x="13" y="11" width="38" height="42" rx="3" fill="#fff"/>
+              <g stroke="#1f5f4f" stroke-width="2.4" stroke-linecap="round">
+                <path d="M19 21 H36 M19 29 H36 M19 37 H36"/>
+                <path d="M41 21 H45 M41 29 H45 M41 37 H45"/>
+              </g>
+              <path d="M19 45 H45" stroke="#1f5f4f" stroke-width="3.2" stroke-linecap="round"/>
+            </svg>
+            <div><b>RinkReports</b><small>Informes en PDF</small></div>
+          </div>
+          <div class="body">
+            <p>Informes de rendimiento con los datos oficiales de cada torneo, listos para leer y compartir.</p>
+            <ul>
+              <li><span><b>Jugador:</b> partidos, goles y tarjetas en cada categoría, con su incidencia en el equipo.</span></li>
+              <li><span><b>Club:</b> todas sus categorías por rama, con resultados, goles, faltas, tarjetas y los top 3.</span></li>
+              <li><span>Fortalezas y debilidades, con análisis redactado por IA.</span></li>
+            </ul>
+            <div class="for"><span>Jugadores</span><span>Clubes</span></div>
+          </div>
+          <div class="go">Ir a RinkReports <i aria-hidden="true">→</i></div>
+        </a>
+
+        <a class="product metrics" href="/rinkmetrics" aria-label="Abrir RinkMetrics, métricas en vivo para cuerpos técnicos">
+          <div class="head">
+            <!-- Pista con barras de métricas -->
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <rect width="64" height="64" rx="14" style="fill:var(--rink)"/>
+              <rect x="8" y="15" width="48" height="34" rx="14" fill="none" stroke="#fff" stroke-width="4"/>
+              <rect x="20" y="33" width="6" height="9" rx="1.5" fill="#fff"/>
+              <rect x="29" y="27" width="6" height="15" rx="1.5" fill="#fff"/>
+              <rect x="38" y="21" width="6" height="21" rx="1.5" fill="#fff"/>
+            </svg>
+            <div><b>RinkMetrics</b><small>Métricas en vivo</small></div>
+          </div>
+          <div class="body">
+            <p>El registro en vivo de cada partido, desde el celular, la tablet o la computadora.</p>
+            <ul>
+              <li><span>Pérdidas, recuperaciones, tiros, atajadas, faltas y sanciones de cada jugador.</span></li>
+              <li><span>Reloj de juego y marcador integrados; funciona sin conexión.</span></li>
+              <li><span>Equipos armados desde el plantel oficial del club e informe de cada partido.</span></li>
+            </ul>
+            <div class="for"><span>Cuerpos técnicos</span></div>
+          </div>
+          <div class="go">Ir a RinkMetrics <i aria-hidden="true">→</i></div>
+        </a>
+      </div>
     </section>
-    </div>
-    <div class="main">
-    <div class="examples secciones-home">
-        <article class="example">
-            <span class="tag">Jugadores · clubes próximamente</span>
-            <h3>Informes</h3>
-            <p class="hint">Informes de rendimiento en PDF, elaborados con los datos oficiales de SIDGAD.</p>
-            <ul>
-                <li>Resultados, posiciones y distribución de goles por jugador</li>
-                <li>Goles, tarjetas y faltas en tramos de 5 minutos</li>
-                <li>Rendimiento individual en cada categoría disputada</li>
-                <li>Fortalezas y aspectos a mejorar, con análisis redactado</li>
-            </ul>
-            <a class="btn primary" href="/informes.html">Conocer Informes</a>
-            <a class="btn ghost" href="/registro.html?seccion=informes">Crear cuenta de jugador</a>
-        </article>
-        <article class="example">
-            <span class="tag">Cuerpos técnicos</span>
-            <h3>Métricas DT</h3>
-            <p class="hint">Registro en vivo de las acciones de cada jugador, desde el celular, la tablet o la computadora.</p>
-            <ul>
-                <li>Pérdidas, recuperaciones, tiros y atajadas</li>
-                <li>Pelota parada, faltas y sanciones</li>
-                <li>Reloj de juego y marcador integrados</li>
-                <li>Funcionamiento sin conexión, con sincronización automática</li>
-            </ul>
-            <a class="btn primary" href="/dt-inicio.html">Conocer Métricas DT</a>
-            <a class="btn ghost" href="/registro.html?seccion=dt">Crear cuenta</a>
-        </article>
-    </div>
-    <p class="alt">¿Ya tenés una cuenta? <a href="/login.html">Ingresá</a> y accedé directamente a tu sección.</p>
-    </div>
-    </div>
 
-    <footer>© 2026 RinkMetrics. Todos los derechos reservados.</footer>
+    <section id="que-hacemos">
+      <div class="sec-head">
+        <span class="eyebrow">Qué hacemos</span>
+        <h2>Del acta al informe</h2>
+        <p>Trabajamos sobre las fuentes oficiales de cada competencia. El proceso es siempre el mismo, deporte por deporte.</p>
+      </div>
+      <div class="flow">
+        <article>
+          <span class="step">Paso 1 · Fuente</span>
+          <h3>Leemos lo oficial</h3>
+          <p>Tablas, calendarios, estadísticas y cada acta de partido, con su planilla de jugadores y los eventos con minuto.</p>
+          <span class="src">Si un dato no está publicado, el informe lo dice.</span>
+        </article>
+        <article>
+          <span class="step">Paso 2 · Análisis</span>
+          <h3>Lo ponemos en contexto</h3>
+          <p>Tramos de 5 minutos, marcador en cada momento, tiempo con uno menos, fortalezas y debilidades contra la liga o los compañeros.</p>
+          <span class="src">Con análisis exhaustivos con modelos de IA.</span>
+        </article>
+        <article>
+          <span class="step">Paso 3 · Entrega</span>
+          <h3>Lo dejamos listo</h3>
+          <p>Un PDF claro o métricas en vivo en la cancha, para leer en el vestuario o mandar por el grupo del equipo.</p>
+          <span class="src">Por club, por jugador y por partido.</span>
+        </article>
+      </div>
+    </section>
+
+    <section id="contacto">
+      <div class="contact">
+        <div class="sec-head" style="margin-bottom:0">
+          <span class="eyebrow">Contacto</span>
+          <h2>¿Tu deporte también juega con actas?</h2>
+          <p>Contanos qué competencia seguís y qué te gustaría medir. Respondemos desde este correo.</p>
+        </div>
+        <div>
+          <div class="mail">
+            <code id="mail">info@madsportsapp.com</code>
+            <button type="button" id="copy">Copiar</button>
+          </div>
+          <div id="copied" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>© 2026 Mad Sports · Métricas, estadísticas e informes deportivos</span>
+    <span>RinkReports y RinkMetrics son productos de Mad Sports</span>
+  </footer>
 </div>
 
-<script src="/js/app.js"></script>
 <script>
-    $("brand").outerHTML = BRAND;
+// Partido de ejemplo (50 minutos, descanso a los 25'). seg = segundos desde el inicio.
+const EVENTS = [
+  { seg: 4 * 60 + 12,  type: "gl", txt: "1T 4:12 · <b>Gol local</b> (1 – 0)" },
+  { seg: 9 * 60 + 30,  type: "az", txt: "1T 9:30 · Tarjeta azul al local · 2' con uno menos" },
+  { seg: 10 * 60 + 5,  type: "gv", txt: "1T 10:05 · Gol visitante durante la azul (1 – 1)" },
+  { seg: 17 * 60 + 48, type: "gl", txt: "1T 17:48 · <b>Gol local</b> (2 – 1)" },
+  { seg: 22 * 60 + 20, type: "gv", txt: "1T 22:20 · Gol visitante (2 – 2)" },
+  { seg: 27 * 60 + 15, type: "gl", txt: "2T 2:15 · <b>Gol local</b> (3 – 2)" },
+  { seg: 31 * 60 + 2,  type: "gv", txt: "2T 6:02 · Gol visitante (3 – 3)" },
+  { seg: 37 * 60 + 50, type: "az", txt: "2T 12:50 · Tarjeta azul al visitante" },
+  { seg: 38 * 60 + 40, type: "gl", txt: "2T 13:40 · <b>Gol local</b> durante la azul del visitante (4 – 3)" },
+  { seg: 46 * 60 + 25, type: "gl", txt: "2T 21:25 · <b>Gol local</b> (5 – 3)" }
+];
+const L = 30, R = 970, Y = 78, TOTAL = 50 * 60;
+const x = s => L + (R - L) * s / TOTAL;
+const svg = document.getElementById("timeline");
+const NS = "http://www.w3.org/2000/svg";
+const el = (name, attrs, text) => {
+  const n = document.createElementNS(NS, name);
+  let style = "";
+  for (const k in attrs) {
+    // Los colores del tema (var(--...)) van por style: así se resuelven en todos los navegadores.
+    if ((k === "fill" || k === "stroke") && String(attrs[k]).startsWith("var(")) style += k + ":" + attrs[k] + ";";
+    else n.setAttribute(k, attrs[k]);
+  }
+  if (style) n.setAttribute("style", style);
+  if (text != null) n.textContent = text;
+  svg.appendChild(n);
+  return n;
+};
+// Regla de minutos: cada 5', descanso marcado.
+for (let m = 0; m <= 50; m += 5) {
+  const xx = x(m * 60);
+  el("line", { x1: xx, x2: xx, y1: Y - 34, y2: Y + 34, stroke: "var(--rule)", "stroke-width": m === 25 ? 2 : 1,
+               "stroke-dasharray": m === 25 ? "4 4" : "" });
+  const label = m === 0 ? "0'" : m === 25 ? "Descanso" : m === 50 ? "50'" : (m > 25 ? (m - 25) : m) + "'";
+  el("text", { x: xx, y: Y + 56, "text-anchor": "middle", fill: "var(--muted)", "font-family": "IBM Plex Mono, monospace",
+               "font-size": 13 }, label);
+}
+el("text", { x: x(12.5 * 60), y: 22, "text-anchor": "middle", fill: "var(--muted)", "font-family": "IBM Plex Mono, monospace", "font-size": 13 }, "1er tiempo");
+el("text", { x: x(37.5 * 60), y: 22, "text-anchor": "middle", fill: "var(--muted)", "font-family": "IBM Plex Mono, monospace", "font-size": 13 }, "2do tiempo");
+el("line", { x1: L, x2: R, y1: Y, y2: Y, stroke: "var(--ink)", "stroke-width": 2 });
+// Eventos: azules como franja de 2', goles como marcas arriba (local) o abajo (visitante).
+EVENTS.forEach((ev, i) => {
+  const cx = x(ev.seg);
+  if (ev.type === "az") {
+    el("rect", { x: cx, y: Y - 6, width: x(ev.seg + 120) - cx, height: 12, fill: "var(--rink)", opacity: .85, "data-i": i });
+  } else {
+    const up = ev.type === "gl";
+    el("line", { x1: cx, x2: cx, y1: Y, y2: up ? Y - 26 : Y + 26, stroke: up ? "var(--accent)" : "var(--ink)", "stroke-width": 2 });
+    el("circle", { cx, cy: up ? Y - 30 : Y + 30, r: 7, fill: up ? "var(--accent)" : "var(--ink)", "data-i": i });
+  }
+});
+// Cursor que recorre el partido y va contando los eventos (estático si se prefiere sin movimiento).
+const head = el("line", { x1: L, x2: L, y1: Y - 40, y2: Y + 40, stroke: "var(--accent)", "stroke-width": 2, opacity: 0 });
+const ticker = document.getElementById("ticker");
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (!reduce) {
+  let t = 0, last = -1;
+  head.setAttribute("opacity", 1);
+  const step = () => {
+    t = (t + 25) % (TOTAL + 300);
+    const s = Math.min(t, TOTAL);
+    head.setAttribute("x1", x(s)); head.setAttribute("x2", x(s));
+    const idx = EVENTS.reduce((acc, ev, i) => ev.seg <= s ? i : acc, -1);
+    if (idx !== last && idx >= 0) { ticker.innerHTML = EVENTS[idx].txt; last = idx; }
+    if (t < 25) last = -1;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 
-    // Con sesión: acceso directo a su pantalla en lugar de ingresar/registrarse.
-    session().then(s => {
-        if (!s.autenticado || s.inicio.startsWith("/login.html")) return;
-        renderUserBar(s);
-        const go = document.createElement("a");
-        go.className = "btn primary";
-        go.href = s.inicio;
-        go.textContent = s.inicio === "/dt.html" ? "Mis métricas DT" : "Mis informes";
-        $("userbar").prepend(go);
-        for (const cta of document.querySelectorAll("[data-cta]")) {
-            const link = document.createElement("a");
-            link.className = "go-link";
-            link.href = s.inicio;
-            link.textContent = s.inicio === "/dt.html" ? "Ir a Métricas DT" : "Ir a mis informes";
-            cta.replaceChildren(link);
-        }
-    });
+// Copiar el correo (si el portapapeles no está disponible, se selecciona el texto).
+document.getElementById("copy").addEventListener("click", () => {
+  const mail = document.getElementById("mail");
+  const msg = document.getElementById("copied");
+  const select = () => { const r = document.createRange(); r.selectNodeContents(mail);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); };
+  try {
+    navigator.clipboard.writeText(mail.textContent).then(() => { msg.textContent = "Correo copiado."; },
+      () => { select(); msg.textContent = "Correo seleccionado: copialo con Ctrl+C."; });
+  } catch (e) { select(); msg.textContent = "Correo seleccionado: copialo con Ctrl+C."; }
+});
 </script>
+
 </body>
 </html>
