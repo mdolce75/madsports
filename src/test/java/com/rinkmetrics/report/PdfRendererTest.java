@@ -83,7 +83,7 @@ class PdfRendererTest {
         assertThat(html).contains("Ignacio J Graiño", "VELEZ · Temporada 2026 · Apertura + Clausura",
                 "Resumen por categoría", "Partido a partido", "Juniors Masculino", "Primera Masculino",
                 "no tiene acta publicada", "Escudo de VELEZ", "Penales y libres directos",
-                "Goles y tarjetas por tramos de 5 minutos", "Sin minuto registrado", "2T 20-25",
+                "Goles por tramos de 5 minutos", "Sin minuto registrado", "2T 20-25",
                 "Goles con uno menos por sus sanciones",
                 "Goles que le hicieron a su equipo mientras cumplía su sanción: 1.", "1T 12:30", "1T 13:40",
                 "No cumplió sanciones (azul o roja) con minuto registrado",
@@ -96,6 +96,18 @@ class PdfRendererTest {
         assertThat(html.indexOf(">Juniors Masculino</h2>")).isPositive()
                 .isLessThan(html.indexOf(">Primera Masculino</h2>"));
         assertThat(html.indexOf(">Primera Masculino</h2>")).isLessThan(html.indexOf(">Todas las categorías</h2>"));
+        // Cada categoría separa Partidos, Goles y Tarjetas en apartados, en ese orden; lo de goles (incidencia,
+        // penales y libres, tramos) va en el de Goles.
+        int bloque = html.indexOf(">Primera Masculino</h2>");
+        int partidos = html.indexOf("class=\"apartado\">Partidos</h3>", bloque);
+        int goles = html.indexOf("class=\"apartado\">Goles</h3>", bloque);
+        int tarjetas = html.indexOf("class=\"apartado\">Tarjetas</h3>", bloque);
+        assertThat(partidos).isPositive().isLessThan(goles);
+        assertThat(goles).isLessThan(tarjetas);
+        assertThat(html.indexOf("De los goles del equipo (4 de 10)", goles)).isBetween(goles, tarjetas);
+        assertThat(html.indexOf("Penales y libres directos", goles)).isBetween(goles, tarjetas);
+        assertThat(html.indexOf("Goles por tramos de 5 minutos", goles)).isBetween(goles, tarjetas);
+        assertThat(html.indexOf("De las tarjetas del equipo (2 de 8)", tarjetas)).isGreaterThan(tarjetas);
 
         byte[] pdf = renderer.playerPdf(report);
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
