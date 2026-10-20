@@ -7,8 +7,11 @@ import com.rinkmetrics.dt.DtService.AccionReloj;
 import com.rinkmetrics.dt.DtService.NuevoPartido;
 import com.rinkmetrics.dt.DtService.PartidoView;
 import com.rinkmetrics.dt.EquipoDtService.EquipoView;
+import com.rinkmetrics.dt.PlantelDtService.CategoriaClub;
 import com.rinkmetrics.dt.PlantelDtService.DatosJugador;
 import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
+import com.rinkmetrics.dt.PlantelDtService.JugadorSidgad;
+import com.rinkmetrics.dt.PlantelDtService.NuevoEquipo;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -70,9 +73,26 @@ public class DtController {
         return equipos.lista(usuario(auth));
     }
 
+    /**
+     * Equipo nuevo: con nombre libre, o desde una categoría del club ({@code categoria} y {@code rama}) con su plantel
+     * de SIDGAD, menos los {@code excluidos}, que quedan como "no incluidos".
+     */
     @PostMapping("/equipos")
-    public ResponseEntity<EquipoView> crearEquipo(@RequestBody EquipoRequest req, Authentication auth) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(equipos.crear(usuario(auth), req.nombre()));
+    public ResponseEntity<EquipoView> crearEquipo(@RequestBody NuevoEquipo req, Authentication auth) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(planteles.crearEquipo(usuario(auth), req));
+    }
+
+    /** Las categorías del club del DT en SIDGAD, para armar un equipo con su plantel. */
+    @GetMapping("/club/categorias")
+    public List<CategoriaClub> categoriasDelClub(Authentication auth) {
+        return planteles.categoriasDelClub(usuario(auth));
+    }
+
+    /** El plantel de SIDGAD de una categoría del club (los jugadores de las actas del equipo). */
+    @GetMapping("/club/plantel")
+    public List<JugadorSidgad> plantelSidgad(@RequestParam String categoria, @RequestParam String rama,
+                                             Authentication auth) {
+        return planteles.plantelSidgad(usuario(auth), categoria, rama);
     }
 
     @PutMapping("/equipos/{id}")
@@ -102,6 +122,12 @@ public class DtController {
     public JugadorPlantel modificarJugador(@PathVariable int jugadorId, @RequestBody DatosJugador req,
                                            Authentication auth) {
         return planteles.modificar(usuario(auth), jugadorId, req);
+    }
+
+    /** Suma al equipo a un jugador que figuraba como "no incluido" (409 si su número ya es de otro del equipo). */
+    @PostMapping("/jugadores/{jugadorId}/equipos/{equipoId}")
+    public JugadorPlantel incluirJugador(@PathVariable int jugadorId, @PathVariable Long equipoId, Authentication auth) {
+        return planteles.incluir(usuario(auth), jugadorId, equipoId);
     }
 
     @DeleteMapping("/jugadores/{jugadorId}")

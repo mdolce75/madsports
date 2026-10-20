@@ -79,15 +79,25 @@
     <!-- Equipo: ABM de equipos y de jugadores -->
     <section id="v-plantel" class="dt-vista" hidden>
         <h2 class="section-title">Equipo</h2>
-        <p class="hint">Primero creá tus equipos; después cargá los jugadores y asignalos a uno o más equipos. Los
-            jugadores que das de baja conservan sus acciones en los partidos y los informes.</p>
+        <p class="hint">Creá tus equipos desde las categorías de tu club: el plantel sale de las actas de SIDGAD y
+            destildás a los que no querés incluir (quedan en la lista para sumarlos después). También podés cargar
+            jugadores a mano y asignarlos a uno o más equipos. Los que das de baja conservan sus acciones en los
+            partidos y los informes.</p>
 
         <h3 class="inf-sub">Equipos</h3>
         <div class="partidos-grid">
             <form class="sheet" id="eq-form" novalidate>
                 <div class="sheet-head"><span id="eq-titulo">Nuevo equipo</span><span></span></div>
+                <div class="field" id="eq-categoria-campo"><label for="eq-categoria">Categoría de tu club</label>
+                    <select id="eq-categoria"><option value="">Cargando las categorías…</option></select></div>
                 <div class="field"><label for="eq-nombre">Nombre</label>
                     <input type="text" id="eq-nombre" maxlength="60" autocomplete="off" placeholder="Primera A, Infantil…"></div>
+                <fieldset class="field eq-sidgad" id="eq-sidgad" hidden>
+                    <legend>Jugadores de SIDGAD <small id="eq-sidgad-n"></small></legend>
+                    <p class="hint">Destildá a los que no querés incluir: quedan en la lista de jugadores como no
+                        incluidos y los podés sumar después.</p>
+                    <div class="eq-jugadores" id="eq-jugadores"></div>
+                </fieldset>
                 <button type="submit" class="go" id="eq-guardar">Agregar equipo</button>
                 <button type="button" class="dt-link pl-cancelar" id="eq-cancelar" hidden>Cancelar</button>
                 <div id="eq-status" class="abm-status" role="status"></div>

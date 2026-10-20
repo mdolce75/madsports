@@ -17,8 +17,13 @@ import java.util.stream.Collectors;
 @Service
 public class EquipoDtService {
 
-    /** Un equipo con su balance: partidos finalizados jugados, ganados, empatados y perdidos. */
-    public record EquipoView(Long id, String nombre, int jugados, int ganados, int empatados, int perdidos) {
+    /**
+     * Un equipo con su balance: partidos finalizados jugados, ganados, empatados y perdidos.
+     *
+     * @param categoriaSidgad y {@code ramaSidgad}: la categoría del club de la que salió el plantel (null: nombre libre)
+     */
+    public record EquipoView(Long id, String nombre, int jugados, int ganados, int empatados, int perdidos,
+                             String categoriaSidgad, String ramaSidgad) {
     }
 
     private final EquipoRepository equipos;
@@ -43,7 +48,8 @@ public class EquipoDtService {
             return new EquipoView(e.getId(), e.getNombre(), ps.size(),
                     (int) ps.stream().filter(p -> p.getGolesFavor() > p.getGolesContra()).count(),
                     (int) ps.stream().filter(p -> p.getGolesFavor() == p.getGolesContra()).count(),
-                    (int) ps.stream().filter(p -> p.getGolesFavor() < p.getGolesContra()).count());
+                    (int) ps.stream().filter(p -> p.getGolesFavor() < p.getGolesContra()).count(),
+                    e.getCategoriaSidgad(), e.getRamaSidgad());
         }).toList();
     }
 
@@ -59,6 +65,16 @@ public class EquipoDtService {
 
     @Transactional
     public EquipoView crear(Usuario u, String nombre) {
+        Equipo e = nuevo(u, nombre, null, null);
+        return new EquipoView(e.getId(), e.getNombre(), 0, 0, 0, 0, null, null);
+    }
+
+    /**
+     * Crea el equipo (con su nombre validado y dentro del cupo del plan). Con {@code categoria} y {@code rama} queda
+     * anotado de qué categoría del club en SIDGAD sale su plantel.
+     */
+    @Transactional
+    public Equipo nuevo(Usuario u, String nombre, String categoria, String rama) {
         String n = nombre(u, nombre, null);
         SuscripcionType plan = u.getSuscripcionType();
         int max = plan == null ? 0 : plan.getEquiposMax();
@@ -67,8 +83,7 @@ public class EquipoDtService {
                     + " equipos") + ". Para sumar otro, borrá uno sin partidos"
                     + ("DT_FREE".equals(plan.getCodigo()) ? " o pasate al plan mensual." : "."));
         }
-        Equipo e = equipos.save(new Equipo(u.getId(), n, clock.instant()));
-        return new EquipoView(e.getId(), e.getNombre(), 0, 0, 0, 0);
+        return equipos.save(new Equipo(u.getId(), n, categoria, rama, clock.instant()));
     }
 
     @Transactional

@@ -5,7 +5,13 @@ import com.rinkmetrics.account.Perfil;
 import com.rinkmetrics.account.SuscripcionTypeRepository;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
+import com.rinkmetrics.catalog.CatalogService;
+import com.rinkmetrics.catalog.CatalogService.ClubView;
+import com.rinkmetrics.catalog.CatalogService.LevelView;
 import com.rinkmetrics.player.RosterService;
+import com.rinkmetrics.player.RosterService.PlantelJugador;
+import com.rinkmetrics.player.RosterService.RosterPlayer;
+import com.rinkmetrics.sidgad.model.Federacion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +50,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -103,6 +110,8 @@ class DtControllerTest {
 
     /** El plantel ya no sale de SIDGAD: si alguien lo pidiera, el test lo detecta. */
     @MockitoBean RosterService roster;
+    /** El club del DT en SIDGAD (sus categorías): solo lo piden los equipos armados desde SIDGAD. */
+    @MockitoBean CatalogService catalog;
 
     /** Equipo "Primera A" de profe y sus dos jugadores. */
     long primera;
@@ -284,6 +293,85 @@ class DtControllerTest {
         enviar(put("/api/dt/jugadores/" + delantero), "otro", Map.of("nombre", "X", "apellido", "Y",
                 "equipos", List.of(ajeno))).andExpect(status().isNotFound());
         verifyNoInteractions(roster);
+    }
+
+    /** Vélez en SIDGAD: Primera Masculino e Infantil B en las dos ramas; el plantel de Infantil B Femenino y Primera. */
+    void clubEnSidgad() {
+        when(catalog.defaultYear()).thenReturn(2026);
+        when(catalog.club(Federacion.FPP, 74, 2026)).thenReturn(new ClubView(74, "CAVS", "VELEZ", List.of(
+                new LevelView("PRIMERA", "Primera", List.of("MASCULINO")),
+                new LevelView("INFANTIL:B", "Infantil B", List.of("MASCULINO", "FEMENINO")))));
+        when(roster.players(Federacion.FPP, 74, 2026, "INFANTIL:B", "FEMENINO")).thenReturn(List.of(
+                new RosterPlayer(501, "Ana Gómez", "Ana", "Gómez", "Infantil B Femenino"),
+                new RosterPlayer(502, "Bea Ruiz", "Bea", "Ruiz", "Infantil B Femenino"),
+                new RosterPlayer(503, "Carla Díaz", "Carla", "Díaz", "Infantil B Femenino")));
+        when(roster.plantel(Federacion.FPP, 74, 2026, "INFANTIL:B", "FEMENINO")).thenReturn(List.of(
+                new PlantelJugador(501, "07", "Ana Gómez", false), new PlantelJugador(502, "1", "Bea Ruiz", true),
+                new PlantelJugador(503, "07", "Carla Díaz", false)));
+        when(roster.players(Federacion.FPP, 74, 2026, "PRIMERA", "MASCULINO")).thenReturn(List.of(
+                new RosterPlayer(501, "Ana Gómez", "Ana", "Gómez", "Primera Masculino"),
+                new RosterPlayer(504, "Dante Paz", "Dante", "Paz", "Primera Masculino")));
+        when(roster.plantel(Federacion.FPP, 74, 2026, "PRIMERA", "MASCULINO")).thenReturn(List.of(
+                new PlantelJugador(504, "10", "Dante Paz", false)));
+    }
+
+    @Test
+    void equipoDesdeUnaCategoriaDelClubConSuPlantelDeSidgad() throws Exception {
+        clubEnSidgad();
+        mvc.perform(get("/api/dt/club/categorias").with(como("profe"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].nombre").value(contains("Primera Masculino", "Infantil B Masculino",
+                        "Infantil B Femenino")))
+                .andExpect(jsonPath("$[1].clave").value("INFANTIL:B"))
+                .andExpect(jsonPath("$[1].rama").value("MASCULINO"));
+        // Su plantel en SIDGAD, por apellido, con el número más usado ("07" -> "7") y los arqueros.
+        mvc.perform(get("/api/dt/club/plantel").param("categoria", "INFANTIL:B").param("rama", "FEMENINO")
+                        .with(como("profe"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].apellido").value(contains("Díaz", "Gómez", "Ruiz")))
+                .andExpect(jsonPath("$[1].numero").value("7"))
+                .andExpect(jsonPath("$[2].arquero").value(true));
+        mvc.perform(get("/api/dt/club/plantel").param("categoria", "JUVENIL").param("rama", "MASCULINO")
+                .with(como("profe"))).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Esa categoría no es de tu club."));
+
+        // El equipo entra con todo el plantel menos Carla, que queda "no incluida". Sin nombre: el de la categoría.
+        String body = enviar(post("/api/dt/equipos"), "profe", Map.of("categoria", "INFANTIL:B", "rama", "FEMENINO",
+                        "excluidos", List.of(503)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nombre").value("Infantil B Femenino"))
+                .andExpect(jsonPath("$.categoriaSidgad").value("INFANTIL:B"))
+                .andExpect(jsonPath("$.ramaSidgad").value("FEMENINO"))
+                .andReturn().getResponse().getContentAsString();
+        long infantil = json.readTree(body).get("id").asLong();
+        // Para cargar acciones, solo las incluidas; el "7" es de Ana (incluida), no de Carla.
+        mvc.perform(get("/api/dt/plantel").param("equipo", String.valueOf(infantil)).with(como("profe")))
+                .andExpect(jsonPath("$[*].nombre").value(contains("Bea Ruiz", "Ana Gómez")))
+                .andExpect(jsonPath("$[0].arquero").value(true))
+                .andExpect(jsonPath("$[1].numero").value("7"))
+                .andExpect(jsonPath("$[1].id").value(501));
+        // En la lista de jugadores, Carla figura con el equipo como pendiente.
+        mvc.perform(get("/api/dt/jugadores").with(como("profe")))
+                .andExpect(jsonPath("$[?(@.id == 503)].equipos[*]").isEmpty())
+                .andExpect(jsonPath("$[?(@.id == 503)].pendientes[0]").value(contains((int) infantil)))
+                .andExpect(jsonPath("$[?(@.id == 503)].numero").value(contains("")));
+
+        // Después se la suma.
+        mvc.perform(post("/api/dt/jugadores/503/equipos/" + infantil).with(como("profe")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.equipos[0]").value((int) infantil))
+                .andExpect(jsonPath("$.pendientes").isEmpty());
+        mvc.perform(get("/api/dt/plantel").param("equipo", String.valueOf(infantil)).with(como("profe")))
+                .andExpect(jsonPath("$", hasSize(3)));
+
+        // Otro equipo con una jugadora que ya tiene: no se duplica, suma el equipo.
+        String otro = enviar(post("/api/dt/equipos"), "profe", Map.of("nombre", "Primera", "categoria", "PRIMERA",
+                "rama", "MASCULINO")).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long primeraSidgad = json.readTree(otro).get("id").asLong();
+        mvc.perform(get("/api/dt/jugadores").with(como("profe")))
+                .andExpect(jsonPath("$[?(@.id == 501)]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.id == 501)].equipos[*]").value(contains((int) infantil, (int) primeraSidgad)));
+        // Una categoría que no es del club, no.
+        enviar(post("/api/dt/equipos"), "profe", Map.of("categoria", "JUVENIL", "rama", "MASCULINO"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

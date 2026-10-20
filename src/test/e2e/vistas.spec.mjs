@@ -68,10 +68,12 @@ test("Informes: el de un partido y el de un período, del equipo y de un jugador
 test("Equipo: ABM de equipos y de jugadores, con el límite del plan", async ({page}) => {
     await page.goto("/dt-demo.html#equipo");
     await expect(page.locator("#eq-n")).toHaveText("1 de 3 equipos");
+    await page.locator("#eq-categoria").selectOption("otro");
     await page.locator("#eq-nombre").fill("Reserva");
     await page.locator("#eq-guardar").click();
     await expect(page.locator("#eq-status")).toHaveText("Equipo creado: Reserva. Ahora cargá sus jugadores.");
     await expect(page.locator("#eq-lista .eq-fila")).toHaveCount(2);
+    await page.locator("#eq-categoria").selectOption("otro");
     await page.locator("#eq-nombre").fill("Reserva");
     await page.locator("#eq-guardar").click();
     await expect(page.locator("#eq-status")).toHaveText("Ya tenés un equipo llamado Reserva.");
@@ -101,6 +103,7 @@ test("Equipo: ABM de equipos y de jugadores, con el límite del plan", async ({p
     await expect(page.locator("#pl-lista")).not.toContainText("Juan Gómez");
 
     // Tercer equipo: el plan mensual llega al máximo.
+    await page.locator("#eq-categoria").selectOption("otro");
     await page.locator("#eq-nombre").fill("Infantil");
     await page.locator("#eq-guardar").click();
     await expect(page.locator("#eq-n")).toHaveText("3 de 3 equipos");
@@ -117,4 +120,36 @@ test("al volver a la pestaña se ven los equipos creados en otro dispositivo", a
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     await expect(page.locator("#e-equipo")).toBeVisible();
     await expect(page.locator("#e-equipo option")).toHaveText(["Primera Masculino", "Reserva"]);
+});
+
+test("Equipo desde una categoría del club: su plantel de SIDGAD, sin los destildados, que se suman después", async ({page}) => {
+    await page.goto("/dt-demo.html#equipo");
+    await expect(page.locator("#eq-categoria option")).toHaveText(["Elegí la categoría", "Primera Masculino",
+        "Juvenil Masculino", "Infantil Femenino", "Otro: nombre libre, sin jugadores de SIDGAD"]);
+    // Sin categoría, no se crea.
+    await page.locator("#eq-guardar").click();
+    await expect(page.locator("#eq-status")).toContainText("Elegí la categoría de tu club");
+
+    await page.locator("#eq-categoria").selectOption({label: "Juvenil Masculino"});
+    await expect(page.locator("#eq-nombre")).toHaveValue("Juvenil Masculino");
+    await expect(page.locator("#eq-jugadores input")).toHaveCount(8);
+    await expect(page.locator("#eq-sidgad-n")).toHaveText("8 de 8 incluidos");
+    await page.locator("#eq-jugadores label", {hasText: "Iván Luna"}).locator("input").uncheck();
+    await expect(page.locator("#eq-sidgad-n")).toHaveText("7 de 8 incluidos");
+    await page.locator("#eq-guardar").click();
+    await expect(page.locator("#eq-status")).toHaveText("Equipo creado: Juvenil Masculino, con 7 de los 8 jugadores de "
+        + "SIDGAD (1 no incluido: está en la lista para sumarlo después).");
+    await expect(page.locator("#eq-lista .eq-fila", {hasText: "Juvenil Masculino"})).toContainText("SIDGAD: Juvenil Masculino");
+
+    // La lista queda en el equipo nuevo: Iván figura como no incluido, con "Incluir".
+    await expect(page.locator("#pl-filtro option:checked")).toHaveText("Juvenil Masculino");
+    const ivan = page.locator("#pl-lista li", {hasText: "Iván Luna"});
+    await expect(ivan).toContainText("No incluido");
+    // Santiago Herrera ya estaba en Primera: no se duplica, suma el equipo.
+    await expect(page.locator("#pl-lista li", {hasText: "Santiago Herrera"})).toContainText("Primera Masculino · Juvenil Masculino");
+
+    // No aparece para cargar un partido del equipo hasta incluirlo.
+    await page.getByRole("button", {name: "Incluir a Iván Luna en Juvenil Masculino"}).click();
+    await expect(page.locator("#pl-status")).toHaveText("Iván Luna quedó incluido en Juvenil Masculino.");
+    await expect(ivan).not.toContainText("No incluido");
 });

@@ -18,7 +18,10 @@ import java.util.Set;
 
 /**
  * Un jugador del DT (tabla {@code jugador_dt}), en uno o más de sus equipos ({@code jugador_equipo_dt}).
- * {@code jugadorId} es el id con el que lo nombran las acciones. Dar de baja lo deja inactivo: sus acciones quedan.
+ * {@code jugadorId} es el id con el que lo nombran las acciones: el de SIDGAD si vino del plantel de una categoría del
+ * club, o uno propio (desde {@link #PRIMER_ID_PROPIO}) si lo cargó el DT. Dar de baja lo deja inactivo: sus acciones
+ * quedan. En {@code pendientes} están los equipos en cuyo plantel de SIDGAD figura pero el DT no lo incluyó
+ * ({@code jugador_pendiente_dt}): ahí no aparece para cargar acciones, y se puede sumar después.
  */
 @Entity
 @Table(name = "jugador_dt")
@@ -42,6 +45,10 @@ public class JugadorDt {
     @CollectionTable(name = "jugador_equipo_dt", joinColumns = @JoinColumn(name = "jugador_dt_id"))
     @Column(name = "equipo_id")
     private Set<Long> equipos = new HashSet<>();
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "jugador_pendiente_dt", joinColumns = @JoinColumn(name = "jugador_dt_id"))
+    @Column(name = "equipo_id")
+    private Set<Long> pendientes = new HashSet<>();
 
     protected JugadorDt() {
     }
@@ -64,14 +71,34 @@ public class JugadorDt {
         this.numero = numero;
         this.arquero = arquero;
         this.equipos = new HashSet<>(equipos);
+        pendientes.removeAll(this.equipos);
     }
 
     void baja() {
         activo = false;
     }
 
+    /** Vuelve a estar activo (un jugador dado de baja que vuelve con el plantel de SIDGAD de otro equipo). */
+    void reactivar() {
+        activo = true;
+    }
+
     void sacarDe(Long equipoId) {
         equipos.remove(equipoId);
+        pendientes.remove(equipoId);
+    }
+
+    /** Lo suma al equipo (deja de estar "no incluido" ahí). */
+    void incluirEn(Long equipoId) {
+        pendientes.remove(equipoId);
+        equipos.add(equipoId);
+    }
+
+    /** Figura en el plantel de SIDGAD del equipo, pero el DT no lo incluyó. */
+    void dejarPendienteEn(Long equipoId) {
+        if (!equipos.contains(equipoId)) {
+            pendientes.add(equipoId);
+        }
     }
 
     public boolean juegaEn(Long equipoId) {
@@ -93,4 +120,5 @@ public class JugadorDt {
     public boolean isActivo() { return activo; }
     public Instant getCreado() { return creado; }
     public Set<Long> getEquipos() { return Set.copyOf(equipos); }
+    public Set<Long> getPendientes() { return Set.copyOf(pendientes); }
 }
