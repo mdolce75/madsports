@@ -10,7 +10,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        // Home de Mad Sports, la empresa dueña de RinkMetrics.
-        registry.addViewController("/madsports").setViewName("forward:/madsports.html");
+        // La home (/) es la de Mad Sports, la compañía; la dirección vieja de su página la lleva ahí.
+        registry.addRedirectViewController("/madsports", "/");
+        registry.addRedirectViewController("/madsports.html", "/");
+        // Portada de cada producto.
+        for (String p : new String[] {"/rinkreports", "/rinkreports/"}) {
+            registry.addViewController(p).setViewName("forward:/informes.html");
+        }
+        for (String p : new String[] {"/rinkmetrics", "/rinkmetrics/"}) {
+            registry.addViewController(p).setViewName("forward:/dt-inicio.html");
+        }
     }
 }

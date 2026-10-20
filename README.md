@@ -236,8 +236,9 @@ más perfiles, pensados para venderse por separado: `CLUBFPP`, `CLUBFSP`, `CLUBC
 los demás. La federación del
 perfil decide de dónde salen los clubes, las categorías, los jugadores y los informes (que dicen FPP o AMP).
 
-- **Dos secciones:** la portada (`/`) presenta **Informes** (`/informes.html`: perfiles Club y Jugador, informes de
-  ejemplo) y **DT** (`/dt-inicio.html`: Métricas DT, las estadísticas en vivo, y su plan). El menú "Informes / DT" está arriba en todas
+- **Dos productos:** la home (`/`) es la de **Mad Sports**, la compañía, y presenta sus dos productos: **RinkReports**
+  (`/rinkreports`: perfiles Club y Jugador, informes de ejemplo) y **RinkMetrics** (`/rinkmetrics`: las estadísticas en
+  vivo del DT, y su plan). El menú "Informes / DT" está arriba en todas
   las páginas, salvo en la pantalla de Métricas DT (y su demo): ahí la barra superior lleva solo el menú del DT
   (Dashboard · Partidos · Jugadores · Informes) y el logo vuelve a la portada. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
 - **Por qué RinkMetrics** (`/por-que.html`, en el menú): las ventajas de la plataforma, en su propia página.
@@ -349,7 +350,6 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Precios en pesos:** el precio base de cada plan está en dólares y se muestra en pesos al dólar oficial del Banco
   Nación (venta) del día, que publica [DolarAPI](https://dolarapi.com), redondeado hacia abajo a centenas. Se consulta como mucho
   una vez por hora; si DolarAPI no responde se usa la última cotización o el respaldo (`DOLAR_RESPALDO`, $ 1.500).
-  La home de Mad Sports muestra el precio mensual de cada perfil con la misma conversión.
 
   | Plan mensual | Precio base | Incluye |
   |---|---|---|
@@ -365,9 +365,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   usuario solo se le asigna el de su perfil, con su fecha desde y su fecha hasta (un mes). También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
   jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
   Todavía no hay reglas que limiten el uso según la suscripción.
-- **Mad Sports** (`/madsports`): pública. Es la home de Mad Sports, la empresa dueña de RinkMetrics, y enlaza a la app
-  y al registro. La home de RinkMetrics la enlaza desde el pie ("Un producto de Mad Sports").
-- **Home** (`/`): pública, con los dos informes de ejemplo y los accesos a registrarse e ingresar.
+- **Home de Mad Sports** (`/`): pública. Mad Sports es la compañía que desarrolla aplicaciones de métricas,
+  estadísticas e informes deportivos; la home presenta sus dos productos y cada tarjeta abre el suyo: **RinkReports**
+  (`/rinkreports`, informes de jugador y de club) y **RinkMetrics** (`/rinkmetrics`, métricas en vivo para el DT).
+  `/madsports` (la dirección vieja) lleva a la home.
 - **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
 - **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y

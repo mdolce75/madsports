@@ -256,10 +256,17 @@ class SecurityTest {
         // La home es pública (con los informes de ejemplo); la pantalla de club pide sesión.
         mvc.perform(get("/")).andExpect(status().isOk());
         mvc.perform(get("/api/ejemplo.pdf")).andExpect(status().isOk());
-        // Home de Mad Sports (la empresa dueña de RinkMetrics), pública.
-        mvc.perform(get("/madsports")).andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/madsports.html"));
-        mvc.perform(get("/madsports.html")).andExpect(status().isOk());
+        // La home es la de Mad Sports; su dirección vieja lleva a la home.
+        mvc.perform(get("/index.html")).andExpect(content().string(org.hamcrest.Matchers.containsString("Mad Sports")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rinkreports\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rinkmetrics\"")));
+        mvc.perform(get("/madsports")).andExpect(redirectedUrl("/"));
+        mvc.perform(get("/madsports.html")).andExpect(redirectedUrl("/"));
+        // La portada de cada producto, pública.
+        mvc.perform(get("/rinkreports")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/informes.html"));
+        mvc.perform(get("/rinkmetrics")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/dt-inicio.html"));
         // Al ingreso, con la pantalla a la que volver después.
         mvc.perform(get("/club.html")).andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login.html?volver=%2Fclub.html"));
