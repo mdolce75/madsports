@@ -126,10 +126,10 @@
     <h2>Resumen por categoría</h2>
     <table>
         <tr><th class="l" rowspan="2">Categoría</th><th colspan="4">Partidos</th><th colspan="3">Goles</th>
-            <th colspan="4">Tarjetas</th><th colspan="2">Pelota parada</th></tr>
+            <th colspan="5">Tarjetas</th><th colspan="2">Pelota parada</th></tr>
         <tr><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Total</th><th>Por PJ</th><th>Incid.</th>
             <th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th>
-            <th>Por PJ</th><th>Penales</th><th>Libres</th></tr>
+            <th>Por PJ</th><th>Incid.</th><th>Penales</th><th>Libres</th></tr>
         <tr th:each="l : ${r.categories}">
             <td class="l" th:text="${l.category}"></td>
             <td th:text="${l.played}"></td><td th:text="${l.won}"></td><td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
@@ -137,6 +137,7 @@
             <td th:text="${f.pct(l.goalShare())}"></td>
             <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
             <td th:text="${f.dec(l.cardsPerGame())}"></td>
+            <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
             <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
             <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
         </tr>
@@ -147,12 +148,14 @@
             <td th:text="${f.pct(l.goalShare())}"></td>
             <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
             <td th:text="${f.dec(l.cardsPerGame())}"></td>
+            <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
             <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
             <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
         </tr>
     </table>
-    <p class="muted">Incid.: incidencia de sus goles, la parte de los goles de su equipo en los partidos que jugó que
-        hizo él. Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es el
+    <p class="muted">Incid.: incidencia, la parte de los goles de su equipo en los partidos que jugó que hizo él, y la
+        de las tarjetas de su equipo que recibió él (las tarjetas, en los partidos con acta: de los sin acta no se conocen
+        las del equipo). Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es el
         promedio por partido jugado. El detalle de cada categoría sigue a continuación.</p>
 
     <!--/* Un bloque por categoría, con todas sus estadísticas. */-->
@@ -170,6 +173,8 @@
                     <div class="kpi-l" th:text="|De los goles del equipo (${l.goals} de ${l.teamGoals})|">Incidencia</div></td>
                 <td><div class="kpi-v" th:text="${l.cards()}">0</div><div class="kpi-l">Tarjetas</div></td>
                 <td><div class="kpi-v" th:text="${f.dec(l.cardsPerGame())}">0</div><div class="kpi-l">Tarjetas por PJ</div></td>
+                <td><div class="kpi-v" th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}">0</div>
+                    <div class="kpi-l" th:text="|De las tarjetas del equipo (${l.sheetCards} de ${l.teamCards})|">Incidencia</div></td>
             </tr>
         </table>
 

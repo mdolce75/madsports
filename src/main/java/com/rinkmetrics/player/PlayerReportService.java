@@ -374,6 +374,7 @@ public class PlayerReportService {
         for (TeamInput in : inputs) {
             int won = 0, drawn = 0, lost = 0, goals = 0, yellow = 0, blue = 0, red = 0, played = 0, withoutSheet = 0;
             int teamGoals = 0;   // goles de su equipo en los partidos que jugó
+            int teamCards = 0, sheetCards = 0;   // tarjetas de su equipo y suyas, en los partidos con acta
             int penScored = 0, penTaken = 0, fdScored = 0, fdTaken = 0;
             for (Match m : in.matches()) {
                 boolean home = m.homeTeamId() == in.teamId();
@@ -404,6 +405,10 @@ public class PlayerReportService {
                     default -> lost++;
                 }
                 LineupPlayer p = me.get();
+                if (summary == null) {
+                    teamCards += sheet.stream().mapToInt(x -> x.yellowCards() + x.blueCards() + x.redCards()).sum();
+                    sheetCards += p.yellowCards() + p.blueCards() + p.redCards();
+                }
                 goals += p.goals();
                 yellow += p.yellowCards();
                 blue += p.blueCards();
@@ -427,7 +432,7 @@ public class PlayerReportService {
                 continue;               // el jugador no figura en este equipo
             }
             Line line = new Line(in.category(), played, won, drawn, lost, goals, yellow, blue, red,
-                    penScored, penTaken, fdScored, fdTaken, withoutSheet, teamGoals);
+                    penScored, penTaken, fdScored, fdTaken, withoutSheet, teamGoals, teamCards, sheetCards);
             lines.merge(in.category(), line, (a, b) -> a.plus(b, a.category()));
             order.putIfAbsent(in.category(), levels.indexOf(in.competition().category().level()));
         }
