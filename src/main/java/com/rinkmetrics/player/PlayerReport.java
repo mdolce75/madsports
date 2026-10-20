@@ -139,6 +139,16 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
             return buckets.stream().anyMatch(b -> b.goals() + b.cards() > 0) || unrecorded.goals() + unrecorded.cards() > 0;
         }
 
+        /**
+         * Todos los goles y tarjetas: los de los tramos y los sin minuto registrado (de partidos sin acta o eventos sin
+         * minuto). Es lo mismo que cuentan los totales del informe.
+         */
+        public Bucket total() {
+            List<Bucket> todos = new java.util.ArrayList<>(buckets);
+            todos.add(unrecorded);
+            return sum("Total", todos);
+        }
+
         public List<Bucket> byHalf() {
             int half = buckets.size() / 2;
             return List.of(sum("1er tiempo", buckets.subList(0, half)), sum("2do tiempo", buckets.subList(half, buckets.size())));

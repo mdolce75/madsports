@@ -125,6 +125,12 @@ class PlayerReportServiceTest {
         // Sin minuto: sus goles y la azul van a "sin minuto registrado".
         assertThat(r.minutes().unrecorded().goals()).isEqualTo(2);
         assertThat(r.minutes().unrecorded().blueCards()).isEqualTo(1);
+        // El total de los tramos cuenta también los sin minuto: es el mismo de los totales del informe.
+        PlayerReport.Bucket total = r.minutes().total();
+        assertThat(total.goals()).isEqualTo(r.total().goals());
+        assertThat(total.yellowCards()).isEqualTo(r.total().yellowCards());
+        assertThat(total.blueCards()).isEqualTo(r.total().blueCards());
+        assertThat(total.redCards()).isEqualTo(r.total().redCards());
         assertThat(r.notes()).singleElement().asString().contains("1 partido sin acta publicada se tomó",
                 "ficha de temporada");
     }
@@ -174,6 +180,7 @@ class PlayerReportServiceTest {
         // Los 4 goles de la planilla están en algún tramo o como "sin minuto".
         int withMinute = mn.buckets().stream().mapToInt(PlayerReport.Bucket::goals).sum();
         assertThat(withMinute + mn.unrecorded().goals()).isEqualTo(4);
+        assertThat(mn.total().goals()).isEqualTo(4).isEqualTo(r.total().goals());
         assertThat(mn.byHalf().stream().mapToInt(PlayerReport.Bucket::goals).sum()).isEqualTo(withMinute);
         assertThat(mn.hasData()).isTrue();
     }
