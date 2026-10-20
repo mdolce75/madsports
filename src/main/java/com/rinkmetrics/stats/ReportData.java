@@ -1,5 +1,6 @@
 package com.rinkmetrics.stats;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.rinkmetrics.sidgad.model.Federacion;
 
@@ -55,13 +56,22 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     public record Source(String competition, String url) {
     }
 
+    /**
+     * @param players los jugadores de campo (sin arqueros: no entran en las métricas de goles)
+     * @param squad   todos, arqueros incluidos (para la disciplina); no va al análisis de la IA
+     */
     public record TeamReport(String code, String name, List<StandingSnapshot> standings,
                              TeamRecord total, TeamRecord home, TeamRecord away, List<String> form,
                              List<MatchLine> results, List<MatchLine> upcoming,
                              MatchLine biggestWin, MatchLine worstLoss,
                              List<PlayerLine> players, SetPieces setPieces, Discipline discipline,
                              List<RivalLine> rivals, List<TorneoLine> byTorneo, TimeProfile timeProfile,
-                             List<Indicator> indicators, Fouls fouls) {
+                             List<Indicator> indicators, Fouls fouls, @JsonIgnore List<PlayerLine> squad) {
+
+        /** Leído del JSON (la IA no lo recibe), el plantel completo no viene: queda el de los jugadores de campo. */
+        public TeamReport {
+            squad = squad == null ? players : squad;
+        }
     }
 
     /**
@@ -385,11 +395,20 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
         }
     }
 
-    /** Un jugador del equipo. Sin asistencias: los clubes no las cargan en SIDGAD. */
+    /**
+     * Un jugador del equipo. Sin asistencias: los clubes no las cargan en SIDGAD.
+     *
+     * @param yellowCards amarillas en las actas de sus partidos (la tabla de SIDGAD no las trae)
+     */
     public record PlayerLine(int playerId, String name, int games, int goals,
                              double goalsPerGame, double goalShare,
                              int penaltiesScored, int penaltiesTaken, int directFreeScored, int directFreeTaken,
-                             int blueCards, int redCards) {
+                             int yellowCards, int blueCards, int redCards) {
+
+        @JsonIgnore
+        public int cards() {
+            return yellowCards + blueCards + redCards;
+        }
     }
 
     public record SetPieces(int directFreeScored, int directFreeTaken, int penaltiesScored, int penaltiesTaken) {

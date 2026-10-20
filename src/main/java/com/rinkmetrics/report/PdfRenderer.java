@@ -51,6 +51,24 @@ public class PdfRenderer {
         return toPdf(html(data, analysis, sample));
     }
 
+    /** Informe del club completo (todas sus ramas y categorías), plantilla {@code templates/club-report.html}. */
+    public String clubHtml(ClubReport report, boolean sample) {
+        Context ctx = new Context(Locale.forLanguageTag("es-AR"));
+        ctx.setVariable("r", report);
+        ctx.setVariable("sample", sample);
+        ctx.setVariable("f", new Format());
+        ctx.setVariable("c", new Charts());
+        return templates.process("club-report", ctx);
+    }
+
+    public byte[] clubPdf(ClubReport report) {
+        return clubPdf(report, false);
+    }
+
+    public byte[] clubPdf(ClubReport report, boolean sample) {
+        return toPdf(clubHtml(report, sample));
+    }
+
     /** Informe de un jugador (perfil PLAYERFPP), plantilla {@code templates/player-report.html}. */
     public String playerHtml(PlayerReport report) {
         return playerHtml(report, false);

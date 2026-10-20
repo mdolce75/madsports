@@ -70,11 +70,31 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 <sub>Informes de ejemplo con datos ficticios ("Club Ejemplo", "Tomás Ejemplo"): `GET /api/ejemplo.pdf` y
 `GET /api/ejemplo-jugador.pdf`.</sub>
 
+### Informe del club completo
+
+La pantalla de informes del club (`/club.html`) arma **un solo PDF con todo el club**: primero por **rama** (Masculino
+y después Femenino) y, dentro de cada rama, una sección por **categoría** (de Infantil a Primera, solo las que juegan en
+el período). Cada categoría lleva:
+
+- **Partidos:** jugados, ganados, empatados, perdidos y efectividad.
+- **Goles:** a favor, en contra y promedio por partido.
+- **Faltas:** cometidas, recibidas y promedio por partido (de los partidos con acta).
+- **Tarjetas:** amarillas, azules y rojas, con su promedio por partido.
+- **Top 3 · Promedio de gol:** los tres jugadores con mejor promedio, con goles y partidos.
+- **Top 3 · Libres directos** y **Top 3 · Penales:** por efectividad, con convertidos de tirados.
+- **Top 3 · Disciplina:** suma todas las tarjetas y muestra cuántas de cada color.
+- **Fortalezas y debilidades:** los indicadores de la categoría y un texto de IA (Gemini, o el análisis por reglas si
+  no está disponible) por categoría.
+
+Al principio, una tabla de contenido con el resumen de cada categoría. Tarda unos minutos: lee las actas de todas las
+categorías; el estado muestra por cuál va ("Categoría 3 de 8 · Juvenil Masculino").
+
 ### Informe de equipo: filtros
 
 **Filtros:** Año (2026, 2027) · Club · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Rama
 (solo las que tiene el club) · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera; solo las del club
-en esa rama). Si SIDGAD todavía no tiene un año, la web lo informa y no deja generar el informe.
+en esa rama). Por la API, sin `categoria` ni `rama` se pide el informe del club completo. Si SIDGAD todavía no tiene un
+año, la web lo informa y no deja generar el informe.
 
 **Equipos A y B:** son equipos distintos y cada uno tiene su informe. Si el club tiene dos equipos en una categoría y
 rama, la categoría se ofrece como "Infantil A" / "Infantil B" (en la API: `"categoria": "INFANTIL:B"`). La
@@ -506,13 +526,16 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
     `SEMESTRE` "2026-2", `CAMPEONATO` con el nombre); `400` si no hay partidos finalizados
 - `GET /api/catalogo?anio=2026&federacion=AMP` — clubes con sus categorías y ramas del año en la federación (sin
   `anio`: el más reciente con datos; sin `federacion`: FPP); `available: false` y `message` si el año no tiene datos
-- `GET /api/ejemplo.pdf` — informe modelo con datos ficticios ("Club Ejemplo"), marcado en cada página; no consulta
+- `GET /api/ejemplo.pdf` — informe modelo del club completo con datos ficticios ("Club Ejemplo": Primera y Juvenil
+  masculinas, Infantil femenina), marcado en cada página; no consulta
   SIDGAD ni la API de Gemini. Enlazado desde la web.
 - `GET /api/ejemplo-jugador.pdf`: informe modelo de jugador con datos ficticios ("Tomás Ejemplo", de Juniors, que
   también juega en Primera del "Club Ejemplo"). Se arma con el mismo motor que los informes reales. Enlazado desde
   el login, el registro y la pantalla de jugador.
 - `POST /api/informes` (CLUBFPP o CLUBAMP, solo su club y su federación) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
-  (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`)
+  (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`). Sin `categoria` ni `rama`
+  (`{"clubId":74,"periodo":"TEMPORADA","anio":2026}`): el informe del club completo, por rama y categoría; con una
+  sola de las dos, `400`
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
 - `GET /api/informes/{id}/pdf`
 
