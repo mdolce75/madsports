@@ -4,29 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mi informe de jugador · RinkReports</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f5f4f'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%231f5f4f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%231f5f4f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232fd3a0'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%2308130f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%2308130f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
     <link rel="stylesheet" href="/css/reports.css">
 </head>
-<body data-rr="jugador">
-<main class="wrap">
-    <section class="rr-hero">
-        <span class="rr-kicker">Informe de jugador</span>
-        <h1>Tu temporada, en números.</h1>
-        <p>Partidos, goles y tarjetas en cada categoría que jugaste y en el total, con la incidencia en tu equipo,
-            pelota parada, goles por tramo y tus fortalezas.</p>
+<body data-producto="reports" data-seccion="jugador">
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar"></div>
+    </div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Informe de jugador</span>
+        <h1>Tu temporada,<br><em>en números.</em></h1>
+        <p class="lead">Partidos, goles y tarjetas en cada categoría que jugaste y en el total, con la incidencia en tu
+            equipo, pelota parada, goles por tramo y tus fortalezas.</p>
     </section>
 
-    <form class="rr-form" id="form">
-        <div class="head"><span>Planilla del jugador</span><span id="season"></span></div>
-        <div class="notice" id="no-data" role="alert" hidden></div>
-        <div class="rows">
-            <div class="field">
-                <label for="club">Club</label>
-                <input type="text" id="club" readonly>
-            </div>
+    <div class="board" aria-hidden="true">
+        <div><strong>%</strong><span>Incidencia en el equipo</span></div>
+        <div><strong>5'</strong><span>Tramos de goles y tarjetas</span></div>
+        <div><strong>PDF · XLS</strong><span>Exportación</span></div>
+    </div>
+    </div>
+    <div class="main">
+    <form class="sheet" id="form">
+        <div class="sheet-head"><span>Planilla del jugador</span><span id="season"></span></div>
+
+        <div class="field">
+            <label for="club">Club</label>
+            <input type="text" id="club" readonly>
+        </div>
+        <div class="grid2">
             <div class="field">
                 <label for="categoria">Categoría</label>
                 <input type="text" id="categoria" readonly>
@@ -36,34 +51,40 @@
                 <input type="text" id="nombre" readonly>
             </div>
         </div>
-        <div class="rows">
+        <p class="hint">El informe incluye tu categoría y las superiores en que podés jugar.</p>
+
+        <div class="grid2">
             <div class="field">
-                <label for="anio">Año</label>
+                <label for="anio"><span class="num"><i>1</i></span>Año</label>
                 <select id="anio" required disabled></select>
             </div>
             <div class="field">
-                <label for="periodo">Período</label>
+                <label for="periodo"><span class="num"><i>2</i></span>Período</label>
                 <select id="periodo" required>
-                    <option value="TEMPORADA" selected>Temporada completa (Apertura + Clausura)</option>
+                    <option value="TEMPORADA" selected>Temporada completa</option>
                     <option value="APERTURA">Apertura</option>
                     <option value="CLAUSURA">Clausura</option>
                 </select>
             </div>
         </div>
-        <div class="actions">
-            <button class="rr-btn" id="go" type="submit" disabled>Ver informe</button>
-            <span class="hint">Incluye tu categoría y las superiores en que podés jugar.</span>
-        </div>
+        <div class="notice" id="no-data" role="alert" hidden></div>
+
+        <button class="go" id="go" type="submit" disabled>Ver informe</button>
+
         <ul class="steps" id="steps" hidden>
             <li data-s="EXTRAYENDO">Datos de SIDGAD</li>
-            <li data-s="GENERANDO_PDF">Armado del informe</li>
+            <li data-s="GENERANDO_PDF">Informe</li>
             <li data-s="LISTO">Listo</li>
         </ul>
         <div id="status" role="status" aria-live="polite"></div>
     </form>
+    </div>
+    </div>
 
     <div id="visor" hidden></div>
-</main>
+
+    <footer>© 2026 RinkReports · Un producto de <a href="/">Mad Sports</a>.</footer>
+</div>
 
 <script src="/js/app.js"></script>
 <script src="/js/reports.js"></script>
@@ -106,9 +127,8 @@
                 periodo: $("periodo").value
             });
             const job = await poll(`/api/jugador/informes/${body.id}`);
-            showStep("LISTO");
             document.querySelector('#steps li[data-s="LISTO"]').className = "done";
-            status("");
+            status("Informe listo.");
             rrShowReport($("visor"), job, `${quien} · ${PERIODO[$("periodo").value]} ${$("anio").value}`);
         } catch (e) {
             status(e.message, true);

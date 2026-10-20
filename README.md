@@ -72,8 +72,10 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 
 ### RinkReports: en pantalla, PDF y Excel
 
-Los informes de jugador y de club viven en **RinkReports** (`/rinkreports`), con su propio estilo contable: papel claro,
-renglones de libro mayor, números tabulares y un verde contable como acento. La portada ofrece las dos opciones,
+Los informes de jugador y de club viven en **RinkReports** (`/rinkreports`), con el mismo look and feel que RinkMetrics
+(tipografías, tableros, planillas y botones de `app.css`) y su propia paleta (`reports.css`): fondo verde noche,
+esmeralda como color principal y ámbar para lo que se destaca. La web de RinkMetrics ya no enlaza a los informes: su
+menú es solo de RinkMetrics. La portada ofrece las dos opciones,
 **Jugador** y **Club**, con su ejemplo y su registro.
 
 Cada informe **se muestra en pantalla** (el mismo contenido que el PDF, dentro de la página) y se **exporta a PDF o a

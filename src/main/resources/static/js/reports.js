@@ -1,35 +1,15 @@
-// RinkReports: barra superior, pie y visor del informe (en pantalla, con exportación a PDF y a Excel).
-// Va después de /js/app.js (usa $, session y renderUserBar).
+// RinkReports: marca, barra del usuario y visor del informe (en pantalla, con exportación a PDF y a Excel).
+// Va después de /js/app.js (usa $, session y renderUserBar). Las páginas llevan body data-producto="reports".
 
-const RR_LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#1f5f4f"/><rect x="13" y="11" width="38" height="42" rx="3" fill="#fff"/><g stroke="#1f5f4f" stroke-width="2.4" stroke-linecap="round"><path d="M19 21 H36 M19 29 H36 M19 37 H36"/><path d="M41 21 H45 M41 29 H45 M41 37 H45"/></g><path d="M19 45 H45" stroke="#1f5f4f" stroke-width="3.2" stroke-linecap="round"/></svg>`;
+/** Marca de la barra superior: el libro de informes, con renglones y una columna de totales. */
+const RR_BRAND = `<header class="brand">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2fd3a0"/><rect x="13" y="11" width="38" height="42" rx="3" fill="#fff"/><g stroke="#08130f" stroke-width="2.4" stroke-linecap="round"><path d="M19 21 H36 M19 29 H36 M19 37 H36"/><path d="M41 21 H45 M41 29 H45 M41 37 H45"/></g><path d="M19 45 H45" stroke="#08130f" stroke-width="3.2" stroke-linecap="round"/></svg>
+    <div><b>RinkReports</b><small>Informes de hockey sobre patines</small></div>
+</header>`;
 
-/** Barra superior y pie de RinkReports; la página marca su sección con data-rr en el body ("inicio", "ejemplos"). */
-function rrChrome() {
-    const top = document.createElement("header");
-    top.className = "rr-top";
-    top.innerHTML = `<div class="wrap">
-        <a class="rr-brand" href="/rinkreports" aria-label="RinkReports: ir al inicio">${RR_LOGO}
-            <span><b>RinkReports</b><small>Informes · Mad Sports</small></span></a>
-        <nav class="rr-nav" aria-label="Secciones"></nav>
-        <div class="userbar" id="userbar"><a class="rr-btn ghost" href="/login.html?volver=%2Frinkreports">Ingresar</a></div>
-    </div>`;
-    const nav = top.querySelector("nav");
-    for (const [id, texto, href] of [["inicio", "Inicio", "/rinkreports"], ["ejemplos", "Ejemplos", "/rinkreports/ejemplo.html"],
-                                     ["madsports", "Mad Sports", "/"]]) {
-        const a = document.createElement("a");
-        a.href = href;
-        a.textContent = texto;
-        if (document.body.dataset.rr === id) a.setAttribute("aria-current", "page");
-        nav.append(a);
-    }
-    document.body.prepend(top);
-    const foot = document.createElement("footer");
-    foot.className = "rr-foot";
-    foot.innerHTML = `<div class="wrap"><span>© 2026 RinkReports · Informes de hockey sobre patines</span>
-        <span>Un producto de <a href="/">Mad Sports</a></span></div>`;
-    document.body.append(foot);
-    document.body.dataset.salir = "/rinkreports";
-}
+$("brand").outerHTML = RR_BRAND;
+// Al salir, a la portada de RinkReports.
+document.body.dataset.salir = "/rinkreports";
 
 /** En las páginas públicas: con sesión, el usuario, su acceso directo ("Mi informe") y salir. */
 async function rrSessionBar() {
@@ -37,20 +17,20 @@ async function rrSessionBar() {
     if (!s || !s.autenticado || s.inicio.startsWith("/login.html")) return null;
     renderUserBar(s);
     const go = document.createElement("a");
-    go.className = "rr-btn";
+    go.className = "btn primary";
     go.href = s.inicio;
     go.textContent = s.inicio.startsWith("/rinkreports/") ? "Mi informe" : "Mi cuenta";
     $("userbar").prepend(go);
     return s;
 }
 
-/** Ancho mínimo de la hoja del informe en pantalla (px); debajo, se achica. */
+/** Ancho mínimo de la hoja del informe en pantalla (px); debajo, se achica entera. */
 const RR_SHEET_WIDTH = 640;
 
 const RR_ICON_DOWN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>`;
 
 /**
- * Muestra el informe en pantalla, dentro de un marco (el mismo HTML que el PDF), con los botones para exportarlo.
+ * Muestra el informe en pantalla, dentro de un marco (el mismo contenido que el PDF), con los botones para exportarlo.
  *
  * @param box  contenedor del visor
  * @param urls {htmlUrl, pdfUrl, xlsxUrl}
@@ -60,8 +40,8 @@ async function rrShowReport(box, urls, title) {
     box.className = "rr-viewer";
     box.innerHTML = `<div class="bar"><h2></h2>
             <div class="export"><span>Exportar</span>
-                <a class="rr-btn" data-x="pdf">${RR_ICON_DOWN}PDF</a>
-                <a class="rr-btn ghost" data-x="xlsx">${RR_ICON_DOWN}Excel</a></div></div>
+                <a class="btn primary" data-x="pdf">${RR_ICON_DOWN}PDF</a>
+                <a class="btn ghost" data-x="xlsx">${RR_ICON_DOWN}Excel</a></div></div>
         <div class="paper"><p class="loading">Cargando el informe…</p></div>`;
     box.querySelector("h2").textContent = title;
     box.querySelector('[data-x="pdf"]').href = urls.pdfUrl;
@@ -105,10 +85,12 @@ async function rrPlans(box, perfil, registro) {
         const gratis = Number(p.precio) === 0;
         const disponible = p.disponible !== false;
         const card = document.createElement(disponible ? "a" : "div");
-        card.className = "plan" + (disponible ? "" : " no-disponible");
         if (disponible) {
+            card.className = "plan plan-elegir";
             card.href = registro + "&plan=" + encodeURIComponent(p.codigo);
+            card.setAttribute("aria-label", `Elegir el plan ${p.nombre} y crear la cuenta`);
         } else {
+            card.className = "plan proximamente no-disponible";
             card.setAttribute("aria-disabled", "true");
             const cinta = document.createElement("span");
             cinta.className = "cintillo";
@@ -133,7 +115,7 @@ async function rrPlans(box, perfil, registro) {
         card.append(nombre, precio, cupo, nota);
         if (disponible) {
             const elegir = document.createElement("span");
-            elegir.className = "rr-btn plan-cta";
+            elegir.className = "btn primary plan-cta";
             elegir.textContent = gratis ? "Empezar gratis" : "Elegir este plan";
             card.append(elegir);
         }
@@ -141,5 +123,3 @@ async function rrPlans(box, perfil, registro) {
     }
     box.hidden = !planes.length;
 }
-
-rrChrome();
