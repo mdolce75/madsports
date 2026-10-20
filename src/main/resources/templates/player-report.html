@@ -45,7 +45,11 @@
         .notes p { margin: 3px 0; }
         .muted { color: #718096; font-size: 8pt; }
         .nobreak { page-break-inside: avoid; }
-        h2, h3 { page-break-after: avoid; }
+        h3.apartado { border-left: none; background: #0a7ea4; color: #fff; padding: 3px 8px; margin: 16px 0 6px 0; }
+        h4 { font-size: 8.5pt; color: #12303a; text-transform: uppercase; letter-spacing: .5px; margin: 8px 0 4px 0; }
+        .kpis.tres td { width: 33.3%; }
+        .kpis.cuatro td { width: 25%; }
+        h2, h3, h4 { page-break-after: avoid; }
         table.matches { -fs-table-paginate: paginate; }
         tr { page-break-inside: avoid; }
         tr.sep td { border-top: 2px solid #12303a; }
@@ -94,27 +98,47 @@
 </div>
 
 <th:block th:if="${r.total.played > 0}" th:with="t=${r.total}">
-    <table class="kpis">
-        <tr>
-            <td><div class="kpi-v" th:text="${t.played}">0</div><div class="kpi-l">PJ</div></td>
-            <td><div class="kpi-v" th:text="${t.won}">0</div><div class="kpi-l">Ganados</div></td>
-            <td><div class="kpi-v" th:text="${t.drawn}">0</div><div class="kpi-l">Empatados</div></td>
-            <td><div class="kpi-v" th:text="${t.lost}">0</div><div class="kpi-l">Perdidos</div></td>
-            <td><div class="kpi-v" th:text="${t.goals}">0</div><div class="kpi-l">Goles</div></td>
-            <td><div class="kpi-v" th:text="${f.dec(t.goalsPerGame())}">0</div><div class="kpi-l">Goles por PJ</div></td>
-            <td><div class="kpi-v" th:text="${t.cards()}">0</div><div class="kpi-l">Tarjetas</div></td>
-            <td><div class="kpi-v" th:text="${f.dec(t.cardsPerGame())}">0</div><div class="kpi-l">Tarjetas por PJ</div></td>
-        </tr>
-    </table>
-
+    <h3 class="apartado">Partidos</h3>
     <table class="two nobreak">
         <tr>
             <td>
-                <h3>Resultados de sus partidos</h3>
-                <img class="chart" th:src="${c.resultsDonut(t.won, t.drawn, t.lost)}" alt="Ganados, empatados y perdidos"/>
+                <table class="kpis cuatro">
+                    <tr>
+                        <td><div class="kpi-v" th:text="${t.played}">0</div><div class="kpi-l">PJ</div></td>
+                        <td><div class="kpi-v" th:text="${t.won}">0</div><div class="kpi-l">Ganados</div></td>
+                        <td><div class="kpi-v" th:text="${t.drawn}">0</div><div class="kpi-l">Empatados</div></td>
+                        <td><div class="kpi-v" th:text="${t.lost}">0</div><div class="kpi-l">Perdidos</div></td>
+                    </tr>
+                </table>
+            </td>
+            <td><img class="chart" th:src="${c.resultsDonut(t.won, t.drawn, t.lost)}" alt="Ganados, empatados y perdidos"/></td>
+        </tr>
+    </table>
+
+    <h3 class="apartado">Goles</h3>
+    <table class="kpis tres nobreak">
+        <tr>
+            <td><div class="kpi-v" th:text="${t.goals}">0</div><div class="kpi-l">Goles</div></td>
+            <td><div class="kpi-v" th:text="${f.dec(t.goalsPerGame())}">0</div><div class="kpi-l">Goles por PJ</div></td>
+            <td><div class="kpi-v" th:text="${f.pct(t.goalShare())}">0</div>
+                <div class="kpi-l" th:text="|De los goles del equipo (${t.goals} de ${t.teamGoals})|">Incidencia</div></td>
+        </tr>
+    </table>
+
+    <h3 class="apartado">Tarjetas</h3>
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <table class="kpis tres">
+                    <tr>
+                        <td><div class="kpi-v" th:text="${t.cards()}">0</div><div class="kpi-l">Tarjetas</div></td>
+                        <td><div class="kpi-v" th:text="${f.dec(t.cardsPerGame())}">0</div><div class="kpi-l">Tarjetas por PJ</div></td>
+                        <td><div class="kpi-v" th:text="${t.teamCards == 0 ? '-' : f.pct(t.cardShare())}">0</div>
+                            <div class="kpi-l" th:text="|De las tarjetas del equipo (${t.sheetCards} de ${t.teamCards})|">Incidencia</div></td>
+                    </tr>
+                </table>
             </td>
             <td th:with="cd=${c.cardsDonut(t.yellowCards, t.blueCards, t.redCards)}">
-                <h3>Tarjetas recibidas</h3>
                 <img class="chart" th:if="${cd != null}" th:src="${cd}" alt="Tarjetas por color"/>
                 <p class="muted" th:if="${cd == null}">No recibió tarjetas en estos partidos.</p>
             </td>
@@ -158,52 +182,38 @@
         las del equipo). Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es el
         promedio por partido jugado. El detalle de cada categoría sigue a continuación.</p>
 
-    <!--/* Un bloque por categoría, con todas sus estadísticas. */-->
-    <div class="category" th:each="b : ${r.blocks}" th:with="l=${b.line}">
+    <!--/* Un bloque por categoría: partidos, goles y tarjetas, cada uno en su apartado. */-->
+    <div class="category" th:each="b : ${r.blocks}" th:with="l=${b.line}, mn=${b.minutes}">
         <h2 th:text="${l.category}">Categoría</h2>
-        <table class="kpis">
+
+        <h3 class="apartado">Partidos</h3>
+        <table class="two nobreak">
             <tr>
-                <td><div class="kpi-v" th:text="${l.played}">0</div><div class="kpi-l">PJ</div></td>
-                <td><div class="kpi-v" th:text="${l.won}">0</div><div class="kpi-l">Ganados</div></td>
-                <td><div class="kpi-v" th:text="${l.drawn}">0</div><div class="kpi-l">Empatados</div></td>
-                <td><div class="kpi-v" th:text="${l.lost}">0</div><div class="kpi-l">Perdidos</div></td>
+                <td>
+                    <table class="kpis cuatro">
+                        <tr>
+                            <td><div class="kpi-v" th:text="${l.played}">0</div><div class="kpi-l">PJ</div></td>
+                            <td><div class="kpi-v" th:text="${l.won}">0</div><div class="kpi-l">Ganados</div></td>
+                            <td><div class="kpi-v" th:text="${l.drawn}">0</div><div class="kpi-l">Empatados</div></td>
+                            <td><div class="kpi-v" th:text="${l.lost}">0</div><div class="kpi-l">Perdidos</div></td>
+                        </tr>
+                    </table>
+                </td>
+                <td><img class="chart" th:src="${c.resultsDonut(l.won, l.drawn, l.lost)}" alt="Ganados, empatados y perdidos"/></td>
+            </tr>
+        </table>
+
+        <h3 class="apartado">Goles</h3>
+        <table class="kpis tres nobreak">
+            <tr>
                 <td><div class="kpi-v" th:text="${l.goals}">0</div><div class="kpi-l">Goles</div></td>
                 <td><div class="kpi-v" th:text="${f.dec(l.goalsPerGame())}">0</div><div class="kpi-l">Goles por PJ</div></td>
                 <td><div class="kpi-v" th:text="${f.pct(l.goalShare())}">0</div>
                     <div class="kpi-l" th:text="|De los goles del equipo (${l.goals} de ${l.teamGoals})|">Incidencia</div></td>
-                <td><div class="kpi-v" th:text="${l.cards()}">0</div><div class="kpi-l">Tarjetas</div></td>
-                <td><div class="kpi-v" th:text="${f.dec(l.cardsPerGame())}">0</div><div class="kpi-l">Tarjetas por PJ</div></td>
-                <td><div class="kpi-v" th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}">0</div>
-                    <div class="kpi-l" th:text="|De las tarjetas del equipo (${l.sheetCards} de ${l.teamCards})|">Incidencia</div></td>
             </tr>
         </table>
-
-        <table class="two nobreak">
-            <tr>
-                <td>
-                    <h3>Resultados</h3>
-                    <img class="chart" th:src="${c.resultsDonut(l.won, l.drawn, l.lost)}" alt="Ganados, empatados y perdidos"/>
-                </td>
-                <td th:with="cd=${c.cardsDonut(l.yellowCards, l.blueCards, l.redCards)}">
-                    <h3>Tarjetas</h3>
-                    <img class="chart" th:if="${cd != null}" th:src="${cd}" alt="Tarjetas por color"/>
-                    <p class="muted" th:if="${cd == null}">No recibió tarjetas en esta categoría.</p>
-                    <table th:if="${cd != null}">
-                        <tr><th></th><th><span class="card y"></span> Amarillas</th><th><span class="card b"></span> Azules</th>
-                            <th><span class="card r"></span> Rojas</th></tr>
-                        <tr><td class="l">Cantidad</td><td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td>
-                            <td th:text="${l.redCards}"></td></tr>
-                        <tr><td class="l">Por PJ</td><td th:text="${f.dec(l.yellowPerGame())}"></td>
-                            <td th:text="${f.dec(l.bluePerGame())}"></td><td th:text="${f.dec(l.redPerGame())}"></td></tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-
-        <div th:replace="~{fragments/player-strengths :: strengths(${b.indicators}, |Fortalezas y debilidades en ${l.category}|)}"></div>
-
         <div class="nobreak">
-            <h3>Penales y libres directos</h3>
+            <h4>Penales y libres directos</h4>
             <table class="two" th:if="${l.hasSetPieces()}">
                 <tr>
                     <td th:with="pd=${c.setPieceDonut(l.penaltiesScored, l.penaltiesTaken, 'penales')}">
@@ -218,35 +228,78 @@
             </table>
             <p class="muted" th:if="${!l.hasSetPieces()}">No tiró penales ni libres directos en esta categoría.</p>
         </div>
-
-        <th:block th:if="${b.minutes.hasData()}" th:with="mn=${b.minutes}">
-            <h3 th:text="|Goles y tarjetas por tramos de 5 minutos (tiempos de ${mn.periodMinutes}')|">Tramos</h3>
-            <div class="nobreak" th:with="gc=${c.playerGoalsByBucket(mn.buckets)}" th:if="${c.playerGoalsByBucket(mn.buckets) != null}">
-                <img class="chart wide" th:src="${gc}" alt="Goles por tramo de 5 minutos"/>
-            </div>
-            <div class="nobreak" th:with="cc=${c.playerCardsByBucket(mn.buckets)}" th:if="${c.playerCardsByBucket(mn.buckets) != null}">
-                <img class="chart wide" th:src="${cc}" alt="Tarjetas por tramo de 5 minutos, por color"/>
+        <th:block th:if="${mn.hasData()}">
+            <h4 th:text="|Goles por tramos de 5 minutos (tiempos de ${mn.periodMinutes}')|">Goles por tramos</h4>
+            <div class="nobreak" th:if="${c.playerGoalsByBucket(mn.buckets) != null}">
+                <img class="chart wide" th:src="${c.playerGoalsByBucket(mn.buckets)}" alt="Goles por tramo de 5 minutos"/>
             </div>
             <table class="nobreak">
-                <tr><th class="l">Tramo</th><th>Goles</th><th><span class="card y"></span> Amarillas</th>
+                <tr><th class="l">Tramo</th><th>Goles</th><th class="l">Tramo</th><th>Goles</th></tr>
+                <tr th:each="i : ${#numbers.sequence(0, mn.buckets.size() / 2 - 1)}"
+                    th:with="a=${mn.buckets[i]}, z=${mn.buckets[i + mn.buckets.size() / 2]}">
+                    <td class="l" th:text="${a.label}"></td><td th:text="${a.goals}"></td>
+                    <td class="l" th:text="${z.label}"></td><td th:text="${z.goals}"></td>
+                </tr>
+                <tr class="unrecorded" th:if="${mn.unrecorded.goals > 0}">
+                    <td class="l" colspan="3">Sin minuto registrado *</td><td th:text="${mn.unrecorded.goals}"></td>
+                </tr>
+                <tr class="total"><td class="l" colspan="3">Total</td><td th:text="${mn.total().goals}"></td></tr>
+            </table>
+        </th:block>
+
+        <h3 class="apartado">Tarjetas</h3>
+        <table class="kpis tres nobreak">
+            <tr>
+                <td><div class="kpi-v" th:text="${l.cards()}">0</div><div class="kpi-l">Tarjetas</div></td>
+                <td><div class="kpi-v" th:text="${f.dec(l.cardsPerGame())}">0</div><div class="kpi-l">Tarjetas por PJ</div></td>
+                <td><div class="kpi-v" th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}">0</div>
+                    <div class="kpi-l" th:text="|De las tarjetas del equipo (${l.sheetCards} de ${l.teamCards})|">Incidencia</div></td>
+            </tr>
+        </table>
+        <table class="two nobreak" th:with="cd=${c.cardsDonut(l.yellowCards, l.blueCards, l.redCards)}">
+            <tr>
+                <td>
+                    <img class="chart" th:if="${cd != null}" th:src="${cd}" alt="Tarjetas por color"/>
+                    <p class="muted" th:if="${cd == null}">No recibió tarjetas en esta categoría.</p>
+                </td>
+                <td>
+                    <table th:if="${cd != null}">
+                        <tr><th></th><th><span class="card y"></span> Amarillas</th><th><span class="card b"></span> Azules</th>
+                            <th><span class="card r"></span> Rojas</th></tr>
+                        <tr><td class="l">Cantidad</td><td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td>
+                            <td th:text="${l.redCards}"></td></tr>
+                        <tr><td class="l">Por PJ</td><td th:text="${f.dec(l.yellowPerGame())}"></td>
+                            <td th:text="${f.dec(l.bluePerGame())}"></td><td th:text="${f.dec(l.redPerGame())}"></td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        <th:block th:if="${mn.hasData() and mn.total().cards() > 0}">
+            <h4 th:text="|Tarjetas por tramos de 5 minutos (tiempos de ${mn.periodMinutes}')|">Tarjetas por tramos</h4>
+            <div class="nobreak" th:if="${c.playerCardsByBucket(mn.buckets) != null}">
+                <img class="chart wide" th:src="${c.playerCardsByBucket(mn.buckets)}" alt="Tarjetas por tramo de 5 minutos, por color"/>
+            </div>
+            <table class="nobreak">
+                <tr><th class="l">Tramo</th><th><span class="card y"></span> Amarillas</th>
                     <th><span class="card b"></span> Azules</th><th><span class="card r"></span> Rojas</th></tr>
                 <tr th:each="bk, it : ${mn.buckets}" th:class="${it.index == mn.buckets.size() / 2 ? 'sep' : ''}">
-                    <td class="l" th:text="${bk.label}"></td><td th:text="${bk.goals}"></td>
+                    <td class="l" th:text="${bk.label}"></td>
                     <td th:text="${bk.yellowCards}"></td><td th:text="${bk.blueCards}"></td><td th:text="${bk.redCards}"></td>
                 </tr>
-                <tr class="unrecorded" th:if="${mn.unrecorded.goals + mn.unrecorded.cards() > 0}" th:with="u=${mn.unrecorded}">
-                    <td class="l">Sin minuto registrado *</td><td th:text="${u.goals}"></td>
+                <tr class="unrecorded" th:if="${mn.unrecorded.cards() > 0}" th:with="u=${mn.unrecorded}">
+                    <td class="l">Sin minuto registrado *</td>
                     <td th:text="${u.yellowCards}"></td><td th:text="${u.blueCards}"></td><td th:text="${u.redCards}"></td>
                 </tr>
                 <tr class="total" th:with="tt=${mn.total()}">
-                    <td class="l">Total</td><td th:text="${tt.goals}"></td>
+                    <td class="l">Total</td>
                     <td th:text="${tt.yellowCards}"></td><td th:text="${tt.blueCards}"></td><td th:text="${tt.redCards}"></td>
                 </tr>
             </table>
         </th:block>
-
-        <h3>Goles con uno menos por sus sanciones</h3>
+        <h4>Goles con uno menos por sus sanciones</h4>
         <div th:replace="~{fragments/player-short-handed :: concededGoals(${b.shortHanded})}"></div>
+
+        <div th:replace="~{fragments/player-strengths :: strengths(${b.indicators}, |Fortalezas y debilidades en ${l.category}|)}"></div>
 
         <th:block th:if="${!b.matches.isEmpty()}">
             <h3>Partido a partido</h3>
@@ -277,12 +330,14 @@
         </th:block>
     </div>
 
-    <!--/* Con más de una categoría: las mismas estadísticas sumadas. */-->
+    <!--/* Con más de una categoría: las mismas estadísticas sumadas, con goles y tarjetas por separado. */-->
     <div class="category" th:if="${r.blocks.size() > 1}" th:with="t=${r.total}, mn=${r.minutes}">
         <h2>Todas las categorías</h2>
         <div th:replace="~{fragments/player-strengths :: strengths(${r.indicators}, 'Fortalezas y debilidades generales')}"></div>
+
+        <h3 class="apartado">Goles</h3>
         <div class="nobreak" th:if="${t.hasSetPieces()}">
-            <h3>Penales y libres directos</h3>
+            <h4>Penales y libres directos</h4>
             <table class="two">
                 <tr>
                     <td th:with="pd=${c.setPieceDonut(t.penaltiesScored, t.penaltiesTaken, 'penales')}">
@@ -297,18 +352,24 @@
             </table>
         </div>
         <th:block th:if="${mn.hasData()}">
-            <h3>Goles y tarjetas por tramos de 5 minutos</h3>
+            <h4>Goles por tramos de 5 minutos</h4>
             <div class="nobreak" th:if="${c.playerGoalsByBucket(mn.buckets) != null}">
                 <img class="chart wide" th:src="${c.playerGoalsByBucket(mn.buckets)}" alt="Goles por tramo de 5 minutos"/>
             </div>
+            <p class="muted" th:if="${mn.unrecorded.goals > 0}"
+               th:text="|Sin minuto registrado (fuera del gráfico): ${mn.unrecorded.goals} goles. En total: ${mn.total().goals} goles.|">Sin minuto</p>
+        </th:block>
+
+        <h3 class="apartado">Tarjetas</h3>
+        <th:block th:if="${mn.hasData() and mn.total().cards() > 0}">
+            <h4>Tarjetas por tramos de 5 minutos</h4>
             <div class="nobreak" th:if="${c.playerCardsByBucket(mn.buckets) != null}">
                 <img class="chart wide" th:src="${c.playerCardsByBucket(mn.buckets)}" alt="Tarjetas por tramo de 5 minutos, por color"/>
             </div>
-            <p class="muted" th:if="${mn.unrecorded.goals + mn.unrecorded.cards() > 0}"
-               th:with="u=${mn.unrecorded}, tt=${mn.total()}"
-               th:text="|Sin minuto registrado (fuera de los gráficos): ${u.goals} goles y ${u.cards()} tarjetas. En total: ${tt.goals} goles y ${tt.cards()} tarjetas.|">Sin minuto</p>
+            <p class="muted" th:if="${mn.unrecorded.cards() > 0}"
+               th:text="|Sin minuto registrado (fuera del gráfico): ${mn.unrecorded.cards()} tarjetas. En total: ${mn.total().cards()} tarjetas.|">Sin minuto</p>
         </th:block>
-        <h3>Goles con uno menos por sus sanciones</h3>
+        <h4>Goles con uno menos por sus sanciones</h4>
         <div th:replace="~{fragments/player-short-handed :: concededGoals(${r.shortHanded})}"></div>
     </div>
 </th:block>

@@ -148,7 +148,8 @@ class SampleReportTest {
         assertThat(juniors).isPositive().isLessThan(primera);
         assertThat(primera).isLessThan(general);
         assertThat(html).contains("INFORME DE EJEMPLO — DATOS FICTICIOS", "Informe de ejemplo.", "Tomás Ejemplo",
-                "CLUB EJEMPLO", "Penales y libres directos", "Goles y tarjetas por tramos de 5 minutos");
+                "CLUB EJEMPLO", "Penales y libres directos", "Goles por tramos de 5 minutos",
+                "Tarjetas por tramos de 5 minutos");
         assertThat(renderer.playerHtml(r, false)).doesNotContain("DATOS FICTICIOS");
 
         byte[] pdf = sample.playerPdf();
