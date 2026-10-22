@@ -6,8 +6,9 @@
 
 **Estadísticas de hockey sobre patines, convertidas en informes PDF.**
 
-Informes de equipo y de jugador a partir de los datos de la Federación Porteña de Patín (FPP),
-con gráficos, análisis minuto a minuto y texto redactado por IA.
+Informes de equipo, de club y de jugador a partir de los datos de la Federación Porteña de Patín (FPP) y de la
+Asociación Mendocina de Patín (AMP), con gráficos, análisis minuto a minuto y texto redactado por IA. Los productos de
+Mad Sports: **RinkReports** (informes en pantalla, PDF y Excel) y **RinkMetrics** (métricas en vivo para el DT).
 
 <img src="https://img.shields.io/badge/Java%2021-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21">
 <img src="https://img.shields.io/badge/Spring%20Boot%203.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot 3.5">
@@ -258,9 +259,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 
 - **Dos productos:** la home (`/`) es la de **Mad Sports**, la compañía, y presenta sus dos productos: **RinkReports**
   (`/rinkreports`: perfiles Club y Jugador, informes de ejemplo) y **RinkMetrics** (`/rinkmetrics`: las estadísticas en
-  vivo del DT, y su plan). El menú "Informes / DT" está arriba en todas
-  las páginas, salvo en la pantalla de RinkMetrics (y su demo): ahí la barra superior lleva solo el menú del DT
-  (Dashboard · Partidos · Jugadores · Informes) y el logo vuelve a la portada. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
+  vivo del DT, y su plan). Cada producto tiene arriba su propio menú (RinkMetrics: Inicio · Demo · Por qué
+  RinkMetrics; RinkReports: Inicio · Ejemplos), salvo la pantalla de RinkMetrics (y su demo): ahí la barra superior lleva
+  solo el menú del DT (Control panel · Partidos · Equipo · Estadísticas · Informes) y el logo vuelve a la portada. Cada
+  producto tiene su ingreso, que lleva a cada usuario a la pantalla de su perfil.
 - **Por qué RinkMetrics** (`/rinkmetrics/why.html`, en el menú): las ventajas de la plataforma, en su propia página.
 - **Demo de RinkMetrics** (`/coach-demo.html`, en el menú "Demo"): RinkMetrics completo con datos de ejemplo, sin
   cuenta: arranca en el Control panel y se recorren todas las pantallas (Partidos, con un partido en juego para cargar
@@ -287,7 +289,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Cuentas por producto:** cada cuenta es de un producto. Las de **RinkReports** (Club y Jugador) se crean en
   `/rinkreports/signup.html` e ingresan por `/rinkreports/login.html`. Las de **RinkMetrics** (DT) se crean en
   `/rinkmetrics/signup.html` e ingresan por `/rinkmetrics/login.html`. Una cuenta no ingresa por el otro producto: el login responde 401
-  `OTRO_PRODUCTO` con el ingreso que le corresponde. El mismo email puede tener una cuenta en cada producto (único
+  `OTHER_PRODUCT` con el ingreso que le corresponde. El mismo email puede tener una cuenta en cada producto (único
   dentro del producto, V22); el usuario sigue siendo único en toda la web. Los mails (confirmación y clave nueva) llevan
   el nombre, el logo y el color del producto de la cuenta, y sus enlaces llevan a su ingreso.
 - **Registro** (`/rinkreports/signup.html` o `/rinkmetrics/signup.html`): usuario, clave (mínimo 8, se guarda con BCrypt),
@@ -348,8 +350,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     aparece para cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre
     corregido.
 - **RinkMetrics (pantalla, `/coach.html`):** módulos ES sin build en `js/coach/`: `main.js` (menú y arranque),
-  `panel.js`, `partidos.js`, `partido.js` (la carga en vivo), `estadisticas.js`, `informes.js`, `equipo.js`, y los
-  compartidos `acciones.js` (botones y reglas de goles), `informe.js`, `fichas.js`, `cola.js` y `comun.js`. Al volver
+  `panel.js`, `matches.js`, `match.js` (la carga en vivo), `stats.js`, `reports.js`, `team.js`, y los
+  compartidos `actions.js` (botones y reglas de goles), `report.js`, `player-cards.js`, `queue.js` y `common.js`; en la
+  demo, `demo.js` y `demo-api.js`. Al volver
   a la pestaña se vuelven a pedir los equipos (por si cambiaron en otro dispositivo). En el celular va en una columna; en tablet y web (desde 760 px de ancho)
   la carga va en columnas (jugadores y últimas acciones | acciones, y en web las últimas acciones en una tercera
   columna) y entra entera en la pantalla, sin bajar.
@@ -366,7 +369,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     sola a esta pestaña.
   - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/coach/queue.js`) y se
     mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
-    (`dt-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin
+    (`coach-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin
     señal. El reloj (iniciar, pausar, fin del tiempo) y el cierre sí necesitan conexión.
 - **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
   ingresar: el login avisa y ofrece reenviar el mail.
@@ -378,9 +381,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   sesión se pierde porque venció, se cerró el navegador o se reinició la app, el próximo pedido vuelve a entrar solo.
   El token cambia en cada uso y se borra al salir o al cambiar la clave. Si la sesión vence con una pantalla abierta,
   la web lleva al ingreso con el aviso "Tu sesión venció" y después vuelve a esa misma pantalla.
-- **Plan en el registro:** cada perfil tiene un solo plan, mensual y sin permanencia. Al elegir el perfil se muestra
+- **Plan en el registro:** cada perfil empieza con su plan free y tiene un plan mensual, sin permanencia (por ahora
+  "Próximamente"). Al elegir el perfil se muestra
   con su precio, su cupo y los beneficios. Es obligatorio y queda como suscripción del usuario desde el día del
-  registro. Todavía no hay cobro ni límite de informes por mes.
+  registro. Todavía no hay cobro; el jugador tiene un cupo de informes por mes (ver arriba).
 - **Precios en pesos:** el precio base de cada plan está en dólares y se muestra en pesos al dólar oficial del Banco
   Nación (venta) del día, que publica [DolarAPI](https://dolarapi.com), redondeado hacia abajo a centenas. Se consulta como mucho
   una vez por hora; si DolarAPI no responde se usa la última cotización o el respaldo (`DOLLAR_FALLBACK`, $ 1.500).
