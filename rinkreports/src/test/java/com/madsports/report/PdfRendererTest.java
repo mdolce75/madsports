@@ -16,7 +16,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(properties = "rinkmetrics.ai.enabled=false")
+@SpringBootTest(classes = InformesTestConfig.class)
 class PdfRendererTest {
 
     @Autowired

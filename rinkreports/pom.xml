@@ -26,5 +26,24 @@
             <artifactId>fastexcel</artifactId>
             <version>${fastexcel.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel-reader</artifactId>
+            <version>${fastexcel.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Datos de prueba compartidos (Fixtures, HTML guardado de SIDGAD, partidos de StatsEngineTest). -->
+        <dependency>
+            <groupId>com.madsports</groupId>
+            <artifactId>hockey-data</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
