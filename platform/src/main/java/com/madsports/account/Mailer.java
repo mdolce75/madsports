@@ -55,7 +55,7 @@ public class Mailer {
     public String html(MailContent m) {
         Context ctx = new Context(Locale.forLanguageTag("es-AR"));
         ctx.setVariable("m", m);
-        return templates.process("mail/cuenta", ctx);
+        return templates.process("mail/account", ctx);
     }
 
     /** @return false si no se pudo enviar (el error queda en el log; el usuario puede pedir otro mail) */

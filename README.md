@@ -69,7 +69,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 </table>
 
 <sub>Informes de ejemplo con datos ficticios ("Club Ejemplo", "Tomás Ejemplo"): en pantalla en
-`/rinkreports/ejemplo.html`, y en PDF y Excel en `GET /api/ejemplo.pdf|.xlsx` y `GET /api/ejemplo-jugador.pdf|.xlsx`.</sub>
+`/rinkreports/sample.html`, y en PDF y Excel en `GET /api/sample.pdf|.xlsx` y `GET /api/sample-player.pdf|.xlsx`.</sub>
 
 ### RinkReports: en pantalla, PDF y Excel
 
@@ -87,7 +87,8 @@ Excel**. El Excel trae las mismas cifras en tablas para filtrar y trabajar:
 - **Jugador:** **Resumen** (cada categoría y el total, con la incidencia de goles y tarjetas), **Partidos** (uno por
   fila), **Minutos** (goles y tarjetas por tramo de 5') y **Fortalezas**.
 
-Las direcciones anteriores (`/informes.html`, `/club.html`, `/jugador.html`) llevan a las nuevas.
+Las direcciones anteriores (`/informes.html`, `/club.html`, `/jugador.html`, `/dt.html`, `/login.html`, `/registro.html`...)
+llevan a las nuevas, con los mismos parámetros (`WebConfig.OLD_PAGES`).
 
 ### Informe del club completo
 
@@ -133,7 +134,7 @@ goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no public
 | <img src="https://img.shields.io/badge/Spring%20MVC-6DB33F?style=flat-square&logo=spring&logoColor=white" alt="Spring MVC"> | API web | Spring Web MVC, Bean Validation, Jackson 2.19 | API REST en JSON (`/api/...`) |
 | <img src="https://img.shields.io/badge/Security-6DB33F?style=flat-square&logo=springsecurity&logoColor=white" alt="Security"> | Seguridad | **Spring Security 6.5** | Registro y login con sesión, perfiles por pantalla, CSRF con cookie `XSRF-TOKEN`, claves con BCrypt |
 | <img src="https://img.shields.io/badge/Hibernate-59666C?style=flat-square&logo=hibernate&logoColor=white" alt="Hibernate"> | Persistencia | **Spring Data JPA** con Hibernate 6.6, **Flyway 11.7** | Usuarios, perfiles, suscripciones y enlaces de los mails; esquema versionado en `db/migration/{h2,postgresql}` |
-| <img src="https://img.shields.io/badge/H2-0000BB?style=flat-square" alt="H2"> | Base de datos | **H2 2.3** en archivo (`./data`) | Desarrollo. En producción se configura otra base con `FPP_DB_URL` (por ejemplo PostgreSQL) |
+| <img src="https://img.shields.io/badge/H2-0000BB?style=flat-square" alt="H2"> | Base de datos | **H2 2.3** en archivo (`./data`) | Desarrollo. En producción se configura otra base con `MADSPORTS_DB_URL` (por ejemplo PostgreSQL) |
 | <img src="https://img.shields.io/badge/jsoup-263238?style=flat-square" alt="jsoup"> | Extracción de datos | **jsoup 1.23** | Pedidos a server2.sidgad.es (tablas, calendarios, estadísticas y actas) y lectura del HTML |
 | <img src="https://img.shields.io/badge/Caffeine-6F4E37?style=flat-square" alt="Caffeine"> | Cache | **Caffeine 3.2** | Datos de SIDGAD (15 min, catálogo 6 h, actas 24 h), escudos, planteles e informes en curso |
 | <img src="https://img.shields.io/badge/Virtual%20threads-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Virtual threads"> | Concurrencia | Hilos virtuales de Java 21 + semáforo | Pedidos a SIDGAD en paralelo (hasta 6 a la vez), sin sobrecargar el sitio |
@@ -148,7 +149,7 @@ goleadores, pelota parada y disciplina son del torneo completo (SIDGAD no public
 ## Cómo funciona
 
 ```
-Web (index.html) → POST /api/informes → job en segundo plano
+Web (index.html) → POST /api/reports → job en segundo plano
   1. Extracción   SidgadClient: POST a server2.sidgad.es, en paralelo (hasta 6 a la vez, máx. 10/s) + cache
   2. Cálculo      StatsEngine: todas las cifras, en código
   3. Análisis     GeminiAnalyst: un pedido a Gemini con todas las cifras → JSON con esquema fijo
@@ -175,12 +176,12 @@ espera y reintenta una vez.
 | `cap_gr_<idp>_1.php` | Acta del partido: goles y tarjetas con período y minuto, y la planilla de cada equipo (con el arquero marcado "P") |
 | `profiles/cap_profileseason_<id_player>_1_<temp>.php` | Ficha de temporada de un jugador: todos sus partidos de cada competición, también los sin acta, con goles, libres, penales, azules y rojas |
 
-Federaciones (`Federacion`): **FPP** = `id_fede_3` (Federación Porteña de Patín) y **AMP** = `id_fede_4` (Asociación
+Federaciones (`Federation`): **FPP** = `id_fede_3` (Federación Porteña de Patín) y **AMP** = `id_fede_4` (Asociación
 Mendocina de Patín). Los fragmentos son los mismos para las dos; los nombres de las competiciones de la AMP tienen otro
 formato (`AMP'26- CAMP MASC "APERTURA 26"-CATEGORIA SENIOR`, que se lee del texto visible porque las comillas cortan el
 atributo `name`). El año se traduce a la temporada de SIDGAD (`temp_N`) con el selector de temporadas de la página
 principal del portal (`a.select_temporada[id_temp][temp_name]`, p. ej. 40 = 2026), que es la misma para las dos
-federaciones. Años ofrecidos: `rinkmetrics.sidgad.years` en `application.yml`. La tabla de posiciones de SIDGAD puede
+federaciones. Años ofrecidos: `madsports.sidgad.years` en `application.yml`. La tabla de posiciones de SIDGAD puede
 quedar congelada (ej.: Apertura 2026 publicada el 03/05): el informe la muestra con su fecha y la marca
 como desactualizada; el récord se calcula siempre desde el calendario.
 
@@ -260,47 +261,47 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   vivo del DT, y su plan). El menú "Informes / DT" está arriba en todas
   las páginas, salvo en la pantalla de RinkMetrics (y su demo): ahí la barra superior lleva solo el menú del DT
   (Dashboard · Partidos · Jugadores · Informes) y el logo vuelve a la portada. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
-- **Por qué RinkMetrics** (`/por-que.html`, en el menú): las ventajas de la plataforma, en su propia página.
-- **Demo de RinkMetrics** (`/dt-demo.html`, en el menú "Demo"): RinkMetrics completo con datos de ejemplo, sin
+- **Por qué RinkMetrics** (`/rinkmetrics/why.html`, en el menú): las ventajas de la plataforma, en su propia página.
+- **Demo de RinkMetrics** (`/coach-demo.html`, en el menú "Demo"): RinkMetrics completo con datos de ejemplo, sin
   cuenta: arranca en el Control panel y se recorren todas las pantallas (Partidos, con un partido en juego para cargar
-  acciones; Equipo, con sus ABM; Estadísticas e Informes). Es la misma página que `/dt.html` (sin copia): en la demo,
-  `js/dt/demo-api.js` contesta en el navegador las llamadas a la API, igual que el servidor (nada se guarda). La página de
+  acciones; Equipo, con sus ABM; Estadísticas e Informes). Es la misma página que `/coach.html` (sin copia): en la demo,
+  `js/coach/demo-api.js` contesta en el navegador las llamadas a la API, igual que el servidor (nada se guarda). La página de
   la sección muestra capturas de la demo ("Así se ve RinkMetrics", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
 - **Alta de cuentas de jugador y de DT; la de club, próximamente:** el registro de Informes
-  (`/registro.html?seccion=informes`) crea cuentas de jugador de la FPP (las de la AMP, próximamente:
-  `REGISTRO_JUGADOR_AMP`) y el de RinkMetrics
-  (`/registro.html?seccion=dt`), de DT. El alta de club está abierta (`REGISTRO_CLUB`,
-  `rinkmetrics.registro.club`, en `true` por defecto; en `false`, el registro la muestra como "Próximamente").
+  (`/rinkreports/signup.html`) crea cuentas de jugador de la FPP (las de la AMP, próximamente:
+  `SIGNUP_PLAYER_AMP`) y el de RinkMetrics
+  (`/rinkmetrics/signup.html`), de DT. El alta de club está abierta (`SIGNUP_CLUB`,
+  `madsports.signup.club`, en `true` por defecto; en `false`, el registro la muestra como "Próximamente").
 - **Planes de RinkReports:** el **Jugador free** (sin costo hasta el 31/12/2026, 5 informes por mes) y el **Club
   free** (sin costo hasta el 31/12/2026, sin límite de informes). Los mensuales (pagos) figuran con el cintillo
-  "Próximamente", apagados y borroneados, y con **"Precio a definir"**, mientras `REGISTRO_JUGADOR_PAGO` y
-  `REGISTRO_CLUB_PAGO` (`rinkmetrics.registro.jugador-pago` y `club-pago`) sean `false`. Se muestran en `/rinkreports`
+  "Próximamente", apagados y borroneados, y con **"Precio a definir"**, mientras `SIGNUP_PLAYER_PAID` y
+  `SIGNUP_CLUB_PAID` (`madsports.signup.player-paid` y `club-paid`) sean `false`. Se muestran en `/rinkreports`
   y en el registro.
-- **Cupo de informes del jugador:** cada informe pedido suma uno al contador del usuario (`informes_pedidos`) y queda
-  registrado con su fecha (`informe_pedido`, V23). El jugador puede pedir hasta 5 por mes calendario (el cupo de su
+- **Cupo de informes del jugador:** cada informe pedido suma uno al contador del usuario (`reports_requested`) y queda
+  registrado con su fecha (`requested_report`, V23). El jugador puede pedir hasta 5 por mes calendario (el cupo de su
   plan); el sexto responde `429` con el día en que se renueva (el 1 del mes siguiente). Un pedido rechazado (por
   ejemplo, un período inválido) no cuenta, y los de ejemplo tampoco. La pantalla del jugador muestra "3 de 5 informes
-  este mes · se renueva el 1/11" (`GET /api/sesion` trae `informesMes`: `usados`, `limite` y `renueva`). El club no
+  este mes · se renueva el 1/11" (`GET /api/session` trae `monthlyReports`: `used`, `limit` y `renews`). El club no
   tiene límite.
 - **Cuentas por producto:** cada cuenta es de un producto. Las de **RinkReports** (Club y Jugador) se crean en
-  `/rinkreports/registro.html` e ingresan por `/rinkreports/login.html`. Las de **RinkMetrics** (DT) se crean en
-  `/registro.html` e ingresan por `/login.html`. Una cuenta no ingresa por el otro producto: el login responde 401
+  `/rinkreports/signup.html` e ingresan por `/rinkreports/login.html`. Las de **RinkMetrics** (DT) se crean en
+  `/rinkmetrics/signup.html` e ingresan por `/rinkmetrics/login.html`. Una cuenta no ingresa por el otro producto: el login responde 401
   `OTRO_PRODUCTO` con el ingreso que le corresponde. El mismo email puede tener una cuenta en cada producto (único
   dentro del producto, V22); el usuario sigue siendo único en toda la web. Los mails (confirmación y clave nueva) llevan
   el nombre, el logo y el color del producto de la cuenta, y sus enlaces llevan a su ingreso.
-- **Registro** (`/rinkreports/registro.html` o `/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt),
+- **Registro** (`/rinkreports/signup.html` o `/rinkmetrics/signup.html`): usuario, clave (mínimo 8, se guarda con BCrypt),
   email y club, obligatorios.
   No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
 - **DT** (RinkMetrics, en vivo): elige su club y su plan; sus equipos y sus jugadores los arma después, en la
-  sección Equipo (el registro ya no los pide). Entra a `/dt.html`, la pantalla de RinkMetrics (sin equipos, empieza
-  por Equipo). Empieza con el plan free (`DT_FREE`: 1 equipo y 5 partidos por mes, sin costo hasta el 31/12/2026);
-  el mensual (`DT_MENSUAL`: hasta 3 equipos y 25 partidos por mes) figura como "Próximamente" y no se puede elegir
-  mientras `REGISTRO_DT_PAGO` (`rinkmetrics.registro.dt-pago`) sea `false`, el valor por defecto (`equipos_max` y `partidos_por_mes` en
-  `suscripcion_type`, V17).
+  sección Equipo (el registro ya no los pide). Entra a `/coach.html`, la pantalla de RinkMetrics (sin equipos, empieza
+  por Equipo). Empieza con el plan free (`COACH_FREE`: 1 equipo y 5 partidos por mes, sin costo hasta el 31/12/2026);
+  el mensual (`COACH_MONTHLY`: hasta 3 equipos y 25 partidos por mes) figura como "Próximamente" y no se puede elegir
+  mientras `SIGNUP_COACH_PAID` (`madsports.signup.coach-paid`) sea `false`, el valor por defecto (`max_teams` y `matches_per_month` en
+  `subscription_plan`, V17).
 - **RinkMetrics (servidor):** cada partido es de un equipo del DT; el rival se escribe (con los ya usados para
   elegir), con la fecha, si es local o visitante, los minutos de cada tiempo (25 si no se eligen) y el campeonato. El
   mismo rival en la misma fecha retoma el partido en vez de crear otro. Un partido se puede eliminar con todas sus
@@ -310,8 +311,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   calcula con la hora de inicio y los segundos acumulados, así un teléfono bloqueado no pierde el minuto. Cada acción
   es de un jugador del plantel del equipo (el de la sección Equipo) y guarda el tiempo y el
   segundo jugado; su id lo genera el teléfono, así reenviar una tanda sin señal no duplica. El marcador se arma con
-  las acciones. Tablas `partido_dt` y `accion_dt` (V12), `jugador_dt` (V15) y `equipo_dt` con
-  `jugador_equipo_dt` (V16: los equipos de antes pasaron con su nombre y sus partidos; los jugadores traídos de SIDGAD
+  las acciones. Tablas `coach_match` y `coach_action` (V12), `coach_player` (V15) y `coach_team` con
+  `coach_player_team` (V16: los equipos de antes pasaron con su nombre y sus partidos; los jugadores traídos de SIDGAD
   salieron, y sus acciones conservan el nombre). Un partido cerrado se puede reabrir durante 48 h.
 - **RinkMetrics: menú, panel, estadísticas, informes y plantel.** La pantalla del DT tiene un menú Control panel ·
   Partidos · Equipo · Estadísticas (submenú Equipo y Jugadores) · Informes (entra al Control panel).
@@ -323,7 +324,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   - **Estadísticas > Jugadores:** la ficha de cada uno, con índice (0 a 100) y un pentágono de cinco ejes comparados con el plantel
     (100 = el mejor del equipo): ataque, precisión, desequilibrio (faltas recibidas), recuperación (balance con las
     pérdidas) y disciplina. Los arqueros se comparan entre sí con sus ejes: atajadas, efectividad, pelota parada,
-    valla y disciplina. Todo se calcula en el navegador (`js/dt/fichas.js`) con `GET /api/dt/acciones` (las acciones
+    valla y disciplina. Todo se calcula en el navegador (`js/coach/player-cards.js`) con `GET /api/coach/actions` (las acciones
     activas de todos los partidos del equipo), el plantel y la lista de partidos; los gráficos son SVG propios.
   - **Informes:** la lista de los partidos finalizados (terminados o cerrados), cada uno con su informe, y los
     informes de un mes, un bimestre, un semestre o un campeonato (el que se carga, opcional, al crear el partido; los
@@ -331,22 +332,22 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     atajadas, pérdidas, recuperaciones, faltas recibidas y cometidas, tarjetas azul, amarilla y roja, y la
     efectividad de penales y libres; la tabla por jugador y, en el de un partido, la lista de eventos (minuto,
     jugador y acción). Se puede elegir un jugador para ver solo sus estadísticas. Con conexión, la pantalla muestra
-    el informe del servidor (`GET /api/dt/partidos/{id}/informe` y `GET /api/dt/informes`: el mismo JSON del PDF,
-    `DtInformeService`, `InformeDt`, plantilla `templates/dt-informe.html`); sin señal, el que se arma en el navegador
-    (`js/dt/informe.js`). Los dos cálculos se prueban contra los mismos casos (ver [Tests](#tests)).
+    el informe del servidor (`GET /api/coach/matches/{id}/report` y `GET /api/coach/reports`: el mismo JSON del PDF,
+    `CoachReportService`, `CoachReport`, plantilla `templates/coach-report.html`); sin señal, el que se arma en el navegador
+    (`js/coach/report.js`). Los dos cálculos se prueban contra los mismos casos (ver [Tests](#tests)).
   - **Equipo:** el ABM de equipos (hasta los del plan; la lista muestra los partidos finalizados jugados, ganados,
     empatados y perdidos; un equipo con partidos no se borra) y el ABM de jugadores: nombre, apellido, número, si es
     arquero y en qué equipos juega (uno o más). Un equipo nuevo se arma desde una **categoría del club** en SIDGAD
-    (`GET /api/dt/club/categorias`, las del club con el que se registró el DT): su plantel (`GET /api/dt/club/plantel`,
+    (`GET /api/coach/club/categories`, las del club con el que se registró el DT): su plantel (`GET /api/coach/club/squad`,
     los jugadores de las actas del equipo, con su número más usado y si es arquero) viene tildado y el DT destilda a
     los que no van. Esos quedan como **no incluidos** en el equipo: figuran en su lista de jugadores, no aparecen para
-    cargar acciones y se suman después con "Incluir" (`POST /api/dt/jugadores/{id}/equipos/{equipo}`). Un jugador que
+    cargar acciones y se suman después con "Incluir" (`POST /api/coach/players/{id}/teams/{team}`). Un jugador que
     el DT ya tiene en otro equipo no se duplica (lo identifica su id de SIDGAD). También se puede crear un equipo de
     nombre libre ("Otro"), sin jugadores de SIDGAD, y cargar jugadores a mano. El número no se repite dentro de un
     equipo. Un jugador dado de baja ya no
     aparece para cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre
     corregido.
-- **RinkMetrics (pantalla, `/dt.html`):** módulos ES sin build en `js/dt/`: `main.js` (menú y arranque),
+- **RinkMetrics (pantalla, `/coach.html`):** módulos ES sin build en `js/coach/`: `main.js` (menú y arranque),
   `panel.js`, `partidos.js`, `partido.js` (la carga en vivo), `estadisticas.js`, `informes.js`, `equipo.js`, y los
   compartidos `acciones.js` (botones y reglas de goles), `informe.js`, `fichas.js`, `cola.js` y `comun.js`. Al volver
   a la pestaña se vuelven a pedir los equipos (por si cambiaron en otro dispositivo). En el celular va en una columna; en tablet y web (desde 760 px de ancho)
@@ -363,17 +364,17 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   - **Informe:** el informe del partido en vivo (con lo que todavía no se envió), del equipo o de un jugador, con
     los eventos y "Exportar PDF"; y el cierre del partido (o reabrirlo). Al tocar "Fin del partido", la pantalla pasa
     sola a esta pestaña.
-  - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/dt/cola.js`) y se
+  - **Sin señal:** cada acción y cada borrado se guardan primero en el teléfono (IndexedDB, `js/coach/queue.js`) y se
     mandan en tandas cada 5 segundos o al volver la conexión; arriba se ve "Sin enviar: N". Un service worker
     (`dt-sw.js`) guarda la última copia de la página y de los datos, así la pantalla abre aunque se recargue sin
     señal. El reloj (iniciar, pausar, fin del tiempo) y el cierre sí necesitan conexión.
 - **Confirmar el email:** al registrarse llega un mail con un enlace (vale 48 h). Hasta confirmarlo no se puede
   ingresar: el login avisa y ofrece reenviar el mail.
 - **Recuperar la clave:** "¿Olvidaste tu clave?" en el ingreso manda un enlace de un solo uso que vale 1 h
-  (`/restablecer.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
+  (`/reset-password.html`). Para no revelar qué emails están registrados, pedirlo siempre responde lo mismo. Se manda
   un mail por minuto como mucho, y en la base queda solo el hash del token.
 - **Sesión:** dura 8 h sin actividad (`SESSION_TIMEOUT`). En el ingreso, "Mantener la sesión iniciada" (marcado por
-  defecto) deja el dispositivo recordado 30 días (cookie `RECORDARME`, token en `persistent_logins`, V13): si la
+  defecto) deja el dispositivo recordado 30 días (cookie `REMEMBER_ME`, token en `persistent_logins`, V13): si la
   sesión se pierde porque venció, se cerró el navegador o se reinició la app, el próximo pedido vuelve a entrar solo.
   El token cambia en cada uso y se borra al salir o al cambiar la clave. Si la sesión vence con una pantalla abierta,
   la web lleva al ingreso con el aviso "Tu sesión venció" y después vuelve a esa misma pantalla.
@@ -382,21 +383,21 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   registro. Todavía no hay cobro ni límite de informes por mes.
 - **Precios en pesos:** el precio base de cada plan está en dólares y se muestra en pesos al dólar oficial del Banco
   Nación (venta) del día, que publica [DolarAPI](https://dolarapi.com), redondeado hacia abajo a centenas. Se consulta como mucho
-  una vez por hora; si DolarAPI no responde se usa la última cotización o el respaldo (`DOLAR_RESPALDO`, $ 1.500).
+  una vez por hora; si DolarAPI no responde se usa la última cotización o el respaldo (`DOLLAR_FALLBACK`, $ 1.500).
 
   | Plan mensual | Precio base | Incluye |
   |---|---|---|
-  | Club (`CLUB_MENSUAL`) | U$S 20 | 8 informes por mes |
-  | Jugador (`PLAYER_MENSUAL`) | U$S 7 | 4 informes por mes |
-  | DT free (`DT_FREE`) | Gratis hasta el 31/12/2026 | 1 equipo y 5 partidos por mes |
-  | DT (`DT_MENSUAL`) | U$S 12 | Hasta 3 equipos y 25 partidos por mes |
+  | Club (`CLUB_MONTHLY`) | U$S 20 | 8 informes por mes |
+  | Jugador (`PLAYER_MONTHLY`) | U$S 7 | 4 informes por mes |
+  | DT free (`COACH_FREE`) | Gratis hasta el 31/12/2026 | 1 equipo y 5 partidos por mes |
+  | DT (`COACH_MONTHLY`) | U$S 12 | Hasta 3 equipos y 25 partidos por mes |
 
-- **Suscripciones:** la tabla `suscripcion_type` (con `precio_usd`, `informes_por_mes`, `equipos_max` y
-  `partidos_por_mes`) tiene un plan mensual por tipo de usuario: `PLAYER_MENSUAL`, `CLUB_MENSUAL` y `DT_MENSUAL`, y el DT además el
-  `DT_FREE` (V14), con fecha fija de fin (`vigente_hasta`): después del 31/12/2026 no se ofrece ni deja empezar
-  partidos. `GET /api/suscripciones` lista los vigentes, del más barato al más caro. A un
-  usuario solo se le asigna el de su perfil, con su fecha desde y su fecha hasta (un mes). También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
-  jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
+- **Suscripciones:** la tabla `subscription_plan` (con `price_usd`, `reports_per_month`, `max_teams` y
+  `matches_per_month`) tiene un plan mensual por tipo de usuario: `PLAYER_MONTHLY`, `CLUB_MONTHLY` y `COACH_MONTHLY`, y el DT además el
+  `COACH_FREE` (V14), con fecha fija de fin (`valid_until`): después del 31/12/2026 no se ofrece ni deja empezar
+  partidos. `GET /api/plans` lista los vigentes, del más barato al más caro. A un
+  usuario solo se le asigna el de su perfil, con su fecha desde y su fecha hasta (un mes). También lleva `reports_requested`, que suma uno cada vez que pide un informe de club o de
+  jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/session` devuelve las dos cosas.
   El jugador tiene un cupo de informes por mes (ver arriba); el DT, de equipos y partidos.
 - **Home de Mad Sports** (`/`): pública. Mad Sports es la compañía que desarrolla aplicaciones de métricas,
   estadísticas e informes deportivos; la home presenta sus dos productos y cada tarjeta abre el suyo: **RinkReports**
@@ -404,7 +405,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   `/madsports` (la dirección vieja) lleva a la home.
 - **Club FPP** (`/rinkreports/club.html`): la pantalla de informes del club, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
-- **Jugador FPP** (`/rinkreports/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
+- **Jugador FPP** (`/rinkreports/player.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
   período (Apertura, Clausura o Apertura + Clausura) y genera un PDF **agrupado por categoría**. Empieza con los
   totales y una tabla que compara las categorías. Sigue un bloque por cada categoría en que jugó, con todas sus
   estadísticas, y si jugó en más de una, cierra con la suma de todas. Cada bloque trae: partidos jugados, ganados, empatados y perdidos; goles; tarjetas amarillas, azules y rojas por
@@ -443,7 +444,7 @@ partido a partido; sus goles y tarjetas van a "Sin minuto registrado" (la ficha 
 minutos). Un partido sin acta que no figura en su ficha se toma como no jugado.
 
 Los usuarios se guardan en H2 en archivo (`./data`, fuera de git); el esquema lo crea Flyway con las migraciones de
-su motor (`db/migration/h2`). En producción la base es PostgreSQL (`db/migration/postgresql`), con `FPP_DB_URL`
+su motor (`db/migration/h2`). En producción la base es PostgreSQL (`db/migration/postgresql`), con `MADSPORTS_DB_URL`
 apuntando a ella: cada cambio de esquema va en las dos carpetas con el mismo número. Ver
 [docs/produccion.md](docs/produccion.md).
 
@@ -475,26 +476,29 @@ Abrir http://localhost:8080.
 | Variable | Default | |
 |---|---|---|
 | `GEMINI_API_KEY` | — | Habilita el análisis con Gemini |
-| `FPP_AI_MODEL` | `gemini-3.8-flash` | Modelo de Gemini (con plan gratuito) |
-| `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
-| `FPP_DB_URL` | `jdbc:h2:file:./data/madsports` | Base de usuarios |
-| `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
+| `AI_MODEL` | `gemini-3.8-flash` | Modelo de Gemini (con plan gratuito) |
+| `AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
+| `MADSPORTS_DB_URL` | `jdbc:h2:file:./data/madsports` | Base de usuarios |
+| `MADSPORTS_DB_USER` / `MADSPORTS_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
 | `MAIL_FROM` | `RinkMetrics <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
-| `DOLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
-| `DOLAR_RESPALDO` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
+| `DOLLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
+| `DOLLAR_FALLBACK` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
-| `REGISTRO_CLUB` | `false` | Habilita el alta de cuentas de club (las de jugador y DT están abiertas) |
-| `REGISTRO_JUGADOR_PAGO` | `false` | Habilita elegir el plan Jugador mensual (pago) |
-| `REGISTRO_JUGADOR_AMP` | `false` | Habilita el alta de jugadores de la AMP (por ahora, solo de la FPP) |
-| `REGISTRO_DT_PAGO` | `false` | Habilita elegir el plan DT mensual (pago) |
-| `RECORDARME_DIAS` | `30` | Días que queda recordado un dispositivo |
-| `RECORDARME_CLAVE` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |
+| `SIGNUP_CLUB` | `false` | Habilita el alta de cuentas de club (las de jugador y DT están abiertas) |
+| `SIGNUP_PLAYER_PAID` | `false` | Habilita elegir el plan Jugador mensual (pago) |
+| `SIGNUP_PLAYER_AMP` | `false` | Habilita el alta de jugadores de la AMP (por ahora, solo de la FPP) |
+| `SIGNUP_COACH_PAID` | `false` | Habilita elegir el plan DT mensual (pago) |
+| `REMEMBER_ME_DAYS` | `30` | Días que queda recordado un dispositivo |
+| `REMEMBER_ME_KEY` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |
 | `FORWARD_HEADERS_STRATEGY` | `none` | `native` detrás de un proxy: IP real para el límite de intentos |
-| `LIMITE_LOGIN_USUARIO`, `LIMITE_LOGIN_IP`, `LIMITE_REGISTRO_IP`, `LIMITE_MAILS_IP` | `5`, `20`, `5`, `10` | Límite de intentos |
-| `ALERTAS_EMAIL` | vacío | Recibe las alertas del chequeo diario de SIDGAD (vacío: solo log) |
-| `MONITOR_SIDGAD_CRON` | `0 0 8 * * *` | Hora del chequeo diario de SIDGAD (hora argentina; `-` lo apaga) |
+| `LIMIT_LOGIN_USER`, `LIMIT_LOGIN_IP`, `LIMIT_SIGNUP_IP`, `LIMIT_MAILS_IP` | `5`, `20`, `5`, `10` | Límite de intentos |
+| `ALERTS_EMAIL` | vacío | Recibe las alertas del chequeo diario de SIDGAD (vacío: solo log) |
+| `SIDGAD_MONITOR_CRON` | `0 0 8 * * *` | Hora del chequeo diario de SIDGAD (hora argentina; `-` lo apaga) |
+
+Las variables de antes (`FPP_DB_URL`, `REGISTRO_*`, `LIMITE_*`, `RECORDARME_*`, `DOLAR_*`, `ALERTAS_EMAIL`,
+`MONITOR_SIDGAD_CRON`, `FPP_AI_*`) siguen valiendo como respaldo de las nuevas.
 
 **Health check:** `GET /actuator/health` (público, sin detalles) con el estado de la base y del último chequeo diario
 de SIDGAD; `GET /actuator/health/liveness` para la sonda del proveedor.
@@ -505,7 +509,7 @@ La configuración propia va bajo `rinkmetrics:` en `application.yml` (clase `Rin
 En el plan gratuito Google puede usar el contenido enviado para mejorar sus productos (son datos deportivos
 públicos de la FPP y la AMP) y hay límites de pedidos por minuto y por día; los modelos y límites cambian seguido.
 
-Categorías relevadas (de Infantil para arriba), en `Federacion`:
+Categorías relevadas (de Infantil para arriba), en `Federation`:
 
 | Federación | Categorías |
 |---|---|
@@ -523,61 +527,61 @@ Cada análisis con Gemini deja en el log el consumo de tokens (`Consumo de Gemin
 Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide sesión con el perfil que corresponde
 (sin sesión, `401`; con otro perfil, `403`). Los POST llevan el header `X-XSRF-TOKEN` con el valor de la cookie.
 
-- `POST /api/registro` `{"perfil":"PLAYERFPP","usuario":"...","clave":"...","email":"...","clubId":22,"categoria":"PRIMERA","rama":"MASCULINO","jugadorId":5973,"suscripcion":"PLAYER_MENSUAL"}` → `201`
-- `GET /api/registro/jugadores?clubId=22&categoria=PRIMERA&rama=MASCULINO&federacion=FPP`: plantel del equipo según
-  sus actas (`federacion` FPP o AMP; sin ella, FPP)
-- `POST /api/registro` de un DT: `"perfil":"DTFPP"` y `"suscripcion":"DT_MENSUAL"` (sin equipos)
-- `GET /api/suscripciones?perfil=CLUBFPP` (o `PLAYERFPP`, `DTAMP`...): el plan mensual del perfil, con el precio en
+- `POST /api/signup` `{"profile":"PLAYERFPP","username":"...","password":"...","email":"...","clubId":22,"category":"PRIMERA","branch":"MASCULINO","playerId":5973,"subscription":"PLAYER_MONTHLY"}` → `201`
+- `GET /api/signup/players?clubId=22&category=PRIMERA&branch=MASCULINO&federation=FPP`: plantel del equipo según
+  sus actas (`federation` FPP o AMP; sin ella, FPP)
+- `POST /api/signup` de un DT: `"profile":"COACHFPP"` y `"subscription":"COACH_MONTHLY"` (sin equipos)
+- `GET /api/plans?profile=CLUBFPP` (o `PLAYERFPP`, `COACHAMP`...): los planes del perfil, con el precio en
   pesos (y el precio base en dólares, la cotización usada y su fecha), los informes por mes y, para el DT, los
   partidos por mes
-- `POST /api/login` (form: `usuario`, `clave`) → `{inicio}`; `POST /api/logout`
-- `GET /api/sesion`: usuario, perfiles, federación, club, jugador y la suscripción
-  (`autenticado: false` sin sesión)
-- `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
-  `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
-- `POST /api/clave/olvido` `{"email","producto"}` (`producto`: `REPORTS` o `METRICS`, el de la pantalla);
-  `GET /api/registro/opciones` → `{club, jugadorAmp}` (qué perfiles se pueden registrar hoy); `POST /api/clave/restablecer` `{"token","clave"}`
-- `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/html`, `/pdf` y `/xlsx` (PLAYERFPP o PLAYERAMP)
-- RinkMetrics (DTFPP o DTAMP; sin `equipo`, el primer equipo del DT; lo de otro DT da 404):
-  - `GET /api/dt/equipos`: los equipos con `jugados`, `ganados`, `empatados` y `perdidos` (partidos finalizados);
-    `POST /api/dt/equipos` `{"nombre"}` → `201` (`409` si ya tiene los equipos del plan); `PUT /api/dt/equipos/{id}`; `DELETE /api/dt/equipos/{id}` → `204`
+- `POST /api/login` (form: `username`, `password`, `product`, `rememberMe`) → `{home}`; `POST /api/logout`
+- `GET /api/session`: usuario, perfiles, federación, club, jugador, producto y la suscripción
+  (`authenticated: false` sin sesión)
+- `GET /api/verify?token=...`: enlace del mail; confirma el email y lleva al ingreso.
+  `POST /api/verification/resend` `{"email"}` o `{"username"}`
+- `POST /api/password/forgot` `{"email","product"}` (`product`: `REPORTS` o `METRICS`, el de la pantalla);
+  `GET /api/signup/options` → `{club, playerAmp}` (qué perfiles se pueden registrar hoy); `POST /api/password/reset` `{"token","password"}`
+- `POST /api/player/reports` `{"year":2026,"period":"SEASON"}` → `202 {id, status}`; `GET /api/player/reports/{id}` y `/html`, `/pdf` y `/xlsx` (PLAYERFPP o PLAYERAMP)
+- RinkMetrics (COACHFPP o COACHAMP; sin `team`, el primer equipo del DT; lo de otro DT da 404):
+  - `GET /api/coach/teams`: los equipos con `played`, `won`, `drawn` y `lost` (partidos finalizados);
+    `POST /api/coach/teams` `{"name"}` → `201` (`409` si ya tiene los equipos del plan); `PUT /api/coach/teams/{id}`; `DELETE /api/coach/teams/{id}` → `204`
     (`409` si tiene partidos)
-  - `GET /api/dt/jugadores`: todos los jugadores con sus `equipos`; `POST /api/dt/jugadores`
-    `{"nombre","apellido","numero","arquero","equipos":[1,2]}` → `201` (id desde 900000000); `PUT /api/dt/jugadores/{id}`
-    (mismo cuerpo); `DELETE /api/dt/jugadores/{id}` → `204` (baja: sus acciones quedan). `409` si el número ya es
+  - `GET /api/coach/players`: todos los jugadores con sus `teams`; `POST /api/coach/players`
+    `{"name","lastName","number","goalkeeper","teams":[1,2]}` → `201` (id desde 900000000); `PUT /api/coach/players/{id}`
+    (mismo cuerpo); `DELETE /api/coach/players/{id}` → `204` (baja: sus acciones quedan). `409` si el número ya es
     de otro jugador del mismo equipo.
-  - `GET /api/dt/plantel?equipo=1`: los jugadores activos del equipo (`id`, `numero`, `nombre` completo, `nombres`,
-    `apellido`, `arquero`, `equipos`)
-  - `GET /api/dt/acciones?equipo=1`: acciones activas de todos los partidos del equipo (con `partidoId`), para las fichas
-  - `POST /api/dt/partidos` `{"equipo":1,"rival":"HURACAN","fecha":"2026-10-18","local":false,"torneo":"Apertura","minutos":20}`
-    → `201` (sin `fecha`, hoy; sin `minutos`, 25; `torneo` opcional); con el mismo rival y fecha devuelve el ya
-    empezado; `409` si se acabó el cupo del mes; `DELETE /api/dt/partidos/{id}` → `204` lo elimina con sus acciones
-  - `GET /api/dt/partidos`, `GET /api/dt/partidos/{id}` (con `reloj {tiempo, jugados, restante, corriendo}` y las
+  - `GET /api/coach/squad?team=1`: los jugadores activos del equipo (`id`, `number`, `name` completo, `names`,
+    `lastName`, `goalkeeper`, `teams`)
+  - `GET /api/coach/actions?team=1`: acciones activas de todos los partidos del equipo (con `matchId`), para las fichas
+  - `POST /api/coach/matches` `{"team":1,"opponent":"HURACAN","date":"2026-10-18","home":false,"tournament":"Apertura","minutes":20}`
+    → `201` (sin `date`, hoy; sin `minutes`, 25; `tournament` opcional); con el mismo rival y fecha devuelve el ya
+    empezado; `409` si se acabó el cupo del mes; `DELETE /api/coach/matches/{id}` → `204` lo elimina con sus acciones
+  - `GET /api/coach/matches`, `GET /api/coach/matches/{id}` (con `clock {period, elapsed, remaining, running}` y las
     acciones)
-  - `POST /api/dt/partidos/{id}/acciones` `[{"id":"<uuid>","jugadorId":11,"tipo":"TIRO","resultado":"GOL","tiempo":1,"segundo":390}]`
-    (`tipo`: `PERDIDA`, `RECUPERACION`, `TIRO`, `ATAJADA`, `GOL_RECIBIDO`, `LIBRE_FAVOR`, `LIBRE_CONTRA`,
-    `PENAL_FAVOR`, `PENAL_CONTRA`, `FALTA`, `TARJETA`); `DELETE /api/dt/partidos/{id}/acciones/{accionId}` deshace
-  - `POST /api/dt/partidos/{id}/reloj` `{"accion":"INICIAR"}` (`PAUSAR`, `REANUDAR`, `FIN_TIEMPO`, o `AJUSTAR` con
-    `segundos`); `POST /api/dt/partidos/{id}/cerrar` y `/reabrir`
-  - `GET /api/dt/partidos/{id}/informe?jugador=j11` y `/informe.pdf`: informe del partido (`jugador`: "j" + id del
+  - `POST /api/coach/matches/{id}/actions` `[{"id":"<uuid>","playerId":11,"kind":"SHOT","outcome":"GOAL","period":1,"atSecond":390}]`
+    (`kind`: `TURNOVER`, `RECOVERY`, `SHOT`, `SAVE`, `GOAL_CONCEDED`, `FREE_HIT_FOR`, `FREE_HIT_AGAINST`,
+    `PENALTY_FOR`, `PENALTY_AGAINST`, `FOUL`, `CARD`); `DELETE /api/coach/matches/{id}/actions/{actionId}` deshace
+  - `POST /api/coach/matches/{id}/clock` `{"action":"START"}` (`PAUSE`, `RESUME`, `END_PERIOD`, o `ADJUST` con
+    `seconds`); `POST /api/coach/matches/{id}/close` y `/reopen`
+  - `GET /api/coach/matches/{id}/report?player=j11` y `/report.pdf`: informe del partido (`player`: "j" + id del
     plantel, o "m" + nombre de un jugador agregado a mano; sin él, todo el equipo)
-  - `GET /api/dt/informes?equipo=1&periodo=MES&valor=2026-10&jugador=` y `/api/dt/informes.pdf`: informe de los
-    partidos finalizados del período (`periodo`: `MES` "2026-10", `BIMESTRE` "2026-5" = septiembre-octubre,
-    `SEMESTRE` "2026-2", `CAMPEONATO` con el nombre); `400` si no hay partidos finalizados
-- `GET /api/catalogo?anio=2026&federacion=AMP` — clubes con sus categorías y ramas del año en la federación (sin
-  `anio`: el más reciente con datos; sin `federacion`: FPP); `available: false` y `message` si el año no tiene datos
-- `GET /api/ejemplo.pdf` — informe modelo del club completo con datos ficticios ("Club Ejemplo": Primera y Juvenil
+  - `GET /api/coach/reports?team=1&period=MONTH&value=2026-10&player=` y `/api/coach/reports.pdf`: informe de los
+    partidos finalizados del período (`period`: `MONTH` "2026-10", `TWO_MONTHS` "2026-5" = septiembre-octubre,
+    `SEMESTER` "2026-2", `CHAMPIONSHIP` con el nombre); `400` si no hay partidos finalizados
+- `GET /api/catalog?year=2026&federation=AMP` — clubes con sus categorías y ramas del año en la federación (sin
+  `year`: el más reciente con datos; sin `federation`: FPP); `available: false` y `message` si el año no tiene datos
+- `GET /api/sample.pdf` — informe modelo del club completo con datos ficticios ("Club Ejemplo": Primera y Juvenil
   masculinas, Infantil femenina), marcado en cada página; no consulta
-  SIDGAD ni la API de Gemini. También `GET /api/ejemplo.html` (para ver en pantalla) y `GET /api/ejemplo.xlsx`.
-- `GET /api/ejemplo-jugador.pdf`: informe modelo de jugador con datos ficticios ("Tomás Ejemplo", de Juniors, que
+  SIDGAD ni la API de Gemini. También `GET /api/sample.html` (para ver en pantalla) y `GET /api/sample.xlsx`.
+- `GET /api/sample-player.pdf`: informe modelo de jugador con datos ficticios ("Tomás Ejemplo", de Juniors, que
   también juega en Primera del "Club Ejemplo"). Se arma con el mismo motor que los informes reales. Enlazado desde
-  RinkReports. También `GET /api/ejemplo-jugador.html` y `GET /api/ejemplo-jugador.xlsx`.
-- `POST /api/informes` (CLUBFPP o CLUBAMP, solo su club y su federación) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
-  (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`). Sin `categoria` ni `rama`
-  (`{"clubId":74,"periodo":"TEMPORADA","anio":2026}`): el informe del club completo, por rama y categoría; con una
+  RinkReports. También `GET /api/sample-player.html` y `GET /api/sample-player.xlsx`.
+- `POST /api/reports` (CLUBFPP o CLUBAMP, solo su club y su federación) `{"clubId":74,"category":"INFANTIL","branch":"FEMENINO","period":"SEASON","year":2026}` → `202 {id, status}`
+  (`period`: `OPENING`, `CLOSING`, `SEASON` o `LAST_5`). Sin `category` ni `branch`
+  (`{"clubId":74,"period":"SEASON","year":2026}`): el informe del club completo, por rama y categoría; con una
   sola de las dos, `400`
-- `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
-- `GET /api/informes/{id}/html` (el informe para ver en pantalla), `/pdf` y `/xlsx` (Excel); el estado listo trae
+- `GET /api/reports/{id}` — estado: `PENDING`, `EXTRACTING`, `ANALYZING`, `RENDERING`, `READY`, `ERROR`
+- `GET /api/reports/{id}/html` (el informe para ver en pantalla), `/pdf` y `/xlsx` (Excel); el estado listo trae
   `htmlUrl`, `pdfUrl` y `xlsxUrl`
 
 ## Arquitectura
@@ -588,14 +592,14 @@ módulo solo usa los de abajo: Maven no compila un import de un módulo que no d
 | Módulo (carpeta) | Paquetes (`com.madsports.*`) | Qué tiene | Usa |
 |---|---|---|---|
 | `hockey-data` | `sidgad`, `catalog`, `stats` | SIDGAD, clubes y categorías, planteles (`RosterService`, `ClubTeams`) y estadísticas | — |
-| `platform` | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes, plantillas a PDF (`Plantillas`); `app.css`, `app.js`, ingreso y registro compartidos, mails | `hockey-data` |
+| `platform` | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes, plantillas a PDF (`Templates`); `app.css`, `app.js`, ingreso y registro compartidos, mails | `hockey-data` |
 | `rinkreports` | `report`, `player`, `analysis` | Informes de club y de jugador, Excel, análisis con IA, cupo de informes; `/rinkreports/**` | `platform` |
-| `rinkmetrics` | `dt` | Partidos en vivo, equipos, planteles e informes del cuerpo técnico; `dt.html`, `js/dt`, su portada | `platform` |
+| `rinkmetrics` | `coach` | Partidos en vivo, equipos, planteles e informes del cuerpo técnico; `coach.html`, `js/coach`, su portada (`/rinkmetrics`) | `platform` |
 | `app` (`madsports-app`) | `monitor` y `MadSportsApplication` | La aplicación: junta todo (un solo jar), `application.yml`, migraciones, la home de Mad Sports, el chequeo diario de SIDGAD y los tests | todos |
 
 Cada módulo lleva su código y sus recursos (`static/`, `templates/`); la app los sirve juntos desde el classpath. Lo
 que un producto aporta a la sesión, como el cupo de informes, entra por una interfaz de la plataforma
-(`InformesDelMes`).
+(`MonthlyReports`).
 
 **Tests, cada uno en su módulo:**
 
@@ -603,9 +607,9 @@ que un producto aporta a la sesión, como el cupo de informes, entra por una int
 |---|---|
 | `hockey-data` | Parsers y cliente de SIDGAD, catálogo, motor de estadísticas (con el HTML guardado en `src/test/resources/fixtures`, que publica como *test-jar* para los demás) |
 | `platform` | Cotización del dólar |
-| `rinkreports` | Informes de club y de jugador, PDF, Excel, ejemplos y análisis (los que usan Spring levantan solo lo de los informes: `InformesTestConfig`, sin base ni seguridad) |
+| `rinkreports` | Informes de club y de jugador, PDF, Excel, ejemplos y análisis (los que usan Spring levantan solo lo de los informes: `ReportsTestConfig`, sin base ni seguridad) |
 | `rinkmetrics` | Partido y acciones; las pantallas en `src/test/js` (node:test) y `src/test/e2e` (Playwright) |
-| `app` | Lo que necesita la aplicación completa: seguridad y cuentas, API de RinkMetrics y su contrato, API de los ejemplos, límites, migraciones y `ArquitecturaTest` | `ArquitecturaTest` (ArchUnit) controla
+| `app` | Lo que necesita la aplicación completa: seguridad y cuentas, API de RinkMetrics y su contrato, API de los ejemplos, límites, migraciones y `ArchitectureTest` | `ArchitectureTest` (ArchUnit) controla
 además las reglas entre paquetes: ningún producto usa el otro.
 
 ## Tests
@@ -614,22 +618,22 @@ además las reglas entre paquetes: ningún producto usa el otro.
 ./mvnw test     # unitarios (*Test), con H2 en memoria: no necesitan Docker
 ./mvnw verify   # unitarios + integración (*IT) contra PostgreSQL 16 real (Testcontainers; requiere Docker) + cobertura
 npm install     # una vez (Node 22 o más nuevo): Playwright para los E2E
-npm test        # módulos de js/dt y contrato de la API contra la demo (node:test, sin navegador)
+npm test        # módulos de js/coach y contrato de la API contra la demo (node:test, sin navegador)
 npm run e2e     # E2E de la demo con Playwright (celular y escritorio; usa el Chrome instalado)
-npm run demo    # la demo sin levantar la app: http://localhost:8099/dt-demo.html
+npm run demo    # la demo sin levantar la app: http://localhost:8099/coach-demo.html
 ```
 
 | Suite | Plugin | Base | Qué cubre |
 |---|---|---|---|
 | `*Test` | surefire | H2 en memoria | Parsers contra fixtures, motor de estadísticas, informes, servicios y la API completa con MockMvc |
-| `*IT` | failsafe | PostgreSQL 16 (un contenedor por clase) | `MigracionesIT` (las dos carpetas de migraciones tienen las mismas versiones, se aplican todas y el esquema queda con zona horaria, cascadas y únicos) y los flujos de la API sobre la base de producción: `SecurityIT`, `AltaInformesCerradaIT`, `LimiteIntentosIT`, `DtControllerIT`, `ContratoApiDtIT` (heredan los casos de su `*Test`) |
-| `rinkmetrics/src/test/js/*.test.mjs` | node:test | — | Los módulos de `js/dt` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
+| `*IT` | failsafe | PostgreSQL 16 (un contenedor por clase) | `MigrationsIT` (las dos carpetas de migraciones tienen las mismas versiones, se aplican todas y el esquema queda con zona horaria, cascadas y únicos) y los flujos de la API sobre la base de producción: `SecurityIT`, `ReportsSignupIT`, `AttemptLimiterIT`, `CoachControllerIT`, `CoachApiContractIT` (heredan los casos de su `*Test`) |
+| `rinkmetrics/src/test/js/*.test.mjs` | node:test | — | Los módulos de `js/coach` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
 | `rinkmetrics/src/test/e2e/*.spec.mjs` | Playwright | — | La demo en un navegador (celular y escritorio): carga de acciones, deshacer, arquero en cancha, sin señal, fin del partido con su informe, Control panel, Partidos, Estadísticas, Informes, ABM de Equipo y equipos que cambian en otro dispositivo |
 
-**Contrato de la API de RinkMetrics** (`app/src/test/resources/dt/contrato-api.json`): escenarios de pedidos y respuestas
+**Contrato de la API de RinkMetrics** (`app/src/test/resources/coach/api-contract.json`): escenarios de pedidos y respuestas
 (equipos, jugadores, partido en vivo e informes, con las métricas calculadas a mano) que corren el servidor
-(`ContratoApiDtTest` con H2 y `ContratoApiDtIT` con PostgreSQL) y la API simulada de la demo (`js/dt/demo-api.js`,
-que arma los informes con `js/dt/informe.js`, el mismo cálculo de la pantalla sin señal). Así la demo, la pantalla
+(`CoachApiContractTest` con H2 y `CoachApiContractIT` con PostgreSQL) y la API simulada de la demo (`js/coach/demo-api.js`,
+que arma los informes con `js/coach/report.js`, el mismo cálculo de la pantalla sin señal). Así la demo, la pantalla
 sin señal y el servidor no se separan: un cambio en uno sin el otro rompe el CI.
 
 La cobertura de JaCoCo suma las dos suites y queda en `app/target/site/jacoco-aggregate/index.html` (todos los módulos).

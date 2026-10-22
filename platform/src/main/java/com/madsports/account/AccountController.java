@@ -151,11 +151,12 @@ public class AccountController {
     }
 
     /** Enlace del mail de confirmación: confirma y lleva al ingreso. */
-    @GetMapping("/verify")
+    // /api/verificar: el enlace de los mails mandados antes de que la API pasara al inglés.
+    @GetMapping({"/verify", "/verificar"})
     public ResponseEntity<Void> verify(@RequestParam(required = false) String token) {
         // Al ingreso del producto de la cuenta; si el enlace no sirve, no se sabe de qué producto es: al de RinkMetrics.
-        String target = account.verify(token).map(p -> p.login() + "?verificado")
-                .orElse("/login.html?verificacion=invalida");
+        String target = account.verify(token).map(p -> p.login() + "?verified")
+                .orElse(Product.METRICS.login() + "?verification=invalid");
         return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(target)).build();
     }
 

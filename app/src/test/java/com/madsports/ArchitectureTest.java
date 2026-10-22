@@ -24,7 +24,7 @@ class ArchitectureTest {
     static final String[] DATA = {"..madsports.sidgad..", "..madsports.catalog..", "..madsports.stats.."};
     static final String[] PLATFORM = {"..madsports.account..", "..madsports.config..", "..madsports.pdf.."};
     static final String[] RINKREPORTS = {"..madsports.report..", "..madsports.player..", "..madsports.analysis.."};
-    static final String[] RINKMETRICS = {"..madsports.dt.."};
+    static final String[] RINKMETRICS = {"..madsports.coach.."};
     static final String[] APP = {"..madsports.monitor.."};
 
     static final JavaClasses CLASSES = new ClassFileImporter()

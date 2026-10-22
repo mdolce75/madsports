@@ -70,7 +70,7 @@ public class AccountService {
                         + "), confirmá tu email con el botón de abajo.",
                         p == Product.METRICS ? "Después ya podés ingresar y registrar las estadísticas de tus partidos."
                                 : "Después ya podés ingresar y ver tus informes de hockey sobre patines."),
-                "Confirmar mi email", baseUrl + "/api/verificar?token=" + token,
+                "Confirmar mi email", baseUrl + "/api/verify?token=" + token,
                 "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.", p));
     }
 
@@ -114,7 +114,7 @@ public class AccountService {
                     "Tu cuenta", "Elegí una clave nueva", greetingOf(u),
                     List.of("Pediste cambiar la clave de tu usuario " + u.getUsername()
                             + ". Elegí una nueva con el botón de abajo."),
-                    "Elegir clave nueva", baseUrl + "/restablecer.html?producto=" + p.name().toLowerCase(Locale.ROOT)
+                    "Elegir clave nueva", baseUrl + "/reset-password.html?product=" + p.name().toLowerCase(Locale.ROOT)
                             + "&token=" + token,
                     "El enlace vale 1 hora y se puede usar una sola vez. Si no lo pediste, ignorá este mail: "
                             + "tu clave sigue siendo la misma.", p));

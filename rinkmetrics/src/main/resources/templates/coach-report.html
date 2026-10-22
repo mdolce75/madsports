@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="|Informe ${r.title} - RinkMetrics|">Informe RinkMetrics</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 16mm 12mm 18mm 12mm;
+            @bottom-left { content: "Informe elaborado por RinkMetrics"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
+        }
+        body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
+        h1 { font-size: 20pt; margin: 2px 0 0 0; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { font-size: 12pt; color: #12303a; text-transform: uppercase; letter-spacing: 1px;
+             border-bottom: 3px solid #0a7ea4; padding-bottom: 3px; margin: 16px 0 8px 0; page-break-after: avoid; }
+        .brandline { font-size: 7.5pt; font-weight: bold; color: #0a7ea4; text-transform: uppercase; letter-spacing: 2px; }
+        .subtitle { font-size: 11pt; color: #e3e8f1; margin-top: 3px; }
+        .meta { font-size: 8.5pt; color: #93a1b8; margin-top: 4px; }
+        .header { background: #12303a; border-left: 8px solid #0a7ea4; padding: 12px 14px; margin-bottom: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        th { background: #12303a; color: #fff; font-weight: bold; font-size: 7.5pt; padding: 3px 2px; text-align: center; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 3px 2px; text-align: center; font-size: 8pt; }
+        td.l, th.l { text-align: left; }
+        tr { page-break-inside: avoid; }
+        tr.total td { border-top: 2px solid #12303a; background: #edf2f7; font-weight: bold; }
+        table.paginar { -fs-table-paginate: paginate; }
+        .kpis td { border: none; border-top: 3px solid #0a7ea4; background: #f4f6fa; padding: 6px 2px; width: 14.28%; }
+        .kpis tr.gap td { border: none; background: none; padding: 2px; }
+        .kpi-v { font-size: 14pt; font-weight: bold; color: #12303a; }
+        .kpi-s { font-size: 7pt; color: #4a5568; }
+        .kpi-l { font-size: 6.8pt; color: #718096; text-transform: uppercase; letter-spacing: .4px; }
+        .chip { display: inline-block; width: 16px; padding: 1px 0; text-align: center; color: #fff; font-weight: bold; font-size: 8pt; border-radius: 3px; }
+        .G { background: #2f855a; } .E { background: #b7791f; } .P { background: #c53030; }
+        .card { display: inline-block; width: 7px; height: 10px; border-radius: 1px; vertical-align: middle; }
+        .card.y { background: #ecc94b; } .card.b { background: #3182ce; } .card.r { background: #e53e3e; }
+        .tag { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+        .gk { font-size: 6.5pt; color: #6b46c1; font-weight: bold; text-transform: uppercase; }
+        .notes { background: #f7fafc; border-left: 4px solid #0a7ea4; padding: 6px 10px; margin: 10px 0; font-size: 8pt; color: #4a5568; }
+        .notes p { margin: 2px 0; }
+        .muted { color: #718096; font-size: 8pt; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="brandline" th:text="|RinkMetrics · ${r.singleMatch ? 'Informe del partido' : 'Informe del período'}|">RinkMetrics</div>
+    <h1 th:text="${r.title}">VELEZ 3 - 2 HURACAN</h1>
+    <div class="subtitle" th:text="${r.detail}">Primera Masculino · Local · 18/10/2026</div>
+    <div class="meta" th:text="|${r.player != null ? 'Jugador: ' + (r.player.number.isEmpty() ? '' : '#' + r.player.number + ' ') + r.player.name + ' · ' : ''}${r.club} · Generado el ${f.date(r.generatedAt)}|">meta</div>
+</div>
+
+<th:block th:with="m=${r.totals}">
+    <h2 th:text="${r.player != null ? 'Estadísticas del jugador' : 'Estadísticas del equipo'}">Estadísticas</h2>
+    <table class="kpis">
+        <tr>
+            <td><div class="kpi-v" th:text="${m.goals}">0</div><div class="kpi-l">Goles</div></td>
+            <td><div class="kpi-v" th:text="${m.goalsConceded}">0</div><div class="kpi-l">Goles recibidos</div></td>
+            <td><div class="kpi-v" th:text="${m.shots}">0</div><div class="kpi-l">Tiros</div></td>
+            <td><div class="kpi-v" th:text="${m.shotEffectiveness() == null ? '-' : m.shotEffectiveness() + '%'}">-</div>
+                <div class="kpi-s" th:text="${f.fraction(m.shotGoals, m.shots)}"></div><div class="kpi-l">Efectividad tiros</div></td>
+            <td><div class="kpi-v" th:text="${m.saves}">0</div><div class="kpi-l">Atajadas</div></td>
+            <td><div class="kpi-v" th:text="${m.turnovers()}">0</div>
+                <div class="kpi-s" th:text="|${m.turnoversDefense} def. · ${m.turnoversAttack} ataq.|"></div><div class="kpi-l">Pérdidas</div></td>
+            <td><div class="kpi-v" th:text="${m.recoveries()}">0</div>
+                <div class="kpi-s" th:text="|${m.recoveriesDefense} def. · ${m.recoveriesAttack} ataq.|"></div><div class="kpi-l">Recuperaciones</div></td>
+        </tr>
+        <tr class="gap"><td colspan="7"></td></tr>
+        <tr>
+            <td><div class="kpi-v" th:text="${m.foulsReceived}">0</div><div class="kpi-l">Faltas recibidas</div></td>
+            <td><div class="kpi-v" th:text="${m.foulsCommitted}">0</div><div class="kpi-l">Faltas cometidas</div></td>
+            <td><div class="kpi-v" th:text="${m.blues}">0</div><div class="kpi-l"><span class="card b"></span> Tarjeta azul</div></td>
+            <td><div class="kpi-v" th:text="${m.yellows}">0</div><div class="kpi-l"><span class="card y"></span> Tarjeta amarilla</div></td>
+            <td><div class="kpi-v" th:text="${m.reds}">0</div><div class="kpi-l"><span class="card r"></span> Tarjeta roja</div></td>
+            <td><div class="kpi-v" th:text="${m.penaltyEffectiveness() == null ? '-' : m.penaltyEffectiveness() + '%'}">-</div>
+                <div class="kpi-s" th:text="${f.fraction(m.penaltyGoals, m.penalties)}"></div><div class="kpi-l">Efectividad penales</div></td>
+            <td><div class="kpi-v" th:text="${m.freeHitEffectiveness() == null ? '-' : m.freeHitEffectiveness() + '%'}">-</div>
+                <div class="kpi-s" th:text="${f.fraction(m.freeHitGoals, m.freeHits)}"></div><div class="kpi-l">Efectividad libres</div></td>
+        </tr>
+    </table>
+</th:block>
+
+<th:block th:if="${!r.singleMatch}" th:with="b=${r.balance}">
+    <h2>Partidos</h2>
+    <p class="muted" th:text="|${b.played} jugados · ${b.won} ganados · ${b.drawn} empatados · ${b.lost} perdidos · Goles ${b.goalsFor} a favor, ${b.goalsAgainst} en contra|"></p>
+    <table class="paginar">
+        <thead><tr><th class="l">Fecha</th><th class="l">Rival</th><th>Condición</th><th class="l">Campeonato</th><th>Resultado</th><th></th></tr></thead>
+        <tr th:each="p : ${r.matches}">
+            <td class="l" th:text="${f.date(p.date)}"></td>
+            <td class="l" th:text="${p.opponent}"></td>
+            <td th:text="${p.home ? 'Local' : 'Visitante'}"></td>
+            <td class="l" th:text="${p.tournament == null ? '-' : p.tournament}"></td>
+            <td th:text="|${p.goalsFor} - ${p.goalsAgainst}|"></td>
+            <td><span th:class="|chip ${p.outcome}|" th:text="${p.outcome}">G</span></td>
+        </tr>
+    </table>
+</th:block>
+
+<th:block th:if="${r.player == null}">
+    <h2>Estadísticas por jugador</h2>
+    <p class="muted" th:if="${r.players.isEmpty()}">No hay acciones cargadas.</p>
+    <table class="paginar" th:if="${!r.players.isEmpty()}">
+        <thead>
+        <tr><th class="l">Jugador</th><th th:if="${!r.singleMatch}">PJ</th><th>G</th><th>GR</th><th>Tiros</th><th>Ef.</th>
+            <th>Ataj.</th><th>Pérd.</th><th>Rec.</th><th>FR</th><th>FC</th>
+            <th><span class="card b"></span></th><th><span class="card y"></span></th><th><span class="card r"></span></th>
+            <th>Penales</th><th>Libres</th></tr>
+        </thead>
+        <tr th:each="j : ${r.players}" th:with="m=${j.metrics}">
+            <td class="l"><span th:text="|${j.number.isEmpty() ? '' : j.number + ' '}${j.name}|"></span>
+                <span class="gk" th:if="${j.goalkeeper}"> Arq.</span></td>
+            <td th:if="${!r.singleMatch}" th:text="${j.matches}"></td>
+            <td th:text="${m.goals}"></td><td th:text="${m.goalsConceded}"></td><td th:text="${m.shots}"></td>
+            <td th:text="${m.shotEffectiveness() == null ? '-' : m.shotEffectiveness() + '%'}"></td>
+            <td th:text="${m.saves}"></td><td th:text="${m.turnovers()}"></td><td th:text="${m.recoveries()}"></td>
+            <td th:text="${m.foulsReceived}"></td><td th:text="${m.foulsCommitted}"></td>
+            <td th:text="${m.blues}"></td><td th:text="${m.yellows}"></td><td th:text="${m.reds}"></td>
+            <td th:text="${f.fraction(m.penaltyGoals, m.penalties)}"></td><td th:text="${f.fraction(m.freeHitGoals, m.freeHits)}"></td>
+        </tr>
+        <tr class="total" th:with="m=${r.totals}">
+            <td class="l">Equipo</td><td th:if="${!r.singleMatch}" th:text="${r.balance.played}"></td>
+            <td th:text="${m.goals}"></td><td th:text="${m.goalsConceded}"></td><td th:text="${m.shots}"></td>
+            <td th:text="${m.shotEffectiveness() == null ? '-' : m.shotEffectiveness() + '%'}"></td>
+            <td th:text="${m.saves}"></td><td th:text="${m.turnovers()}"></td><td th:text="${m.recoveries()}"></td>
+            <td th:text="${m.foulsReceived}"></td><td th:text="${m.foulsCommitted}"></td>
+            <td th:text="${m.blues}"></td><td th:text="${m.yellows}"></td><td th:text="${m.reds}"></td>
+            <td th:text="${f.fraction(m.penaltyGoals, m.penalties)}"></td><td th:text="${f.fraction(m.freeHitGoals, m.freeHits)}"></td>
+        </tr>
+    </table>
+</th:block>
+
+<th:block th:if="${r.singleMatch}">
+    <h2>Eventos del partido</h2>
+    <p class="muted" th:if="${r.events.isEmpty()}">No hay acciones cargadas.</p>
+    <table class="paginar" th:if="${!r.events.isEmpty()}">
+        <thead><tr><th>Minuto</th><th class="l">Jugador</th><th class="l">Acción</th></tr></thead>
+        <tr th:each="e : ${r.events}">
+            <td th:text="${e.minute}" style="width: 18%"></td>
+            <td class="l" th:text="|${e.number.isEmpty() ? '' : e.number + ' '}${e.player}|"></td>
+            <td class="l"><span class="tag" th:style="|background: ${e.color}|"></span><span th:text="${e.action}"></span></td>
+        </tr>
+    </table>
+</th:block>
+
+<div class="notes">
+    <p><b>G</b>: goles (tiros, libres y penales convertidos). <b>GR</b>: goles recibidos por el arquero. <b>Ef.</b>:
+        efectividad de los tiros al arco. <b>Ataj.</b>: atajadas, con los libres y penales atajados.</p>
+    <p><b>Pérd. / Rec.</b>: pérdidas y recuperaciones, en defensa (campo propio) y en ataque (campo rival).
+        <b>FR / FC</b>: faltas recibidas y cometidas. Penales y libres: convertidos / pateados.</p>
+    <p th:if="${r.singleMatch}">Minuto: tiempo jugado del período (1T o 2T) en el que se cargó la acción.</p>
+    <p th:if="${!r.singleMatch}">Incluye los partidos finalizados del período. PJ: partidos con acciones del jugador.</p>
+</div>
+
+</body>
+</html>

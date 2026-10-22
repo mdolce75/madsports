@@ -321,7 +321,7 @@ class CoachControllerTest {
         mvc.perform(get("/api/coach/club/categories").with(como("profe"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].name").value(contains("Primera Masculino", "Infantil B Masculino",
                         "Infantil B Femenino")))
-                .andExpect(jsonPath("$[1].password").value("INFANTIL:B"))
+                .andExpect(jsonPath("$[1].key").value("INFANTIL:B"))
                 .andExpect(jsonPath("$[1].branch").value("MASCULINO"));
         // Su plantel en SIDGAD, por apellido, con el número más usado ("07" -> "7") y los arqueros.
         mvc.perform(get("/api/coach/club/squad").param("category", "INFANTIL:B").param("branch", "FEMENINO")

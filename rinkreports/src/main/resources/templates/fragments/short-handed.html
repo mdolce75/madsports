@@ -24,7 +24,7 @@
                 <th>Goles recibidos</th><th>Goles a favor</th><th>Resultado final</th><th></th></tr>
             <tr th:each="m : ${sh.matches}">
                 <td th:text="${m.date == null ? '-' : f.date(m.date)}"></td>
-                <td class="l" th:text="${m.rival}"></td>
+                <td class="l" th:text="${m.opponent}"></td>
                 <td th:text="${m.home ? 'L' : 'V'}"></td>
                 <td th:text="${m.sanctions}"></td>
                 <td th:text="${f.clock(m.secondsShort / 60.0)}"></td>

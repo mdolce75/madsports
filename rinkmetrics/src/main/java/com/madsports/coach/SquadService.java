@@ -82,7 +82,7 @@ public class SquadService {
      * @param rama   MASCULINO o FEMENINO
      * @param nombre "Primera Masculino", "Infantil B Femenino"
      */
-    public record ClubCategoryView(String password, String branch, String name) {
+    public record ClubCategoryView(String key, String branch, String name) {
     }
 
     /**
@@ -140,9 +140,9 @@ public class SquadService {
     public List<SidgadPlayer> sidgadSquad(UserAccount u, String category, String branch) {
         ClubCategoryView c = clubCategory(u, category, branch);
         int year = catalog.defaultYear();
-        Map<Integer, SquadMember> data = roster.squad(u.federation(), u.getClubId(), year, c.password(), c.branch())
+        Map<Integer, SquadMember> data = roster.squad(u.federation(), u.getClubId(), year, c.key(), c.branch())
                 .stream().collect(Collectors.toMap(SquadMember::id, Function.identity(), (a, b) -> a));
-        return roster.players(u.federation(), u.getClubId(), year, c.password(), c.branch()).stream()
+        return roster.players(u.federation(), u.getClubId(), year, c.key(), c.branch()).stream()
                 .map(p -> {
                     SquadMember d = data.get(p.id());
                     return new SidgadPlayer(p.id(), d == null ? "" : sidgadNumber(d.number()), p.name(),
@@ -154,9 +154,9 @@ public class SquadService {
     }
 
     private ClubCategoryView clubCategory(UserAccount u, String category, String branch) {
-        String password = category == null ? "" : category.trim().toUpperCase(Locale.ROOT);
+        String key = category == null ? "" : category.trim().toUpperCase(Locale.ROOT);
         String r = branch == null ? "" : branch.trim().toUpperCase(Locale.ROOT);
-        return clubCategories(u).stream().filter(c -> c.password().equals(password) && c.branch().equals(r)).findFirst()
+        return clubCategories(u).stream().filter(c -> c.key().equals(key) && c.branch().equals(r)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Esa categoría no es de tu club."));
     }
 
@@ -171,9 +171,9 @@ public class SquadService {
             return teams.create(u, n.name());
         }
         ClubCategoryView c = clubCategory(u, n.category(), n.branch());
-        List<SidgadPlayer> squad = sidgadSquad(u, c.password(), c.branch());
+        List<SidgadPlayer> squad = sidgadSquad(u, c.key(), c.branch());
         String name = n.name() == null || n.name().isBlank() ? c.name() : n.name();
-        Team e = teams.created(u, name, c.password(), c.branch());
+        Team e = teams.created(u, name, c.key(), c.branch());
         Set<Integer> out = new HashSet<>(n.excluded() == null ? List.of() : n.excluded());
         Set<String> usedNumbers = new HashSet<>();
         // Primero los incluidos: si dos tienen el mismo número, se lo queda uno que juega.
@@ -275,8 +275,8 @@ public class SquadService {
         checkNumber(u, own, number, -1);
         int id = players.findTopByUserIdOrderByPlayerIdDesc(u.getId()).map(TeamPlayer::getPlayerId)
                 .filter(n -> n >= TeamPlayer.FIRST_OWN_ID).map(n -> n + 1).orElse(TeamPlayer.FIRST_OWN_ID);
-        TeamPlayer j = players.saveAndFlush(new TeamPlayer(u.getId(), id, text(d.name(), "name"),
-                text(d.lastName(), "lastName"), number, Boolean.TRUE.equals(d.goalkeeper()), own, clock.instant()));
+        TeamPlayer j = players.saveAndFlush(new TeamPlayer(u.getId(), id, text(d.name(), "nombre"),
+                text(d.lastName(), "apellido"), number, Boolean.TRUE.equals(d.goalkeeper()), own, clock.instant()));
         return SquadPlayer.of(j);
     }
 
@@ -286,7 +286,7 @@ public class SquadService {
         Set<Long> own = validTeams(u, d.teams());
         String number = number(d.number());
         checkNumber(u, own, number, playerId);
-        j.update(text(d.name(), "name"), text(d.lastName(), "lastName"), number, Boolean.TRUE.equals(d.goalkeeper()),
+        j.update(text(d.name(), "nombre"), text(d.lastName(), "apellido"), number, Boolean.TRUE.equals(d.goalkeeper()),
                 own);
         return SquadPlayer.of(j);
     }

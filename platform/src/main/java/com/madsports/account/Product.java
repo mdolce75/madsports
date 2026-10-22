@@ -15,7 +15,7 @@ import java.util.Locale;
  */
 public enum Product {
     REPORTS("RinkReports", "Informes de hockey sobre patines", "1b8a68", "/rinkreports", "/rinkreports/login.html"),
-    METRICS("RinkMetrics", "Hockey sobre patines", "0a7ea4", "/rinkmetrics", "/login.html");
+    METRICS("RinkMetrics", "Hockey sobre patines", "0a7ea4", "/rinkmetrics", "/rinkmetrics/login.html");
 
     private final String displayName;
     private final String tagline;

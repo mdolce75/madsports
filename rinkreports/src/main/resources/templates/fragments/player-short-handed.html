@@ -14,7 +14,7 @@
                 <th>Minuto del gol</th><th>Resultado final</th><th></th></tr>
             <tr th:each="g : ${sh.conceded}">
                 <td th:text="${g.date == null ? '-' : f.date(g.date)}"></td>
-                <td class="l" th:text="${g.rival}"></td>
+                <td class="l" th:text="${g.opponent}"></td>
                 <td><span th:class="${g.card == 'Azul' ? 'card b' : 'card r'}"></span> <span th:text="${g.card}"></span></td>
                 <td th:text="${g.cardMinute}"></td>
                 <td th:text="${g.goalMinute}"></td>

@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.time.Duration;
 
 /**
- * Análisis con Google Gemini (plan gratuito de Google AI Studio), {@code rinkmetrics.ai.*}.
+ * Análisis con Google Gemini (plan gratuito de Google AI Studio), {@code madsports.ai.*}.
  *
  * @param enabled si es false (o no hay API key) se usa el análisis por reglas
  * @param apiKey  API key de Google AI Studio

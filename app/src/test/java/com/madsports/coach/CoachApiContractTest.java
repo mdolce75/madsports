@@ -45,11 +45,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /**
- * El servidor contra el contrato de la API de RinkMetrics ({@code src/test/resources/coach/contract-api.json}): los mismos
- * escenarios que corre la API simulada de la demo ({@code src/test/js/contract-api.test.mjs}), así la demo y la
+ * El servidor contra el contrato de la API de RinkMetrics ({@code src/test/resources/coach/api-contract.json}): los mismos
+ * escenarios que corre la API simulada de la demo ({@code src/test/js/api-contract.test.mjs}), así la demo y la
  * pantalla sin señal no se separan del servidor. Cada escenario arranca con la base vacía y el reloj de prueba.
  */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:contrato-dt;DB_CLOSE_DELAY=-1")
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:coach-contract;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 @Import(CoachControllerTest.Config.class)
 class CoachApiContractTest {
@@ -69,31 +69,31 @@ class CoachApiContractTest {
     @TestFactory
     Stream<DynamicTest> scenarios() throws IOException {
         JsonNode contract;
-        try (InputStream in = new ClassPathResource("dt/contrato-api.json").getInputStream()) {
+        try (InputStream in = new ClassPathResource("coach/api-contract.json").getInputStream()) {
             contract = json.readTree(in);
         }
-        JsonNode home = contract.get("setup");
+        JsonNode setup = contract.get("setup");
         return StreamSupport.stream(contract.get("scenarios").spliterator(), false)
-                .map(e -> DynamicTest.dynamicTest(e.get("name").asText(), () -> run(home, e)));
+                .map(e -> DynamicTest.dynamicTest(e.get("name").asText(), () -> run(setup, e)));
     }
 
-    private void run(JsonNode home, JsonNode scenario) throws Exception {
+    private void run(JsonNode setup, JsonNode scenario) throws Exception {
         actions.deleteAll();
         matches.deleteAll();
         users.deleteAll();
-        clock.now = Instant.parse(home.get("instante").asText());
-        String name = home.get("username").asText();
-        UserAccount u = new UserAccount(name, "x", name + "@example.com", "Ana", "Pérez", 74, home.get("club").asText(),
+        clock.now = Instant.parse(setup.get("instant").asText());
+        String name = setup.get("username").asText();
+        UserAccount u = new UserAccount(name, "x", name + "@example.com", "Ana", "Pérez", 74, setup.get("club").asText(),
                 "CAVS", EnumSet.of(Profile.COACHFPP), Instant.now());
-        u.subscribe(subscriptions.findByCode(home.get("plan").asText()).orElseThrow(), LocalDate.of(2026, 9, 15));
+        u.subscribe(subscriptions.findByCode(setup.get("plan").asText()).orElseThrow(), LocalDate.of(2026, 9, 15));
         users.save(u);
 
         Map<String, JsonNode> vars = new HashMap<>();
         int i = 0;
         for (JsonNode step : scenario.get("steps")) {
             i++;
-            if (step.has("avanzar")) {
-                clock.advance(step.get("avanzar").asInt());
+            if (step.has("advance")) {
+                clock.advance(step.get("advance").asInt());
                 continue;
             }
             String[] request = replace(step.get("request"), vars).asText().split(" ");

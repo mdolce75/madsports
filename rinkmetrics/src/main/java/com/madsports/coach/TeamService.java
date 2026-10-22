@@ -22,7 +22,7 @@ public class TeamService {
      *
      * @param categoriaSidgad y {@code sidgadBranch}: la categoría del club de la que salió el plantel (null: nombre libre)
      */
-    public record TeamView(Long id, String name, int elapsed, int won, int drawn, int lost,
+    public record TeamView(Long id, String name, int played, int won, int drawn, int lost,
                              String sidgadCategory, String sidgadBranch) {
     }
 

@@ -44,18 +44,18 @@ public final class StrengthsAnalysis {
         List<Indicator> out = new ArrayList<>();
         TeamRecord r = t.total();
         out.add(relative("Ataque", "Goles a favor por partido", r.goalsForPerGame(), "Liga", league.goalsPerTeamGame(),
-                Unit.PER_GAME, true, r.played(), "matches"));
+                Unit.PER_GAME, true, r.played(), "partidos"));
         out.add(relative("Defensa", "Goles en contra por partido", r.goalsAgainstPerGame(), "Liga",
-                league.goalsPerTeamGame(), Unit.PER_GAME, false, r.played(), "matches"));
+                league.goalsPerTeamGame(), Unit.PER_GAME, false, r.played(), "partidos"));
         out.add(relative("Local", "Efectividad de local", t.home().effectiveness(), "Liga", league.effectiveness(),
-                Unit.PERCENT, true, t.home().played(), "matches"));
+                Unit.PERCENT, true, t.home().played(), "partidos"));
         out.add(relative("Visitante", "Efectividad de visitante", t.away().effectiveness(), "Liga",
-                league.effectiveness(), Unit.PERCENT, true, t.away().played(), "matches"));
+                league.effectiveness(), Unit.PERCENT, true, t.away().played(), "partidos"));
         if (!t.form().isEmpty()) {
             int pts = t.form().stream().mapToInt(o -> "G".equals(o) ? 3 : "E".equals(o) ? 1 : 0).sum();
             double formPct = 100.0 * pts / (t.form().size() * 3);
             out.add(relative("Forma", "Efectividad en los últimos " + t.form().size(), formPct, "Período",
-                    r.effectiveness(), Unit.PERCENT, true, t.form().size(), "matches"));
+                    r.effectiveness(), Unit.PERCENT, true, t.form().size(), "partidos"));
         }
         TimeProfile tp = t.timeProfile();
         if (tp.hasData()) {
@@ -70,7 +70,7 @@ public final class StrengthsAnalysis {
         out.add(relative("Pelota parada", "Penales convertidos", t.setPieces().penaltyPct(), "Liga",
                 league.penaltyPct(), Unit.PERCENT, true, t.setPieces().penaltiesTaken(), "intentos"));
         out.add(relative("Disciplina", "Azules y rojas por partido", t.discipline().cardsPerGame(), "Liga",
-                league.cardsPerTeamGame(), Unit.PER_GAME, false, t.discipline().matches(), "matches"));
+                league.cardsPerTeamGame(), Unit.PER_GAME, false, t.discipline().matches(), "partidos"));
         if (t.fouls().matches() > 0 && league.matchesWithSheet() > 0) {
             out.add(relative("Disciplina", "Faltas por partido", t.fouls().ownPerGame(), "Liga",
                     t.fouls().leaguePerTeamGame(), Unit.PER_GAME, false, t.fouls().matches(), "fichas"));

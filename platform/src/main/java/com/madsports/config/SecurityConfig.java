@@ -53,7 +53,7 @@ import java.util.Map;
 
 /**
  * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/rinkreports/club.html) CLUBFPP o CLUBAMP
- * y la de jugador (/rinkreports/jugador.html) PLAYERFPP o PLAYERAMP, y la del DT (/dt.html) DTFPP o DTAMP; la federación sale del perfil
+ * y la de jugador (/rinkreports/player.html) PLAYERFPP o PLAYERAMP, y la del DT (/coach.html) COACHFPP o COACHAMP; la federación sale del perfil
  * del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
  * <p>
@@ -61,7 +61,7 @@ import java.util.Map;
  * ({@link AttemptLimiter}): al superarlo, la API responde 429.
  * <p>
  * La sesión dura 8 h sin actividad. Con "Recordarme" (parámetro {@code rememberMe} del login) queda además la cookie
- * RECORDARME por 30 días: si la sesión se pierde (venció, se cerró el navegador o se reinició la app), el próximo
+ * REMEMBER_ME por 30 días: si la sesión se pierde (venció, se cerró el navegador o se reinició la app), el próximo
  * pedido vuelve a entrar solo. El token se guarda en la base ({@code persistent_logins}), cambia en cada uso y se borra
  * al salir o al cambiar la clave.
  */
@@ -77,22 +77,27 @@ public class SecurityConfig {
                                             AttemptLimiter limiter) throws Exception {
         http
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/", "/index.html", "/informes.html", "/dt-inicio.html", "/dt-demo.html", "/por-que.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/", "/rinkreports/index.html", "/rinkreports/ejemplo.html", "/rinkreports/login.html", "/rinkreports/registro.html", "/club.html", "/jugador.html", "/rinkmetrics", "/rinkmetrics/", "/login.html", "/registro.html", "/olvido.html",
-                                "/restablecer.html", "/css/**", "/js/**", "/img/**", "/dt-sw.js", "/error",
+                        .requestMatchers("/", "/index.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/",
+                                "/rinkreports/index.html", "/rinkreports/sample.html", "/rinkreports/login.html",
+                                "/rinkreports/signup.html", "/rinkmetrics", "/rinkmetrics/", "/rinkmetrics/index.html",
+                                "/rinkmetrics/why.html", "/rinkmetrics/login.html", "/rinkmetrics/signup.html", "/coach-demo.html",
+                                "/forgot-password.html", "/reset-password.html", "/css/**", "/js/**", "/img/**", "/coach-sw.js",
+                                "/dt-sw.js", "/error",
                                 "/api/signup", "/api/signup/**", "/api/session", "/api/catalog", "/api/sample.pdf",
                                 "/api/sample.html", "/api/sample.xlsx", "/api/sample-player.html", "/api/sample-player.xlsx",
-                                "/api/sample-player.pdf", "/api/verify", "/api/verification/**", "/api/password/**", "/api/plans",
+                                "/api/sample-player.pdf", "/api/verify", "/api/verificar", "/api/verification/**", "/api/password/**", "/api/plans",
                                 "/actuator/health", "/actuator/health/**")
                         .permitAll()
+                        .requestMatchers(WebConfig.OLD_PAGES.keySet().toArray(String[]::new)).permitAll()
                         .requestMatchers("/rinkreports/club.html", "/api/reports", "/api/reports/**")
                         .hasAnyAuthority(Profile.CLUBFPP.name(), Profile.CLUBAMP.name())
-                        .requestMatchers("/rinkreports/jugador.html", "/api/player/**")
+                        .requestMatchers("/rinkreports/player.html", "/api/player/**")
                         .hasAnyAuthority(Profile.PLAYERFPP.name(), Profile.PLAYERAMP.name())
-                        .requestMatchers("/dt.html", "/api/coach/**")
+                        .requestMatchers("/coach.html", "/api/coach/**")
                         .hasAnyAuthority(Profile.COACHFPP.name(), Profile.COACHAMP.name())
                         .anyRequest().authenticated())
                 .formLogin(f -> f
-                        .loginPage("/login.html")
+                        .loginPage(Product.METRICS.login())
                         .loginProcessingUrl("/api/login")
                         .usernameParameter("username")
                         .passwordParameter("password")
@@ -113,7 +118,7 @@ public class SecurityConfig {
                                         "detail", "Confirmá tu email para ingresar: te mandamos un enlace al registrarte."));
                                 return;
                             }
-                            // Cada producto tiene su ingreso: la pantalla manda el suyo (producto=REPORTS o METRICS).
+                            // Cada producto tiene su ingreso: la pantalla manda el suyo (product=REPORTS o METRICS).
                             Product request = Product.parse(req.getParameter("product"));
                             if (u != null && request != null && u.getProduct() != request) {
                                 reject(req, res, auth, rememberMe);
@@ -126,7 +131,7 @@ public class SecurityConfig {
                             write(res, json, HttpStatus.OK, Map.of("home", home(auth.getAuthorities())));
                         })
                         .failureHandler((req, res, e) -> {
-                            // Cuenta el intento fallido para el usuario y para la IP (LimiteIntentosFilter corta
+                            // Cuenta el intento fallido para el usuario y para la IP (AttemptLimitFilter corta
                             // los siguientes al llegar al máximo).
                             limiter.add(AttemptLimiter.Kind.LOGIN_USER, req.getParameter("username"));
                             limiter.add(AttemptLimiter.Kind.LOGIN_IP, req.getRemoteAddr());
@@ -142,7 +147,7 @@ public class SecurityConfig {
                         // Una pantalla sin sesión va al ingreso de su producto, que después vuelve a esa pantalla.
                         .defaultAuthenticationEntryPointFor((req, res, ex) -> {
                                     String screen = req.getRequestURI().substring(req.getContextPath().length());
-                                    res.sendRedirect(req.getContextPath() + login(screen) + "?volver="
+                                    res.sendRedirect(req.getContextPath() + login(screen) + "?returnTo="
                                             + URLEncoder.encode(screen, StandardCharsets.UTF_8));
                                 },
                                 AnyRequestMatcher.INSTANCE)
@@ -188,12 +193,12 @@ public class SecurityConfig {
             return "/rinkreports/club.html";
         }
         if (has(authorities, Profile.PLAYERFPP) || has(authorities, Profile.PLAYERAMP)) {
-            return "/rinkreports/jugador.html";
+            return "/rinkreports/player.html";
         }
         if (has(authorities, Profile.COACHFPP) || has(authorities, Profile.COACHAMP)) {
-            return "/dt.html";
+            return "/coach.html";
         }
-        return "/login.html?sinPerfil";
+        return Product.METRICS.login() + "?noProfile";
     }
 
     private static boolean has(Collection<? extends GrantedAuthority> authorities, Profile profile) {
@@ -220,10 +225,10 @@ public class SecurityConfig {
 
     @Bean
     PersistentTokenBasedRememberMeServices rememberMe(UserDetailsService users, PersistentTokenRepository tokens,
-                                                      @Value("${madsports.remember-me.key:}") String password,
+                                                      @Value("${madsports.remember-me.key:}") String key,
                                                       @Value("${madsports.remember-me.days:30}") int days) {
         PersistentTokenBasedRememberMeServices s = new PersistentTokenBasedRememberMeServices(
-                password.isBlank() ? UUID.randomUUID().toString() : password, users, tokens);
+                key.isBlank() ? UUID.randomUUID().toString() : key, users, tokens);
         s.setParameter("rememberMe");
         s.setCookieName("REMEMBER_ME");
         s.setTokenValiditySeconds((int) Duration.ofDays(days).toSeconds());

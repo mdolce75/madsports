@@ -28,6 +28,6 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     /** Suma un informe pedido. Un solo UPDATE en la base: dos pedidos simultáneos no se pisan. */
     @Transactional
     @Modifying(clearAutomatically = true)
-    @Query("update Usuario u set u.informesPedidos = u.informesPedidos + 1 where u.usuario = :usuario")
+    @Query("update UserAccount u set u.reportsRequested = u.reportsRequested + 1 where u.username = :username")
     int countReport(@Param("username") String username);
 }

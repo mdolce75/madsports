@@ -70,7 +70,7 @@ class ReportServiceTest {
     @Test
     void periods() {
         assertThat(Scope.parse(null)).isEqualTo(Scope.SEASON);
-        assertThat(Scope.parse("ultimos_5").lastMatches()).isEqualTo(5);
+        assertThat(Scope.parse("last_5").lastMatches()).isEqualTo(5);
         assertThat(Scope.parse("OPENING").tournament()).isEqualTo(Competition.Tournament.OPENING);
         assertThat(Scope.SEASON.tournament()).isNull();
         assertThatThrownBy(() -> Scope.parse("PLAYOFF")).isInstanceOf(IllegalArgumentException.class)

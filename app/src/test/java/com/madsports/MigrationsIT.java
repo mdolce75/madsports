@@ -68,7 +68,7 @@ class MigrationsIT {
         assertThat(jdbc.queryForObject("""
                 select rc.delete_rule from information_schema.referential_constraints rc
                 join information_schema.key_column_usage k on k.constraint_name = rc.constraint_name
-                where k.table_name = 'partido_dt' and k.column_name = 'equipo_id'""", String.class))
+                where k.table_name = 'coach_match' and k.column_name = 'team_id'""", String.class))
                 .isEqualTo("CASCADE");
     }
 
@@ -76,11 +76,23 @@ class MigrationsIT {
     void playerNumberIsUniquePerCoachAndNoOldColumnsRemain() {
         assertThat(jdbc.queryForObject("""
                 select count(*) from information_schema.table_constraints
-                where table_name = 'jugador_dt' and constraint_name = 'jugador_dt_id_unico'
+                where table_name = 'coach_player' and constraint_name = 'coach_player_id_unique'
                   and constraint_type = 'UNIQUE'""", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForList("""
                 select table_name || '.' || column_name from information_schema.columns
-                where table_schema = 'public' and table_name in ('equipo_dt', 'jugador_dt', 'partido_dt')
+                where table_schema = 'public' and table_name in ('coach_team', 'coach_player', 'coach_match')
                   and column_name in ('categoria', 'rama')""", String.class)).isEmpty();
+    }
+
+    @Test
+    void tablesAreInEnglish() {
+        // V24 pasó el esquema al inglés: no queda ninguna tabla con el nombre de antes.
+        assertThat(jdbc.queryForList("""
+                select table_name from information_schema.tables where table_schema = 'public'
+                  and table_name in ('usuario', 'usuario_perfil', 'suscripcion_type', 'token_usuario', 'equipo_dt',
+                    'jugador_dt', 'jugador_equipo_dt', 'jugador_pendiente_dt', 'partido_dt', 'accion_dt',
+                    'partido_creado_dt', 'informe_pedido')""", String.class)).isEmpty();
+        assertThat(jdbc.queryForObject("select count(*) from subscription_plan where code = 'COACH_FREE'", Integer.class))
+                .isEqualTo(1);
     }
 }

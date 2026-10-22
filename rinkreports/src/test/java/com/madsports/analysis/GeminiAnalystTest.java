@@ -27,9 +27,9 @@ class GeminiAnalystTest {
 
     /** Análisis que "devuelve Gemini": incluye un jugador que no existe en los datos. */
     static final String ANALYSIS = """
-            {"resumen":"Vélez A tuvo un gran Clausura.","fortalezas":["Ataque: 8,89 goles por partido."],
-             "debilidades":[],"jugadores_destacados":[{"nombre":"Simona Emma Demata Bianchi","motivo":"Goleadora."},
-             {"nombre":"Jugadora Inventada","motivo":"No existe."}],"previa_proximo_rival":"","tendencia":"G G G G G"}
+            {"summary":"Vélez A tuvo un gran Clausura.","strengths":["Ataque: 8,89 goles por partido."],
+             "weaknesses":[],"key_players":[{"name":"Simona Emma Demata Bianchi","reason":"Goleadora."},
+             {"name":"Jugadora Inventada","reason":"No existe."}],"next_opponent_preview":"","trend":"G G G G G"}
             """;
 
     HttpServer server;
@@ -84,7 +84,7 @@ class GeminiAnalystTest {
         JsonNode req = MAPPER.readTree(requests.getFirst());
         assertThat(req.at("/generationConfig/responseMimeType").asText()).isEqualTo("application/json");
         assertThat(req.at("/generationConfig/responseSchema/required").toString())
-                .contains("resumen", "jugadores_destacados", "tendencia", "analisis_faltas");
+                .contains("summary", "key_players", "trend", "fouls_analysis");
         assertThat(req.at("/systemInstruction/parts/0/text").asText()).contains("RinkMetrics", "no las mezcles");
         String userText = req.at("/contents/0/parts/0/text").asText();
         assertThat(userText).contains("VELEZ (CAVS)", "\"league_context\"", "\"team_detail\"", "\"time_profile\"",

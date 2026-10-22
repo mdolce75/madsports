@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/app.css">
     <link rel="stylesheet" href="/css/reports.css">
 </head>
-<body data-producto="reports" data-seccion="club">
+<body data-product="reports" data-section="club">
 <div class="wrap">
     <div class="topbar">
         <div id="brand"></div>
@@ -52,10 +52,10 @@
             <div class="field">
                 <label for="periodo"><span class="num"><i>3</i></span>Período</label>
                 <select id="periodo" required>
-                    <option value="TEMPORADA" selected>Temporada completa</option>
-                    <option value="APERTURA">Apertura</option>
-                    <option value="CLAUSURA">Clausura</option>
-                    <option value="ULTIMOS_5">Últimos 5 partidos</option>
+                    <option value="SEASON" selected>Temporada completa</option>
+                    <option value="OPENING">Apertura</option>
+                    <option value="CLOSING">Clausura</option>
+                    <option value="LAST_5">Últimos 5 partidos</option>
                 </select>
             </div>
         </div>
@@ -65,9 +65,9 @@
         <button class="go" id="go" type="submit" disabled>Ver informe</button>
 
         <ul class="steps" id="steps" hidden>
-            <li data-s="EXTRAYENDO">Datos de SIDGAD</li>
-            <li data-s="ANALIZANDO">Análisis</li>
-            <li data-s="GENERANDO_PDF">Informe</li>
+            <li data-s="EXTRACTING">Datos de SIDGAD</li>
+            <li data-s="ANALYZING">Análisis</li>
+            <li data-s="RENDERING">Informe</li>
         </ul>
         <div id="status" role="status" aria-live="polite"></div>
     </form>
@@ -86,7 +86,7 @@
     let me;
 
     const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
-    const PERIODO = {TEMPORADA: "Temporada completa", APERTURA: "Apertura", CLAUSURA: "Clausura", ULTIMOS_5: "Últimos 5 partidos"};
+    const PERIOD = {SEASON: "Temporada completa", OPENING: "Apertura", CLOSING: "Clausura", LAST_5: "Últimos 5 partidos"};
 
     function selectedClub() {
         return catalog.clubs.find(c => String(c.id) === $("club").value);
@@ -111,7 +111,7 @@
         $("club").innerHTML = "<option>Cargando catálogo…</option>";
         $("categorias").textContent = "";
         try {
-            const res = await fetch("/api/catalogo?federacion=" + me.federacion + (year ? "&anio=" + year : ""));
+            const res = await fetch("/api/catalog?federation=" + me.federation + (year ? "&year=" + year : ""));
             if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
             catalog = await res.json();
             const years = $("anio");
@@ -131,9 +131,9 @@
             // El usuario de club pide informes solo de su club: el selector queda fijo en el suyo.
             const mine = catalog.clubs.find(c => c.id === me.club.id);
             if (!mine) {
-                sel.add(new Option(me.club.nombre));
+                sel.add(new Option(me.club.name));
                 noData.hidden = false;
-                noData.textContent = `${me.club.nombre} no tiene equipos en la ${me.federacion} en ${catalog.year}.`;
+                noData.textContent = `${me.club.name} no tiene equipos en la ${me.federation} en ${catalog.year}.`;
                 return;
             }
             sel.add(new Option(`${mine.name} (${mine.code})`, mine.id));
@@ -144,23 +144,23 @@
     }
 
     $("anio").addEventListener("change", () => { status(""); loadCatalog($("anio").value); });
-    $("periodo").addEventListener("change", () => { $("periodo-hint").hidden = $("periodo").value !== "ULTIMOS_5"; });
+    $("periodo").addEventListener("change", () => { $("periodo-hint").hidden = $("periodo").value !== "LAST_5"; });
     $("form").addEventListener("submit", async ev => {
         ev.preventDefault();
         $("go").disabled = true;
         $("steps").hidden = false;
         $("visor").hidden = true;
-        showStep("PENDIENTE");
+        showStep("PENDING");
         status("Enviando…");
         try {
-            const body = await postJson("/api/informes", {
+            const body = await postJson("/api/reports", {
                 clubId: Number($("club").value),
-                periodo: $("periodo").value,
-                anio: Number($("anio").value)
+                period: $("periodo").value,
+                year: Number($("anio").value)
             });
-            const job = await poll(`/api/informes/${body.id}`);
+            const job = await poll(`/api/reports/${body.id}`);
             status("Informe listo.");
-            rrShowReport($("visor"), job, `${me.club.nombre} · ${PERIODO[$("periodo").value]} ${$("anio").value}`);
+            rrShowReport($("visor"), job, `${me.club.name} · ${PERIOD[$("periodo").value]} ${$("anio").value}`);
         } catch (e) {
             status(e.message, true);
         } finally {

@@ -85,7 +85,7 @@ public class ReportQuota implements MonthlyReports {
      * Pide un informe dentro del cupo: si queda lugar, hace el pedido y lo cuenta. Un pedido inválido (que tira una
      * excepción) no cuenta.
      *
-     * @throws CupoAgotado si ya usó los informes del mes
+     * @throws QuotaExceededException si ya usó los informes del mes
      */
     public <T> T consume(UserAccount u, Supplier<T> request) {
         synchronized (locks.computeIfAbsent(u.getId(), k -> new Object())) {

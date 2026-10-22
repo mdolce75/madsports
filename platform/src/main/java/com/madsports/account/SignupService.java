@@ -141,7 +141,7 @@ public class SignupService {
 
     /**
      * ¿Se puede elegir el plan? Los gratuitos, siempre (mientras estén vigentes); los pagos del DT, con
-     * {@code rinkmetrics.signup.coach-paid}, y los del jugador, con {@code rinkmetrics.signup.player-paid}: hasta
+     * {@code madsports.signup.coach-paid}, y los del jugador, con {@code madsports.signup.player-paid}: hasta
      * que se habilite el cobro figuran como "Próximamente".
      */
     /** Qué perfiles se pueden registrar hoy (las cuentas de club y los jugadores de la AMP, según la configuración). */

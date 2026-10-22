@@ -3,6 +3,7 @@ package com.madsports.account;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.ClubView;
+import com.madsports.config.WebConfig;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.RosterService.RosterPlayer;
@@ -154,7 +155,7 @@ class SecurityTest {
     void confirm(String email) throws Exception {
         mvc.perform(get("/api/verify").param("token", token(email, "/api/verify")))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("login.html?verificado")));
+                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("login.html?verified")));
     }
 
     UserAccount saved(String username, Profile profile) {
@@ -232,7 +233,7 @@ class SecurityTest {
         Cookie other = loginRemembering("ana").getResponse().getCookie("REMEMBER_ME");
         mvc.perform(post("/api/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"ana@example.com\"}")).andExpect(status().isOk());
-        String token = token("ana@example.com", "/restablecer.html");
+        String token = token("ana@example.com", "/reset-password.html");
         mvc.perform(post("/api/password/reset").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"token\":\"%s\",\"password\":\"otra-clave-segura\"}".formatted(token)))
                 .andExpect(status().isOk());
@@ -274,32 +275,41 @@ class SecurityTest {
         mvc.perform(get("/rinkreports")).andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/rinkreports/index.html"));
         mvc.perform(get("/rinkmetrics")).andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/dt-inicio.html"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/rinkmetrics/index.html"));
         // Al ingreso, con la pantalla a la que volver después.
         // Las pantallas de RinkReports van a su ingreso; las de RinkMetrics, al suyo.
         mvc.perform(get("/rinkreports/club.html")).andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/rinkreports/login.html?volver=%2Frinkreports%2Fclub.html"));
-        mvc.perform(get("/rinkreports/jugador.html"))
-                .andExpect(redirectedUrl("/rinkreports/login.html?volver=%2Frinkreports%2Fjugador.html"));
-        mvc.perform(get("/dt.html")).andExpect(redirectedUrl("/login.html?volver=%2Fdt.html"));
+                .andExpect(redirectedUrl("/rinkreports/login.html?returnTo=%2Frinkreports%2Fclub.html"));
+        mvc.perform(get("/rinkreports/player.html"))
+                .andExpect(redirectedUrl("/rinkreports/login.html?returnTo=%2Frinkreports%2Fplayer.html"));
+        mvc.perform(get("/coach.html")).andExpect(redirectedUrl("/rinkmetrics/login.html?returnTo=%2Fcoach.html"));
         mvc.perform(get("/rinkreports/login.html")).andExpect(status().isOk());
-        mvc.perform(get("/rinkreports/registro.html")).andExpect(status().isOk());
-        // Las direcciones viejas de los informes llevan a RinkReports.
+        mvc.perform(get("/rinkreports/signup.html")).andExpect(status().isOk());
+        // Las direcciones de antes llevan a las nuevas, sin sesión y con los mismos parámetros.
         mvc.perform(get("/club.html")).andExpect(redirectedUrl("/rinkreports/club.html"));
-        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/jugador.html"));
+        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/player.html"));
         mvc.perform(get("/informes.html")).andExpect(redirectedUrl("/rinkreports"));
+        mvc.perform(get("/dt.html")).andExpect(redirectedUrl("/coach.html"));
+        mvc.perform(get("/login.html?verified")).andExpect(redirectedUrl("/rinkmetrics/login.html?verified"));
+        mvc.perform(get("/restablecer.html?token=abc"))
+                .andExpect(redirectedUrl("/reset-password.html?token=abc"));
+        for (Map.Entry<String, String> e : WebConfig.OLD_PAGES.entrySet()) {
+            mvc.perform(get(e.getKey())).andExpect(redirectedUrl(e.getValue()));
+        }
         // Los ejemplos de RinkReports, públicos: en pantalla, PDF y Excel.
-        mvc.perform(get("/rinkreports/ejemplo.html")).andExpect(status().isOk());
-        mvc.perform(get("/login.html")).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/sample.html")).andExpect(status().isOk());
+        mvc.perform(get("/rinkmetrics/login.html")).andExpect(status().isOk());
         // Las presentaciones de las dos secciones (Informes y DT) se ven sin sesión.
-        mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
-        // La demo de RinkMetrics y sus capturas, también. La demo es la misma página que /dt.html (sin copia).
-        mvc.perform(get("/dt-demo.html")).andExpect(status().isOk())
+        mvc.perform(get("/rinkmetrics/index.html")).andExpect(status().isOk());
+        // La demo de RinkMetrics y sus capturas, también. La demo es la misma página que /coach.html (sin copia).
+        mvc.perform(get("/coach-demo.html")).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/coach/main.js")));
-        mvc.perform(get("/por-que.html")).andExpect(status().isOk());
+        mvc.perform(get("/rinkmetrics/why.html")).andExpect(status().isOk());
         mvc.perform(get("/img/demo/carga-web.png")).andExpect(status().isOk());
-        mvc.perform(get("/registro.html")).andExpect(status().isOk());
+        mvc.perform(get("/rinkmetrics/signup.html")).andExpect(status().isOk());
+        // El service worker de antes, para que se borre solo.
+        mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
         mvc.perform(get("/api/sample-player.pdf")).andExpect(status().isOk());
         mvc.perform(get("/api/reports/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/session")).andExpect(status().isOk()).andExpect(jsonPath("$.authenticated").value(false));
@@ -357,7 +367,7 @@ class SecurityTest {
         register(samePlayer).andExpect(status().isConflict());
 
         confirm("juan@example.com");
-        login("juan", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/jugador.html"));
+        login("juan", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/player.html"));
     }
 
     @Test
@@ -388,15 +398,15 @@ class SecurityTest {
         mvc.perform(get("/api/session").with(user("murialdo").authorities(() -> "CLUBAMP")))
                 .andExpect(jsonPath("$.federation").value("AMP"));
         confirm("terraza@example.com");
-        login("terraza", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/jugador.html"));
+        login("terraza", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/player.html"));
     }
 
     @Test
     void screensAcceptProfilesOfBothFederations() throws Exception {
         mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "CLUBAMP"))).andExpect(status().isOk());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
         // Cada perfil, solo su pantalla.
-        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "CLUBAMP")))
+        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "CLUBAMP")))
                 .andExpect(status().is3xxRedirection());
         mvc.perform(post("/api/reports").with(user("a").authorities(() -> "PLAYERAMP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -419,7 +429,7 @@ class SecurityTest {
         assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("COACH_FREE");
 
         confirm("profe@example.com");
-        login("profe", "clave-segura").andExpect(jsonPath("$.home").value("/dt.html"));
+        login("profe", "clave-segura").andExpect(jsonPath("$.home").value("/coach.html"));
         mvc.perform(get("/api/session").with(user("profe").authorities(() -> "COACHFPP")))
                 .andExpect(jsonPath("$.subscription.matchesPerMonth").value(5));
 
@@ -444,11 +454,11 @@ class SecurityTest {
 
     @Test
     void theCoachScreenIsOnlyForCoaches() throws Exception {
-        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "COACHAMP"))).andExpect(status().isOk());
-        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "PLAYERFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/coach.html").with(user("a").authorities(() -> "COACHAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/coach.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/coach.html").with(user("a").authorities(() -> "PLAYERFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/api/coach/matches").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
         // El service worker de la planilla (para abrirla sin señal) se baja sin sesión, como el resto de los estáticos.
         mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
@@ -516,9 +526,11 @@ class SecurityTest {
         register(club("ana")).andExpect(status().isCreated());
         String token = token("ana@example.com", "/api/verify");
         // La cuenta de club es de RinkReports: al ingreso de RinkReports.
-        mvc.perform(get("/api/verify").param("token", token)).andExpect(redirectedUrl("/rinkreports/login.html?verificado"));
-        mvc.perform(get("/api/verify").param("token", token)).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
-        mvc.perform(get("/api/verify").param("token", "inventado")).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
+        mvc.perform(get("/api/verify").param("token", token)).andExpect(redirectedUrl("/rinkreports/login.html?verified"));
+        mvc.perform(get("/api/verify").param("token", token)).andExpect(redirectedUrl("/rinkmetrics/login.html?verification=invalid"));
+        mvc.perform(get("/api/verify").param("token", "inventado")).andExpect(redirectedUrl("/rinkmetrics/login.html?verification=invalid"));
+        // El enlace de los mails de antes (/api/verificar) también sirve.
+        mvc.perform(get("/api/verificar").param("token", "inventado")).andExpect(redirectedUrl("/rinkmetrics/login.html?verification=invalid"));
     }
 
     @Test
@@ -543,7 +555,7 @@ class SecurityTest {
         String forgot = "{\"email\":\"ANA@example.com\"}";
         mvc.perform(post("/api/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(forgot))
                 .andExpect(status().isOk());
-        String token = token("ana@example.com", "/restablecer.html");
+        String token = token("ana@example.com", "/reset-password.html");
 
         String shortPassword = "{\"token\":\"%s\",\"password\":\"corta\"}".formatted(token);
         mvc.perform(post("/api/password/reset").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(shortPassword))
@@ -578,7 +590,7 @@ class SecurityTest {
         loginTo("dt.uno", "METRICS").andExpect(status().isOk());
         loginTo("dt.uno", "REPORTS").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("OTHER_PRODUCT"))
-                .andExpect(jsonPath("$.login").value("/login.html"))
+                .andExpect(jsonPath("$.login").value("/rinkmetrics/login.html"))
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("RinkMetrics")));
         loginTo("club.uno", "METRICS").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.login").value("/rinkreports/login.html"));
@@ -620,7 +632,7 @@ class SecurityTest {
         MailContent reset = mails.getAllValues().stream().filter(m -> m.subject().startsWith("Elegí una clave"))
                 .reduce((a, b) -> b).orElseThrow();
         assertThat(reset.product()).isEqualTo(Product.REPORTS);
-        assertThat(reset.url()).contains("/restablecer.html?producto=reports&token=");
+        assertThat(reset.url()).contains("/reset-password.html?product=reports&token=");
         assertThat(realMailer.html(reset)).contains("RinkReports").doesNotContain(">RinkMetrics<");
     }
 
@@ -634,11 +646,11 @@ class SecurityTest {
     void theMailHasTheWebLook() {
         MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de RinkMetrics", "Un paso más",
                 "Tu cuenta", "Confirmá tu email", "ana", List.of("Gracias por sumarte."), "Confirmar mi email",
-                "http://localhost/api/verificar?token=abc", "El enlace vale 48 horas.");
+                "http://localhost/api/verify?token=abc", "El enlace vale 48 horas.");
         String html = realMailer.html(m);
         assertThat(html).contains("#e6ecef", "#0a7ea4", "cid:logo", "Confirmá tu email", "Hola ana:",
-                "href=\"http://localhost/api/verificar?token=abc\"", "Confirmar mi email ►", "RinkMetrics");
-        assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verificar?token=abc");
+                "href=\"http://localhost/api/verify?token=abc\"", "Confirmar mi email ►", "RinkMetrics");
+        assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verify?token=abc");
         assertThat(new String(Mailer.logo(), 1, 3)).isEqualTo("PNG");
     }
 
@@ -690,7 +702,7 @@ class SecurityTest {
         Map<String, Object> other = club("ana.otro");
         other.put("subscription", "CLUB_YEARLY");
         register(other).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Plan de suscripción inválido: CLUB_ANUAL."));
+                .andExpect(jsonPath("$.detail").value("Plan de suscripción inválido: CLUB_YEARLY."));
     }
 
     @Test
@@ -820,13 +832,13 @@ class SecurityTest {
 
     @Test
     void eachProfileGoesToItsScreen() throws Exception {
-        mvc.perform(get("/rinkreports/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/rinkreports/jugador.html"));
+        mvc.perform(get("/rinkreports/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/rinkreports/player.html"));
         mvc.perform(get("/api/reports/" + UUID.randomUUID()).with(user("j").authorities(() -> "PLAYERFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/rinkreports/club.html"));
+        mvc.perform(get("/rinkreports/player.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/rinkreports/club.html"));
         mvc.perform(get("/api/player/reports/" + UUID.randomUUID()).with(user("c").authorities(() -> "CLUBFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/player.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
     }
 
     @Test

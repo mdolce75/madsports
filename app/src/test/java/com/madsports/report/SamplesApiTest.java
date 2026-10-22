@@ -21,10 +21,10 @@ class SamplesApiTest {
 
     @Test
     void samplesAreShownOnScreenAndExported() throws Exception {
-        mvc.perform(get("/api/ejemplo.html")).andExpect(status().isOk())
+        mvc.perform(get("/api/sample.html")).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andExpect(content().string(containsString("Primera Masculino")));
-        mvc.perform(get("/api/ejemplo-jugador.html")).andExpect(status().isOk())
+        mvc.perform(get("/api/sample-player.html")).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"));
         mvc.perform(get("/api/sample.xlsx")).andExpect(status().isOk())
                 .andExpect(content().contentType(Downloads.XLSX))

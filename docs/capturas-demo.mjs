@@ -15,15 +15,15 @@ const CHROME = process.env.CHROME || "C:\\Program Files\\Google\\Chrome\\Applica
 const PUERTO = 9333;
 
 const CAPTURAS = [
-    {archivo: "carga-web.png", url: "/dt-demo.html#partido=1", ancho: 1280, alto: 800, escala: 1.5, celular: false},
-    {archivo: "carga-celular.png", url: "/dt-demo.html#partido=1", ancho: 390, alto: 844, escala: 2, celular: true},
-    {archivo: "resumen.png", url: "/dt-demo.html?tab=resumen", ancho: 1280, alto: 800, escala: 1.5, celular: false},
-    {archivo: "dashboard.png", url: "/dt-demo.html#dashboard", ancho: 1280, alto: 800, escala: 1.5, celular: false},
-    {archivo: "equipo.png", url: "/dt-demo.html#estadisticas-equipo", ancho: 1280, alto: 960, escala: 1.5, celular: false},
-    {archivo: "plantel.png", url: "/dt-demo.html#equipo", ancho: 1280, alto: 800, escala: 1.5, celular: false},
-    {archivo: "jugadores.png", url: "/dt-demo.html#jugadores", ancho: 1280, alto: 960, escala: 1.5, celular: false},
-    {archivo: "ficha-celular.png", url: "/dt-demo.html#jugadores", ancho: 390, alto: 844, escala: 2, celular: true},
-    {archivo: "informes.png", url: "/dt-demo.html?informe=CAMPEONATO#informes", ancho: 1280, alto: 960, escala: 1.5, celular: false},
+    {archivo: "carga-web.png", url: "/coach-demo.html#match=1", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "carga-celular.png", url: "/coach-demo.html#match=1", ancho: 390, alto: 844, escala: 2, celular: true},
+    {archivo: "resumen.png", url: "/coach-demo.html?tab=resumen", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "dashboard.png", url: "/coach-demo.html#dashboard", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "equipo.png", url: "/coach-demo.html#team-stats", ancho: 1280, alto: 960, escala: 1.5, celular: false},
+    {archivo: "plantel.png", url: "/coach-demo.html#team", ancho: 1280, alto: 800, escala: 1.5, celular: false},
+    {archivo: "jugadores.png", url: "/coach-demo.html#player-stats", ancho: 1280, alto: 960, escala: 1.5, celular: false},
+    {archivo: "ficha-celular.png", url: "/coach-demo.html#player-stats", ancho: 390, alto: 844, escala: 2, celular: true},
+    {archivo: "informes.png", url: "/coach-demo.html?report=CHAMPIONSHIP#reports", ancho: 1280, alto: 960, escala: 1.5, celular: false},
 ];
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));

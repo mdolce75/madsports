@@ -6,7 +6,7 @@ import java.time.Duration;
 import java.util.List;
 
 /**
- * Cómo se lee SIDGAD ({@code rinkmetrics.sidgad.*}).
+ * Cómo se lee SIDGAD ({@code madsports.sidgad.*}).
  *
  * @param baseUrl         raíz de los fragmentos ({@code https://www.server2.sidgad.es/cap/})
  * @param origin          portal que SIDGAD exige como Origin/Referer

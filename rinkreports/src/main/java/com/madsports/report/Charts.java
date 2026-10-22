@@ -74,7 +74,7 @@ public class Charts {
                         new Slice("Ganados", r.won(), String.valueOf(r.won()), WIN),
                         new Slice("Empatados", r.drawn(), String.valueOf(r.drawn()), DRAW),
                         new Slice("Perdidos", r.lost(), String.valueOf(r.lost()), LOSS)),
-                String.valueOf(r.played()), "matches");
+                String.valueOf(r.played()), "partidos");
     }
 
     /** Dona de ganados, empatados y perdidos a partir de los totales (informe de jugador). */

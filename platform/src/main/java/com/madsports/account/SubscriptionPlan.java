@@ -61,7 +61,7 @@ public class SubscriptionPlan {
     /** "jugadores", "clubes" o "DT", para los mensajes. */
     public String audience() {
         return switch (userType) {
-            case "PLAYER" -> "players";
+            case "PLAYER" -> "jugadores";
             case "COACH" -> "DT";
             default -> "clubes";
         };

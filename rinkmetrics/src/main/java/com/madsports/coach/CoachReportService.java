@@ -89,11 +89,11 @@ public class CoachReportService {
         if (report.player() != null) {
             name += "-" + slug(report.player().name());
         }
-        return new Pdf(name + ".pdf", pdf.pdf("dt-informe", Map.of("r", report)));
+        return new Pdf(name + ".pdf", pdf.pdf("coach-report", Map.of("r", report)));
     }
 
     public String html(CoachReport report) {
-        return pdf.html("dt-informe", Map.of("r", report));
+        return pdf.html("coach-report", Map.of("r", report));
     }
 
     private CoachReport build(UserAccount u, String title, String detail, boolean singleMatch, List<LiveMatch> ps,

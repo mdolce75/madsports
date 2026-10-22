@@ -6,11 +6,12 @@ spring:
     import: optional:file:.env[.properties]
   thymeleaf:
     cache: true
-  # Usuarios: H2 en archivo (./data). En producción, FPP_DB_URL apunta a la base que corresponda.
+  # Usuarios: H2 en archivo (./data). En producción, MADSPORTS_DB_URL apunta a la base que corresponda (las variables
+  # de antes, FPP_DB_*, siguen valiendo).
   datasource:
-    url: ${FPP_DB_URL:jdbc:h2:file:./data/madsports}
-    username: ${FPP_DB_USER:sa}
-    password: ${FPP_DB_PASSWORD:}
+    url: ${MADSPORTS_DB_URL:${FPP_DB_URL:jdbc:h2:file:./data/madsports}}
+    username: ${MADSPORTS_DB_USER:${FPP_DB_USER:sa}}
+    password: ${MADSPORTS_DB_PASSWORD:${FPP_DB_PASSWORD:}}
   # Mails (confirmar email, recuperar clave) por SMTP: Resend, Brevo, Gmail... Sin SMTP_HOST, se escriben en el log.
   mail:
     host: ${SMTP_HOST:}
@@ -49,7 +50,8 @@ server:
       # Sesión sin actividad: 8 h (por defecto eran 30 min). Con "Recordarme", al vencer se vuelve a entrar solo.
       timeout: ${SESSION_TIMEOUT:8h}
 
-rinkmetrics:
+# Configuración de la app. Las variables de entorno de antes (en castellano) siguen valiendo como respaldo.
+madsports:
   mail:
     from: ${MAIL_FROM:RinkMetrics <info@madsportsapp.com>}
     # Dirección pública de la web, para armar los enlaces de los mails
@@ -63,50 +65,50 @@ rinkmetrics:
     data-ttl: 15m
     catalog-ttl: 6h
     timeout: 20s
-    # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federacion (de Infantil para arriba)
+    # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federation (de Infantil para arriba)
     # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa
     years: [2026, 2027]
   # Análisis con Google Gemini (plan gratuito de Google AI Studio). Sin API key: análisis por reglas.
   ai:
-    enabled: ${FPP_AI_ENABLED:true}
+    enabled: ${AI_ENABLED:${FPP_AI_ENABLED:true}}
     api-key: ${GEMINI_API_KEY:}
-    model: ${FPP_AI_MODEL:gemini-3.8-flash}
+    model: ${AI_MODEL:${FPP_AI_MODEL:gemini-3.8-flash}}
     base-url: https://generativelanguage.googleapis.com/v1beta
     timeout: 120s
-  # Precios en pesos: el precio base de los planes está en dólares y se convierte con el dólar oficial del BNA
-  # (venta) del día. Si DolarAPI no responde se usa la última cotización conocida o, si nunca respondió, el respaldo.
   # Alta de cuentas: abierta para jugadores y clubes (RinkReports) y DT (RinkMetrics). Todos empiezan con su plan free
   # (hasta el 31/12/2026): los mensuales (pagos) figuran como "Próximamente" hasta que se habilite el cobro; los de
   # RinkReports, además, con "Precio a definir".
-  registro:
-    club: ${REGISTRO_CLUB:true}
-    club-pago: ${REGISTRO_CLUB_PAGO:false}
-    dt-pago: ${REGISTRO_DT_PAGO:false}
-    jugador-pago: ${REGISTRO_JUGADOR_PAGO:false}
+  signup:
+    club: ${SIGNUP_CLUB:${REGISTRO_CLUB:true}}
+    club-paid: ${SIGNUP_CLUB_PAID:${REGISTRO_CLUB_PAGO:false}}
+    coach-paid: ${SIGNUP_COACH_PAID:${REGISTRO_DT_PAGO:false}}
+    player-paid: ${SIGNUP_PLAYER_PAID:${REGISTRO_JUGADOR_PAGO:false}}
     # Jugadores de la AMP: próximamente (por ahora, solo de la FPP).
-    jugador-amp: ${REGISTRO_JUGADOR_AMP:false}
-  # Límite de intentos (LimiteIntentos): ingresos fallidos por usuario y por IP en 15 minutos; altas de cuenta y pedidos
+    player-amp: ${SIGNUP_PLAYER_AMP:${REGISTRO_JUGADOR_AMP:false}}
+  # Límite de intentos (AttemptLimiter): ingresos fallidos por usuario y por IP en 15 minutos; altas de cuenta y pedidos
   # de mails por IP en 1 hora. Al llegar al máximo, la API responde 429 hasta que vence la ventana.
-  limites:
-    login-usuario: ${LIMITE_LOGIN_USUARIO:5}
-    login-ip: ${LIMITE_LOGIN_IP:20}
-    registro-ip: ${LIMITE_REGISTRO_IP:5}
-    mails-ip: ${LIMITE_MAILS_IP:10}
+  limits:
+    login-user: ${LIMIT_LOGIN_USER:${LIMITE_LOGIN_USUARIO:5}}
+    login-ip: ${LIMIT_LOGIN_IP:${LIMITE_LOGIN_IP:20}}
+    signup-ip: ${LIMIT_SIGNUP_IP:${LIMITE_REGISTRO_IP:5}}
+    mails-ip: ${LIMIT_MAILS_IP:${LIMITE_MAILS_IP:10}}
   # "Recordarme" en el ingreso: dura 30 días en el dispositivo. La clave firma la sesión que arma (si falta, se genera
   # una al arrancar; los dispositivos recordados siguen valiendo porque el token está en la base).
-  recordarme:
-    clave: ${RECORDARME_CLAVE:}
-    dias: ${RECORDARME_DIAS:30}
-  dolar:
-    url: ${DOLAR_URL:https://dolarapi.com/v1/dolares/oficial}
-    respaldo: ${DOLAR_RESPALDO:1500}
+  remember-me:
+    key: ${REMEMBER_ME_KEY:${RECORDARME_CLAVE:}}
+    days: ${REMEMBER_ME_DAYS:${RECORDARME_DIAS:30}}
+  # Precios en pesos: el precio base de los planes está en dólares y se convierte con el dólar oficial del BNA
+  # (venta) del día. Si DolarAPI no responde se usa la última cotización conocida o, si nunca respondió, el respaldo.
+  dollar:
+    url: ${DOLLAR_URL:${DOLAR_URL:https://dolarapi.com/v1/dolares/oficial}}
+    fallback: ${DOLLAR_FALLBACK:${DOLAR_RESPALDO:1500}}
   # Chequeo diario de SIDGAD (SidgadMonitor): recorre portal, catálogo, calendario y acta; el resultado queda en
-  # /actuator/health (componente "sidgad") y, si falla o se recupera, se avisa por mail a ALERTAS_EMAIL (vacío = solo log).
+  # /actuator/health (componente "sidgad") y, si falla o se recupera, se avisa por mail a ALERTS_EMAIL (vacío = solo log).
   # El cron se evalúa en hora argentina; "-" lo apaga.
   monitor:
-    cron: ${MONITOR_SIDGAD_CRON:0 0 8 * * *}
-  alertas:
-    email: ${ALERTAS_EMAIL:}
+    cron: ${SIDGAD_MONITOR_CRON:${MONITOR_SIDGAD_CRON:0 0 8 * * *}}
+  alerts:
+    email: ${ALERTS_EMAIL:${ALERTAS_EMAIL:}}
 
 # Health check público en /actuator/health: solo el estado general y el de cada componente (db, sidgad...), sin
 # detalles. Para la sonda de vida de la plataforma usar /actuator/health/liveness, que no depende de SIDGAD ni de la base.

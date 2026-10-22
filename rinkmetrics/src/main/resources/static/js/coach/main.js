@@ -1,0 +1,118 @@
+// RinkMetrics (/coach.html y la demo, /coach-demo.html): el menú, las vistas y el arranque. Cada vista es un módulo:
+// panel.js (Control panel), matches.js y match.js (la carga en vivo), stats.js, reports.js y team.js.
+import * as Queue from "./queue.js";
+import * as Team from "./team.js";
+import * as Stats from "./stats.js";
+import * as Reports from "./reports.js";
+import * as Panel from "./panel.js";
+import * as Match from "./match.js";
+import * as Matches from "./matches.js";
+import {coach, teamsSignature, fetchTeams} from "./common.js";
+
+const VIEWS = {"dashboard": "v-dashboard", "matches": "v-elegir", "team-stats": "v-equipo",
+    "player-stats": "v-jugadores", "reports": "v-informes", "team": "v-plantel"};
+let view = null;   // la vista del menú que se muestra (null: la carga de un partido)
+// Los enlaces de antes, en castellano (#jugadores es el de antes a las fichas), siguen andando.
+const OLD_HASHES = {"partidos": "matches", "equipo": "team", "estadisticas-equipo": "team-stats",
+    "estadisticas-jugadores": "player-stats", "jugadores": "player-stats", "informes": "reports"};
+
+/** La dirección nueva de un enlace de antes, o null. */
+function renamedHash(h) {
+    const m = h.match(/^#(partido|informe)=(\d+)$/);
+    if (m) return `#${m[1] === "partido" ? "match" : "report"}=${m[2]}`;
+    return Object.hasOwn(OLD_HASHES, h.slice(1)) ? "#" + OLD_HASHES[h.slice(1)] : null;
+}
+
+/** Submenú Estadísticas (Equipo y Jugadores): se abre con su botón y se cierra al elegir o al tocar afuera. */
+function submenu(openItem) {
+    $("coach-sub-est-menu").hidden = !openItem;
+    document.querySelector("#coach-sub-est .coach-sub-btn").setAttribute("aria-expanded", String(openItem));
+}
+
+/**
+ * #match=ID abre la carga; #dashboard (sin nada), #matches, #team-stats, #player-stats, #reports, #report=ID y #team
+ * (el plantel) muestran esa vista.
+ */
+function path() {
+    const renamed = renamedHash(location.hash);
+    if (renamed) history.replaceState(null, "", location.pathname + location.search + renamed);
+    const m = location.hash.match(/^#match=(\d+)$/);
+    if (m) {
+        view = null;
+        $("coach-menu").hidden = true;
+        for (const id of Object.values(VIEWS)) if (id !== "v-elegir") $(id).hidden = true;
+        Match.openItem(Number(m[1]));
+        return;
+    }
+    Match.exit();
+    const inf = location.hash.match(/^#report=(\d+)$/);
+    const requested = inf ? "reports" : (location.hash.slice(1) || "dashboard");
+    const v = VIEWS[requested] ? requested : "dashboard";
+    view = v;
+    $("coach-menu").hidden = false;
+    document.querySelectorAll("#coach-menu a").forEach(a =>
+        a.dataset.view === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+    $("coach-sub-est").classList.toggle("activo", v.endsWith("-stats"));
+    submenu(false);
+    for (const [k, id] of Object.entries(VIEWS)) $(id).hidden = k !== v;
+    if (v === "reports") Reports.load(inf ? Number(inf[1]) : null);
+    if (v === "dashboard") Panel.load();
+    if (v === "matches") Matches.load();
+    if (v === "player-stats") Stats.loadPlayerCards();
+    if (v === "team-stats") Stats.loadTeam();
+    if (v === "team") Team.load();
+}
+
+/**
+ * Al volver a la pestaña, los equipos se piden de nuevo: si cambiaron en otro dispositivo, la vista se vuelve a armar
+ * (la de Equipo, siempre que no se esté escribiendo en sus formularios, porque también muestra el balance).
+ */
+async function onReturn() {
+    if (document.visibilityState !== "visible" || !view || !navigator.onLine || !coach.session) return;
+    const before = teamsSignature();
+    try { await fetchTeams(true); } catch (e) { return; }
+    if (view === "team") { if (!Team.editing()) Team.load(); return; }
+    if (teamsSignature() !== before) path();
+}
+
+// ---------- Inicio ----------
+
+// Lo que no espera a la sesión va primero: la marca y el menú quedan armados antes de DOMContentLoaded (app.js le
+// agrega el enlace a la portada).
+$("brand").outerHTML = BRAND;
+document.querySelector(".topbar header.brand").after($("coach-menu"));   // un solo menú arriba, al lado de la marca
+document.querySelector("#coach-sub-est .coach-sub-btn").addEventListener("click", ev => {
+    ev.stopPropagation();
+    submenu($("coach-sub-est-menu").hidden);
+});
+document.addEventListener("click", ev => { if (!ev.target.closest("#coach-sub-est")) submenu(false); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") submenu(false); });
+for (const id of ["e-equipo", "j-equipo"]) $(id).addEventListener("change", () => path());
+Match.start();
+Matches.start();
+Reports.start();
+Team.start();
+window.addEventListener("hashchange", path);
+document.addEventListener("visibilitychange", onReturn);
+
+// La demo es esta misma página: sus pedidos a /api/ los contesta demo.js en el navegador.
+if (location.pathname === "/coach-demo.html") {
+    coach.demo = true;
+    (await import("./demo.js")).instalar();
+} else if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/coach-sw.js", {scope: "/coach.html"}).catch(() => { /* sin carga sin señal */ });
+}
+
+const s = await requireProfile(["COACHFPP", "COACHAMP"]);
+if (s) {
+    coach.session = s;
+    if (s.subscription && s.subscription.matchesPerMonth) $("cupo").textContent = `${s.subscription.matchesPerMonth} partidos por mes`;
+    await Queue.start(async ev => {
+        if (!(await Match.onQueueChange(ev)) && view === "matches" && ev.match) Matches.load();
+    });
+    // Un DT sin equipos empieza por la sección Equipo: sin equipo ni jugadores no hay partido que cargar.
+    try {
+        if (!location.hash && !(await fetchTeams()).length) history.replaceState(null, "", location.pathname + location.search + "#team");
+    } catch (e) { /* sin señal: el panel avisa */ }
+    path();
+}

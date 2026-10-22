@@ -22,10 +22,10 @@ import java.time.ZoneId;
 
 /**
  * Tipo de cambio del día para mostrar los precios en pesos. Los planes tienen su precio base en dólares; se pasan a
- * pesos con el dólar oficial del Banco Nación (venta) que publica DolarAPI ({@code rinkmetrics.dollar.url}).
+ * pesos con el dólar oficial del Banco Nación (venta) que publica DolarAPI ({@code madsports.dollar.url}).
  * <p>
  * Se consulta como mucho una vez por hora. Si DolarAPI no responde se sigue con la última cotización conocida y, si
- * nunca respondió, con {@code rinkmetrics.dollar.fallback}. Con la URL vacía (tests) se usa siempre el respaldo.
+ * nunca respondió, con {@code madsports.dollar.fallback}. Con la URL vacía (tests) se usa siempre el respaldo.
  */
 @Service
 public class ExchangeRate {
@@ -117,6 +117,6 @@ public class ExchangeRate {
         String date = n.path("fechaActualizacion").asText("");
         LocalDate day = date.isBlank() ? LocalDate.now(clock.withZone(BUENOS_AIRES))
                 : OffsetDateTime.parse(date).atZoneSameInstant(BUENOS_AIRES).toLocalDate();
-        return new Quote(sale, n.path("name").asText("Oficial"), day, false);
+        return new Quote(sale, n.path("nombre").asText("Oficial"), day, false);
     }
 }

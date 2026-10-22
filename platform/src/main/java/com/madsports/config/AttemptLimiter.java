@@ -59,20 +59,20 @@ public class AttemptLimiter {
     }
 
     /** ¿La clave ya llegó al máximo de su ventana? */
-    public boolean blocked(Kind kind, String password) {
+    public boolean blocked(Kind kind, String key) {
         Rule r = rules.get(kind);
-        AtomicInteger n = r.counters().getIfPresent(normalize(password));
+        AtomicInteger n = r.counters().getIfPresent(normalize(key));
         return n != null && n.get() >= r.max();
     }
 
     /** Suma un intento a la clave. */
-    public void add(Kind kind, String password) {
-        rules.get(kind).counters().get(normalize(password), k -> new AtomicInteger()).incrementAndGet();
+    public void add(Kind kind, String key) {
+        rules.get(kind).counters().get(normalize(key), k -> new AtomicInteger()).incrementAndGet();
     }
 
     /** Borra los intentos de la clave (un ingreso correcto limpia los fallidos de ese usuario). */
-    public void clear(Kind kind, String password) {
-        rules.get(kind).counters().invalidate(normalize(password));
+    public void clear(Kind kind, String key) {
+        rules.get(kind).counters().invalidate(normalize(key));
     }
 
     /** Minutos de la ventana del tipo, para el aviso y el header Retry-After. */
@@ -80,7 +80,7 @@ public class AttemptLimiter {
         return rules.get(kind).window().toMinutes();
     }
 
-    private static String normalize(String password) {
-        return password == null ? "" : password.trim().toLowerCase(Locale.ROOT);
+    private static String normalize(String key) {
+        return key == null ? "" : key.trim().toLowerCase(Locale.ROOT);
     }
 }

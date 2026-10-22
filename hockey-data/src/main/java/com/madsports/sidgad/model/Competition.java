@@ -25,14 +25,14 @@ public record Competition(int id, String name, int federationId, int seasonId,
 
         /** Como figura en los nombres de competición de SIDGAD: "APERTURA" o "CLAUSURA". */
         public String sidgadName() {
-            return this == OPENING ? "OPENING" : "CLOSING";
+            return this == OPENING ? "APERTURA" : "CLAUSURA";
         }
 
         /** El torneo de un nombre de SIDGAD ("APERTURA", "CLAUSURA"). */
         public static Tournament fromSidgad(String name) {
             return switch (name.trim().toUpperCase()) {
-                case "OPENING" -> OPENING;
-                case "CLOSING" -> CLOSING;
+                case "APERTURA" -> OPENING;
+                case "CLAUSURA" -> CLOSING;
                 default -> throw new IllegalArgumentException("Torneo desconocido: " + name);
             };
         }
@@ -67,7 +67,7 @@ public record Competition(int id, String name, int federationId, int seasonId,
             "TORNEO\\s+(APERTURA|CLAUSURA)\\s+(.+?)\\s+(MASCULINO|FEMENINO)(?:\\s+(\\d+))?\\b");
 
     /**
-     * AMP (Mendoza): {@code AMP'26- CAMP MASC "OPENING 26"-CATEGORIA SENIOR}; el prefijo y los espacios varían
+     * AMP (Mendoza): {@code AMP'26- CAMP MASC "APERTURA 26"-CATEGORIA SENIOR}; el prefijo y los espacios varían
      * ("C MASC", "CAMP MASC\"CLAUSURA 26\"CATEGORIA PREINFANTIL", "CAMP FEMEN").
      */
     private static final Pattern AMP_NAME = Pattern.compile(

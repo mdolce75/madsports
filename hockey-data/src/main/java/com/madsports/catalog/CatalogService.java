@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 /**
  * Catálogo por año y federación ({@link Federation}: FPP = id_fede_3, AMP = id_fede_4), limitado a sus categorías
- * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code rinkmetrics.sidgad.years}). El año se traduce al id de
+ * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code madsports.sidgad.years}). El año se traduce al id de
  * temporada de SIDGAD con el selector de temporadas del portal (es el mismo para todas las federaciones).
  */
 @Service
@@ -87,7 +87,7 @@ public class CatalogService {
         this.years = List.copyOf(props.years());
     }
 
-    /** Años que se ofrecen (configuración {@code rinkmetrics.sidgad.years}). */
+    /** Años que se ofrecen (configuración {@code madsports.sidgad.years}). */
     public List<Integer> years() {
         return years;
     }

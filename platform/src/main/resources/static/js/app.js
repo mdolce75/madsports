@@ -11,35 +11,35 @@ function csrfToken() {
 async function api(url, options = {}) {
     const headers = Object.assign({"X-XSRF-TOKEN": csrfToken()}, options.headers || {});
     const res = await fetch(url, Object.assign({credentials: "same-origin"}, options, {headers}));
-    if (res.status === 401 && !url.startsWith("/api/login")) sesionVencida();
+    if (res.status === 401 && !url.startsWith("/api/login")) sessionExpired();
     return res;
 }
 
 /** Al ingreso con el aviso "Tu sesión venció"; después de ingresar vuelve a esta misma pantalla. */
-function sesionVencida(aviso = true) {
-    const volver = location.pathname + location.search + location.hash;
-    location.replace(`${ingreso()}?${aviso ? "vencida&" : ""}volver=${encodeURIComponent(volver)}`);
+function sessionExpired(notice = true) {
+    const returnTo = location.pathname + location.search + location.hash;
+    location.replace(`${login()}?${notice ? "vencida&" : ""}volver=${encodeURIComponent(returnTo)}`);
 }
 
 /**
- * Producto de la pantalla: "REPORTS" en las de RinkReports (body data-producto="reports", o las compartidas con
+ * Producto de la pantalla: "REPORTS" en las de RinkReports (body data-product="reports", o las compartidas con
  * ?producto=reports); si no, "METRICS".
  */
-function producto() {
-    return document.body.dataset.producto === "reports" || location.pathname.startsWith("/rinkreports/")
+function product() {
+    return document.body.dataset.product === "reports" || location.pathname.startsWith("/rinkreports/")
         ? "REPORTS" : "METRICS";
 }
 
 /** Ingreso del producto de la pantalla: RinkReports tiene el suyo; el resto, el de RinkMetrics. */
-function ingreso() {
-    return producto() === "REPORTS" ? "/rinkreports/login.html" : "/login.html";
+function login() {
+    return product() === "REPORTS" ? "/rinkreports/login.html" : "/rinkmetrics/login.html";
 }
 
 /** Pantalla a la que volver después de ingresar (solo una de esta web: empieza con una sola "/"). */
-function volverA() {
-    const v = new URLSearchParams(location.search).get("volver");
+function returnTarget() {
+    const v = new URLSearchParams(location.search).get("returnTo");
     if (!v || !/^\/(?![\/\\])/.test(v)) return null;
-    // Si el servidor mandó al ingreso, el "#..." de la pantalla (por ejemplo #partido=5) quedó en esta dirección.
+    // Si el servidor mandó al ingreso, el "#..." de la pantalla (por ejemplo #match=5) quedó en esta dirección.
     return v.includes("#") ? v : v + location.hash;
 }
 
@@ -52,20 +52,20 @@ async function postJson(url, body) {
 
 /** Datos del usuario logueado ({autenticado:false} si no hay sesión). También deja la cookie CSRF. */
 async function session() {
-    const res = await fetch("/api/sesion", {credentials: "same-origin"});
+    const res = await fetch("/api/session", {credentials: "same-origin"});
     return res.json();
 }
 
 /** Exige sesión con el perfil indicado; si no, va al login o a la pantalla de su perfil. */
 /** La página pide uno de estos perfiles (p. ej. ["CLUBFPP", "CLUBAMP"]); si no lo tiene, va a su pantalla. */
-async function requireProfile(perfiles) {
+async function requireProfile(profiles) {
     const s = await session();
-    if (!s.autenticado) {
-        sesionVencida(false);
+    if (!s.authenticated) {
+        sessionExpired(false);
         return null;
     }
-    if (![].concat(perfiles).some(p => s.perfiles.includes(p))) {
-        location.replace(s.inicio);
+    if (![].concat(profiles).some(p => s.profiles.includes(p))) {
+        location.replace(s.home);
         return null;
     }
     renderUserBar(s);
@@ -78,30 +78,30 @@ function renderUserBar(s) {
     bar.innerHTML = "";
     const who = document.createElement("span");
     who.innerHTML = "<b></b>";
-    who.querySelector("b").textContent = s.nombre ? `${s.nombre} ${s.apellido}` : s.usuario;
-    who.append(" · " + s.club.nombre);
+    who.querySelector("b").textContent = s.name ? `${s.name} ${s.lastName}` : s.username;
+    who.append(" · " + s.club.name);
     const out = document.createElement("button");
     out.type = "button";
     out.textContent = "Salir";
     out.addEventListener("click", async () => {
         await api("/api/logout", {method: "POST"});
         // RinkMetrics guarda copias para abrir sin señal: no quedan para el próximo usuario del teléfono.
-        if (window.caches) await caches.delete("rinkmetrics-dt-v1").catch(() => {});
+        if (window.caches) for (const c of ["rinkmetrics-coach-v1", "rinkmetrics-dt-v1"]) await caches.delete(c).catch(() => {});
         // A la portada del producto (RinkReports la indica en data-salir) o a la home.
-        location.replace(document.body.dataset.salir || "/");
+        location.replace(document.body.dataset.exit || "/");
     });
     bar.append(who, out);
 }
 
-const ORDER = ["PENDIENTE", "EXTRAYENDO", "ANALIZANDO", "GENERANDO_PDF", "LISTO"];
+const ORDER = ["PENDING", "EXTRACTING", "ANALYZING", "RENDERING", "READY"];
 
 function status(text, isError) {
     $("status").className = isError ? "err" : "";
     $("status").textContent = text;
 }
 
-function showStep(estado) {
-    const idx = ORDER.indexOf(estado);
+function showStep(status) {
+    const idx = ORDER.indexOf(status);
     document.querySelectorAll("#steps li").forEach(li => {
         const i = ORDER.indexOf(li.dataset.s);
         li.className = i < idx ? "done" : i === idx ? "now" : "";
@@ -112,13 +112,13 @@ function showStep(estado) {
 async function poll(url) {
     while (true) {
         const res = await fetch(url, {credentials: "same-origin"});
-        if (res.status === 401) { sesionVencida(); throw new Error("Tu sesión venció."); }
+        if (res.status === 401) { sessionExpired(); throw new Error("Tu sesión venció."); }
         if (!res.ok) throw new Error("El informe expiró o no existe");
         const job = await res.json();
-        showStep(job.estado);
-        if (job.estado === "LISTO") return job;
-        if (job.estado === "ERROR") throw new Error(job.mensaje);
-        status(job.mensaje + "…");
+        showStep(job.status);
+        if (job.status === "READY") return job;
+        if (job.status === "ERROR") throw new Error(job.message);
+        status(job.message + "…");
         await new Promise(r => setTimeout(r, 1500));
     }
 }
@@ -133,42 +133,42 @@ function showReady(job) {
 
 /**
  * Menú superior, al lado de la marca, con las secciones del producto de la página: RinkMetrics (inicio, la demo y
- * "Por qué RinkMetrics") o RinkReports (body data-producto="reports": inicio y ejemplos). La página marca la suya con
- * data-seccion en el body. Se agrega cuando la página ya puso la marca. Las pantallas de RinkMetrics (body.dt-page) no
+ * "Por qué RinkMetrics") o RinkReports (body data-product="reports": inicio y ejemplos). La página marca la suya con
+ * data-section en el body. Se agrega cuando la página ya puso la marca. Las pantallas de RinkMetrics (body.coach-page) no
  * lo llevan: tienen su propio menú en esa barra.
  */
-const SECCIONES = {
-    metrics: {inicio: "/rinkmetrics", nombre: "RinkMetrics", items: [["dt", "Inicio", "/rinkmetrics"],
-        ["demo", "Demo", "/dt-demo.html"], ["por-que", "Por qué RinkMetrics", "/por-que.html"]]},
-    reports: {inicio: "/rinkreports", nombre: "RinkReports", items: [["inicio", "Inicio", "/rinkreports"],
-        ["ejemplos", "Ejemplos", "/rinkreports/ejemplo.html"]]}
+const SECTIONS = {
+    metrics: {home: "/rinkmetrics", name: "RinkMetrics", items: [["home", "Inicio", "/rinkmetrics"],
+        ["demo", "Demo", "/coach-demo.html"], ["why", "Por qué RinkMetrics", "/rinkmetrics/why.html"]]},
+    reports: {home: "/rinkreports", name: "RinkReports", items: [["home", "Inicio", "/rinkreports"],
+        ["samples", "Ejemplos", "/rinkreports/sample.html"]]}
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    const marca = document.querySelector("header.brand");
-    if (!marca || document.querySelector("nav.secciones")) return;
-    const producto = SECCIONES[document.body.dataset.producto] || SECCIONES.metrics;
+    const brand = document.querySelector("header.brand");
+    if (!brand || document.querySelector("nav.secciones")) return;
+    const product = SECTIONS[document.body.dataset.product] || SECTIONS.metrics;
     // El logo lleva a la portada del producto.
-    if (!marca.querySelector("a.brand-link")) {
+    if (!brand.querySelector("a.brand-link")) {
         const link = document.createElement("a");
         link.className = "brand-link";
-        link.href = producto.inicio;
-        link.setAttribute("aria-label", producto.nombre + ": ir al inicio");
-        link.append(...marca.childNodes);
-        marca.append(link);
+        link.href = product.home;
+        link.setAttribute("aria-label", product.name + ": ir al inicio");
+        link.append(...brand.childNodes);
+        brand.append(link);
     }
-    if (document.body.classList.contains("dt-page")) return;
+    if (document.body.classList.contains("coach-page")) return;
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
-    for (const [id, texto, href] of producto.items) {
+    for (const [id, text, href] of product.items) {
         const a = document.createElement("a");
         a.href = href;
-        a.textContent = texto;
-        if (document.body.dataset.seccion === id) a.setAttribute("aria-current", "page");
+        a.textContent = text;
+        if (document.body.dataset.section === id) a.setAttribute("aria-current", "page");
         nav.append(a);
     }
-    marca.after(nav);
+    brand.after(nav);
 });
 
 /** Marca de la barra superior (pista con barras de métricas). */
@@ -184,6 +184,6 @@ const RR_BRAND = `<header class="brand">
 </header>`;
 
 /** La marca del producto de la pantalla. */
-function marca() {
-    return producto() === "REPORTS" ? RR_BRAND : BRAND;
+function brand() {
+    return product() === "REPORTS" ? RR_BRAND : BRAND;
 }

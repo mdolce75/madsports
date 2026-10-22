@@ -41,7 +41,7 @@ public record CoachReport(String title, String detail, String club, String team,
     }
 
     /** Partidos jugados, ganados, empatados y perdidos, y los goles. */
-    public record Balance(int elapsed, int won, int drawn, int lost, int goalsFor, int goalsAgainst) {
+    public record Balance(int played, int won, int drawn, int lost, int goalsFor, int goalsAgainst) {
 
         static Balance de(List<ReportMatchRow> ps) {
             return new Balance(ps.size(), (int) ps.stream().filter(p -> p.outcome().equals("G")).count(),
@@ -118,19 +118,19 @@ public record CoachReport(String title, String detail, String club, String team,
      *
      * @param partidos partidos en los que tiene acciones
      */
-    public record PlayerRow(String password, String number, String name, boolean goalkeeper, int matches,
+    public record PlayerRow(String key, String number, String name, boolean goalkeeper, int matches,
                               Metrics metrics) {
     }
 
     /** Un evento del partido. @param minuto tiempo jugado del período ("1T 12:18") */
-    public record ReportEvent(int period, int atSecond, String minute, String password, String number, String player,
+    public record ReportEvent(int period, int atSecond, String minute, String key, String number, String player,
                          String action, String color) {
     }
 
     static final Set<ActionType> GOALKEEPER_ACTIONS = Set.of(ActionType.SAVE, ActionType.GOAL_CONCEDED,
             ActionType.FREE_HIT_AGAINST, ActionType.PENALTY_AGAINST);
 
-    static String password(MatchAction a) {
+    static String playerKey(MatchAction a) {
         return a.getPlayerId() > 0 ? "j" + a.getPlayerId() : "m" + a.getPlayerName();
     }
 
@@ -144,10 +144,10 @@ public record CoachReport(String title, String detail, String club, String team,
      */
     static CoachReport build(String title, String detail, String club, String team, LocalDate generatedAt,
                            boolean singleMatch, List<LiveMatch> ps, List<MatchAction> actions,
-                           Map<Integer, SquadPlayer> squad, String password) {
+                           Map<Integer, SquadPlayer> squad, String key) {
         Map<String, List<MatchAction>> byPlayer = new LinkedHashMap<>();
         for (MatchAction a : actions) {
-            byPlayer.computeIfAbsent(password(a), k -> new ArrayList<>()).add(a);
+            byPlayer.computeIfAbsent(playerKey(a), k -> new ArrayList<>()).add(a);
         }
         List<PlayerRow> players = new ArrayList<>();
         for (var e : byPlayer.entrySet()) {
@@ -164,20 +164,20 @@ public record CoachReport(String title, String detail, String club, String team,
 
         PlayerRow chosen = null;
         List<MatchAction> thoseOf = actions;
-        if (password != null && !password.isBlank()) {
-            chosen = players.stream().filter(j -> j.password().equals(password)).findFirst()
+        if (key != null && !key.isBlank()) {
+            chosen = players.stream().filter(j -> j.key().equals(key)).findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Ese jugador no tiene acciones en el informe."));
-            thoseOf = byPlayer.get(password);
+            thoseOf = byPlayer.get(key);
             players = List.of(chosen);
         }
-        Map<String, PlayerRow> byKey = players.stream().collect(Collectors.toMap(PlayerRow::password,
+        Map<String, PlayerRow> byKey = players.stream().collect(Collectors.toMap(PlayerRow::key,
                 j -> j, (a, b) -> a));
         int duration = ps.isEmpty() ? CoachService.DEFAULT_MINUTES * 60 : ps.getFirst().duration();
         List<ReportEvent> events = !singleMatch ? List.of() : thoseOf.stream().map(a -> {
             var n = name(a.getKind(), a.getOutcome());
             return new ReportEvent(a.getPeriod(), a.getAtSecond(), a.getPeriod() + "T " + mmss(Math.min(a.getAtSecond(), duration)),
-                    password(a), byKey.containsKey(password(a)) ? byKey.get(password(a)).number() : "",
-                    byKey.containsKey(password(a)) ? byKey.get(password(a)).name() : a.getPlayerName(), n[0], n[1]);
+                    playerKey(a), byKey.containsKey(playerKey(a)) ? byKey.get(playerKey(a)).number() : "",
+                    byKey.containsKey(playerKey(a)) ? byKey.get(playerKey(a)).name() : a.getPlayerName(), n[0], n[1]);
         }).toList();
         List<ReportMatchRow> rows = ps.stream().map(ReportMatchRow::of).toList();
         return new CoachReport(title, detail, club, team, generatedAt, singleMatch, rows, Balance.de(rows),

@@ -25,7 +25,7 @@ import java.util.Optional;
 
 /**
  * Chequeo diario de SIDGAD: los informes dependen de leer su HTML, y si el sitio cambia de formato los parsers devuelven
- * listas vacías sin dar error. Una vez por día ({@code rinkmetrics.monitor.cron}) se recorre el camino de un informe con
+ * listas vacías sin dar error. Una vez por día ({@code madsports.monitor.cron}) se recorre el camino de un informe con
  * datos reales (temporada del portal, catálogo de la FPP, calendario con partidos jugados, acta con sus planteles) y el
  * resultado queda en el health check ({@code sidgad}). Si falla, o si se recupera, avisa por mail a
  * {@code ALERTAS_EMAIL}.
