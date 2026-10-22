@@ -63,8 +63,6 @@
         </article>
     </div>
 
-    <div class="plans coach-plan" id="plan-dt" hidden></div>
-
     <div class="cta" data-cta>
         <a class="go-link" href="/rinkmetrics/signup.html">Crear cuenta de DT</a>
         <p class="alt">¿Ya tenés una cuenta? <a href="/rinkmetrics/login.html">Ingresá</a></p>
@@ -121,52 +119,6 @@
 <script src="/js/app.js"></script>
 <script>
     $("brand").outerHTML = BRAND;
-
-    // Planes del DT (el free y el mensual) con su precio en pesos del día. El free se elige y lleva al registro; el
-    // mensual (pago) figura con el cintillo "Próximamente" hasta que se habilite el cobro.
-    fetch("/api/plans?profile=DTFPP").then(r => r.ok ? r.json() : []).then(plans => {
-        const box = $("plan-dt");
-        for (const p of plans) {
-            const free = Number(p.price) === 0;
-            const card = document.createElement(p.available === false ? "div" : "a");
-            if (p.available === false) {
-                card.className = "plan proximamente no-disponible";
-                card.setAttribute("aria-disabled", "true");
-                const ribbon = document.createElement("span");
-                ribbon.className = "cintillo";
-                ribbon.textContent = "Próximamente";
-                card.append(ribbon);
-            } else {
-                card.className = "plan plan-elegir";
-                card.href = "/rinkmetrics/signup.html?plan=" + encodeURIComponent(p.code);
-                card.setAttribute("aria-label", `Elegir el plan ${p.name} y crear la cuenta`);
-            }
-            const name = document.createElement("span");
-            name.className = "plan-name";
-            name.textContent = "Plan " + p.name;
-            const price = document.createElement("span");
-            price.className = "plan-price";
-            price.innerHTML = "<b></b> <small></small>";
-            price.querySelector("b").textContent = free ? "Gratis" : "$ " + Number(p.price).toLocaleString("es-AR");
-            price.querySelector("small").textContent = free ? "" : "por mes";
-            const quota = document.createElement("span");
-            quota.className = "plan-quota";
-            quota.textContent = `${p.maxTeams === 1 ? "1 equipo" : "Hasta " + p.maxTeams + " equipos"} y ${p.matchesPerMonth} partidos por mes`;
-            const note = document.createElement("span");
-            note.className = "plan-month";
-            note.textContent = p.validUntil ? "Sin costo hasta el " + p.validUntil.split("-").reverse().join("/") + "."
-                : "Mensual, sin permanencia. En pesos al dólar oficial del día.";
-            card.append(name, price, quota, note);
-            if (p.available !== false) {
-                const choose = document.createElement("span");
-                choose.className = "btn primary plan-cta";
-                choose.textContent = free ? "Empezar gratis" : "Elegir plan " + p.name.replace(/^DT /, "");
-                card.append(choose);
-            }
-            box.append(card);
-        }
-        box.hidden = !plans.length;
-    }).catch(() => {});
 
     // Con sesión: acceso directo a su pantalla en lugar de ingresar/registrarse.
     session().then(s => {
