@@ -33,7 +33,7 @@ import java.util.UUID;
  * federación son los suyos.
  */
 @RestController
-@RequestMapping("/api/jugador")
+@RequestMapping("/api/player")
 public class PlayerController {
 
     /**
@@ -56,7 +56,7 @@ public class PlayerController {
         this.quota = quota;
     }
 
-    @PostMapping("/informes")
+    @PostMapping("/reports")
     public ResponseEntity<JobView> create(@RequestBody PlayerReportRequest req, Authentication auth) {
         UserAccount u = users.findByUsername(auth.getName())
                 .filter(x -> x.isPlayer() && x.getPlayerId() != null)
@@ -70,24 +70,24 @@ public class PlayerController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 
-    @GetMapping("/informes/{id}")
+    @GetMapping("/reports/{id}")
     public ResponseEntity<JobView> status(@PathVariable UUID id, Authentication auth) {
         return reports.find(id, auth.getName()).map(PlayerController::view).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/informes/{id}/html")
+    @GetMapping("/reports/{id}/html")
     public ResponseEntity<String> html(@PathVariable UUID id, Authentication auth) {
         return ready(id, auth).map(j -> Downloads.html(j.html())).orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/informes/{id}/pdf")
+    @GetMapping("/reports/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
         return ready(id, auth).map(j -> Downloads.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/informes/{id}/xlsx")
+    @GetMapping("/reports/{id}/xlsx")
     public ResponseEntity<byte[]> xlsx(@PathVariable UUID id, Authentication auth) {
         return ready(id, auth).map(j -> Downloads.file(j.xlsx(), Downloads.XLSX, j.fileName("xlsx"), false))
                 .orElse(ResponseEntity.notFound().build());
@@ -98,7 +98,7 @@ public class PlayerController {
     }
 
     private static JobView view(PlayerReportService.Job job) {
-        return JobView.of(job.id(), job.status(), job.message(), "/api/jugador/informes/" + job.id());
+        return JobView.of(job.id(), job.status(), job.message(), "/api/player/reports/" + job.id());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -275,8 +275,8 @@ public class SquadService {
         checkNumber(u, own, number, -1);
         int id = players.findTopByUserIdOrderByPlayerIdDesc(u.getId()).map(TeamPlayer::getPlayerId)
                 .filter(n -> n >= TeamPlayer.FIRST_OWN_ID).map(n -> n + 1).orElse(TeamPlayer.FIRST_OWN_ID);
-        TeamPlayer j = players.saveAndFlush(new TeamPlayer(u.getId(), id, text(d.name(), "nombre"),
-                text(d.lastName(), "apellido"), number, Boolean.TRUE.equals(d.goalkeeper()), own, clock.instant()));
+        TeamPlayer j = players.saveAndFlush(new TeamPlayer(u.getId(), id, text(d.name(), "name"),
+                text(d.lastName(), "lastName"), number, Boolean.TRUE.equals(d.goalkeeper()), own, clock.instant()));
         return SquadPlayer.of(j);
     }
 
@@ -286,7 +286,7 @@ public class SquadService {
         Set<Long> own = validTeams(u, d.teams());
         String number = number(d.number());
         checkNumber(u, own, number, playerId);
-        j.update(text(d.name(), "nombre"), text(d.lastName(), "apellido"), number, Boolean.TRUE.equals(d.goalkeeper()),
+        j.update(text(d.name(), "name"), text(d.lastName(), "lastName"), number, Boolean.TRUE.equals(d.goalkeeper()),
                 own);
         return SquadPlayer.of(j);
     }

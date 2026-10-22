@@ -16,7 +16,7 @@ import java.util.List;
  * @param catalogTtl      vigencia del cache del catálogo de competiciones
  * @param years           años que se ofrecen (p. ej. 2026, 2027)
  */
-@ConfigurationProperties(prefix = "rinkmetrics.sidgad")
+@ConfigurationProperties(prefix = "madsports.sidgad")
 public record SidgadProperties(String baseUrl, String origin, Duration minInterval, int maxConcurrency,
                                Duration dataTtl, Duration catalogTtl, Duration timeout, List<Integer> years) {
 }

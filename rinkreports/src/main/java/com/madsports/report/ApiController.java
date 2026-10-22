@@ -63,14 +63,14 @@ public class ApiController {
      * Catálogo de la federación (FPP por defecto, o AMP) del año pedido (o del más reciente con datos). Si el año no
      * tiene datos, {@code available} es false.
      */
-    @GetMapping("/catalogo")
+    @GetMapping("/catalog")
     public CatalogView catalog(@RequestParam(required = false) Integer year,
                                 @RequestParam(required = false) String federation) {
         return catalog.view(Federation.parse(federation), catalog.checkYear(year));
     }
 
     /** Un usuario de club (CLUBFPP o CLUBAMP) pide informes solo de su club, en su federación. */
-    @PostMapping("/informes")
+    @PostMapping("/reports")
     public ResponseEntity<JobView> create(@Valid @RequestBody ReportRequest req, Authentication auth) {
         UserAccount u = users.findByUsername(auth.getName())
                 .orElseThrow(() -> new AccessDeniedException("Sesión inválida."));
@@ -90,56 +90,56 @@ public class ApiController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 
-    @GetMapping("/informes/{id}")
+    @GetMapping("/reports/{id}")
     public ResponseEntity<JobView> status(@PathVariable UUID id, Authentication auth) {
         return reports.find(id, auth.getName()).map(JobView::of).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     /** Informe modelo de club con datos ficticios: en pantalla, en PDF (se abre en el navegador) y en Excel. */
-    @GetMapping("/ejemplo.html")
+    @GetMapping("/sample.html")
     public ResponseEntity<String> sampleHtml() {
         return Downloads.html(sample.club().html());
     }
 
-    @GetMapping("/ejemplo.pdf")
+    @GetMapping("/sample.pdf")
     public ResponseEntity<byte[]> sample() {
         return Downloads.file(sample.club().pdf(), MediaType.APPLICATION_PDF, "informe-club-ejemplo-rinkreports.pdf", true);
     }
 
-    @GetMapping("/ejemplo.xlsx")
+    @GetMapping("/sample.xlsx")
     public ResponseEntity<byte[]> sampleXlsx() {
         return Downloads.file(sample.club().xlsx(), Downloads.XLSX, "informe-club-ejemplo-rinkreports.xlsx", false);
     }
 
     /** Informe modelo de jugador con datos ficticios: en pantalla, en PDF y en Excel. */
-    @GetMapping("/ejemplo-jugador.html")
+    @GetMapping("/sample-player.html")
     public ResponseEntity<String> samplePlayerHtml() {
         return Downloads.html(sample.player().html());
     }
 
-    @GetMapping("/ejemplo-jugador.pdf")
+    @GetMapping("/sample-player.pdf")
     public ResponseEntity<byte[]> samplePlayer() {
         return Downloads.file(sample.player().pdf(), MediaType.APPLICATION_PDF, "informe-jugador-ejemplo-rinkreports.pdf", true);
     }
 
-    @GetMapping("/ejemplo-jugador.xlsx")
+    @GetMapping("/sample-player.xlsx")
     public ResponseEntity<byte[]> samplePlayerXlsx() {
         return Downloads.file(sample.player().xlsx(), Downloads.XLSX, "informe-jugador-ejemplo-rinkreports.xlsx", false);
     }
 
-    @GetMapping("/informes/{id}/html")
+    @GetMapping("/reports/{id}/html")
     public ResponseEntity<String> viewHtml(@PathVariable UUID id, Authentication auth) {
         return ready(id, auth).map(j -> Downloads.html(j.html())).orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/informes/{id}/pdf")
+    @GetMapping("/reports/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
         return ready(id, auth).map(j -> Downloads.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/informes/{id}/xlsx")
+    @GetMapping("/reports/{id}/xlsx")
     public ResponseEntity<byte[]> xlsx(@PathVariable UUID id, Authentication auth) {
         return ready(id, auth).map(j -> Downloads.file(j.xlsx(), Downloads.XLSX, j.fileName("xlsx"), false))
                 .orElse(ResponseEntity.notFound().build());

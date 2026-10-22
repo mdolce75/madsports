@@ -91,13 +91,13 @@ final class PlayerStrengths {
             return out;
         }
         out.add(StrengthsAnalysis.relative("Goleo", "Goles por partido", me.per(me.goals), MATES,
-                mates.per(mates.goals), Unit.PER_GAME, true, me.appearances, "partidos"));
+                mates.per(mates.goals), Unit.PER_GAME, true, me.appearances, "matches"));
         out.add(StrengthsAnalysis.relative("Titularidad", "Partidos en el cinco inicial", Tally.pct(me.starts, me.appearances),
-                MATES, Tally.pct(mates.starts, mates.appearances), Unit.PERCENT, true, me.appearances, "partidos"));
+                MATES, Tally.pct(mates.starts, mates.appearances), Unit.PERCENT, true, me.appearances, "matches"));
         out.add(StrengthsAnalysis.relative("Disciplina", "Tarjetas por partido", me.per(me.cards), MATES,
-                mates.per(mates.cards), Unit.PER_GAME, false, me.appearances, "partidos"));
+                mates.per(mates.cards), Unit.PER_GAME, false, me.appearances, "matches"));
         out.add(StrengthsAnalysis.relative("Disciplina", "Azules y rojas por partido", me.per(me.blueRed), MATES,
-                mates.per(mates.blueRed), Unit.PER_GAME, false, me.appearances, "partidos"));
+                mates.per(mates.blueRed), Unit.PER_GAME, false, me.appearances, "matches"));
         out.add(StrengthsAnalysis.relative("Pelota parada", "Penales convertidos", Tally.pct(me.penScored, me.penTaken),
                 MATES, Tally.pct(mates.penScored, mates.penTaken), Unit.PERCENT, true, me.penTaken, "intentos"));
         out.add(StrengthsAnalysis.relative("Pelota parada", "Libres directos convertidos",

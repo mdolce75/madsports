@@ -42,22 +42,22 @@ class AnalysisContext {
     private Map<String, Object> overview() {
         Map<String, Object> o = new LinkedHashMap<>();
         o.put("club", data.club());
-        o.put("categoria", data.category());
-        o.put("periodo", data.tournament());
+        o.put("category", data.category());
+        o.put("period", data.tournament());
         if (data.partial()) {
             o.put("aclaracion_periodo", "Récord, resultados, rivales, time_profile y las tarjetas de disciplina cubren "
                     + "solo los últimos " + data.lastMatches() + " partidos de cada equipo (tarjetas contadas en sus fichas). "
                     + "players y la pelota parada son del torneo completo.");
         }
         o.put("fecha_informe", data.generatedOn());
-        o.put("equipos", data.teams().stream().map(t -> {
+        o.put("teams", data.teams().stream().map(t -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("team_code", t.code());
-            m.put("nombre", t.name());
+            m.put("name", t.name());
             m.put("total", t.total());
             m.put("puntos", t.total().points());
             m.put("efectividad_pct", round(t.total().effectiveness()));
-            m.put("local", t.home());
+            m.put("home", t.home());
             m.put("visitante", t.away());
             m.put("ultimos_resultados", t.form());
             m.put("posiciones", t.standings());
@@ -88,7 +88,7 @@ class AnalysisContext {
                     "faltas", t.fouls());
             case "rivals" -> t.rivals();
             case "time_profile" -> Map.of(
-                    "perfil", t.timeProfile(),
+                    "profile", t.timeProfile(),
                     "minutos_con_uno_menos_por_partido", round(t.timeProfile().shortHandedMinutesPerGame()),
                     "minutos_con_uno_mas_por_partido", round(t.timeProfile().powerPlayMinutesPerGame()));
             default -> throw new IllegalArgumentException("section inválida: " + section + ". Válidas: " + SECTIONS);

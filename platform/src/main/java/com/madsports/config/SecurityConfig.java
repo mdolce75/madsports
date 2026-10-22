@@ -79,23 +79,23 @@ public class SecurityConfig {
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/index.html", "/informes.html", "/dt-inicio.html", "/dt-demo.html", "/por-que.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/", "/rinkreports/index.html", "/rinkreports/ejemplo.html", "/rinkreports/login.html", "/rinkreports/registro.html", "/club.html", "/jugador.html", "/rinkmetrics", "/rinkmetrics/", "/login.html", "/registro.html", "/olvido.html",
                                 "/restablecer.html", "/css/**", "/js/**", "/img/**", "/dt-sw.js", "/error",
-                                "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
-                                "/api/ejemplo.html", "/api/ejemplo.xlsx", "/api/ejemplo-jugador.html", "/api/ejemplo-jugador.xlsx",
-                                "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**", "/api/suscripciones",
+                                "/api/signup", "/api/signup/**", "/api/session", "/api/catalog", "/api/sample.pdf",
+                                "/api/sample.html", "/api/sample.xlsx", "/api/sample-player.html", "/api/sample-player.xlsx",
+                                "/api/sample-player.pdf", "/api/verify", "/api/verification/**", "/api/password/**", "/api/plans",
                                 "/actuator/health", "/actuator/health/**")
                         .permitAll()
-                        .requestMatchers("/rinkreports/club.html", "/api/informes", "/api/informes/**")
+                        .requestMatchers("/rinkreports/club.html", "/api/reports", "/api/reports/**")
                         .hasAnyAuthority(Profile.CLUBFPP.name(), Profile.CLUBAMP.name())
-                        .requestMatchers("/rinkreports/jugador.html", "/api/jugador/**")
+                        .requestMatchers("/rinkreports/jugador.html", "/api/player/**")
                         .hasAnyAuthority(Profile.PLAYERFPP.name(), Profile.PLAYERAMP.name())
-                        .requestMatchers("/dt.html", "/api/dt/**")
+                        .requestMatchers("/dt.html", "/api/coach/**")
                         .hasAnyAuthority(Profile.COACHFPP.name(), Profile.COACHAMP.name())
                         .anyRequest().authenticated())
                 .formLogin(f -> f
                         .loginPage("/login.html")
                         .loginProcessingUrl("/api/login")
-                        .usernameParameter("usuario")
-                        .passwordParameter("clave")
+                        .usernameParameter("username")
+                        .passwordParameter("password")
                         .successHandler((req, res, auth) -> {
                             limiter.clear(AttemptLimiter.Kind.LOGIN_USER, auth.getName());
                             // Al ingresar, Spring cambia el token CSRF: se genera ya para que la cookie nueva
@@ -109,26 +109,26 @@ public class SecurityConfig {
                             UserAccount u = users.findByUsername(auth.getName()).orElse(null);
                             if (u != null && !u.isEmailVerified()) {
                                 reject(req, res, auth, rememberMe);   // sin confirmar, tampoco queda recordado
-                                write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "EMAIL_NO_VERIFICADO",
+                                write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "EMAIL_NOT_VERIFIED",
                                         "detail", "Confirmá tu email para ingresar: te mandamos un enlace al registrarte."));
                                 return;
                             }
                             // Cada producto tiene su ingreso: la pantalla manda el suyo (producto=REPORTS o METRICS).
-                            Product request = Product.parse(req.getParameter("producto"));
+                            Product request = Product.parse(req.getParameter("product"));
                             if (u != null && request != null && u.getProduct() != request) {
                                 reject(req, res, auth, rememberMe);
-                                write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "OTRO_PRODUCTO",
+                                write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "OTHER_PRODUCT",
                                         "detail", "Tu cuenta es de " + u.getProduct().displayName() + ": ingresá desde "
                                                 + u.getProduct().displayName() + ".",
-                                        "ingreso", u.getProduct().login()));
+                                        "login", u.getProduct().login()));
                                 return;
                             }
-                            write(res, json, HttpStatus.OK, Map.of("inicio", home(auth.getAuthorities())));
+                            write(res, json, HttpStatus.OK, Map.of("home", home(auth.getAuthorities())));
                         })
                         .failureHandler((req, res, e) -> {
                             // Cuenta el intento fallido para el usuario y para la IP (LimiteIntentosFilter corta
                             // los siguientes al llegar al máximo).
-                            limiter.add(AttemptLimiter.Kind.LOGIN_USER, req.getParameter("usuario"));
+                            limiter.add(AttemptLimiter.Kind.LOGIN_USER, req.getParameter("username"));
                             limiter.add(AttemptLimiter.Kind.LOGIN_IP, req.getRemoteAddr());
                             write(res, json, HttpStatus.UNAUTHORIZED, Map.of("detail", "Usuario o clave incorrectos."));
                         })
@@ -220,12 +220,12 @@ public class SecurityConfig {
 
     @Bean
     PersistentTokenBasedRememberMeServices rememberMe(UserDetailsService users, PersistentTokenRepository tokens,
-                                                      @Value("${rinkmetrics.recordarme.clave:}") String password,
-                                                      @Value("${rinkmetrics.recordarme.dias:30}") int days) {
+                                                      @Value("${madsports.remember-me.key:}") String password,
+                                                      @Value("${madsports.remember-me.days:30}") int days) {
         PersistentTokenBasedRememberMeServices s = new PersistentTokenBasedRememberMeServices(
                 password.isBlank() ? UUID.randomUUID().toString() : password, users, tokens);
-        s.setParameter("recordarme");
-        s.setCookieName("RECORDARME");
+        s.setParameter("rememberMe");
+        s.setCookieName("REMEMBER_ME");
         s.setTokenValiditySeconds((int) Duration.ofDays(days).toSeconds());
         return s;
     }

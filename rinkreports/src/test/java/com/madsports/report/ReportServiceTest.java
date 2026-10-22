@@ -71,7 +71,7 @@ class ReportServiceTest {
     void periods() {
         assertThat(Scope.parse(null)).isEqualTo(Scope.SEASON);
         assertThat(Scope.parse("ultimos_5").lastMatches()).isEqualTo(5);
-        assertThat(Scope.parse("APERTURA").tournament()).isEqualTo(Competition.Tournament.OPENING);
+        assertThat(Scope.parse("OPENING").tournament()).isEqualTo(Competition.Tournament.OPENING);
         assertThat(Scope.SEASON.tournament()).isNull();
         assertThatThrownBy(() -> Scope.parse("PLAYOFF")).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Período inválido");

@@ -27,8 +27,8 @@ import static org.mockito.Mockito.when;
  * "Próximamente".
  */
 @SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:alta-informes;DB_CLOSE_DELAY=-1",
-        "rinkmetrics.registro.club=false", "rinkmetrics.registro.jugador-pago=false",
-        "rinkmetrics.registro.jugador-amp=false"})
+        "madsports.signup.club=false", "madsports.signup.player-paid=false",
+        "madsports.signup.player-amp=false"})
 class ReportsSignupTest {
 
     @Autowired SignupService signup;
@@ -55,7 +55,7 @@ class ReportsSignupTest {
     void clubAccountsAreNotCreated() {
         for (Profile p : new Profile[] {Profile.CLUBFPP, Profile.CLUBAMP}) {
             assertThatThrownBy(() -> signup.register(new SignupService.Signup(p, "ana", "clave-segura",
-                    "ana@example.com", 74, null, null, null, "CLUB_MENSUAL")))
+                    "ana@example.com", 74, null, null, null, "CLUB_MONTHLY")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Las cuentas de club estarán disponibles próximamente. Por ahora podés crear tu cuenta "
                             + "de jugador.");
@@ -82,12 +82,12 @@ class ReportsSignupTest {
 
     @Test
     void thePlayerPaidPlanCannotBeChosenYet() {
-        assertThatThrownBy(() -> signup.register(player("PLAYER_MENSUAL")))
+        assertThatThrownBy(() -> signup.register(player("PLAYER_MONTHLY")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("El plan Jugador mensual estará disponible próximamente. Por ahora, empezá con el plan "
                         + "Jugador free.");
         assertThat(signup.available(plans.findByCode("PLAYER_FREE").orElseThrow())).isTrue();
-        assertThat(signup.available(plans.findByCode("PLAYER_MENSUAL").orElseThrow())).isFalse();
-        assertThat(signup.available(plans.findByCode("DT_MENSUAL").orElseThrow())).isFalse();
+        assertThat(signup.available(plans.findByCode("PLAYER_MONTHLY").orElseThrow())).isFalse();
+        assertThat(signup.available(plans.findByCode("COACH_MONTHLY").orElseThrow())).isFalse();
     }
 }

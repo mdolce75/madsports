@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Los informes de ejemplo de RinkReports, por la API de la aplicación: en pantalla, PDF y Excel, sin sesión. */
-@SpringBootTest(properties = "rinkmetrics.ai.enabled=false")
+@SpringBootTest(properties = "madsports.ai.enabled=false")
 @AutoConfigureMockMvc
 class SamplesApiTest {
 
@@ -26,11 +26,11 @@ class SamplesApiTest {
                 .andExpect(content().string(containsString("Primera Masculino")));
         mvc.perform(get("/api/ejemplo-jugador.html")).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"));
-        mvc.perform(get("/api/ejemplo.xlsx")).andExpect(status().isOk())
+        mvc.perform(get("/api/sample.xlsx")).andExpect(status().isOk())
                 .andExpect(content().contentType(Downloads.XLSX))
                 .andExpect(header().string("Content-Disposition", containsString("attachment")))
                 .andExpect(header().string("Content-Disposition", containsString(".xlsx")));
-        mvc.perform(get("/api/ejemplo-jugador.xlsx")).andExpect(status().isOk())
+        mvc.perform(get("/api/sample-player.xlsx")).andExpect(status().isOk())
                 .andExpect(content().contentType(Downloads.XLSX));
     }
 }

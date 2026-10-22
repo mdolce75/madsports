@@ -72,9 +72,9 @@ class CoachApiContractTest {
         try (InputStream in = new ClassPathResource("dt/contrato-api.json").getInputStream()) {
             contract = json.readTree(in);
         }
-        JsonNode home = contract.get("inicio");
-        return StreamSupport.stream(contract.get("escenarios").spliterator(), false)
-                .map(e -> DynamicTest.dynamicTest(e.get("nombre").asText(), () -> run(home, e)));
+        JsonNode home = contract.get("setup");
+        return StreamSupport.stream(contract.get("scenarios").spliterator(), false)
+                .map(e -> DynamicTest.dynamicTest(e.get("name").asText(), () -> run(home, e)));
     }
 
     private void run(JsonNode home, JsonNode scenario) throws Exception {
@@ -82,7 +82,7 @@ class CoachApiContractTest {
         matches.deleteAll();
         users.deleteAll();
         clock.now = Instant.parse(home.get("instante").asText());
-        String name = home.get("usuario").asText();
+        String name = home.get("username").asText();
         UserAccount u = new UserAccount(name, "x", name + "@example.com", "Ana", "Pérez", 74, home.get("club").asText(),
                 "CAVS", EnumSet.of(Profile.COACHFPP), Instant.now());
         u.subscribe(subscriptions.findByCode(home.get("plan").asText()).orElseThrow(), LocalDate.of(2026, 9, 15));
@@ -90,31 +90,31 @@ class CoachApiContractTest {
 
         Map<String, JsonNode> vars = new HashMap<>();
         int i = 0;
-        for (JsonNode step : scenario.get("pasos")) {
+        for (JsonNode step : scenario.get("steps")) {
             i++;
             if (step.has("avanzar")) {
                 clock.advance(step.get("avanzar").asInt());
                 continue;
             }
-            String[] request = replace(step.get("pedido"), vars).asText().split(" ");
+            String[] request = replace(step.get("request"), vars).asText().split(" ");
             String where = "paso " + i + " (" + request[0] + " " + request[1] + ")";
             MockHttpServletRequestBuilder req = request(HttpMethod.valueOf(request[0]), request[1])
-                    .with(user(name).authorities(() -> "DTFPP")).with(csrf());
-            if (step.has("cuerpo")) {
-                req.contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(replace(step.get("cuerpo"), vars)));
+                    .with(user(name).authorities(() -> "COACHFPP")).with(csrf());
+            if (step.has("body")) {
+                req.contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(replace(step.get("body"), vars)));
             }
             MockHttpServletResponse res = mvc.perform(req).andReturn().getResponse();
             String text = res.getContentAsString(StandardCharsets.UTF_8);
-            assertThat(res.getStatus()).as(where + ": status (" + text + ")").isEqualTo(step.get("estado").asInt());
+            assertThat(res.getStatus()).as(where + ": status (" + text + ")").isEqualTo(step.get("status").asInt());
             JsonNode body = text.isEmpty() ? null : json.readTree(text);
-            if (step.has("detalle")) {
-                assertThat(body.path("detail").asText()).as(where + ": detail").isEqualTo(step.get("detalle").asText());
+            if (step.has("detail")) {
+                assertThat(body.path("detail").asText()).as(where + ": detail").isEqualTo(step.get("detail").asText());
             }
-            if (step.has("respuesta")) {
-                contains(replace(step.get("respuesta"), vars), body, where);
+            if (step.has("response")) {
+                contains(replace(step.get("response"), vars), body, where);
             }
-            if (step.has("guardar")) {
-                step.get("guardar").properties().forEach(g -> vars.put(g.getKey(), body.get(g.getValue().asText())));
+            if (step.has("save")) {
+                step.get("save").properties().forEach(g -> vars.put(g.getKey(), body.get(g.getValue().asText())));
             }
         }
     }

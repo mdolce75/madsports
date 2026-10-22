@@ -220,11 +220,11 @@ public final class SidgadParser {
 
     private static EventType eventType(String label) {
         return switch (clean(label).toUpperCase()) {
-            case "GOL" -> EventType.GOAL;
+            case "GOAL" -> EventType.GOAL;
             case "TARJETA AMARILLA" -> EventType.YELLOW_CARD;
             case "TARJETA AZUL" -> EventType.BLUE_CARD;
             case "TARJETA ROJA" -> EventType.RED_CARD;
-            case "FALTA" -> EventType.FOUL;
+            case "FOUL" -> EventType.FOUL;
             default -> null;
         };
     }

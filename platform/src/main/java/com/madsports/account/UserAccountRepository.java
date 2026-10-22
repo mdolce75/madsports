@@ -29,5 +29,5 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     @Transactional
     @Modifying(clearAutomatically = true)
     @Query("update Usuario u set u.informesPedidos = u.informesPedidos + 1 where u.usuario = :usuario")
-    int countReport(@Param("usuario") String username);
+    int countReport(@Param("username") String username);
 }

@@ -30,8 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** Límite de intentos: ingresos fallidos por usuario y por IP, altas de cuenta y pedidos de mails por IP. */
 @SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:limites;DB_CLOSE_DELAY=-1",
-        "rinkmetrics.limites.login-usuario=3", "rinkmetrics.limites.login-ip=5",
-        "rinkmetrics.limites.registro-ip=2", "rinkmetrics.limites.mails-ip=2"})
+        "madsports.limits.login-user=3", "madsports.limits.login-ip=5",
+        "madsports.limits.signup-ip=2", "madsports.limits.mails-ip=2"})
 @AutoConfigureMockMvc
 class AttemptLimiterTest {
 
@@ -62,7 +62,7 @@ class AttemptLimiterTest {
     }
 
     ResultActions login(String ip, String username, String password) throws Exception {
-        return mvc.perform(post("/api/login").with(csrf()).with(from(ip)).param("usuario", username).param("clave", password));
+        return mvc.perform(post("/api/login").with(csrf()).with(from(ip)).param("username", username).param("password", password));
     }
 
     @Test
@@ -103,19 +103,19 @@ class AttemptLimiterTest {
     void signupsAndMailsLimitedByIp() throws Exception {
         // Cuentan todos los pedidos, válidos o no.
         for (int i = 0; i < 2; i++) {
-            mvc.perform(post("/api/registro").with(csrf()).with(from("10.0.0.5"))
+            mvc.perform(post("/api/signup").with(csrf()).with(from("10.0.0.5"))
                     .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isBadRequest());
         }
-        mvc.perform(post("/api/registro").with(csrf()).with(from("10.0.0.5"))
+        mvc.perform(post("/api/signup").with(csrf()).with(from("10.0.0.5"))
                         .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isTooManyRequests())
                 .andExpect(header().string("Retry-After", "3600"));
 
         String request = json.writeValueAsString(Map.of("email", "ana@example.com"));
-        mvc.perform(post("/api/clave/olvido").with(csrf()).with(from("10.0.0.6"))
+        mvc.perform(post("/api/password/forgot").with(csrf()).with(from("10.0.0.6"))
                 .contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isOk());
-        mvc.perform(post("/api/verificacion/reenviar").with(csrf()).with(from("10.0.0.6"))
+        mvc.perform(post("/api/verification/resend").with(csrf()).with(from("10.0.0.6"))
                 .contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isOk());
-        mvc.perform(post("/api/clave/olvido").with(csrf()).with(from("10.0.0.6"))
+        mvc.perform(post("/api/password/forgot").with(csrf()).with(from("10.0.0.6"))
                         .contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.detail").value("Demasiados pedidos de mails desde esta conexión. Probá de nuevo "
                         + "en 60 minutos."));

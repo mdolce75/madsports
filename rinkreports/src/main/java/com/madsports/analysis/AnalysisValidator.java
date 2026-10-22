@@ -35,7 +35,7 @@ final class AnalysisValidator {
                 .map(PlayerLine::name).map(String::toLowerCase).toList();
         List<AnalysisResult.KeyPlayer> players = new ArrayList<>();
         for (JsonNode p : in.path("jugadores_destacados")) {
-            String name = p.path("nombre").asText("").trim();
+            String name = p.path("name").asText("").trim();
             if (knownPlayers.contains(name.toLowerCase())) {
                 players.add(new AnalysisResult.KeyPlayer(name, p.path("motivo").asText("").trim()));
             } else {

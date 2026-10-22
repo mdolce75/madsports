@@ -44,7 +44,7 @@ public class Mailer {
     private final Map<Product, byte[]> logos = Map.of(Product.METRICS, logo(), Product.REPORTS, reportsLogo());
 
     public Mailer(ObjectProvider<JavaMailSender> sender, ITemplateEngine templates,
-                  @Value("${spring.mail.host:}") String host, @Value("${rinkmetrics.mail.from}") String from) {
+                  @Value("${spring.mail.host:}") String host, @Value("${madsports.mail.from}") String from) {
         this.sender = sender;
         this.templates = templates;
         this.host = host;

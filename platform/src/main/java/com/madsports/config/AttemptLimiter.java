@@ -42,10 +42,10 @@ public class AttemptLimiter {
 
     private final Map<Kind, Rule> rules = new EnumMap<>(Kind.class);
 
-    public AttemptLimiter(@Value("${rinkmetrics.limites.login-usuario:5}") int loginUser,
-                          @Value("${rinkmetrics.limites.login-ip:20}") int loginIp,
-                          @Value("${rinkmetrics.limites.registro-ip:5}") int signupIp,
-                          @Value("${rinkmetrics.limites.mails-ip:10}") int mailsIp) {
+    public AttemptLimiter(@Value("${madsports.limits.login-user:5}") int loginUser,
+                          @Value("${madsports.limits.login-ip:20}") int loginIp,
+                          @Value("${madsports.limits.signup-ip:5}") int signupIp,
+                          @Value("${madsports.limits.mails-ip:10}") int mailsIp) {
         rule(Kind.LOGIN_USER, loginUser);
         rule(Kind.LOGIN_IP, loginIp);
         rule(Kind.SIGNUP_IP, signupIp);

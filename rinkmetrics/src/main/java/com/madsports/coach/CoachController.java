@@ -42,7 +42,7 @@ import java.util.List;
  * DT ve solo sus equipos, sus jugadores y sus partidos; los de otro DT responden 404.
  */
 @RestController
-@RequestMapping("/api/dt")
+@RequestMapping("/api/coach")
 public class CoachController {
 
     /** @param segundos solo para AJUSTAR: segundos de tiempo jugado a sumar (o restar, si es negativo) */
@@ -68,7 +68,7 @@ public class CoachController {
     }
 
     /** Equipos del DT, con su balance de partidos finalizados (jugados, ganados, empatados y perdidos). */
-    @GetMapping("/equipos")
+    @GetMapping("/teams")
     public List<TeamView> teams(Authentication auth) {
         return teams.list(currentUser(auth));
     }
@@ -77,146 +77,146 @@ public class CoachController {
      * Equipo nuevo: con nombre libre, o desde una categoría del club ({@code category} y {@code branch}) con su plantel
      * de SIDGAD, menos los {@code excluded}, que quedan como "no incluidos".
      */
-    @PostMapping("/equipos")
+    @PostMapping("/teams")
     public ResponseEntity<TeamView> createTeam(@RequestBody NewTeam req, Authentication auth) {
         return ResponseEntity.status(HttpStatus.CREATED).body(squads.createTeam(currentUser(auth), req));
     }
 
     /** Las categorías del club del DT en SIDGAD, para armar un equipo con su plantel. */
-    @GetMapping("/club/categorias")
+    @GetMapping("/club/categories")
     public List<ClubCategoryView> clubCategories(Authentication auth) {
         return squads.clubCategories(currentUser(auth));
     }
 
     /** El plantel de SIDGAD de una categoría del club (los jugadores de las actas del equipo). */
-    @GetMapping("/club/plantel")
+    @GetMapping("/club/squad")
     public List<SidgadPlayer> sidgadSquad(@RequestParam String category, @RequestParam String branch,
                                              Authentication auth) {
         return squads.sidgadSquad(currentUser(auth), category, branch);
     }
 
-    @PutMapping("/equipos/{id}")
+    @PutMapping("/teams/{id}")
     public TeamView renameTeam(@PathVariable Long id, @RequestBody TeamRequest req, Authentication auth) {
         return teams.rename(currentUser(auth), id, req.name());
     }
 
     /** Solo un equipo sin partidos (409 si tiene). */
-    @DeleteMapping("/equipos/{id}")
+    @DeleteMapping("/teams/{id}")
     public ResponseEntity<Void> deleteTeam(@PathVariable Long id, Authentication auth) {
         teams.delete(currentUser(auth), id);
         return ResponseEntity.noContent().build();
     }
 
     /** Todos los jugadores del DT, con los equipos en que juega cada uno. */
-    @GetMapping("/jugadores")
+    @GetMapping("/players")
     public List<SquadPlayer> players(Authentication auth) {
         return squads.players(currentUser(auth));
     }
 
-    @PostMapping("/jugadores")
+    @PostMapping("/players")
     public ResponseEntity<SquadPlayer> createPlayer(@RequestBody PlayerData req, Authentication auth) {
         return ResponseEntity.status(HttpStatus.CREATED).body(squads.addPlayer(currentUser(auth), req));
     }
 
-    @PutMapping("/jugadores/{jugadorId}")
+    @PutMapping("/players/{playerId}")
     public SquadPlayer updatePlayer(@PathVariable int playerId, @RequestBody PlayerData req,
                                            Authentication auth) {
         return squads.modify(currentUser(auth), playerId, req);
     }
 
     /** Suma al equipo a un jugador que figuraba como "no incluido" (409 si su número ya es de otro del equipo). */
-    @PostMapping("/jugadores/{jugadorId}/equipos/{equipoId}")
+    @PostMapping("/players/{playerId}/teams/{teamId}")
     public SquadPlayer includePlayer(@PathVariable int playerId, @PathVariable Long teamId, Authentication auth) {
         return squads.include(currentUser(auth), playerId, teamId);
     }
 
-    @DeleteMapping("/jugadores/{jugadorId}")
+    @DeleteMapping("/players/{playerId}")
     public ResponseEntity<Void> deactivatePlayer(@PathVariable int playerId, Authentication auth) {
         squads.deactivate(currentUser(auth), playerId);
         return ResponseEntity.noContent().build();
     }
 
     /** Plantel de un equipo (sin equipo, el primero): sus jugadores activos, por número. */
-    @GetMapping("/plantel")
+    @GetMapping("/squad")
     public List<SquadPlayer> squad(@RequestParam(required = false) Long team, Authentication auth) {
         return squads.squad(currentUser(auth), team);
     }
 
     /** Acciones de todos los partidos del equipo, para las estadísticas y las fichas de los jugadores. */
-    @GetMapping("/acciones")
+    @GetMapping("/actions")
     public List<CoachService.TeamAction> actions(@RequestParam(required = false) Long team, Authentication auth) {
         return coach.teamActions(currentUser(auth), team);
     }
 
-    @PostMapping("/partidos")
+    @PostMapping("/matches")
     public ResponseEntity<MatchView> create(@RequestBody NewMatch req, Authentication auth) {
         return ResponseEntity.status(HttpStatus.CREATED).body(coach.create(currentUser(auth), req));
     }
 
-    @GetMapping("/partidos")
+    @GetMapping("/matches")
     public List<MatchView> list(Authentication auth) {
         return coach.list(currentUser(auth));
     }
 
-    @GetMapping("/partidos/{id}")
+    @GetMapping("/matches/{id}")
     public MatchView match(@PathVariable Long id, Authentication auth) {
         return coach.match(currentUser(auth), id);
     }
 
-    @PostMapping("/partidos/{id}/acciones")
+    @PostMapping("/matches/{id}/actions")
     public MatchView actions(@PathVariable Long id, @RequestBody List<NewAction> actions, Authentication auth) {
         return coach.enqueue(currentUser(auth), id, actions);
     }
 
-    @DeleteMapping("/partidos/{id}/acciones/{accionId}")
+    @DeleteMapping("/matches/{id}/actions/{actionId}")
     public MatchView delete(@PathVariable Long id, @PathVariable String actionId, Authentication auth) {
         return coach.delete(currentUser(auth), id, actionId);
     }
 
-    @PostMapping("/partidos/{id}/reloj")
+    @PostMapping("/matches/{id}/clock")
     public MatchView clock(@PathVariable Long id, @RequestBody ClockRequest req, Authentication auth) {
         return coach.clock(currentUser(auth), id, req.action(), req.seconds());
     }
 
-    @PostMapping("/partidos/{id}/cerrar")
+    @PostMapping("/matches/{id}/close")
     public MatchView close(@PathVariable Long id, Authentication auth) {
         return coach.close(currentUser(auth), id);
     }
 
     /** Elimina el partido y todas sus acciones (también de las estadísticas y los informes). */
-    @DeleteMapping("/partidos/{id}")
+    @DeleteMapping("/matches/{id}")
     public ResponseEntity<Void> remove(@PathVariable Long id, Authentication auth) {
         coach.remove(currentUser(auth), id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/partidos/{id}/reabrir")
+    @PostMapping("/matches/{id}/reopen")
     public MatchView reopen(@PathVariable Long id, Authentication auth) {
         return coach.reopen(currentUser(auth), id);
     }
 
     /** Informe del partido: del equipo o, con {@code player} ("j" + id, o "m" + nombre), de ese jugador. */
-    @GetMapping("/partidos/{id}/informe")
+    @GetMapping("/matches/{id}/report")
     public CoachReport report(@PathVariable Long id, @RequestParam(required = false) String player,
                              Authentication auth) {
         return reports.match(currentUser(auth), id, player);
     }
 
-    @GetMapping("/partidos/{id}/informe.pdf")
+    @GetMapping("/matches/{id}/report.pdf")
     public ResponseEntity<byte[]> reportPdf(@PathVariable Long id, @RequestParam(required = false) String player,
                                              Authentication auth) {
         return pdf(reports.pdf(reports.match(currentUser(auth), id, player)));
     }
 
     /** Informe de los partidos finalizados del equipo en un mes, bimestre, semestre o campeonato. */
-    @GetMapping("/informes")
+    @GetMapping("/reports")
     public CoachReport periodReport(@RequestParam(required = false) Long team, @RequestParam ReportPeriod period,
                                     @RequestParam(required = false) String value,
                                     @RequestParam(required = false) String player, Authentication auth) {
         return reports.period(currentUser(auth), team, period, value, player);
     }
 
-    @GetMapping("/informes.pdf")
+    @GetMapping("/reports.pdf")
     public ResponseEntity<byte[]> periodReportPdf(@RequestParam(required = false) Long team,
                                                     @RequestParam ReportPeriod period,
                                                     @RequestParam(required = false) String value,

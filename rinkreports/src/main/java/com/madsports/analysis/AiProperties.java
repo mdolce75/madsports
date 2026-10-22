@@ -12,7 +12,7 @@ import java.time.Duration;
  * @param model   modelo, p. ej. gemini-3.8-flash
  * @param baseUrl raíz de la API ({@code https://generativelanguage.googleapis.com/v1beta})
  */
-@ConfigurationProperties(prefix = "rinkmetrics.ai")
+@ConfigurationProperties(prefix = "madsports.ai")
 public record AiProperties(boolean enabled, String apiKey, String model, String baseUrl, Duration timeout) {
 
     public boolean usable() {

@@ -25,14 +25,14 @@ public record Competition(int id, String name, int federationId, int seasonId,
 
         /** Como figura en los nombres de competición de SIDGAD: "APERTURA" o "CLAUSURA". */
         public String sidgadName() {
-            return this == OPENING ? "APERTURA" : "CLAUSURA";
+            return this == OPENING ? "OPENING" : "CLOSING";
         }
 
         /** El torneo de un nombre de SIDGAD ("APERTURA", "CLAUSURA"). */
         public static Tournament fromSidgad(String name) {
             return switch (name.trim().toUpperCase()) {
-                case "APERTURA" -> OPENING;
-                case "CLAUSURA" -> CLOSING;
+                case "OPENING" -> OPENING;
+                case "CLOSING" -> CLOSING;
                 default -> throw new IllegalArgumentException("Torneo desconocido: " + name);
             };
         }

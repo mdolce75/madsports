@@ -74,7 +74,7 @@ public class Charts {
                         new Slice("Ganados", r.won(), String.valueOf(r.won()), WIN),
                         new Slice("Empatados", r.drawn(), String.valueOf(r.drawn()), DRAW),
                         new Slice("Perdidos", r.lost(), String.valueOf(r.lost()), LOSS)),
-                String.valueOf(r.played()), "partidos");
+                String.valueOf(r.played()), "matches");
     }
 
     /** Dona de ganados, empatados y perdidos a partir de los totales (informe de jugador). */
@@ -125,7 +125,7 @@ public class Charts {
                         new Slice("Ganando", s.secondsAhead(), clock(s.secondsAhead()), WIN),
                         new Slice("Empatando", s.secondsLevel(), clock(s.secondsLevel()), DRAW),
                         new Slice("Perdiendo", s.secondsBehind(), clock(s.secondsBehind()), LOSS)),
-                (total / 60) + "'", "jugados");
+                (total / 60) + "'", "played");
     }
 
     /** Barras partido a partido: diferencia de gol (arriba ganó, abajo perdió). */

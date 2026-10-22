@@ -50,8 +50,8 @@ public class SidgadMonitor implements HealthIndicator {
     private volatile Outcome last;
 
     public SidgadMonitor(SidgadClient client, CatalogService catalog, Mailer mailer, Clock clock,
-                         @Value("${rinkmetrics.alertas.email:}") String alerts,
-                         @Value("${rinkmetrics.mail.base-url}") String baseUrl) {
+                         @Value("${madsports.alerts.email:}") String alerts,
+                         @Value("${madsports.mail.base-url}") String baseUrl) {
         this.client = client;
         this.catalog = catalog;
         this.mailer = mailer;
@@ -60,7 +60,7 @@ public class SidgadMonitor implements HealthIndicator {
         this.baseUrl = baseUrl;
     }
 
-    @Scheduled(cron = "${rinkmetrics.monitor.cron:0 0 8 * * *}", zone = "America/Argentina/Buenos_Aires")
+    @Scheduled(cron = "${madsports.monitor.cron:0 0 8 * * *}", zone = "America/Argentina/Buenos_Aires")
     public void daily() {
         check();
     }
@@ -135,7 +135,7 @@ public class SidgadMonitor implements HealthIndicator {
         if (alerts.isEmpty()) {
             return;
         }
-        mailer.send(new MailContent(alerts, "RinkMetrics: " + subject, summaryOf, "Monitoreo", subject, "equipo",
+        mailer.send(new MailContent(alerts, "RinkMetrics: " + subject, summaryOf, "Monitoreo", subject, "team",
                 List.of(summaryOf, "Detalle: " + r.detail()), "Abrir RinkMetrics", baseUrl,
                 "Aviso automático del chequeo diario de SIDGAD (" + r.when() + ")."));
     }
@@ -145,9 +145,9 @@ public class SidgadMonitor implements HealthIndicator {
     public Health health() {
         Outcome r = last;
         if (r == null) {
-            return Health.unknown().withDetail("detalle", "Todavía no se chequeó.").build();
+            return Health.unknown().withDetail("detail", "Todavía no se chequeó.").build();
         }
-        return (r.ok() ? Health.up() : Health.down()).withDetail("cuando", r.when().toString())
-                .withDetail("detalle", r.detail()).build();
+        return (r.ok() ? Health.up() : Health.down()).withDetail("when", r.when().toString())
+                .withDetail("detail", r.detail()).build();
     }
 }

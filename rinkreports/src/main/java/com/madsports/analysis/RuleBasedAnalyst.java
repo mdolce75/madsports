@@ -69,7 +69,7 @@ public class RuleBasedAnalyst {
             }
             if (preview.isEmpty() && !t.upcoming().isEmpty()) {
                 MatchLine next = t.upcoming().getFirst();
-                preview = prefix + "Próximo partido: " + (next.home() ? "local" : "visitante") + " ante " + next.opponent()
+                preview = prefix + "Próximo partido: " + (next.home() ? "home" : "visitante") + " ante " + next.opponent()
                         + previousMeeting(t, next.opponent());
             }
         }

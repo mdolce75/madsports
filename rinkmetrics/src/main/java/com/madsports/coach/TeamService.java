@@ -81,7 +81,7 @@ public class TeamService {
         if (max > 0 && teams.findByUserIdOrderByIdAsc(u.getId()).size() >= max) {
             throw new CoachService.CoachConflictException("Tu plan " + plan.getName() + " permite " + (max == 1 ? "1 equipo" : "hasta " + max
                     + " equipos") + ". Para sumar otro, borrá uno sin partidos"
-                    + ("DT_FREE".equals(plan.getCode()) ? " o pasate al plan mensual." : "."));
+                    + ("COACH_FREE".equals(plan.getCode()) ? " o pasate al plan mensual." : "."));
         }
         return teams.save(new Team(u.getId(), n, category, branch, clock.instant()));
     }

@@ -172,8 +172,8 @@ public class GeminiAnalyst {
                         "debilidades", strArray,
                         "jugadores_destacados", Map.of("type", "ARRAY", "items", Map.of(
                                 "type", "OBJECT",
-                                "properties", Map.of("nombre", str, "motivo", str),
-                                "required", List.of("nombre", "motivo"))),
+                                "properties", Map.of("name", str, "motivo", str),
+                                "required", List.of("name", "motivo"))),
                         "previa_proximo_rival", str,
                         "tendencia", str,
                         "analisis_faltas", strArray),

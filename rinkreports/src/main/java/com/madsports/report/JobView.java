@@ -17,6 +17,6 @@ public record JobView(UUID id, ReportService.Status status, String message, Stri
     }
 
     static JobView of(ReportService.Job job) {
-        return of(job.id(), job.status(), job.message(), "/api/informes/" + job.id());
+        return of(job.id(), job.status(), job.message(), "/api/reports/" + job.id());
     }
 }

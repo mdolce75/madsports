@@ -45,7 +45,7 @@ public class AccountService {
 
     public AccountService(UserAccountRepository users, UserTokenRepository tokens, PasswordEncoder encoder,
                          Mailer mailer, Clock clock, PersistentTokenRepository remembered,
-                         @Value("${rinkmetrics.mail.base-url}") String baseUrl) {
+                         @Value("${madsports.mail.base-url}") String baseUrl) {
         this.users = users;
         this.tokens = tokens;
         this.encoder = encoder;

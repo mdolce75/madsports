@@ -63,7 +63,7 @@ public class ReportQuota implements MonthlyReports {
     @Override
     public Map<String, Object> de(UserAccount u) {
         Quota c = quota(u);
-        return Map.of("usados", c.used(), "limite", c.limit(), "renueva", c.renews().toString());
+        return Map.of("used", c.used(), "limit", c.limit(), "renews", c.renews().toString());
     }
 
     public Quota quota(UserAccount u) {

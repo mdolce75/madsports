@@ -39,14 +39,14 @@ public class AttemptLimitFilter extends OncePerRequestFilter {
         String ip = req.getRemoteAddr();
         switch (path) {
             case "/api/login" -> {
-                if (limiter.blocked(Kind.LOGIN_USER, req.getParameter("usuario"))
+                if (limiter.blocked(Kind.LOGIN_USER, req.getParameter("username"))
                         || limiter.blocked(Kind.LOGIN_IP, ip)) {
                     reject(res, Kind.LOGIN_USER, "Demasiados intentos fallidos. Probá de nuevo en "
                             + limiter.minutes(Kind.LOGIN_USER) + " minutos o recuperá tu clave.");
                     return;
                 }
             }
-            case "/api/registro" -> {
+            case "/api/signup" -> {
                 if (limiter.blocked(Kind.SIGNUP_IP, ip)) {
                     reject(res, Kind.SIGNUP_IP, "Demasiados registros desde esta conexión. Probá de nuevo en "
                             + limiter.minutes(Kind.SIGNUP_IP) + " minutos.");
@@ -54,7 +54,7 @@ public class AttemptLimitFilter extends OncePerRequestFilter {
                 }
                 limiter.add(Kind.SIGNUP_IP, ip);
             }
-            case "/api/clave/olvido", "/api/verificacion/reenviar" -> {
+            case "/api/password/forgot", "/api/verification/resend" -> {
                 if (limiter.blocked(Kind.MAILS_IP, ip)) {
                     reject(res, Kind.MAILS_IP, "Demasiados pedidos de mails desde esta conexión. Probá de nuevo en "
                             + limiter.minutes(Kind.MAILS_IP) + " minutos.");

@@ -53,8 +53,8 @@ public class ExchangeRate {
     private volatile Quote last;
     private volatile Instant fetchedAt = Instant.EPOCH;
 
-    public ExchangeRate(@Value("${rinkmetrics.dolar.url:https://dolarapi.com/v1/dolares/oficial}") String url,
-                      @Value("${rinkmetrics.dolar.respaldo:1500}") BigDecimal fallback, Clock clock) {
+    public ExchangeRate(@Value("${madsports.dollar.url:https://dolarapi.com/v1/dollars/oficial}") String url,
+                      @Value("${madsports.dollar.fallback:1500}") BigDecimal fallback, Clock clock) {
         this.url = url;
         this.fallback = fallback;
         this.clock = clock;
@@ -117,6 +117,6 @@ public class ExchangeRate {
         String date = n.path("fechaActualizacion").asText("");
         LocalDate day = date.isBlank() ? LocalDate.now(clock.withZone(BUENOS_AIRES))
                 : OffsetDateTime.parse(date).atZoneSameInstant(BUENOS_AIRES).toLocalDate();
-        return new Quote(sale, n.path("nombre").asText("Oficial"), day, false);
+        return new Quote(sale, n.path("name").asText("Oficial"), day, false);
     }
 }

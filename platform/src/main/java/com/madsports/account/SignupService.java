@@ -56,11 +56,11 @@ public class SignupService {
 
     public SignupService(UserAccountRepository users, SubscriptionPlanRepository plans, CatalogService catalog,
                            RosterService roster, PasswordEncoder encoder, Clock clock,
-                           @Value("${rinkmetrics.registro.club:true}") boolean clubSignup,
-                           @Value("${rinkmetrics.registro.dt-pago:false}") boolean coachPaid,
-                           @Value("${rinkmetrics.registro.jugador-pago:false}") boolean playerPaid,
-                           @Value("${rinkmetrics.registro.club-pago:false}") boolean clubPaid,
-                           @Value("${rinkmetrics.registro.jugador-amp:false}") boolean playerAmp) {
+                           @Value("${madsports.signup.club:true}") boolean clubSignup,
+                           @Value("${madsports.signup.coach-paid:false}") boolean coachPaid,
+                           @Value("${madsports.signup.player-paid:false}") boolean playerPaid,
+                           @Value("${madsports.signup.club-paid:false}") boolean clubPaid,
+                           @Value("${madsports.signup.player-amp:false}") boolean playerAmp) {
         this.playerAmp = playerAmp;
         this.clubSignup = clubSignup;
         this.coachPaid = coachPaid;
