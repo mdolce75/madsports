@@ -18,12 +18,12 @@
         <!-- Todos los módulos, también los que ya llegan por los productos: así entran en la cobertura agregada. -->
         <dependency>
             <groupId>com.madsports</groupId>
-            <artifactId>hockey-datos</artifactId>
+            <artifactId>hockey-data</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.madsports</groupId>
-            <artifactId>plataforma</artifactId>
+            <artifactId>platform</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

@@ -23,7 +23,7 @@ import java.util.concurrent.Semaphore;
 public class SidgadClient {
 
     private static final Logger log = LoggerFactory.getLogger(SidgadClient.class);
-    private static final String USER_AGENT = "Mozilla/5.0 (compatible; rink-metrics/0.1)";
+    private static final String USER_AGENT = "Mozilla/5.0 (compatible; madsports/0.1)";
 
     private final SidgadProperties props;
     private final Cache<String, String> dataCache;

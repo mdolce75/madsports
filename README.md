@@ -477,7 +477,7 @@ Abrir http://localhost:8080.
 | `GEMINI_API_KEY` | — | Habilita el análisis con Gemini |
 | `FPP_AI_MODEL` | `gemini-3.8-flash` | Modelo de Gemini (con plan gratuito) |
 | `FPP_AI_ENABLED` | `true` | `false` fuerza el análisis por reglas |
-| `FPP_DB_URL` | `jdbc:h2:file:./data/rink-metrics` | Base de usuarios |
+| `FPP_DB_URL` | `jdbc:h2:file:./data/madsports` | Base de usuarios |
 | `FPP_DB_USER` / `FPP_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
 | `MAIL_FROM` | `RinkMetrics <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
@@ -587,10 +587,10 @@ módulo solo usa los de abajo: Maven no compila un import de un módulo que no d
 
 | Módulo (carpeta) | Paquetes (`com.madsports.*`) | Qué tiene | Usa |
 |---|---|---|---|
-| `hockey-datos` | `sidgad`, `catalog`, `stats` | SIDGAD, clubes y categorías, planteles (`RosterService`, `ClubTeams`) y estadísticas | — |
-| `plataforma` | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes, plantillas a PDF (`Plantillas`); `app.css`, `app.js`, ingreso y registro compartidos, mails | `hockey-datos` |
-| `rinkreports` | `report`, `player`, `analysis` | Informes de club y de jugador, Excel, análisis con IA, cupo de informes; `/rinkreports/**` | `plataforma` |
-| `rinkmetrics` | `dt` | Partidos en vivo, equipos, planteles e informes del cuerpo técnico; `dt.html`, `js/dt`, su portada | `plataforma` |
+| `hockey-data` | `sidgad`, `catalog`, `stats` | SIDGAD, clubes y categorías, planteles (`RosterService`, `ClubTeams`) y estadísticas | — |
+| `platform` | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes, plantillas a PDF (`Plantillas`); `app.css`, `app.js`, ingreso y registro compartidos, mails | `hockey-data` |
+| `rinkreports` | `report`, `player`, `analysis` | Informes de club y de jugador, Excel, análisis con IA, cupo de informes; `/rinkreports/**` | `platform` |
+| `rinkmetrics` | `dt` | Partidos en vivo, equipos, planteles e informes del cuerpo técnico; `dt.html`, `js/dt`, su portada | `platform` |
 | `app` (`madsports-app`) | `monitor` y `MadSportsApplication` | La aplicación: junta todo (un solo jar), `application.yml`, migraciones, la home de Mad Sports, el chequeo diario de SIDGAD y los tests | todos |
 
 Cada módulo lleva su código y sus recursos (`static/`, `templates/`); la app los sirve juntos desde el classpath. Lo

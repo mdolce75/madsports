@@ -8,7 +8,7 @@ import {fileURLToPath} from "node:url";
 
 // Las de cada módulo, en el orden en que se busca un archivo: RinkMetrics, la plataforma (app.js, app.css), RinkReports
 // y la app (la home).
-const RAICES = ["../../main/resources/static/", "../../../../plataforma/src/main/resources/static/",
+const RAICES = ["../../main/resources/static/", "../../../../platform/src/main/resources/static/",
     "../../../../rinkreports/src/main/resources/static/", "../../../../app/src/main/resources/static/"]
     .map(r => fileURLToPath(new URL(r, import.meta.url)));
 const PUERTO = Number(process.env.PUERTO_DEMO || 8099);

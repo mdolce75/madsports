@@ -14,10 +14,10 @@
     <!--
       Mad Sports: sus productos RinkReports (informes) y RinkMetrics (métricas en vivo). Un módulo por capa; cada uno
       solo usa los de abajo (Maven no compila un import de un módulo que no declaró):
-        hockey-datos  SIDGAD, clubes, categorías, planteles y estadísticas
-        plataforma    cuentas, seguridad, mails, planes, plantillas a PDF      (usa hockey-datos)
-        rinkreports   informes de club y de jugador, Excel, análisis con IA     (usa plataforma)
-        rinkmetrics   partidos en vivo del cuerpo técnico                       (usa plataforma)
+        hockey-data   SIDGAD, clubes, categorías, planteles y estadísticas
+        platform      cuentas, seguridad, mails, planes, plantillas a PDF      (usa hockey-data)
+        rinkreports   informes de club y de jugador, Excel, análisis con IA     (usa platform)
+        rinkmetrics   partidos en vivo del cuerpo técnico                       (usa platform)
         app           la aplicación: junta todo, configuración, migraciones y tests
     -->
     <groupId>com.madsports</groupId>
@@ -28,8 +28,8 @@
     <description>Mad Sports: métricas, estadísticas e informes de hockey sobre patines (RinkReports y RinkMetrics)</description>
 
     <modules>
-        <module>hockey-datos</module>
-        <module>plataforma</module>
+        <module>hockey-data</module>
+        <module>platform</module>
         <module>rinkreports</module>
         <module>rinkmetrics</module>
         <module>app</module>
