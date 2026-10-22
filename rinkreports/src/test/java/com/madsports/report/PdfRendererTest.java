@@ -16,7 +16,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(classes = InformesTestConfig.class)
+@SpringBootTest(classes = ReportsTestConfig.class)
 class PdfRendererTest {
 
     @Autowired
@@ -26,16 +26,16 @@ class PdfRendererTest {
     RuleBasedAnalyst rules;
 
     @Test
-    void generaElPdfConLasSeccionesDelInforme() throws Exception {
+    void rendersThePdfWithTheReportSections() throws Exception {
         ReportData data = StatsEngine.build(StatsEngineTest.VELEZ, "Infantil Femenino", "Clausura",
-                List.of(StatsEngineTest.data(765)), StatsEngineTest.HOY);
+                List.of(StatsEngineTest.data(765)), StatsEngineTest.TODAY);
         AnalysisResult analysis = rules.analyze(data);
 
         String html = renderer.html(data, analysis);
         // Con actas (Primera Masculino, Clausura): sección de goles con uno menos.
-        ReportData conActas = StatsEngine.build(StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
-                List.of(StatsEngineTest.data(779)), StatsEngineTest.HOY);
-        assertThat(renderer.html(conActas, rules.analyze(conActas))).contains("Goles con uno menos");
+        ReportData withSheets = StatsEngine.build(StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
+                List.of(StatsEngineTest.data(779)), StatsEngineTest.TODAY);
+        assertThat(renderer.html(withSheets, rules.analyze(withSheets))).contains("Goles con uno menos");
         assertThat(html).contains("VELEZ (CAVS)", "VELEZ A (CAVS A)", "VELEZ B (CAVS B)",
                 "Goleadores", "Pelota parada", "Cara a cara", "Análisis: Reglas");
 
@@ -50,7 +50,7 @@ class PdfRendererTest {
     }
 
     @Test
-    void generaElPdfDelJugador() throws Exception {
+    void rendersThePlayerPdf() throws Exception {
         PlayerReport.Line primera = new PlayerReport.Line("Primera Masculino", 2, 1, 0, 1, 4, 1, 1, 0, 1, 2, 1, 1, 0, 10, 8, 2);
         PlayerReport.Line juniors = new PlayerReport.Line("Juniors Masculino", 1, 1, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 5, 0, 0);
         List<PlayerReport.Bucket> buckets = new java.util.ArrayList<>();
@@ -60,22 +60,22 @@ class PdfRendererTest {
         }
         PlayerReport.Minutes minutes = new PlayerReport.Minutes(25, buckets,
                 new PlayerReport.Bucket("Sin minuto registrado", 1, 0, 0, 0));
-        ReportData.ShortHanded sh = new ReportData.ShortHanded(List.of(new ReportData.ShortHandedMatch(StatsEngineTest.HOY,
+        ReportData.ShortHanded sh = new ReportData.ShortHanded(List.of(new ReportData.ShortHandedMatch(StatsEngineTest.TODAY,
                 "ARGENTINOS JUNIORS", true, "1 azul", 120, 1, 0, 2, 4)), 2880, 3,
-                List.of(new ReportData.ConcededGoal(StatsEngineTest.HOY, "ARGENTINOS JUNIORS", "Azul", "1T 12:30",
+                List.of(new ReportData.ConcededGoal(StatsEngineTest.TODAY, "ARGENTINOS JUNIORS", "Azul", "1T 12:30",
                         "1T 13:40", 2, 4)));
-        PlayerReport.MatchRow partido = new PlayerReport.MatchRow(StatsEngineTest.HOY, "Primera Masculino", "Clausura",
+        PlayerReport.MatchRow match = new PlayerReport.MatchRow(StatsEngineTest.TODAY, "Primera Masculino", "Clausura",
                 "ARGENTINOS JUNIORS", true, 2, 4, "P", true, 2, 1, 1, 0);
-        PlayerReport.MatchRow sinActa = new PlayerReport.MatchRow(StatsEngineTest.HOY, "Primera Masculino", "Clausura",
+        PlayerReport.MatchRow withoutSheet = new PlayerReport.MatchRow(StatsEngineTest.TODAY, "Primera Masculino", "Clausura",
                 "COMUNICACIONES", false, 3, 1, "G", false, 1, 0, 0, 0, true);
         List<PlayerReport.CategoryBlock> blocks = List.of(
                 new PlayerReport.CategoryBlock(juniors, new PlayerReport.Minutes(25, buckets,
                         new PlayerReport.Bucket("Sin minuto registrado", 0, 0, 0, 0)), ReportData.ShortHanded.EMPTY, List.of()),
-                new PlayerReport.CategoryBlock(primera, minutes, sh, List.of(partido, sinActa)));
+                new PlayerReport.CategoryBlock(primera, minutes, sh, List.of(match, withoutSheet)));
         PlayerReport report = new PlayerReport(3851, "Ignacio J Graiño", "Ignacio Graiño",
                 new ReportData.ClubInfo(74, "CAVS", "VELEZ", Crests.sample("CV")), 2026, "Apertura + Clausura",
-                StatsEngineTest.HOY, List.of(juniors, primera),
-                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1, 15, 8, 2), minutes, sh, List.of(partido),
+                StatsEngineTest.TODAY, List.of(juniors, primera),
+                new PlayerReport.Line("Total", 3, 2, 0, 1, 7, 1, 1, 0, 1, 2, 1, 2, 1, 15, 8, 2), minutes, sh, List.of(match),
                 List.of("Juniors Masculino: 1 partido del equipo no tiene acta publicada; si jugó, no está contado."),
                 blocks);
 
@@ -98,16 +98,16 @@ class PdfRendererTest {
         assertThat(html.indexOf(">Primera Masculino</h2>")).isLessThan(html.indexOf(">Todas las categorías</h2>"));
         // Cada categoría separa Partidos, Goles y Tarjetas en apartados, en ese orden; lo de goles (incidencia,
         // penales y libres, tramos) va en el de Goles.
-        int bloque = html.indexOf(">Primera Masculino</h2>");
-        int partidos = html.indexOf("class=\"apartado\">Partidos</h3>", bloque);
-        int goles = html.indexOf("class=\"apartado\">Goles</h3>", bloque);
-        int tarjetas = html.indexOf("class=\"apartado\">Tarjetas</h3>", bloque);
-        assertThat(partidos).isPositive().isLessThan(goles);
-        assertThat(goles).isLessThan(tarjetas);
-        assertThat(html.indexOf("De los goles del equipo (4 de 10)", goles)).isBetween(goles, tarjetas);
-        assertThat(html.indexOf("Penales y libres directos", goles)).isBetween(goles, tarjetas);
-        assertThat(html.indexOf("Goles por tramos de 5 minutos", goles)).isBetween(goles, tarjetas);
-        assertThat(html.indexOf("De las tarjetas del equipo (2 de 8)", tarjetas)).isGreaterThan(tarjetas);
+        int block = html.indexOf(">Primera Masculino</h2>");
+        int matches = html.indexOf("class=\"apartado\">Partidos</h3>", block);
+        int goals = html.indexOf("class=\"apartado\">Goles</h3>", block);
+        int cards = html.indexOf("class=\"apartado\">Tarjetas</h3>", block);
+        assertThat(matches).isPositive().isLessThan(goals);
+        assertThat(goals).isLessThan(cards);
+        assertThat(html.indexOf("De los goles del equipo (4 de 10)", goals)).isBetween(goals, cards);
+        assertThat(html.indexOf("Penales y libres directos", goals)).isBetween(goals, cards);
+        assertThat(html.indexOf("Goles por tramos de 5 minutos", goals)).isBetween(goals, cards);
+        assertThat(html.indexOf("De las tarjetas del equipo (2 de 8)", cards)).isGreaterThan(cards);
 
         byte[] pdf = renderer.playerPdf(report);
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");

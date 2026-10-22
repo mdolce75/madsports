@@ -4,7 +4,7 @@ import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.sidgad.parse.SidgadParser;
 import com.madsports.stats.TeamKeys;
@@ -23,8 +23,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Catálogo por año y federación ({@link Federacion}: FPP = id_fede_3, AMP = id_fede_4), limitado a sus categorías
- * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code rinkmetrics.sidgad.years}). El año se traduce al id de
+ * Catálogo por año y federación ({@link Federation}: FPP = id_fede_3, AMP = id_fede_4), limitado a sus categorías
+ * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code madsports.sidgad.years}). El año se traduce al id de
  * temporada de SIDGAD con el selector de temporadas del portal (es el mismo para todas las federaciones).
  */
 @Service
@@ -70,9 +70,9 @@ public class CatalogService {
      */
     public record CatalogView(int year, boolean available, String message, List<Integer> years,
                               List<LevelView> categories, List<String> branches, List<ClubView> clubs,
-                              String federacion) {
+                              String federation) {
 
-        CatalogView withFederacion(Federacion f) {
+        CatalogView withFederation(Federation f) {
             return new CatalogView(year, available, message, years, categories, branches, clubs, f.name());
         }
     }
@@ -87,7 +87,7 @@ public class CatalogService {
         this.years = List.copyOf(props.years());
     }
 
-    /** Años que se ofrecen (configuración {@code rinkmetrics.sidgad.years}). */
+    /** Años que se ofrecen (configuración {@code madsports.sidgad.years}). */
     public List<Integer> years() {
         return years;
     }
@@ -95,7 +95,7 @@ public class CatalogService {
     /** El año más reciente de los ofrecidos que ya tiene datos (de alguna federación); si ninguno tiene, el primero. */
     public int defaultYear() {
         return years.stream().sorted(Comparator.reverseOrder())
-                .filter(y -> Arrays.stream(Federacion.values()).anyMatch(f -> available(f, y)))
+                .filter(y -> Arrays.stream(Federation.values()).anyMatch(f -> available(f, y)))
                 .findFirst().orElse(years.getFirst());
     }
 
@@ -110,11 +110,11 @@ public class CatalogService {
         return year;
     }
 
-    public boolean available(Federacion f, int year) {
+    public boolean available(Federation f, int year) {
         return !competitions(f, year).isEmpty();
     }
 
-    public static String unavailableMessage(Federacion f, int year) {
+    public static String unavailableMessage(Federation f, int year) {
         return "No hay información de la " + f.name() + " para el año " + year + " todavía.";
     }
 
@@ -122,7 +122,7 @@ public class CatalogService {
      * Competiciones de la federación en el año, en sus categorías relevadas. El año se traduce al id de temporada de
      * SIDGAD con el selector de temporadas del portal; si el año no existe ahí, no hay competiciones.
      */
-    public List<Competition> competitions(Federacion f, int year) {
+    public List<Competition> competitions(Federation f, int year) {
         Integer seasonId = SidgadParser.seasons(client.portal()).get(year);
         if (seasonId == null) {
             return List.of();
@@ -138,13 +138,13 @@ public class CatalogService {
                 .toList();
     }
 
-    public CatalogView view(Federacion f, int year) {
+    public CatalogView view(Federation f, int year) {
         List<Competition> comps = competitions(f, year);
         if (comps.isEmpty()) {
             return new CatalogView(year, false, unavailableMessage(f, year), years, List.of(), BRANCHES, List.of(),
                     f.name());
         }
-        return view(comps, f.levels(), year, years).withFederacion(f);
+        return view(comps, f.levels(), year, years).withFederation(f);
     }
 
     static CatalogView view(List<Competition> comps, List<String> levels, int year, List<Integer> years) {
@@ -224,16 +224,16 @@ public class CatalogService {
      *
      * @param torneo Apertura o Clausura; {@code null} = ambos
      */
-    public List<Competition> competitionsFor(Federacion f, int clubId, Category category, Competition.Torneo torneo,
+    public List<Competition> competitionsFor(Federation f, int clubId, Category category, Competition.Tournament tournament,
                                              int year) {
         return competitions(f, year).stream()
                 .filter(c -> c.category().equals(category))
-                .filter(c -> torneo == null || c.torneo() == torneo)
+                .filter(c -> tournament == null || c.tournament() == tournament)
                 .filter(c -> c.teams().stream().anyMatch(t -> t.clubId() == clubId))
                 .toList();
     }
 
-    public ClubView club(Federacion f, int clubId, int year) {
+    public ClubView club(Federation f, int clubId, int year) {
         CatalogView view = view(f, year);
         if (!view.available()) {
             throw new IllegalArgumentException(view.message());
@@ -244,7 +244,7 @@ public class CatalogService {
     }
 
     /** Valida y arma la categoría pedida; rechaza Mini/Promo u otras fuera de lo relevado en la federación. */
-    public Category category(Federacion f, String level, String branch) {
+    public Category category(Federation f, String level, String branch) {
         String l = level == null ? "" : level.trim().toUpperCase();
         String b = branch == null ? "" : branch.trim().toUpperCase();
         if (!f.levels().contains(l)) {

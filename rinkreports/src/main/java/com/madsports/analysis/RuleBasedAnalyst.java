@@ -36,7 +36,7 @@ public class RuleBasedAnalyst {
             TeamRecord r = t.total();
             String prefix = data.teams().size() > 1 ? t.code() + ": " : "";
             if (r.played() == 0) {
-                summary.add(prefix + "todavía no disputó partidos en " + data.torneo() + ".");
+                summary.add(prefix + "todavía no disputó partidos en " + data.tournament() + ".");
                 continue;
             }
             summary.add(String.format(Locale.ROOT, "%s%d PJ, %d ganados, %d empatados y %d perdidos; %d goles a favor y %d en contra (%.0f%% de efectividad).",
@@ -45,9 +45,9 @@ public class RuleBasedAnalyst {
             // Fortalezas y debilidades: las de la evaluación por indicadores (StrengthsAnalysis).
             for (Indicator i : t.indicators()) {
                 String line = prefix + i.area() + " — " + i.metric() + ": " + i.explanation();
-                if (i.verdict() == Verdict.FORTALEZA) {
+                if (i.verdict() == Verdict.STRENGTH) {
                     strengths.add(line);
-                } else if (i.verdict() == Verdict.DEBILIDAD) {
+                } else if (i.verdict() == Verdict.WEAKNESS) {
                     weaknesses.add(line);
                 }
             }
@@ -69,8 +69,8 @@ public class RuleBasedAnalyst {
             }
             if (preview.isEmpty() && !t.upcoming().isEmpty()) {
                 MatchLine next = t.upcoming().getFirst();
-                preview = prefix + "Próximo partido: " + (next.home() ? "local" : "visitante") + " ante " + next.rival()
-                        + previousMeeting(t, next.rival());
+                preview = prefix + "Próximo partido: " + (next.home() ? "home" : "visitante") + " ante " + next.opponent()
+                        + previousMeeting(t, next.opponent());
             }
         }
         return new AnalysisResult("Reglas", String.join(" ", summary), strengths, weaknesses, keyPlayers,
@@ -166,8 +166,8 @@ public class RuleBasedAnalyst {
                 p.goals(), p.games(), p.goalShare());
     }
 
-    private static String previousMeeting(TeamReport t, String rival) {
-        return t.rivals().stream().filter(r -> r.rival().equalsIgnoreCase(rival)).findFirst()
+    private static String previousMeeting(TeamReport t, String opponent) {
+        return t.rivals().stream().filter(r -> r.opponent().equalsIgnoreCase(opponent)).findFirst()
                 .map(r -> String.format(Locale.ROOT, "; antecedente en el período: %dG %dE %dP (%d-%d).",
                         r.won(), r.drawn(), r.lost(), r.goalsFor(), r.goalsAgainst()))
                 .orElse(".");

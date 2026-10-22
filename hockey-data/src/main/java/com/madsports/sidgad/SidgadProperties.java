@@ -6,7 +6,7 @@ import java.time.Duration;
 import java.util.List;
 
 /**
- * Cómo se lee SIDGAD ({@code rinkmetrics.sidgad.*}).
+ * Cómo se lee SIDGAD ({@code madsports.sidgad.*}).
  *
  * @param baseUrl         raíz de los fragmentos ({@code https://www.server2.sidgad.es/cap/})
  * @param origin          portal que SIDGAD exige como Origin/Referer
@@ -16,7 +16,7 @@ import java.util.List;
  * @param catalogTtl      vigencia del cache del catálogo de competiciones
  * @param years           años que se ofrecen (p. ej. 2026, 2027)
  */
-@ConfigurationProperties(prefix = "rinkmetrics.sidgad")
+@ConfigurationProperties(prefix = "madsports.sidgad")
 public record SidgadProperties(String baseUrl, String origin, Duration minInterval, int maxConcurrency,
                                Duration dataTtl, Duration catalogTtl, Duration timeout, List<Integer> years) {
 }

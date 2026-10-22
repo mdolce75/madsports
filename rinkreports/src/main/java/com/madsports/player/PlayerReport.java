@@ -1,6 +1,6 @@
 package com.madsports.player;
 
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 
 import com.madsports.stats.ReportData;
 
@@ -19,14 +19,14 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
                            String period, LocalDate generatedOn, List<Line> categories, Line total,
                            Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
                            List<String> notes, List<CategoryBlock> blocks, List<ReportData.Indicator> indicators,
-                           Federacion federacion) {
+                           Federation federation) {
 
     public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                         String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
                         ReportData.ShortHanded shortHanded, List<MatchRow> matches, List<String> notes,
                         List<CategoryBlock> blocks, List<ReportData.Indicator> indicators) {
         this(playerId, playerName, fullName, club, year, period, generatedOn, categories, total, minutes, shortHanded,
-                matches, notes, blocks, indicators, Federacion.FPP);
+                matches, notes, blocks, indicators, Federation.FPP);
     }
 
     /** Sin bloques por categoría ni fortalezas (informes armados a mano en los tests). */
@@ -46,11 +46,11 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
     }
 
     public List<ReportData.Indicator> strengths() {
-        return indicators.stream().filter(i -> i.verdict() == ReportData.Verdict.FORTALEZA).toList();
+        return indicators.stream().filter(i -> i.verdict() == ReportData.Verdict.STRENGTH).toList();
     }
 
     public List<ReportData.Indicator> weaknesses() {
-        return indicators.stream().filter(i -> i.verdict() == ReportData.Verdict.DEBILIDAD).toList();
+        return indicators.stream().filter(i -> i.verdict() == ReportData.Verdict.WEAKNESS).toList();
     }
 
     /**
@@ -163,9 +163,9 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
          * minuto). Es lo mismo que cuentan los totales del informe.
          */
         public Bucket total() {
-            List<Bucket> todos = new java.util.ArrayList<>(buckets);
-            todos.add(unrecorded);
-            return sum("Total", todos);
+            List<Bucket> all = new java.util.ArrayList<>(buckets);
+            all.add(unrecorded);
+            return sum("Total", all);
         }
 
         public List<Bucket> byHalf() {
@@ -193,14 +193,14 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
      *
      * @param fromSummary el partido no tiene acta: sale de su ficha de temporada (sin amarillas ni titularidad)
      */
-    public record MatchRow(LocalDate date, String category, String torneo, String rival, boolean home,
+    public record MatchRow(LocalDate date, String category, String tournament, String opponent, boolean home,
                            int goalsFor, int goalsAgainst, String result, boolean starter, int goals,
                            int yellowCards, int blueCards, int redCards, boolean fromSummary) {
 
-        public MatchRow(LocalDate date, String category, String torneo, String rival, boolean home,
+        public MatchRow(LocalDate date, String category, String tournament, String opponent, boolean home,
                         int goalsFor, int goalsAgainst, String result, boolean starter, int goals,
                         int yellowCards, int blueCards, int redCards) {
-            this(date, category, torneo, rival, home, goalsFor, goalsAgainst, result, starter, goals,
+            this(date, category, tournament, opponent, home, goalsFor, goalsAgainst, result, starter, goals,
                     yellowCards, blueCards, redCards, false);
         }
     }

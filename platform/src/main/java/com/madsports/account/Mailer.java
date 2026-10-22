@@ -41,10 +41,10 @@ public class Mailer {
     private final ITemplateEngine templates;
     private final String host;
     private final String from;
-    private final Map<Producto, byte[]> logos = Map.of(Producto.METRICS, logo(), Producto.REPORTS, logoReports());
+    private final Map<Product, byte[]> logos = Map.of(Product.METRICS, logo(), Product.REPORTS, reportsLogo());
 
     public Mailer(ObjectProvider<JavaMailSender> sender, ITemplateEngine templates,
-                  @Value("${spring.mail.host:}") String host, @Value("${rinkmetrics.mail.from}") String from) {
+                  @Value("${spring.mail.host:}") String host, @Value("${madsports.mail.from}") String from) {
         this.sender = sender;
         this.templates = templates;
         this.host = host;
@@ -55,7 +55,7 @@ public class Mailer {
     public String html(MailContent m) {
         Context ctx = new Context(Locale.forLanguageTag("es-AR"));
         ctx.setVariable("m", m);
-        return templates.process("mail/cuenta", ctx);
+        return templates.process("mail/account", ctx);
     }
 
     /** @return false si no se pudo enviar (el error queda en el log; el usuario puede pedir otro mail) */
@@ -72,7 +72,7 @@ public class Mailer {
             helper.setTo(m.to());
             helper.setSubject(m.subject());
             helper.setText(m.text(), html(m));
-            helper.addInline("logo", new ByteArrayResource(logos.get(m.producto())), "image/png");
+            helper.addInline("logo", new ByteArrayResource(logos.get(m.product())), "image/png");
             smtp.send(msg);
             log.info("Mail enviado a {}: {}", m.to(), m.subject());
             return true;
@@ -108,7 +108,7 @@ public class Mailer {
     }
 
     /** Logo de RinkReports (el libro de informes, con renglones y una columna de totales, sobre esmeralda), en PNG. */
-    static byte[] logoReports() {
+    static byte[] reportsLogo() {
         int px = 132;
         BufferedImage img = new BufferedImage(px, px, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();

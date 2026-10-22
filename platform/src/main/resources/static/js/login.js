@@ -1,33 +1,33 @@
-// Ingreso de cada producto (RinkMetrics en /login.html, RinkReports en /rinkreports/login.html): mismo formulario, cada
+// Ingreso de cada producto (RinkMetrics en /rinkmetrics/login.html, RinkReports en /rinkreports/login.html): mismo formulario, cada
 // uno manda su producto y solo entran las cuentas de ese producto. Va después de /js/app.js.
 
-$("brand").outerHTML = marca();
+$("brand").outerHTML = brand();
 
-const AVISOS = {
-    sinPerfil: ["Tu usuario no tiene un perfil habilitado en esta web.", false],
-    verificado: ["Tu email quedó confirmado: ya podés ingresar.", true],
-    "verificacion=invalida": ["El enlace para confirmar el email venció o ya se usó. Ingresá con tu usuario y clave "
+const NOTICES = {
+    noProfile: ["Tu usuario no tiene un perfil habilitado en esta web.", false],
+    verified: ["Tu email quedó confirmado: ya podés ingresar.", true],
+    "verification=invalid": ["El enlace para confirmar el email venció o ya se usó. Ingresá con tu usuario y clave "
         + "para pedir uno nuevo.", false],
-    clave: ["Tu clave quedó cambiada: ingresá con la nueva.", true],
-    vencida: ["Tu sesión venció: ingresá de nuevo para seguir donde estabas.", false]
+    password: ["Tu clave quedó cambiada: ingresá con la nueva.", true],
+    expired: ["Tu sesión venció: ingresá de nuevo para seguir donde estabas.", false]
 };
-for (const [k, [texto, ok]] of Object.entries(AVISOS)) {
+for (const [k, [text, ok]] of Object.entries(NOTICES)) {
     if (location.search.includes(k)) {
         $("notice").hidden = false;
         $("notice").className = ok ? "notice ok" : "notice";
-        $("notice").textContent = texto;
+        $("notice").textContent = text;
     }
 }
 
 // Email sin confirmar: ofrece reenviar el mail.
-function ofrecerReenvio(usuario) {
+function offerResend(username) {
     const link = document.createElement("a");
     link.href = "#";
     link.textContent = "Reenviar el mail de confirmación";
     link.addEventListener("click", async ev => {
         ev.preventDefault();
         try {
-            const r = await postJson("/api/verificacion/reenviar", {usuario, producto: producto()});
+            const r = await postJson("/api/verification/resend", {username, product: product()});
             status(r.detail);
         } catch (e) {
             status(e.message, true);
@@ -40,7 +40,7 @@ function ofrecerReenvio(usuario) {
 }
 
 // La cuenta es del otro producto: el enlace a su ingreso.
-function ofrecerOtroIngreso(url) {
+function offerOtherLogin(url) {
     const link = document.createElement("a");
     link.href = url;
     link.textContent = "Ir a ese ingreso";
@@ -52,8 +52,8 @@ function ofrecerOtroIngreso(url) {
 
 // Si ya hay sesión de este producto, directo a su pantalla.
 session().then(s => {
-    if (s.autenticado && s.producto === producto() && !s.inicio.startsWith("/login.html")) {
-        location.replace(volverA() || s.inicio);
+    if (s.authenticated && s.product === product() && !s.home.startsWith("/rinkmetrics/login.html")) {
+        location.replace(returnTarget() || s.home);
     }
 });
 
@@ -69,18 +69,18 @@ $("form").addEventListener("submit", async ev => {
         const res = await api("/api/login", {
             method: "POST",
             headers: {"Content-Type": "application/x-www-form-urlencoded"},
-            body: new URLSearchParams(Object.assign({usuario: $("usuario").value.trim(), clave: $("clave").value,
-                producto: producto()}, $("recordarme").checked ? {recordarme: "true"} : {}))
+            body: new URLSearchParams(Object.assign({username: $("usuario").value.trim(), password: $("clave").value,
+                product: product()}, $("recordarme").checked ? {rememberMe: "true"} : {}))
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
             status(body.detail || "No se pudo ingresar.", true);
-            if (body.code === "EMAIL_NO_VERIFICADO") ofrecerReenvio($("usuario").value.trim());
-            if (body.code === "OTRO_PRODUCTO" && body.ingreso) ofrecerOtroIngreso(body.ingreso);
+            if (body.code === "EMAIL_NOT_VERIFIED") offerResend($("usuario").value.trim());
+            if (body.code === "OTHER_PRODUCT" && body.login) offerOtherLogin(body.login);
             $("go").disabled = false;
             return;
         }
-        location.replace(volverA() || body.inicio);
+        location.replace(returnTarget() || body.home);
     } catch (e) {
         status(e.message, true);
         $("go").disabled = false;

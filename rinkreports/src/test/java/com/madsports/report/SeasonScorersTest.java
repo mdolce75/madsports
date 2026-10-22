@@ -13,25 +13,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SeasonScorersTest {
 
-    static final Competition APERTURA = Competition.of(696, "TORNEO APERTURA JUNIORS FEMENINO (FPP)", 3, 40, List.of(), 25);
+    static final Competition OPENING = Competition.of(696, "TORNEO APERTURA JUNIORS FEMENINO (FPP)", 3, 40, List.of(), 25);
 
-    static SeasonMatch partido(String competition, int day, int goals, int blue) {
+    static SeasonMatch match(String competition, int day, int goals, int blue) {
         return new SeasonMatch(competition, LocalDate.of(2026, 5, day), "CAVS", "GEBA", 3, 1, 1000 + day, goals, 0,
                 0, 1, 1, 1, blue, 0);
     }
 
     @Test
-    void lasGoleadorasSalenDeLaFichaDeTemporadaConLosPartidosSinActa() {
+    void scorersComeFromTheSeasonProfileWithMatchesWithoutSheet() {
         // La tabla de SIDGAD solo cuenta el partido con acta (1 gol); la ficha tiene los 3 partidos (5 goles).
         List<PlayerStats> table = List.of(new PlayerStats(7, 4889, "CAVS", 74, "Luciana Barilla", 1, 1, 0, 0, 0, 0, 0, 0, 0));
         Map<Integer, List<SeasonMatch>> profiles = Map.of(7, List.of(
-                partido("TORNEO APERTURA JUNIORS FEMENINO (FPP)", 2, 1, 0),
-                partido("TORNEO APERTURA JUNIORS FEMENINO (FPP)", 9, 3, 1),
-                partido("TORNEO APERTURA JUNIORS FEMENINO (FPP)", 16, 1, 0),
+                match("TORNEO APERTURA JUNIORS FEMENINO (FPP)", 2, 1, 0),
+                match("TORNEO APERTURA JUNIORS FEMENINO (FPP)", 9, 3, 1),
+                match("TORNEO APERTURA JUNIORS FEMENINO (FPP)", 16, 1, 0),
                 // Otra competición: no suma acá, aunque el nombre empiece igual.
-                partido("TORNEO APERTURA JUNIORS FEMENINO 2 (FPP)", 23, 4, 0)));
+                match("TORNEO APERTURA JUNIORS FEMENINO 2 (FPP)", 23, 4, 0)));
 
-        List<PlayerStats> out = SeasonScorers.forCompetition(APERTURA, 74, Map.of(7, 4889), Map.of(7, "Luciana Barilla"),
+        List<PlayerStats> out = SeasonScorers.forCompetition(OPENING, 74, Map.of(7, 4889), Map.of(7, "Luciana Barilla"),
                 profiles, table);
 
         assertThat(out).singleElement().satisfies(p -> {
@@ -46,17 +46,17 @@ class SeasonScorersTest {
     }
 
     @Test
-    void sinFichaQuedaLaFilaDeLaTablaDeSidgad() {
+    void withoutProfileTheSidgadTableRowRemains() {
         List<PlayerStats> table = List.of(new PlayerStats(8, 4889, "CAVS", 74, "Martina Piluso", 2, 1, 0, 0, 0, 0, 0, 0, 0));
 
-        assertThat(SeasonScorers.forCompetition(APERTURA, 74, Map.of(8, 4889), Map.of(), Map.of(), table))
+        assertThat(SeasonScorers.forCompetition(OPENING, 74, Map.of(8, 4889), Map.of(), Map.of(), table))
                 .containsExactlyElementsOf(table);
         // Sin ficha ni fila en la tabla, no aparece.
-        assertThat(SeasonScorers.forCompetition(APERTURA, 74, Map.of(9, 4889), Map.of(), Map.of(), table)).isEmpty();
+        assertThat(SeasonScorers.forCompetition(OPENING, 74, Map.of(9, 4889), Map.of(), Map.of(), table)).isEmpty();
     }
 
     @Test
-    void laCompeticionSeComparaEntera() {
+    void theCompetitionIsComparedAsAWhole() {
         assertThat(SeasonScorers.sameCompetition("torneo apertura  juniors femenino (FPP)",
                 "TORNEO APERTURA JUNIORS FEMENINO (FPP)")).isTrue();
         assertThat(SeasonScorers.sameCompetition("TORNEO APERTURA JUNIORS FEMENINO 2 (FPP)",

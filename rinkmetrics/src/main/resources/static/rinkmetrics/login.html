@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ingresar · RinkMetrics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="wrap">
+    <div id="brand"></div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Acceso · RinkMetrics</span>
+        <h1>Cada acción,<br><em>en vivo.</em></h1>
+        <p class="lead">Ingresá a RinkMetrics para registrar las estadísticas de tus partidos y ver sus informes.</p>
+    </section>
+    </div>
+    <div class="main">
+    <form class="sheet" id="form" novalidate>
+        <div class="sheet-head"><span>Ingresar</span><span></span></div>
+        <div class="notice" id="notice" role="alert" hidden></div>
+
+        <div class="field">
+            <label for="usuario">Usuario</label>
+            <input type="text" id="usuario" name="usuario" autocomplete="username" required autofocus>
+        </div>
+        <div class="field">
+            <label for="clave">Clave</label>
+            <input type="password" id="clave" name="clave" autocomplete="current-password" required>
+        </div>
+        <label class="check" for="recordarme">
+            <input type="checkbox" id="recordarme" checked>
+            <span>Mantener la sesión iniciada en este dispositivo <small>(30 días; no lo marques en una computadora
+                compartida)</small></span>
+        </label>
+
+        <button class="go" id="go" type="submit">Ingresar</button>
+        <div id="status" role="status" aria-live="polite"></div>
+        <p class="alt"><a href="/forgot-password.html">¿Olvidaste tu clave?</a></p>
+        <p class="alt">¿No tenés una cuenta? <a href="/rinkmetrics/signup.html">Creá tu cuenta de DT</a> · <a href="/rinkmetrics">Volver a RinkMetrics</a></p>
+    </form>
+    </div>
+    </div>
+
+    <footer>© 2026 RinkMetrics · Un producto de <a href="/">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/login.js"></script>
+</body>
+</html>

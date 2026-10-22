@@ -20,46 +20,46 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Los informes en Excel: las mismas cifras que el PDF, en hojas para trabajar los números. */
-@SpringBootTest(classes = InformesTestConfig.class)
+@SpringBootTest(classes = ReportsTestConfig.class)
 class ExcelExporterTest {
 
-    static final LocalDate HOY = LocalDate.of(2026, 10, 13);
+    static final LocalDate TODAY = LocalDate.of(2026, 10, 13);
 
     @Autowired ExcelExporter excel;
     @Autowired SampleReport sample;
 
     @Test
-    void elDeClubTieneElResumenYUnaHojaPorCategoria() throws IOException {
-        ClubReport r = sample.clubReport(HOY);
-        Map<String, List<Row>> hojas = read(excel.club(r));
-        assertThat(hojas.keySet()).containsExactly("Resumen", "Primera Masculino", "Juvenil Masculino", "Infantil Femenino");
+    void clubWorkbookHasSummaryAndOneSheetPerCategory() throws IOException {
+        ClubReport r = sample.clubReport(TODAY);
+        Map<String, List<Row>> sheets = read(excel.club(r));
+        assertThat(sheets.keySet()).containsExactly("Resumen", "Primera Masculino", "Juvenil Masculino", "Infantil Femenino");
 
         // En el resumen, una fila por categoría con sus partidos y goles.
         ClubReport.CategoryBlock primera = r.branches().getFirst().categories().getFirst();
-        Row fila = hojas.get("Resumen").stream().filter(x -> "Primera".equals(x.getCellText(1))).findFirst().orElseThrow();
-        assertThat(fila.getCellText(0)).isEqualTo("Masculino");
-        assertThat(number(fila, 2)).isEqualTo(primera.record().played());
-        assertThat(number(fila, 7)).isEqualTo(primera.record().goalsFor());
-        assertThat(number(fila, 13)).isEqualTo(primera.yellowCards());
+        Row row = sheets.get("Resumen").stream().filter(x -> "Primera".equals(x.getCellText(1))).findFirst().orElseThrow();
+        assertThat(row.getCellText(0)).isEqualTo("Masculino");
+        assertThat(number(row, 2)).isEqualTo(primera.record().played());
+        assertThat(number(row, 7)).isEqualTo(primera.record().goalsFor());
+        assertThat(number(row, 13)).isEqualTo(primera.yellowCards());
 
         // La hoja de la categoría trae sus apartados y el top 3 de goleo, con sus goles.
-        List<Row> hoja = hojas.get("Primera Masculino");
-        List<String> textos = hoja.stream().map(x -> x.getCellText(0)).toList();
-        assertThat(textos).contains("Partidos", "Goles", "Tarjetas", "Top 3 · Promedio de gol", "Top 3 · Libres directos",
+        List<Row> sheet = sheets.get("Primera Masculino");
+        List<String> texts = sheet.stream().map(x -> x.getCellText(0)).toList();
+        assertThat(texts).contains("Partidos", "Goles", "Tarjetas", "Top 3 · Promedio de gol", "Top 3 · Libres directos",
                 "Top 3 · Penales", "Top 3 · Disciplina", "Plantel", "Fortalezas y debilidades", "Análisis");
-        ClubReport.Ranked goleador = primera.topScorers().getFirst();
-        Row suyo = hoja.stream().filter(x -> goleador.player().name().equals(x.getCellText(0))).findFirst().orElseThrow();
-        assertThat(number(suyo, 1)).isEqualTo(goleador.count());
+        ClubReport.Ranked scorer = primera.topScorers().getFirst();
+        Row own = sheet.stream().filter(x -> scorer.player().name().equals(x.getCellText(0))).findFirst().orElseThrow();
+        assertThat(number(own, 1)).isEqualTo(scorer.count());
     }
 
     @Test
-    void elDeJugadorTieneSusCategoriasPartidosYMinutos() throws IOException {
-        PlayerReport r = SamplePlayerData.build(HOY, null);
-        Map<String, List<Row>> hojas = read(excel.player(r));
-        assertThat(hojas.keySet()).containsExactly("Resumen", "Partidos", "Minutos", "Fortalezas");
+    void playerWorkbookHasCategoriesMatchesAndMinutes() throws IOException {
+        PlayerReport r = SamplePlayerData.build(TODAY, null);
+        Map<String, List<Row>> sheets = read(excel.player(r));
+        assertThat(sheets.keySet()).containsExactly("Resumen", "Partidos", "Minutos", "Fortalezas");
         // Un partido por fila, debajo del encabezado.
-        assertThat(hojas.get("Partidos")).hasSize(r.matches().size() + 1);
-        Row total = hojas.get("Resumen").stream().filter(x -> "Total".equals(x.getCellText(0))).findFirst().orElseThrow();
+        assertThat(sheets.get("Partidos")).hasSize(r.matches().size() + 1);
+        Row total = sheets.get("Resumen").stream().filter(x -> "Total".equals(x.getCellText(0))).findFirst().orElseThrow();
         assertThat(number(total, 1)).isEqualTo(r.total().played());
         assertThat(number(total, 5)).isEqualTo(r.total().goals());
     }

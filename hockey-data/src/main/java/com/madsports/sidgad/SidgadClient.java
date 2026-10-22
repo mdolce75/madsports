@@ -31,7 +31,7 @@ public class SidgadClient {
     private final Cache<Integer, String> sheetCache;
     private final Cache<String, byte[]> logoCache;
     private final Object throttle = new Object();
-    /** Pedidos simultáneos a SIDGAD como máximo ({@code rinkmetrics.sidgad.max-concurrency}). */
+    /** Pedidos simultáneos a SIDGAD como máximo ({@code madsports.sidgad.max-concurrency}). */
     private final Semaphore concurrency;
     private long lastRequestNanos;
 

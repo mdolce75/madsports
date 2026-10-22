@@ -42,29 +42,29 @@ class AnalysisContext {
     private Map<String, Object> overview() {
         Map<String, Object> o = new LinkedHashMap<>();
         o.put("club", data.club());
-        o.put("categoria", data.category());
-        o.put("periodo", data.torneo());
+        o.put("category", data.category());
+        o.put("period", data.tournament());
         if (data.partial()) {
-            o.put("aclaracion_periodo", "Récord, resultados, rivales, time_profile y las tarjetas de disciplina cubren "
+            o.put("period_note", "Récord, resultados, rivales, time_profile y las tarjetas de disciplina cubren "
                     + "solo los últimos " + data.lastMatches() + " partidos de cada equipo (tarjetas contadas en sus fichas). "
                     + "players y la pelota parada son del torneo completo.");
         }
-        o.put("fecha_informe", data.generatedOn());
-        o.put("equipos", data.teams().stream().map(t -> {
+        o.put("report_date", data.generatedOn());
+        o.put("teams", data.teams().stream().map(t -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("team_code", t.code());
-            m.put("nombre", t.name());
+            m.put("name", t.name());
             m.put("total", t.total());
-            m.put("puntos", t.total().points());
-            m.put("efectividad_pct", round(t.total().effectiveness()));
-            m.put("local", t.home());
-            m.put("visitante", t.away());
-            m.put("ultimos_resultados", t.form());
-            m.put("posiciones", t.standings());
-            m.put("por_torneo", t.byTorneo());
-            m.put("mayor_victoria", t.biggestWin());
-            m.put("peor_derrota", t.worstLoss());
-            m.put("fortalezas_debilidades", t.indicators());
+            m.put("points", t.total().points());
+            m.put("effectiveness_pct", round(t.total().effectiveness()));
+            m.put("home", t.home());
+            m.put("away", t.away());
+            m.put("last_results", t.form());
+            m.put("standings", t.standings());
+            m.put("by_tournament", t.byTournament());
+            m.put("biggest_win", t.biggestWin());
+            m.put("worst_loss", t.worstLoss());
+            m.put("strengths_weaknesses", t.indicators());
             return m;
         }).toList());
         return o;
@@ -79,18 +79,18 @@ class AnalysisContext {
             case "upcoming" -> t.upcoming();
             case "players" -> t.players();
             case "set_pieces_discipline" -> Map.of(
-                    "pelota_parada", Map.of(
-                            "faltas_directas", t.setPieces().directFreeScored() + "/" + t.setPieces().directFreeTaken(),
-                            "faltas_directas_pct", round(t.setPieces().directFreePct()),
-                            "penales", t.setPieces().penaltiesScored() + "/" + t.setPieces().penaltiesTaken(),
-                            "penales_pct", round(t.setPieces().penaltyPct())),
-                    "disciplina", t.discipline(),
-                    "faltas", t.fouls());
+                    "set_pieces", Map.of(
+                            "direct_free_hits", t.setPieces().directFreeScored() + "/" + t.setPieces().directFreeTaken(),
+                            "direct_free_hits_pct", round(t.setPieces().directFreePct()),
+                            "penalties", t.setPieces().penaltiesScored() + "/" + t.setPieces().penaltiesTaken(),
+                            "penalties_pct", round(t.setPieces().penaltyPct())),
+                    "discipline", t.discipline(),
+                    "fouls", t.fouls());
             case "rivals" -> t.rivals();
             case "time_profile" -> Map.of(
-                    "perfil", t.timeProfile(),
-                    "minutos_con_uno_menos_por_partido", round(t.timeProfile().shortHandedMinutesPerGame()),
-                    "minutos_con_uno_mas_por_partido", round(t.timeProfile().powerPlayMinutesPerGame()));
+                    "profile", t.timeProfile(),
+                    "short_handed_minutes_per_game", round(t.timeProfile().shortHandedMinutesPerGame()),
+                    "power_play_minutes_per_game", round(t.timeProfile().powerPlayMinutesPerGame()));
             default -> throw new IllegalArgumentException("section inválida: " + section + ". Válidas: " + SECTIONS);
         };
     }

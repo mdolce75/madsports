@@ -10,8 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Valida el análisis que entrega la IA (resumen, fortalezas, debilidades, jugadores_destacados,
- * previa_proximo_rival, tendencia). Descarta jugadores que no existen en los datos.
+ * Valida el análisis que entrega la IA (summary, strengths, weaknesses, key_players,
+ * next_opponent_preview, trend). Descarta jugadores que no existen en los datos.
  */
 final class AnalysisValidator {
 
@@ -25,26 +25,26 @@ final class AnalysisValidator {
         if (in == null) {
             return null;
         }
-        String summary = in.path("resumen").asText("").trim();
-        List<String> strengths = strings(in.path("fortalezas"));
-        List<String> weaknesses = strings(in.path("debilidades"));
+        String summary = in.path("summary").asText("").trim();
+        List<String> strengths = strings(in.path("strengths"));
+        List<String> weaknesses = strings(in.path("weaknesses"));
         if (summary.isEmpty() || (strengths.isEmpty() && weaknesses.isEmpty())) {
             return null;
         }
         List<String> knownPlayers = data.teams().stream().flatMap(t -> t.players().stream())
                 .map(PlayerLine::name).map(String::toLowerCase).toList();
         List<AnalysisResult.KeyPlayer> players = new ArrayList<>();
-        for (JsonNode p : in.path("jugadores_destacados")) {
-            String name = p.path("nombre").asText("").trim();
+        for (JsonNode p : in.path("key_players")) {
+            String name = p.path("name").asText("").trim();
             if (knownPlayers.contains(name.toLowerCase())) {
-                players.add(new AnalysisResult.KeyPlayer(name, p.path("motivo").asText("").trim()));
+                players.add(new AnalysisResult.KeyPlayer(name, p.path("reason").asText("").trim()));
             } else {
                 log.info("Se descarta jugador destacado inexistente en los datos: {}", name);
             }
         }
         return new AnalysisResult(source, summary, strengths, weaknesses, players,
-                in.path("previa_proximo_rival").asText("").trim(), in.path("tendencia").asText("").trim(),
-                strings(in.path("analisis_faltas")));
+                in.path("next_opponent_preview").asText("").trim(), in.path("trend").asText("").trim(),
+                strings(in.path("fouls_analysis")));
     }
 
     private static List<String> strings(JsonNode array) {

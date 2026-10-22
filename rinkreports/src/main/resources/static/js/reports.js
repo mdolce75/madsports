@@ -1,19 +1,19 @@
 // RinkReports: marca, barra del usuario y visor del informe (en pantalla, con exportación a PDF y a Excel).
 // Va después de /js/app.js (usa $, session, renderUserBar y la marca). Las páginas llevan body data-producto="reports".
 
-$("brand").outerHTML = marca();
+$("brand").outerHTML = brand();
 // Al salir, a la portada de RinkReports.
-document.body.dataset.salir = "/rinkreports";
+document.body.dataset.exit = "/rinkreports";
 
 /** En las páginas públicas: con sesión, el usuario, su acceso directo ("Mi informe") y salir. */
 async function rrSessionBar() {
     const s = await session().catch(() => null);
-    if (!s || !s.autenticado || s.inicio.startsWith("/login.html")) return null;
+    if (!s || !s.authenticated || s.home.startsWith("/rinkmetrics/login.html")) return null;
     renderUserBar(s);
     const go = document.createElement("a");
     go.className = "btn primary";
-    go.href = s.inicio;
-    go.textContent = s.inicio.startsWith("/rinkreports/") ? "Mi informe" : "Mi cuenta";
+    go.href = s.home;
+    go.textContent = s.home.startsWith("/rinkreports/") ? "Mi informe" : "Mi cuenta";
     $("userbar").prepend(go);
     return s;
 }
@@ -23,10 +23,10 @@ async function rrSessionBar() {
  *
  * @param m informesMes de la sesión: {usados, limite, renueva}
  */
-function rrCupo(m) {
-    if (!m || !m.limite) return "";
-    const [, mes, dia] = m.renueva.split("-").map(Number);
-    return `${Math.min(m.usados, m.limite)} de ${m.limite} informes este mes · se renueva el ${dia}/${mes}`;
+function rrQuota(m) {
+    if (!m || !m.limit) return "";
+    const [, month, day] = m.renews.split("-").map(Number);
+    return `${Math.min(m.used, m.limit)} de ${m.limit} informes este mes · se renueva el ${day}/${month}`;
 }
 
 /** Ancho mínimo de la hoja del informe en pantalla (px); debajo, se achica entera. */
@@ -84,48 +84,48 @@ async function rrShowReport(box, urls, title) {
 }
 
 /** Planes de un perfil ("PLAYERFPP") con su precio; el que no se puede elegir va con el cintillo "Próximamente". */
-async function rrPlans(box, perfil, registro) {
-    const planes = await fetch("/api/suscripciones?perfil=" + perfil).then(r => r.ok ? r.json() : []).catch(() => []);
-    for (const p of planes) {
-        const gratis = Number(p.precio) === 0;
-        const disponible = p.disponible !== false;
-        const card = document.createElement(disponible ? "a" : "div");
-        if (disponible) {
+async function rrPlans(box, profile, signup) {
+    const plans = await fetch("/api/plans?profile=" + profile).then(r => r.ok ? r.json() : []).catch(() => []);
+    for (const p of plans) {
+        const free = Number(p.price) === 0;
+        const available = p.available !== false;
+        const card = document.createElement(available ? "a" : "div");
+        if (available) {
             card.className = "plan plan-elegir";
-            card.href = registro + "&plan=" + encodeURIComponent(p.codigo);
-            card.setAttribute("aria-label", `Elegir el plan ${p.nombre} y crear la cuenta`);
+            card.href = signup + "&plan=" + encodeURIComponent(p.code);
+            card.setAttribute("aria-label", `Elegir el plan ${p.name} y crear la cuenta`);
         } else {
             card.className = "plan proximamente no-disponible";
             card.setAttribute("aria-disabled", "true");
-            const cinta = document.createElement("span");
-            cinta.className = "cintillo";
-            cinta.textContent = "Próximamente";
-            card.append(cinta);
+            const ribbon = document.createElement("span");
+            ribbon.className = "cintillo";
+            ribbon.textContent = "Próximamente";
+            card.append(ribbon);
         }
-        const nombre = document.createElement("span");
-        nombre.className = "plan-name";
-        nombre.textContent = "Plan " + p.nombre;
-        const precio = document.createElement("span");
-        precio.className = "plan-price";
-        precio.innerHTML = "<b></b> <small></small>";
-        precio.querySelector("b").textContent = gratis ? "Gratis"
-            : p.precioADefinir ? "Precio a definir" : "$ " + Number(p.precio).toLocaleString("es-AR");
-        precio.querySelector("small").textContent = gratis || p.precioADefinir ? "" : "por mes";
-        const cupo = document.createElement("span");
-        cupo.className = "plan-quota";
-        cupo.textContent = p.informesPorMes > 0 ? `Hasta ${p.informesPorMes} informes por mes` : "Informes sin límite";
-        const nota = document.createElement("span");
-        nota.className = "plan-month";
-        nota.textContent = p.vigenteHasta ? "Sin costo hasta el " + p.vigenteHasta.split("-").reverse().join("/") + "."
+        const name = document.createElement("span");
+        name.className = "plan-name";
+        name.textContent = "Plan " + p.name;
+        const price = document.createElement("span");
+        price.className = "plan-price";
+        price.innerHTML = "<b></b> <small></small>";
+        price.querySelector("b").textContent = free ? "Gratis"
+            : p.priceToBeDefined ? "Precio a definir" : "$ " + Number(p.price).toLocaleString("es-AR");
+        price.querySelector("small").textContent = free || p.priceToBeDefined ? "" : "por mes";
+        const quota = document.createElement("span");
+        quota.className = "plan-quota";
+        quota.textContent = p.reportsPerMonth > 0 ? `Hasta ${p.reportsPerMonth} informes por mes` : "Informes sin límite";
+        const note = document.createElement("span");
+        note.className = "plan-month";
+        note.textContent = p.validUntil ? "Sin costo hasta el " + p.validUntil.split("-").reverse().join("/") + "."
             : "Mensual, sin permanencia.";
-        card.append(nombre, precio, cupo, nota);
-        if (disponible) {
-            const elegir = document.createElement("span");
-            elegir.className = "btn primary plan-cta";
-            elegir.textContent = gratis ? "Empezar gratis" : "Elegir este plan";
-            card.append(elegir);
+        card.append(name, price, quota, note);
+        if (available) {
+            const choose = document.createElement("span");
+            choose.className = "btn primary plan-cta";
+            choose.textContent = free ? "Empezar gratis" : "Elegir este plan";
+            card.append(choose);
         }
         box.append(card);
     }
-    box.hidden = !planes.length;
+    box.hidden = !plans.length;
 }

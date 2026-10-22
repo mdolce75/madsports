@@ -47,12 +47,12 @@ public class GeminiAnalyst {
               con uno menos y con uno más por sanciones (azul 2', roja 4'): citá esos valores, no los recalcules.
               Cada tramo trae además las faltas propias y de los rivales (foulsOwn, foulsRival) y cómo iba el equipo
               al empezar el tramo (avgGoalDiff = diferencia de gol promedio; ahead/level/behind = partidos ganando,
-              empatando y perdiendo). set_pieces_discipline.faltas tiene las faltas por partido del equipo
+              empatando y perdiendo). set_pieces_discipline.fouls tiene las faltas por partido del equipo
               (ownPerGame), de sus rivales en esos partidos (rivalPerGame) y el promedio de la liga.
             - Toda cifra que menciones tiene que salir textualmente de los datos que recibiste.
               No calcules ni estimes números nuevos; si un dato no está, no lo menciones.
-            - Fortalezas y debilidades: basalas en overview.equipos[].fortalezas_debilidades, que ya clasifica cada
-              aspecto (FORTALEZA, DEBILIDAD, EN_LINEA, MUESTRA_CHICA) contra su referencia. No contradigas esa
+            - Fortalezas y debilidades: basalas en overview.teams[].strengths_weaknesses, que ya clasifica cada
+              aspecto (STRENGTH, WEAKNESS, ON_PAR, SMALL_SAMPLE) contra su referencia. No contradigas esa
               clasificación; podés explicar el porqué y sumar matices con otras cifras de los datos.
             - Compará siempre contra el contexto de la liga (promedios) para decir si algo es fortaleza o debilidad.
             - Con pocos partidos jugados, decilo y sé prudente con las conclusiones.
@@ -60,14 +60,14 @@ public class GeminiAnalyst {
               son menores, nada de críticas personales a jugadores.
             - Escribí en español rioplatense, claro y concreto, sin relleno.
             - Si el club tiene más de un equipo en la categoría (p. ej. CAVS A y CAVS B), distinguilos.
-            - En jugadores_destacados usá el nombre exacto como figura en players.
-            - analisis_faltas: 3 a 5 párrafos sobre las faltas del equipo: volumen por partido contra la liga y contra
-              sus rivales (set_pieces_discipline.faltas), en qué tiempo y tramos comete más (time_profile.buckets,
+            - En key_players usá el nombre exacto como figura en players.
+            - fouls_analysis: 3 a 5 párrafos sobre las faltas del equipo: volumen por partido contra la liga y contra
+              sus rivales (set_pieces_discipline.fouls), en qué tiempo y tramos comete más (time_profile.buckets,
               foulsOwn y foulsRival), cómo cambia su ritmo según el marcador (time_profile.foulSituation: faltas cada
               10 minutos ganando, empatando y perdiendo; solo situaciones de 5 minutos o más) y la relación con las
               tarjetas azules. Interpretá qué dice eso del equipo, con las cifras de los datos.
-            - Respondé solo con el JSON pedido (resumen, fortalezas, debilidades, jugadores_destacados,
-              previa_proximo_rival, tendencia, analisis_faltas). previa_proximo_rival vacío si no hay partidos
+            - Respondé solo con el JSON pedido (summary, strengths, weaknesses, key_players,
+              next_opponent_preview, trend, fouls_analysis). next_opponent_preview vacío si no hay partidos
               programados.
             """;
 
@@ -148,8 +148,8 @@ public class GeminiAnalyst {
     Map<String, Object> request(ReportData data) throws Exception {
         String context = new AnalysisContext(data, mapper).fullContext();
         String ask = "Analizá el informe de " + data.club().name() + " (" + data.club().code() + "), categoría "
-                + data.category() + ", " + data.torneo() + ", de la " + data.federacion().nombre() + " ("
-                + data.federacion().name() + ").";
+                + data.category() + ", " + data.tournament() + ", de la " + data.federation().fullName() + " ("
+                + data.federation().name() + ").";
         return Map.of(
                 "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM))),
                 "contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text",
@@ -167,18 +167,18 @@ public class GeminiAnalyst {
         return Map.of(
                 "type", "OBJECT",
                 "properties", Map.of(
-                        "resumen", str,
-                        "fortalezas", strArray,
-                        "debilidades", strArray,
-                        "jugadores_destacados", Map.of("type", "ARRAY", "items", Map.of(
+                        "summary", str,
+                        "strengths", strArray,
+                        "weaknesses", strArray,
+                        "key_players", Map.of("type", "ARRAY", "items", Map.of(
                                 "type", "OBJECT",
-                                "properties", Map.of("nombre", str, "motivo", str),
-                                "required", List.of("nombre", "motivo"))),
-                        "previa_proximo_rival", str,
-                        "tendencia", str,
-                        "analisis_faltas", strArray),
-                "required", List.of("resumen", "fortalezas", "debilidades", "jugadores_destacados",
-                        "previa_proximo_rival", "tendencia", "analisis_faltas"));
+                                "properties", Map.of("name", str, "reason", str),
+                                "required", List.of("name", "reason"))),
+                        "next_opponent_preview", str,
+                        "trend", str,
+                        "fouls_analysis", strArray),
+                "required", List.of("summary", "strengths", "weaknesses", "key_players",
+                        "next_opponent_preview", "trend", "fouls_analysis"));
     }
 
     private Duration retryAfter(HttpResponse<String> res) {

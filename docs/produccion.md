@@ -10,9 +10,9 @@ AWS RDS, DigitalOcean...). La app solo necesita la URL JDBC y un usuario dueño 
 
 | Variable | Ejemplo |
 |---|---|
-| `FPP_DB_URL` | `jdbc:postgresql://host:5432/rinkmetrics?sslmode=require` |
-| `FPP_DB_USER` | `rinkmetrics` |
-| `FPP_DB_PASSWORD` | la clave que da el proveedor |
+| `MADSPORTS_DB_URL` | `jdbc:postgresql://host:5432/rinkmetrics?sslmode=require` |
+| `MADSPORTS_DB_USER` | `rinkmetrics` |
+| `MADSPORTS_DB_PASSWORD` | la clave que da el proveedor |
 
 Flyway crea y actualiza el esquema al arrancar. Las migraciones están separadas por motor
 (`db/migration/{vendor}`):
@@ -31,9 +31,9 @@ Hibernate valida el esquema contra las entidades (`ddl-auto: validate`): si no c
 
 Si ya hay usuarios en una base H2 que se quiere conservar: arrancar la app una vez contra la base PostgreSQL vacía
 (Flyway crea el esquema), detenerla y copiar los datos tabla por tabla (por ejemplo exportando cada tabla de H2 a CSV
-con `CALL CSVWRITE(...)` e importándola con `\copy` de `psql`), en el orden de las claves foráneas: `suscripcion_type`,
-`usuario`, `usuario_perfil`, `token_usuario`, `persistent_logins`, `equipo_dt`, `jugador_dt`, `jugador_equipo_dt`,
-`partido_dt`, `accion_dt`, `partido_creado_dt`. Después, ajustar las secuencias (`select setval(...)`) al máximo id de
+con `CALL CSVWRITE(...)` e importándola con `\copy` de `psql`), en el orden de las claves foráneas: `subscription_plan`,
+`user_account`, `user_profile`, `user_token`, `persistent_logins`, `coach_team`, `coach_player`, `coach_player_team`,
+`coach_match`, `coach_action`, `coach_started_match`. Después, ajustar las secuencias (`select setval(...)`) al máximo id de
 cada tabla.
 
 ## Variables de entorno
@@ -43,13 +43,13 @@ Además de las de la base y las del README (`SMTP_*`, `MAIL_FROM`, `APP_BASE_URL
 | Variable | Default | |
 |---|---|---|
 | `FORWARD_HEADERS_STRATEGY` | `none` | `native` detrás de un proxy o balanceador (casi todos los proveedores): toma la IP real y el https de `X-Forwarded-For` / `X-Forwarded-Proto`. Sin esto, el límite de intentos ve a todos los usuarios con la IP del proxy |
-| `ALERTAS_EMAIL` | vacío | Dirección que recibe las alertas del chequeo diario de SIDGAD. Vacío: solo quedan en el log |
-| `MONITOR_SIDGAD_CRON` | `0 0 8 * * *` | Cuándo corre el chequeo (hora argentina); `-` lo apaga |
-| `LIMITE_LOGIN_USUARIO` | `5` | Ingresos fallidos de un usuario en 15 minutos |
-| `LIMITE_LOGIN_IP` | `20` | Ingresos fallidos desde una IP en 15 minutos |
-| `LIMITE_REGISTRO_IP` | `5` | Altas de cuenta desde una IP por hora |
-| `LIMITE_MAILS_IP` | `10` | Pedidos de mails (reenviar confirmación, recuperar la clave) desde una IP por hora |
-| `RECORDARME_CLAVE` | al azar | Fijarla si hay más de una instancia |
+| `ALERTS_EMAIL` | vacío | Dirección que recibe las alertas del chequeo diario de SIDGAD. Vacío: solo quedan en el log |
+| `SIDGAD_MONITOR_CRON` | `0 0 8 * * *` | Cuándo corre el chequeo (hora argentina); `-` lo apaga |
+| `LIMIT_LOGIN_USER` | `5` | Ingresos fallidos de un usuario en 15 minutos |
+| `LIMIT_LOGIN_IP` | `20` | Ingresos fallidos desde una IP en 15 minutos |
+| `LIMIT_SIGNUP_IP` | `5` | Altas de cuenta desde una IP por hora |
+| `LIMIT_MAILS_IP` | `10` | Pedidos de mails (reenviar confirmación, recuperar la clave) desde una IP por hora |
+| `REMEMBER_ME_KEY` | al azar | Fijarla si hay más de una instancia |
 
 Los contadores del límite de intentos viven en memoria: con una sola instancia alcanza. Con varias, cada una cuenta lo
 suyo (el límite real se multiplica por la cantidad de instancias).
@@ -78,12 +78,12 @@ Los informes dependen de leer el HTML de SIDGAD; si el sitio cambia de formato, 
 sin dar error y los informes salen vacíos. `SidgadMonitor` recorre una vez por día el camino de un informe con datos
 reales:
 
-1. El portal trae la temporada de alguno de los años ofrecidos (`rinkmetrics.sidgad.years`).
+1. El portal trae la temporada de alguno de los años ofrecidos (`madsports.sidgad.years`).
 2. El catálogo trae competiciones de la FPP para ese año.
 3. Los calendarios de las primeras competiciones traen partidos.
 4. El acta de un partido jugado trae los planteles.
 
-Si un paso falla (o SIDGAD no responde), manda un mail a `ALERTAS_EMAIL` con el paso que falló, deja el componente
+Si un paso falla (o SIDGAD no responde), manda un mail a `ALERTS_EMAIL` con el paso que falló, deja el componente
 `sidgad` en DOWN y lo escribe en el log (`Chequeo de SIDGAD: FALLA`). Mientras siga fallando, avisa cada día; cuando
 vuelve a andar, manda un mail de recuperación. Calendarios sin partidos jugados (temporada que recién empieza) no son
 una falla.
@@ -112,7 +112,7 @@ Guardarlo cifrado fuera del proveedor (contiene emails y claves hasheadas de los
 
 ### Restaurar
 
-- **Desde el proveedor:** restaurar el respaldo (o el momento PITR) en una **base nueva**, apuntar `FPP_DB_URL` a esa
+- **Desde el proveedor:** restaurar el respaldo (o el momento PITR) en una **base nueva**, apuntar `MADSPORTS_DB_URL` a esa
   base y reiniciar la app. No restaurar encima de la base en uso.
 - **Desde un `pg_dump`:**
 

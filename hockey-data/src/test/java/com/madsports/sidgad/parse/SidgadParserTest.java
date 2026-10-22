@@ -20,14 +20,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SidgadParserTest {
 
     @Test
-    void catalogoReconoceCompeticionesFppConSusEquipos() {
+    void catalogRecognizesFppCompetitionsWithTheirTeams() {
         List<Competition> all = SidgadParser.catalog(Fixtures.read("catalogo.html"));
 
         List<Competition> fpp2026 = all.stream().filter(c -> c.federationId() == 3 && c.seasonId() == 40).toList();
         assertThat(fpp2026).hasSize(32).allSatisfy(c -> assertThat(c.category()).isNotNull());
 
         Competition primera = all.stream().filter(c -> c.id() == 779).findFirst().orElseThrow();
-        assertThat(primera.torneo()).isEqualTo(Competition.Torneo.CLAUSURA);
+        assertThat(primera.tournament()).isEqualTo(Competition.Tournament.CLOSING);
         assertThat(primera.category().key()).isEqualTo("PRIMERA_MASCULINO");
         assertThat(primera.teams()).hasSize(11)
                 .anySatisfy(t -> {
@@ -45,7 +45,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void clasificacionSeparaGrupos() {
+    void standingsSplitGroups() {
         List<StandingRow> rows = SidgadParser.standings(Fixtures.read("clasif_779.html"));
 
         assertThat(rows).extracting(StandingRow::group).containsOnly("IMPAR", "PAR");
@@ -55,7 +55,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void clasificacionSinGrupoLeeTodasLasColumnas() {
+    void standingsWithoutGroupReadAllColumns() {
         StandingRow velezA = SidgadParser.standings(Fixtures.read("clasif_765.html")).stream()
                 .filter(r -> r.code().equals("CAVS A")).findFirst().orElseThrow();
 
@@ -64,7 +64,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void calendarioLeeJornadasResultadosYPendientes() {
+    void calendarReadsRoundsResultsAndPending() {
         List<Match> matches = SidgadParser.calendar(Fixtures.read("cal_779.html"));
 
         assertThat(matches).hasSize(25);
@@ -83,7 +83,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void estadisticasPorJugador() {
+    void statsByPlayer() {
         List<PlayerStats> players = SidgadParser.playerStats(Fixtures.read("stats_765.html"));
 
         PlayerStats top = players.getFirst();
@@ -102,7 +102,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void actaDePartidoConGolesYTarjetas() {
+    void matchSheetWithGoalsAndCards() {
         List<MatchEvent> events = SidgadParser.gameEvents(Fixtures.read("gr_26390.html"));
 
         assertThat(events).filteredOn(e -> e.type() == EventType.GOAL).hasSize(6);
@@ -118,7 +118,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void actaConTarjetasAzulesYAmarillasDistintas() {
+    void sheetWithDistinctBlueAndYellowCards() {
         // Acta 26389 (779, Huracán 13-2 GEBA B): 15 goles, 4 azules y 2 amarillas.
         List<MatchEvent> events = SidgadParser.gameEvents(Fixtures.read("gr_26389.html"));
 
@@ -132,7 +132,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void rojasCargadasFueraDelJuego() {
+    void redsLoadedOutsideThePlay() {
         // Argentinos 4-1 Huracán (Apertura J2, 21496): una roja a cada equipo en "P11 00:00" (después del partido).
         List<MatchEvent> reds = SidgadParser.gameEvents(Fixtures.read("gr_21496.html")).stream()
                 .filter(e -> e.type() == EventType.RED_CARD).toList();
@@ -145,7 +145,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void planillaDeJugadoresDeCadaEquipo() {
+    void lineupOfEachTeam() {
         List<LineupPlayer> players = SidgadParser.lineups(Fixtures.read("gr_26390.html"));
 
         // Vélez (local) 2-4 Argentinos Juniors: 9 citados por equipo; primero la planilla del local.
@@ -168,7 +168,7 @@ class SidgadParserTest {
     }
 
     @Test
-    void planillaConAzulYRoja() {
+    void lineupWithBlueAndRed() {
         List<LineupPlayer> players = SidgadParser.lineups(Fixtures.read("gr_21496.html"));
         assertThat(players).filteredOn(p -> p.playerId() == 2292).singleElement()
                 .satisfies(p -> assertThat(p.blueCards()).isEqualTo(1));
@@ -178,13 +178,13 @@ class SidgadParserTest {
     }
 
     @Test
-    void actaNoPublicada() {
+    void sheetNotPublished() {
         assertThat(SidgadParser.gameEvents(Fixtures.read("gr_sin_acta.html"))).isEmpty();
         assertThat(SidgadParser.seasonMatches(Fixtures.read("gr_sin_acta.html"))).isEmpty();
     }
 
     @Test
-    void duracionDePeriodoDesdeConfigParams() {
+    void periodLengthFromConfigParams() {
         assertThat(SidgadParser.periodMinutes("ids_teams:1,2;ids_period_reg:1,2;tpo_reg:20;ids_period_ot:0;tpo_ot:0;"))
                 .isEqualTo(20);
         assertThat(SidgadParser.periodMinutes("")).isZero();
@@ -194,13 +194,13 @@ class SidgadParserTest {
     }
 
     @Test
-    void nombreDeJugadorQuedaNombreApellido() {
+    void playerNameBecomesFirstLast() {
         assertThat(SidgadParser.playerName("GRAIÑO, IGNACIO J")).isEqualTo("Ignacio J Graiño");
         assertThat(SidgadParser.playerName("SOLO")).isEqualTo("Solo");
     }
 
     @Test
-    void fichaDeTemporadaDelJugador() {
+    void playerSeasonProfile() {
         // Juan Martín Marchegay (Vélez), 2026: Juvenil y Juniors, Apertura y Clausura. Incluye partidos sin acta.
         List<SeasonMatch> all = SidgadParser.seasonMatches(Fixtures.read("profileseason_5037.html"));
 

@@ -10,17 +10,31 @@ import java.util.regex.Pattern;
  * {@link #category()} es {@code null} y la competición se ignora.
  */
 public record Competition(int id, String name, int federationId, int seasonId,
-                          Torneo torneo, Category category, int division,
+                          Tournament tournament, Category category, int division,
                           List<Models.TeamRef> teams, int periodMinutes) {
 
     /** Duración de período si el catálogo no la informa ({@code tpo_reg} en config_params). */
     public static final int DEFAULT_PERIOD_MINUTES = 25;
 
-    public enum Torneo {
-        APERTURA, CLAUSURA;
+    public enum Tournament {
+        OPENING, CLOSING;
 
         public String label() {
-            return this == APERTURA ? "Apertura" : "Clausura";
+            return this == OPENING ? "Apertura" : "Clausura";
+        }
+
+        /** Como figura en los nombres de competición de SIDGAD: "APERTURA" o "CLAUSURA". */
+        public String sidgadName() {
+            return this == OPENING ? "APERTURA" : "CLAUSURA";
+        }
+
+        /** El torneo de un nombre de SIDGAD ("APERTURA", "CLAUSURA"). */
+        public static Tournament fromSidgad(String name) {
+            return switch (name.trim().toUpperCase()) {
+                case "APERTURA" -> OPENING;
+                case "CLAUSURA" -> CLOSING;
+                default -> throw new IllegalArgumentException("Torneo desconocido: " + name);
+            };
         }
     }
 
@@ -67,25 +81,25 @@ public record Competition(int id, String name, int federationId, int seasonId,
         Matcher m = NAME.matcher(upper);
         if (m.find()) {
             int division = m.group(4) == null ? 1 : Integer.parseInt(m.group(4));
-            return new Competition(id, name, federationId, seasonId, Torneo.valueOf(m.group(1)),
+            return new Competition(id, name, federationId, seasonId, Tournament.fromSidgad(m.group(1)),
                     new Category(m.group(2).trim(), m.group(3)), division, teams, minutes);
         }
         Matcher amp = AMP_NAME.matcher(upper);
         if (amp.find()) {
             String branch = amp.group(1).equals("MASC") ? "MASCULINO" : "FEMENINO";
-            return new Competition(id, name, federationId, seasonId, Torneo.valueOf(amp.group(2)),
+            return new Competition(id, name, federationId, seasonId, Tournament.fromSidgad(amp.group(2)),
                     new Category(amp.group(3), branch), 1, teams, minutes);
         }
         return new Competition(id, name, federationId, seasonId, null, null, 1, teams, minutes);
     }
 
     /** La federación de la competición (null si no se releva). */
-    public Federacion federacion() {
-        return Federacion.of(federationId);
+    public Federation federation() {
+        return Federation.of(federationId);
     }
 
-    public String torneoLabel() {
-        String base = torneo == null ? name : torneo.label();
+    public String tournamentLabel() {
+        String base = tournament == null ? name : tournament.label();
         return division > 1 ? base + " (Div. " + division + ")" : base;
     }
 

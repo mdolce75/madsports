@@ -1,10 +1,10 @@
 package com.madsports.report;
 
-import com.madsports.account.Usuario;
-import com.madsports.account.UsuarioRepository;
+import com.madsports.account.UserAccount;
+import com.madsports.account.UserAccountRepository;
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.CatalogView;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.SidgadClient.SidgadException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -37,116 +37,116 @@ public class ApiController {
      * @param periodo   APERTURA, CLAUSURA, TEMPORADA (Apertura + Clausura, por defecto) o ULTIMOS_5
      * @param anio      año (p. ej. 2026); si falta, el más reciente con datos
      */
-    public record ReportRequest(@Positive int clubId, String categoria, String rama, String periodo, Integer anio) {
+    public record ReportRequest(@Positive int clubId, String category, String branch, String period, Integer year) {
 
-        boolean clubCompleto() {
-            return (categoria == null || categoria.isBlank()) && (rama == null || rama.isBlank());
+        boolean wholeClub() {
+            return (category == null || category.isBlank()) && (branch == null || branch.isBlank());
         }
     }
 
     private final CatalogService catalog;
     private final ReportService reports;
     private final SampleReport sample;
-    private final UsuarioRepository usuarios;
-    private final CupoInformes cupo;
+    private final UserAccountRepository users;
+    private final ReportQuota quota;
 
-    public ApiController(CatalogService catalog, ReportService reports, SampleReport sample, UsuarioRepository usuarios,
-                         CupoInformes cupo) {
+    public ApiController(CatalogService catalog, ReportService reports, SampleReport sample, UserAccountRepository users,
+                         ReportQuota quota) {
         this.catalog = catalog;
         this.reports = reports;
         this.sample = sample;
-        this.usuarios = usuarios;
-        this.cupo = cupo;
+        this.users = users;
+        this.quota = quota;
     }
 
     /**
      * Catálogo de la federación (FPP por defecto, o AMP) del año pedido (o del más reciente con datos). Si el año no
      * tiene datos, {@code available} es false.
      */
-    @GetMapping("/catalogo")
-    public CatalogView catalogo(@RequestParam(required = false) Integer anio,
-                                @RequestParam(required = false) String federacion) {
-        return catalog.view(Federacion.parse(federacion), catalog.checkYear(anio));
+    @GetMapping("/catalog")
+    public CatalogView catalog(@RequestParam(required = false) Integer year,
+                                @RequestParam(required = false) String federation) {
+        return catalog.view(Federation.parse(federation), catalog.checkYear(year));
     }
 
     /** Un usuario de club (CLUBFPP o CLUBAMP) pide informes solo de su club, en su federación. */
-    @PostMapping("/informes")
-    public ResponseEntity<JobView> crear(@Valid @RequestBody ReportRequest req, Authentication auth) {
-        Usuario u = usuarios.findByUsuario(auth.getName())
+    @PostMapping("/reports")
+    public ResponseEntity<JobView> create(@Valid @RequestBody ReportRequest req, Authentication auth) {
+        UserAccount u = users.findByUsername(auth.getName())
                 .orElseThrow(() -> new AccessDeniedException("Sesión inválida."));
         if (u.getClubId() != req.clubId()) {
-            throw new AccessDeniedException("Solo podés pedir informes de tu club (" + u.getClubNombre() + ").");
+            throw new AccessDeniedException("Solo podés pedir informes de tu club (" + u.getClubName() + ").");
         }
-        ReportService.Scope scope = ReportService.Scope.parse(req.periodo());
-        int year = catalog.checkYear(req.anio());
-        if (!req.clubCompleto() && (req.categoria() == null || req.categoria().isBlank()
-                || req.rama() == null || req.rama().isBlank())) {
+        ReportService.Scope scope = ReportService.Scope.parse(req.period());
+        int year = catalog.checkYear(req.year());
+        if (!req.wholeClub() && (req.category() == null || req.category().isBlank()
+                || req.branch() == null || req.branch().isBlank())) {
             throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
         }
-        ReportService.Job job = cupo.pedir(u, () -> req.clubCompleto()
-                ? reports.submitClub(req.clubId(), scope, year, u.federacion(), u.getUsuario())
-                : reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(), scope, year,
-                        u.federacion()), u.getUsuario()));
+        ReportService.Job job = quota.consume(u, () -> req.wholeClub()
+                ? reports.submitClub(req.clubId(), scope, year, u.federation(), u.getUsername())
+                : reports.submit(new ReportService.Request(req.clubId(), req.category(), req.branch(), scope, year,
+                        u.federation()), u.getUsername()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 
-    @GetMapping("/informes/{id}")
-    public ResponseEntity<JobView> estado(@PathVariable UUID id, Authentication auth) {
+    @GetMapping("/reports/{id}")
+    public ResponseEntity<JobView> status(@PathVariable UUID id, Authentication auth) {
         return reports.find(id, auth.getName()).map(JobView::of).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     /** Informe modelo de club con datos ficticios: en pantalla, en PDF (se abre en el navegador) y en Excel. */
-    @GetMapping("/ejemplo.html")
-    public ResponseEntity<String> ejemploHtml() {
-        return Descargas.html(sample.club().html());
+    @GetMapping("/sample.html")
+    public ResponseEntity<String> sampleHtml() {
+        return Downloads.html(sample.club().html());
     }
 
-    @GetMapping("/ejemplo.pdf")
-    public ResponseEntity<byte[]> ejemplo() {
-        return Descargas.file(sample.club().pdf(), MediaType.APPLICATION_PDF, "informe-club-ejemplo-rinkreports.pdf", true);
+    @GetMapping("/sample.pdf")
+    public ResponseEntity<byte[]> sample() {
+        return Downloads.file(sample.club().pdf(), MediaType.APPLICATION_PDF, "informe-club-ejemplo-rinkreports.pdf", true);
     }
 
-    @GetMapping("/ejemplo.xlsx")
-    public ResponseEntity<byte[]> ejemploXlsx() {
-        return Descargas.file(sample.club().xlsx(), Descargas.XLSX, "informe-club-ejemplo-rinkreports.xlsx", false);
+    @GetMapping("/sample.xlsx")
+    public ResponseEntity<byte[]> sampleXlsx() {
+        return Downloads.file(sample.club().xlsx(), Downloads.XLSX, "informe-club-ejemplo-rinkreports.xlsx", false);
     }
 
     /** Informe modelo de jugador con datos ficticios: en pantalla, en PDF y en Excel. */
-    @GetMapping("/ejemplo-jugador.html")
-    public ResponseEntity<String> ejemploJugadorHtml() {
-        return Descargas.html(sample.player().html());
+    @GetMapping("/sample-player.html")
+    public ResponseEntity<String> samplePlayerHtml() {
+        return Downloads.html(sample.player().html());
     }
 
-    @GetMapping("/ejemplo-jugador.pdf")
-    public ResponseEntity<byte[]> ejemploJugador() {
-        return Descargas.file(sample.player().pdf(), MediaType.APPLICATION_PDF, "informe-jugador-ejemplo-rinkreports.pdf", true);
+    @GetMapping("/sample-player.pdf")
+    public ResponseEntity<byte[]> samplePlayer() {
+        return Downloads.file(sample.player().pdf(), MediaType.APPLICATION_PDF, "informe-jugador-ejemplo-rinkreports.pdf", true);
     }
 
-    @GetMapping("/ejemplo-jugador.xlsx")
-    public ResponseEntity<byte[]> ejemploJugadorXlsx() {
-        return Descargas.file(sample.player().xlsx(), Descargas.XLSX, "informe-jugador-ejemplo-rinkreports.xlsx", false);
+    @GetMapping("/sample-player.xlsx")
+    public ResponseEntity<byte[]> samplePlayerXlsx() {
+        return Downloads.file(sample.player().xlsx(), Downloads.XLSX, "informe-jugador-ejemplo-rinkreports.xlsx", false);
     }
 
-    @GetMapping("/informes/{id}/html")
-    public ResponseEntity<String> verHtml(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> Descargas.html(j.html())).orElse(ResponseEntity.notFound().build());
+    @GetMapping("/reports/{id}/html")
+    public ResponseEntity<String> viewHtml(@PathVariable UUID id, Authentication auth) {
+        return ready(id, auth).map(j -> Downloads.html(j.html())).orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/informes/{id}/pdf")
+    @GetMapping("/reports/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> Descargas.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
+        return ready(id, auth).map(j -> Downloads.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/informes/{id}/xlsx")
+    @GetMapping("/reports/{id}/xlsx")
     public ResponseEntity<byte[]> xlsx(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> Descargas.file(j.xlsx(), Descargas.XLSX, j.fileName("xlsx"), false))
+        return ready(id, auth).map(j -> Downloads.file(j.xlsx(), Downloads.XLSX, j.fileName("xlsx"), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     private Optional<ReportService.Job> ready(UUID id, Authentication auth) {
-        return reports.find(id, auth.getName()).filter(j -> j.status() == ReportService.Status.LISTO);
+        return reports.find(id, auth.getName()).filter(j -> j.status() == ReportService.Status.READY);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

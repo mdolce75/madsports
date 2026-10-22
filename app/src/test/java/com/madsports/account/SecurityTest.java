@@ -3,7 +3,8 @@ package com.madsports.account;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.ClubView;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.config.WebConfig;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.RosterService.RosterPlayer;
 import com.madsports.report.ReportService;
@@ -68,7 +69,7 @@ class SecurityTest {
             new CatalogService.LevelView("JUVENIL:A", "Juvenil A", List.of("MASCULINO"))));
 
     @Autowired MockMvc mvc;
-    @Autowired UsuarioRepository usuarios;
+    @Autowired UserAccountRepository users;
     @Autowired PasswordEncoder encoder;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
@@ -78,7 +79,7 @@ class SecurityTest {
     @MockitoBean RosterService roster;
     @MockitoBean ReportService reports;
     @MockitoBean com.madsports.player.PlayerReportService playerReports;
-    @Autowired SuscripcionTypeRepository suscripciones;
+    @Autowired SubscriptionPlanRepository subscriptions;
     @MockitoBean Mailer mailer;
     @Autowired org.thymeleaf.ITemplateEngine templates;
 
@@ -92,51 +93,51 @@ class SecurityTest {
 
     @BeforeEach
     void setUp() {
-        usuarios.deleteAll();
+        users.deleteAll();
         when(catalog.defaultYear()).thenReturn(2026);
         when(catalog.checkYear(any())).thenReturn(2026);
-        when(catalog.club(Federacion.FPP, 74, 2026)).thenReturn(VELEZ);
-        when(catalog.club(eq(Federacion.FPP), eq(99), eq(2026)))
+        when(catalog.club(Federation.FPP, 74, 2026)).thenReturn(VELEZ);
+        when(catalog.club(eq(Federation.FPP), eq(99), eq(2026)))
                 .thenThrow(new IllegalArgumentException("El club 99 no juega en la FPP en 2026."));
-        when(roster.find(Federacion.FPP, 74, 2026, "PRIMERA", "MASCULINO", 3851))
+        when(roster.find(Federation.FPP, 74, 2026, "PRIMERA", "MASCULINO", 3851))
                 .thenReturn(Optional.of(new RosterPlayer(3851, "Ignacio J Graiño", "Ignacio J", "Graiño",
                         "Primera Masculino")));
         // AMP (Mendoza): Leonardo Murialdo; Vélez no juega en la AMP.
-        when(catalog.club(Federacion.AMP, 3, 2026)).thenReturn(MURIALDO);
-        when(catalog.club(eq(Federacion.AMP), eq(74), eq(2026)))
+        when(catalog.club(Federation.AMP, 3, 2026)).thenReturn(MURIALDO);
+        when(catalog.club(eq(Federation.AMP), eq(74), eq(2026)))
                 .thenThrow(new IllegalArgumentException("El club 74 no juega en la AMP en 2026."));
-        when(roster.find(Federacion.AMP, 3, 2026, "JUVENIL", "MASCULINO", 6188))
+        when(roster.find(Federation.AMP, 3, 2026, "JUVENIL", "MASCULINO", 6188))
                 .thenReturn(Optional.of(new RosterPlayer(6188, "Victor Daniel Terraza Gomez", "Victor Daniel",
                         "Terraza Gomez", "Juvenil Masculino")));
     }
 
-    Map<String, Object> club(String usuario) {
-        Map<String, Object> m = new HashMap<>(Map.of("perfil", "CLUBFPP", "usuario", usuario, "clave", "clave-segura",
-                "email", usuario + "@example.com", "clubId", 74, "suscripcion", "CLUB_FREE"));
+    Map<String, Object> club(String username) {
+        Map<String, Object> m = new HashMap<>(Map.of("profile", "CLUBFPP", "username", username, "password", "clave-segura",
+                "email", username + "@example.com", "clubId", 74, "subscription", "CLUB_FREE"));
         return m;
     }
 
     /** El jugador no manda nombre ni apellido: se toman del jugador elegido. */
-    Map<String, Object> player(String usuario) {
-        Map<String, Object> m = club(usuario);
-        m.putAll(Map.of("perfil", "PLAYERFPP", "categoria", "PRIMERA", "rama", "MASCULINO",
-                "jugadorId", 3851, "suscripcion", "PLAYER_MENSUAL"));
+    Map<String, Object> player(String username) {
+        Map<String, Object> m = club(username);
+        m.putAll(Map.of("profile", "PLAYERFPP", "category", "PRIMERA", "branch", "MASCULINO",
+                "playerId", 3851, "subscription", "PLAYER_MONTHLY"));
         return m;
     }
 
     ResultActions register(Map<String, Object> body) throws Exception {
-        return mvc.perform(post("/api/registro").with(csrf())
+        return mvc.perform(post("/api/signup").with(csrf())
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)));
     }
 
-    ResultActions login(String usuario, String clave) throws Exception {
-        return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", clave));
+    ResultActions login(String username, String password) throws Exception {
+        return mvc.perform(post("/api/login").with(csrf()).param("username", username).param("password", password));
     }
 
     /** Ingreso desde la pantalla de un producto (REPORTS o METRICS). */
-    ResultActions loginEn(String usuario, String producto) throws Exception {
-        return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", "clave-segura")
-                .param("producto", producto));
+    ResultActions loginTo(String username, String product) throws Exception {
+        return mvc.perform(post("/api/login").with(csrf()).param("username", username).param("password", "clave-segura")
+                .param("product", product));
     }
 
     /** Token del último mail enviado a esa dirección con un enlace a {@code path}. */
@@ -151,29 +152,29 @@ class SecurityTest {
     }
 
     /** Confirma el email con el enlace del mail: lleva al ingreso del producto de la cuenta. */
-    void confirmar(String email) throws Exception {
-        mvc.perform(get("/api/verificar").param("token", token(email, "/api/verificar")))
+    void confirm(String email) throws Exception {
+        mvc.perform(get("/api/verify").param("token", token(email, "/api/verify")))
                 .andExpect(status().isSeeOther())
-                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("login.html?verificado")));
+                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("login.html?verified")));
     }
 
-    Usuario saved(String usuario, Perfil perfil) {
-        return usuarios.save(new Usuario(usuario, encoder.encode("clave-segura"), usuario + "@example.com", "Ana",
-                "Pérez", 74, "VELEZ", "CAVS", EnumSet.of(perfil), Instant.now()));
+    UserAccount saved(String username, Profile profile) {
+        return users.save(new UserAccount(username, encoder.encode("clave-segura"), username + "@example.com", "Ana",
+                "Pérez", 74, "VELEZ", "CAVS", EnumSet.of(profile), Instant.now()));
     }
 
     /** Ingreso con "Mantener la sesión iniciada": devuelve la respuesta (con la cookie RECORDARME y la sesión). */
-    MvcResult loginRecordando(String usuario) throws Exception {
-        return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", "clave-segura")
-                .param("recordarme", "true")).andExpect(status().isOk()).andReturn();
+    MvcResult loginRemembering(String username) throws Exception {
+        return mvc.perform(post("/api/login").with(csrf()).param("username", username).param("password", "clave-segura")
+                .param("rememberMe", "true")).andExpect(status().isOk()).andReturn();
     }
 
-    int recordados(String usuario) {
-        return jdbc.queryForObject("select count(*) from persistent_logins where username = ?", Integer.class, usuario);
+    int remembered(String username) {
+        return jdbc.queryForObject("select count(*) from persistent_logins where username = ?", Integer.class, username);
     }
 
     @Test
-    void healthCheckPublicoSinDetalles() throws Exception {
+    void publicHealthCheckWithoutDetails() throws Exception {
         // Sin sesión: estado general y de cada componente; SIDGAD queda UNKNOWN hasta el primer chequeo diario.
         mvc.perform(get("/actuator/health")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
@@ -188,82 +189,82 @@ class SecurityTest {
     }
 
     @Test
-    void recordarmeVuelveAEntrarAunqueSePierdaLaSesion() throws Exception {
+    void rememberMeLogsBackInEvenIfTheSessionIsLost() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
-        confirmar("ana@example.com");
-        Cookie c = loginRecordando("ana").getResponse().getCookie("RECORDARME");
+        confirm("ana@example.com");
+        Cookie c = loginRemembering("ana").getResponse().getCookie("REMEMBER_ME");
         assertThat(c).isNotNull();
         assertThat(c.getMaxAge()).isEqualTo(30 * 24 * 3600);
         assertThat(c.isHttpOnly()).isTrue();
-        assertThat(recordados("ana")).isEqualTo(1);
+        assertThat(remembered("ana")).isEqualTo(1);
 
         // Sin sesión (venció, se cerró el navegador o se reinició la app): la cookie vuelve a entrar sola.
-        MvcResult r = mvc.perform(get("/api/sesion").cookie(c))
-                .andExpect(jsonPath("$.autenticado").value(true))
-                .andExpect(jsonPath("$.usuario").value("ana")).andReturn();
+        MvcResult r = mvc.perform(get("/api/session").cookie(c))
+                .andExpect(jsonPath("$.authenticated").value(true))
+                .andExpect(jsonPath("$.username").value("ana")).andReturn();
         // El token cambia en cada uso; con el nuevo, también las pantallas y la API del perfil.
-        Cookie nueva = r.getResponse().getCookie("RECORDARME");
-        assertThat(nueva.getValue()).isNotEqualTo(c.getValue());
-        mvc.perform(get("/rinkreports/club.html").cookie(nueva)).andExpect(status().isOk());
+        Cookie fresh = r.getResponse().getCookie("REMEMBER_ME");
+        assertThat(fresh.getValue()).isNotEqualTo(c.getValue());
+        mvc.perform(get("/rinkreports/club.html").cookie(fresh)).andExpect(status().isOk());
 
         // Sin marcar la casilla no queda recordado.
         register(club("beto")).andExpect(status().isCreated());
-        confirmar("beto@example.com");
+        confirm("beto@example.com");
         assertThat(login("beto", "clave-segura").andExpect(status().isOk()).andReturn().getResponse()
-                .getCookie("RECORDARME")).isNull();
-        assertThat(recordados("beto")).isZero();
+                .getCookie("REMEMBER_ME")).isNull();
+        assertThat(remembered("beto")).isZero();
     }
 
     @Test
-    void salirYCambiarLaClaveDejanDeRecordar() throws Exception {
+    void logoutAndPasswordChangeStopRemembering() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
-        confirmar("ana@example.com");
+        confirm("ana@example.com");
 
         // Salir borra el dispositivo recordado.
-        MvcResult r = loginRecordando("ana");
-        Cookie c = r.getResponse().getCookie("RECORDARME");
+        MvcResult r = loginRemembering("ana");
+        Cookie c = r.getResponse().getCookie("REMEMBER_ME");
         mvc.perform(post("/api/logout").with(csrf()).session((MockHttpSession) r.getRequest().getSession()).cookie(c))
                 .andExpect(status().isOk())
-                .andExpect(result -> assertThat(result.getResponse().getCookie("RECORDARME").getMaxAge()).isZero());
-        assertThat(recordados("ana")).isZero();
-        mvc.perform(get("/api/sesion").cookie(c)).andExpect(jsonPath("$.autenticado").value(false));
+                .andExpect(result -> assertThat(result.getResponse().getCookie("REMEMBER_ME").getMaxAge()).isZero());
+        assertThat(remembered("ana")).isZero();
+        mvc.perform(get("/api/session").cookie(c)).andExpect(jsonPath("$.authenticated").value(false));
 
         // Cambiar la clave también: hay que volver a ingresar con la nueva en cada dispositivo.
-        Cookie otra = loginRecordando("ana").getResponse().getCookie("RECORDARME");
-        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        Cookie other = loginRemembering("ana").getResponse().getCookie("REMEMBER_ME");
+        mvc.perform(post("/api/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"ana@example.com\"}")).andExpect(status().isOk());
-        String token = token("ana@example.com", "/restablecer.html");
-        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"%s\",\"clave\":\"otra-clave-segura\"}".formatted(token)))
+        String token = token("ana@example.com", "/reset-password.html");
+        mvc.perform(post("/api/password/reset").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"%s\",\"password\":\"otra-clave-segura\"}".formatted(token)))
                 .andExpect(status().isOk());
-        assertThat(recordados("ana")).isZero();
-        mvc.perform(get("/api/sesion").cookie(otra)).andExpect(jsonPath("$.autenticado").value(false));
+        assertThat(remembered("ana")).isZero();
+        mvc.perform(get("/api/session").cookie(other)).andExpect(jsonPath("$.authenticated").value(false));
     }
 
     @Test
-    void sinConfirmarElEmailTampocoQuedaRecordado() throws Exception {
+    void withoutConfirmedEmailItIsNotRememberedEither() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
-        MvcResult r = mvc.perform(post("/api/login").with(csrf()).param("usuario", "ana").param("clave", "clave-segura")
-                        .param("recordarme", "true"))
+        MvcResult r = mvc.perform(post("/api/login").with(csrf()).param("username", "ana").param("password", "clave-segura")
+                        .param("rememberMe", "true"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("EMAIL_NO_VERIFICADO")).andReturn();
+                .andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED")).andReturn();
         // Si el ingreso llegó a crear la cookie, la respuesta la borra después (el navegador aplica la última).
-        Cookie ultima = java.util.Arrays.stream(r.getResponse().getCookies())
-                .filter(x -> x.getName().equals("RECORDARME")).reduce((a, b) -> b).orElse(null);
-        assertThat(ultima == null || ultima.getMaxAge() == 0).isTrue();
-        assertThat(recordados("ana")).isZero();
+        Cookie last = java.util.Arrays.stream(r.getResponse().getCookies())
+                .filter(x -> x.getName().equals("REMEMBER_ME")).reduce((a, b) -> b).orElse(null);
+        assertThat(last == null || last.getMaxAge() == 0).isTrue();
+        assertThat(remembered("ana")).isZero();
     }
 
     @Test
-    void laSesionDura8HorasSinActividad() {
+    void theSessionLasts8HoursWithoutActivity() {
         assertThat(env.getProperty("server.servlet.session.timeout")).isEqualTo("8h");
     }
 
     @Test
-    void sinSesionLasPaginasVanAlLoginYLaApiResponde401() throws Exception {
+    void withoutSessionPagesGoToLoginAndApiAnswers401() throws Exception {
         // La home es pública (con los informes de ejemplo); la pantalla de club pide sesión.
         mvc.perform(get("/")).andExpect(status().isOk());
-        mvc.perform(get("/api/ejemplo.pdf")).andExpect(status().isOk());
+        mvc.perform(get("/api/sample.pdf")).andExpect(status().isOk());
         // La home es la de Mad Sports; su dirección vieja lleva a la home.
         mvc.perform(get("/index.html")).andExpect(content().string(org.hamcrest.Matchers.containsString("Mad Sports")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rinkreports\"")))
@@ -274,376 +275,387 @@ class SecurityTest {
         mvc.perform(get("/rinkreports")).andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/rinkreports/index.html"));
         mvc.perform(get("/rinkmetrics")).andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/dt-inicio.html"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/rinkmetrics/index.html"));
         // Al ingreso, con la pantalla a la que volver después.
         // Las pantallas de RinkReports van a su ingreso; las de RinkMetrics, al suyo.
         mvc.perform(get("/rinkreports/club.html")).andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/rinkreports/login.html?volver=%2Frinkreports%2Fclub.html"));
-        mvc.perform(get("/rinkreports/jugador.html"))
-                .andExpect(redirectedUrl("/rinkreports/login.html?volver=%2Frinkreports%2Fjugador.html"));
-        mvc.perform(get("/dt.html")).andExpect(redirectedUrl("/login.html?volver=%2Fdt.html"));
+                .andExpect(redirectedUrl("/rinkreports/login.html?returnTo=%2Frinkreports%2Fclub.html"));
+        mvc.perform(get("/rinkreports/player.html"))
+                .andExpect(redirectedUrl("/rinkreports/login.html?returnTo=%2Frinkreports%2Fplayer.html"));
+        mvc.perform(get("/coach.html")).andExpect(redirectedUrl("/rinkmetrics/login.html?returnTo=%2Fcoach.html"));
         mvc.perform(get("/rinkreports/login.html")).andExpect(status().isOk());
-        mvc.perform(get("/rinkreports/registro.html")).andExpect(status().isOk());
-        // Las direcciones viejas de los informes llevan a RinkReports.
+        mvc.perform(get("/rinkreports/signup.html")).andExpect(status().isOk());
+        // Las direcciones de antes llevan a las nuevas, sin sesión y con los mismos parámetros.
         mvc.perform(get("/club.html")).andExpect(redirectedUrl("/rinkreports/club.html"));
-        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/jugador.html"));
+        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/player.html"));
         mvc.perform(get("/informes.html")).andExpect(redirectedUrl("/rinkreports"));
+        mvc.perform(get("/dt.html")).andExpect(redirectedUrl("/coach.html"));
+        mvc.perform(get("/login.html?verified")).andExpect(redirectedUrl("/rinkmetrics/login.html?verified"));
+        mvc.perform(get("/restablecer.html?token=abc"))
+                .andExpect(redirectedUrl("/reset-password.html?token=abc"));
+        for (Map.Entry<String, String> e : WebConfig.OLD_PAGES.entrySet()) {
+            mvc.perform(get(e.getKey())).andExpect(redirectedUrl(e.getValue()));
+        }
         // Los ejemplos de RinkReports, públicos: en pantalla, PDF y Excel.
-        mvc.perform(get("/rinkreports/ejemplo.html")).andExpect(status().isOk());
-        mvc.perform(get("/login.html")).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/sample.html")).andExpect(status().isOk());
+        mvc.perform(get("/rinkmetrics/login.html")).andExpect(status().isOk());
         // Las presentaciones de las dos secciones (Informes y DT) se ven sin sesión.
-        mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
-        // La demo de RinkMetrics y sus capturas, también. La demo es la misma página que /dt.html (sin copia).
-        mvc.perform(get("/dt-demo.html")).andExpect(status().isOk())
+        mvc.perform(get("/rinkmetrics/index.html")).andExpect(status().isOk());
+        // La demo de RinkMetrics y sus capturas, también. La demo es la misma página que /coach.html (sin copia).
+        mvc.perform(get("/coach-demo.html")).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/dt/main.js")));
-        mvc.perform(get("/por-que.html")).andExpect(status().isOk());
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/coach/main.js")));
+        mvc.perform(get("/rinkmetrics/why.html")).andExpect(status().isOk());
         mvc.perform(get("/img/demo/carga-web.png")).andExpect(status().isOk());
-        mvc.perform(get("/registro.html")).andExpect(status().isOk());
-        mvc.perform(get("/api/ejemplo-jugador.pdf")).andExpect(status().isOk());
-        mvc.perform(get("/api/informes/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/sesion")).andExpect(status().isOk()).andExpect(jsonPath("$.autenticado").value(false));
+        mvc.perform(get("/rinkmetrics/signup.html")).andExpect(status().isOk());
+        // El service worker de antes, para que se borre solo.
+        mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
+        mvc.perform(get("/api/sample-player.pdf")).andExpect(status().isOk());
+        mvc.perform(get("/api/reports/" + UUID.randomUUID())).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/session")).andExpect(status().isOk()).andExpect(jsonPath("$.authenticated").value(false));
     }
 
     @Test
-    void registroDeClubYLogin() throws Exception {
-        register(club("Ana.Club")).andExpect(status().isCreated()).andExpect(jsonPath("$.usuario").value("ana.club"));
+    void clubSignupAndLogin() throws Exception {
+        register(club("Ana.Club")).andExpect(status().isCreated()).andExpect(jsonPath("$.username").value("ana.club"));
         register(club("ana.club")).andExpect(status().isConflict());
 
-        Usuario u = usuarios.findByUsuario("ana.club").orElseThrow();
-        assertThat(u.getPerfiles()).containsExactly(Perfil.CLUBFPP);
-        assertThat(u.getClave()).isNotEqualTo("clave-segura").startsWith("$2");
-        assertThat(u.getClubNombre()).isEqualTo("VELEZ");
+        UserAccount u = users.findByUsername("ana.club").orElseThrow();
+        assertThat(u.getProfiles()).containsExactly(Profile.CLUBFPP);
+        assertThat(u.getPassword()).isNotEqualTo("clave-segura").startsWith("$2");
+        assertThat(u.getClubName()).isEqualTo("VELEZ");
         // El plan elegido queda como suscripción desde hoy.
-        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("CLUB_FREE");
-        assertThat(u.getSuscripcionDesde()).isEqualTo(java.time.LocalDate.now());
-        assertThat(u.getSuscripcionHasta()).isEqualTo("2026-12-31");
-        assertThat(u.getNombre()).isNull();   // el registro no pide nombre ni apellido
+        assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("CLUB_FREE");
+        assertThat(u.getSubscriptionFrom()).isEqualTo(java.time.LocalDate.now());
+        assertThat(u.getSubscriptionTo()).isEqualTo("2026-12-31");
+        assertThat(u.getName()).isNull();   // el registro no pide nombre ni apellido
 
         // Sin confirmar el email no se ingresa (con la clave correcta se avisa por qué).
         login("ana.club", "clave-segura").andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("EMAIL_NO_VERIFICADO"));
-        confirmar("Ana.Club@example.com");
-        assertThat(usuarios.findByUsuario("ana.club").orElseThrow().isEmailVerificado()).isTrue();
-        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/rinkreports/club.html"));
+                .andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"));
+        confirm("Ana.Club@example.com");
+        assertThat(users.findByUsername("ana.club").orElseThrow().isEmailVerified()).isTrue();
+        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.home").value("/rinkreports/club.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Usuario o clave incorrectos."));
     }
 
     @Test
-    void registroDeJugadorConElJugadorDeLaFpp() throws Exception {
-        Map<String, Object> sinJugador = player("juan");
-        sinJugador.remove("jugadorId");
-        register(sinJugador).andExpect(status().isBadRequest())
+    void playerSignupWithTheFppPlayer() throws Exception {
+        Map<String, Object> withoutPlayer = player("juan");
+        withoutPlayer.remove("playerId");
+        register(withoutPlayer).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Elegí tu nombre en la lista de jugadores del club."));
 
-        Map<String, Object> otroJugador = player("juan");
-        otroJugador.put("jugadorId", 1);
-        register(otroJugador).andExpect(status().isBadRequest());
+        Map<String, Object> otherPlayer = player("juan");
+        otherPlayer.put("playerId", 1);
+        register(otherPlayer).andExpect(status().isBadRequest());
 
         register(player("juan")).andExpect(status().isCreated());
-        Usuario u = usuarios.findByUsuario("juan").orElseThrow();
-        assertThat(u.getPerfiles()).containsExactly(Perfil.PLAYERFPP);
-        assertThat(u.getJugadorId()).isEqualTo(3851);
-        assertThat(u.getJugadorNombre()).isEqualTo("Ignacio J Graiño");
-        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("PLAYER_MENSUAL");
-        assertThat(u.getNombre()).isEqualTo("Ignacio J");
-        assertThat(u.getApellido()).isEqualTo("Graiño");
-        assertThat(u.getCategoria()).isEqualTo("PRIMERA");
-        assertThat(u.getRama()).isEqualTo("MASCULINO");
+        UserAccount u = users.findByUsername("juan").orElseThrow();
+        assertThat(u.getProfiles()).containsExactly(Profile.PLAYERFPP);
+        assertThat(u.getPlayerId()).isEqualTo(3851);
+        assertThat(u.getPlayerName()).isEqualTo("Ignacio J Graiño");
+        assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("PLAYER_MONTHLY");
+        assertThat(u.getName()).isEqualTo("Ignacio J");
+        assertThat(u.getLastName()).isEqualTo("Graiño");
+        assertThat(u.getCategory()).isEqualTo("PRIMERA");
+        assertThat(u.getBranch()).isEqualTo("MASCULINO");
 
         // Un jugador, un usuario.
-        Map<String, Object> mismoJugador = player("juan2");
-        register(mismoJugador).andExpect(status().isConflict());
+        Map<String, Object> samePlayer = player("juan2");
+        register(samePlayer).andExpect(status().isConflict());
 
-        confirmar("juan@example.com");
-        login("juan", "clave-segura").andExpect(jsonPath("$.inicio").value("/rinkreports/jugador.html"));
+        confirm("juan@example.com");
+        login("juan", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/player.html"));
     }
 
     @Test
-    void registroDeClubYJugadorDeLaAmp() throws Exception {
+    void signupOfAmpClubAndPlayer() throws Exception {
         Map<String, Object> clubAmp = club("murialdo");
-        clubAmp.putAll(Map.of("perfil", "CLUBAMP", "clubId", 3));
+        clubAmp.putAll(Map.of("profile", "CLUBAMP", "clubId", 3));
         register(clubAmp).andExpect(status().isCreated());
-        Usuario club = usuarios.findByUsuario("murialdo").orElseThrow();
-        assertThat(club.getPerfiles()).containsExactly(Perfil.CLUBAMP);
-        assertThat(club.federacion()).isEqualTo(Federacion.AMP);
-        assertThat(club.getClubNombre()).isEqualTo("LEONARDO MURIALDO");
+        UserAccount club = users.findByUsername("murialdo").orElseThrow();
+        assertThat(club.getProfiles()).containsExactly(Profile.CLUBAMP);
+        assertThat(club.federation()).isEqualTo(Federation.AMP);
+        assertThat(club.getClubName()).isEqualTo("LEONARDO MURIALDO");
 
         // El club tiene que ser de la AMP: Vélez es de la FPP.
-        Map<String, Object> velezEnAmp = club("velez.amp");
-        velezEnAmp.put("perfil", "CLUBAMP");
-        register(velezEnAmp).andExpect(status().isBadRequest())
+        Map<String, Object> velezInAmp = club("velez.amp");
+        velezInAmp.put("profile", "CLUBAMP");
+        register(velezInAmp).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("El club 74 no juega en la AMP en 2026."));
 
-        Map<String, Object> jugadorAmp = player("terraza");
-        jugadorAmp.putAll(Map.of("perfil", "PLAYERAMP", "clubId", 3, "categoria", "JUVENIL", "jugadorId", 6188));
-        register(jugadorAmp).andExpect(status().isCreated());
-        Usuario jugador = usuarios.findByUsuario("terraza").orElseThrow();
-        assertThat(jugador.getPerfiles()).containsExactly(Perfil.PLAYERAMP);
-        assertThat(jugador.getJugadorNombre()).isEqualTo("Victor Daniel Terraza Gomez");
+        Map<String, Object> playerAmp = player("terraza");
+        playerAmp.putAll(Map.of("profile", "PLAYERAMP", "clubId", 3, "category", "JUVENIL", "playerId", 6188));
+        register(playerAmp).andExpect(status().isCreated());
+        UserAccount player = users.findByUsername("terraza").orElseThrow();
+        assertThat(player.getProfiles()).containsExactly(Profile.PLAYERAMP);
+        assertThat(player.getPlayerName()).isEqualTo("Victor Daniel Terraza Gomez");
 
-        confirmar("murialdo@example.com");
-        login("murialdo", "clave-segura").andExpect(jsonPath("$.inicio").value("/rinkreports/club.html"));
-        mvc.perform(get("/api/sesion").with(user("murialdo").authorities(() -> "CLUBAMP")))
-                .andExpect(jsonPath("$.federacion").value("AMP"));
-        confirmar("terraza@example.com");
-        login("terraza", "clave-segura").andExpect(jsonPath("$.inicio").value("/rinkreports/jugador.html"));
+        confirm("murialdo@example.com");
+        login("murialdo", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/club.html"));
+        mvc.perform(get("/api/session").with(user("murialdo").authorities(() -> "CLUBAMP")))
+                .andExpect(jsonPath("$.federation").value("AMP"));
+        confirm("terraza@example.com");
+        login("terraza", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/player.html"));
     }
 
     @Test
-    void lasPantallasAceptanLosPerfilesDeLasDosFederaciones() throws Exception {
+    void screensAcceptProfilesOfBothFederations() throws Exception {
         mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "CLUBAMP"))).andExpect(status().isOk());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
         // Cada perfil, solo su pantalla.
-        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "CLUBAMP")))
+        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "CLUBAMP")))
                 .andExpect(status().is3xxRedirection());
-        mvc.perform(post("/api/informes").with(user("a").authorities(() -> "PLAYERAMP")).with(csrf())
+        mvc.perform(post("/api/reports").with(user("a").authorities(() -> "PLAYERAMP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
     }
 
-    Map<String, Object> dt(String usuario) {
-        Map<String, Object> m = club(usuario);
-        m.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_FREE"));
+    Map<String, Object> coach(String username) {
+        Map<String, Object> m = club(username);
+        m.putAll(Map.of("profile", "COACHFPP", "subscription", "COACH_FREE"));
         return m;
     }
 
     @Test
-    void registroDeDtSinEquipos() throws Exception {
+    void coachSignupWithoutTeams() throws Exception {
         // El DT ya no elige equipos al registrarse: los arma después en la sección Equipo.
-        register(dt("profe")).andExpect(status().isCreated());
-        Usuario u = usuarios.findByUsuario("profe").orElseThrow();
-        assertThat(u.getPerfiles()).containsExactly(Perfil.DTFPP);
-        assertThat(u.esDt()).isTrue();
-        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_FREE");
+        register(coach("profe")).andExpect(status().isCreated());
+        UserAccount u = users.findByUsername("profe").orElseThrow();
+        assertThat(u.getProfiles()).containsExactly(Profile.COACHFPP);
+        assertThat(u.isCoach()).isTrue();
+        assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("COACH_FREE");
 
-        confirmar("profe@example.com");
-        login("profe", "clave-segura").andExpect(jsonPath("$.inicio").value("/dt.html"));
-        mvc.perform(get("/api/sesion").with(user("profe").authorities(() -> "DTFPP")))
-                .andExpect(jsonPath("$.suscripcion.partidosPorMes").value(5));
+        confirm("profe@example.com");
+        login("profe", "clave-segura").andExpect(jsonPath("$.home").value("/coach.html"));
+        mvc.perform(get("/api/session").with(user("profe").authorities(() -> "COACHFPP")))
+                .andExpect(jsonPath("$.subscription.matchesPerMonth").value(5));
 
         // El mensual (pago) todavía no se puede elegir: el DT empieza con el free.
-        Map<String, Object> mensual = dt("dt.mensual");
-        mensual.put("suscripcion", "DT_MENSUAL");
-        register(mensual).andExpect(status().isBadRequest())
+        Map<String, Object> monthly = coach("dt.mensual");
+        monthly.put("subscription", "COACH_MONTHLY");
+        register(monthly).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("El plan DT mensual estará disponible próximamente. Por ahora, "
                         + "empezá con el plan DT free."));
 
         // DT de la AMP.
-        Map<String, Object> amp = dt("profe.amp");
-        amp.putAll(Map.of("perfil", "DTAMP", "clubId", 3));
+        Map<String, Object> amp = coach("profe.amp");
+        amp.putAll(Map.of("profile", "COACHAMP", "clubId", 3));
         register(amp).andExpect(status().isCreated());
-        assertThat(usuarios.findByUsuario("profe.amp").orElseThrow().federacion()).isEqualTo(Federacion.AMP);
+        assertThat(users.findByUsername("profe.amp").orElseThrow().federation()).isEqualTo(Federation.AMP);
 
-        Map<String, Object> planDeClub = dt("dt.d");
-        planDeClub.put("suscripcion", "CLUB_MENSUAL");
-        register(planDeClub).andExpect(status().isBadRequest())
+        Map<String, Object> clubPlan = coach("dt.d");
+        clubPlan.put("subscription", "CLUB_MONTHLY");
+        register(clubPlan).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("El plan Club mensual es para clubes."));
     }
 
     @Test
-    void laPantallaDelDtEsSoloParaDt() throws Exception {
-        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "DTAMP"))).andExpect(status().isOk());
-        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/dt.html").with(user("a").authorities(() -> "PLAYERFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/api/dt/partidos").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
+    void theCoachScreenIsOnlyForCoaches() throws Exception {
+        mvc.perform(get("/coach.html").with(user("a").authorities(() -> "COACHAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/coach.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/coach.html").with(user("a").authorities(() -> "PLAYERFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/api/coach/matches").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
         // El service worker de la planilla (para abrirla sin señal) se baja sin sesión, como el resto de los estáticos.
         mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
-        mvc.perform(get("/js/dt/main.js")).andExpect(status().isOk());
+        mvc.perform(get("/js/coach/main.js")).andExpect(status().isOk());
     }
 
     @Test
-    void planesDelDt() throws Exception {
+    void coachPlans() throws Exception {
         // El free primero (del más barato al más caro).
-        mvc.perform(get("/api/suscripciones").param("perfil", "DTFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("DT_FREE", "DT_MENSUAL")))
-                .andExpect(jsonPath("$[0].precio").value(0))
-                .andExpect(jsonPath("$[0].equiposMax").value(1))
-                .andExpect(jsonPath("$[0].partidosPorMes").value(5))
-                .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
-                .andExpect(jsonPath("$[1].vigenteHasta").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$[0].disponible").value(true))
-                .andExpect(jsonPath("$[1].disponible").value(false))
-                .andExpect(jsonPath("$[1].equiposMax").value(3))
-                .andExpect(jsonPath("$[1].partidosPorMes").value(25))
+        mvc.perform(get("/api/plans").param("profile", "COACHFPP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].code").value(org.hamcrest.Matchers.contains("COACH_FREE", "COACH_MONTHLY")))
+                .andExpect(jsonPath("$[0].price").value(0))
+                .andExpect(jsonPath("$[0].maxTeams").value(1))
+                .andExpect(jsonPath("$[0].matchesPerMonth").value(5))
+                .andExpect(jsonPath("$[0].validUntil").value("2026-12-31"))
+                .andExpect(jsonPath("$[1].validUntil").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$[0].available").value(true))
+                .andExpect(jsonPath("$[1].available").value(false))
+                .andExpect(jsonPath("$[1].maxTeams").value(3))
+                .andExpect(jsonPath("$[1].matchesPerMonth").value(25))
                 // USD 12, en pesos al dólar de respaldo de los tests ($ 1.500).
-                .andExpect(jsonPath("$[1].precioUsd").value(12.0))
-                .andExpect(jsonPath("$[1].precio").value(18000));
+                .andExpect(jsonPath("$[1].priceUsd").value(12.0))
+                .andExpect(jsonPath("$[1].price").value(18000));
     }
 
     @Test
-    void elPlanFreeDelDtVenceAFinDe2026() throws Exception {
-        Map<String, Object> free = dt("dt.free");
-        free.put("suscripcion", "DT_FREE");
+    void theCoachFreePlanEndsAtEndOf2026() throws Exception {
+        Map<String, Object> free = coach("dt.free");
+        free.put("subscription", "COACH_FREE");
         register(free).andExpect(status().isCreated());
-        Usuario u = usuarios.findByUsuario("dt.free").orElseThrow();
-        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("DT_FREE");
+        UserAccount u = users.findByUsername("dt.free").orElseThrow();
+        assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("COACH_FREE");
         // Vence el 31/12/2026, no al mes.
-        assertThat(u.getSuscripcionHasta()).isEqualTo(java.time.LocalDate.of(2026, 12, 31));
+        assertThat(u.getSubscriptionTo()).isEqualTo(java.time.LocalDate.of(2026, 12, 31));
     }
 
     @Test
-    void soloSeRegistranLosPerfilesOfrecidos() throws Exception {
-        Map<String, Object> otro = club("pedro");
-        otro.put("perfil", "CLUBFSP");
-        register(otro).andExpect(status().isBadRequest());
+    void onlyOfferedProfilesCanSignUp() throws Exception {
+        Map<String, Object> other = club("pedro");
+        other.put("profile", "CLUBFSP");
+        register(other).andExpect(status().isBadRequest());
 
-        Map<String, Object> clave = club("pedro");
-        clave.put("clave", "corta");
-        register(clave).andExpect(status().isBadRequest());
+        Map<String, Object> password = club("pedro");
+        password.put("password", "corta");
+        register(password).andExpect(status().isBadRequest());
 
-        Map<String, Object> sinPlan = club("pedro");
-        sinPlan.remove("suscripcion");
-        register(sinPlan).andExpect(status().isBadRequest())
+        Map<String, Object> withoutPlan = club("pedro");
+        withoutPlan.remove("subscription");
+        register(withoutPlan).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Elegí un plan de suscripción."));
 
-        Map<String, Object> planDeJugador = club("pedro");
-        planDeJugador.put("suscripcion", "PLAYER_MENSUAL");
-        register(planDeJugador).andExpect(status().isBadRequest())
+        Map<String, Object> playerPlan = club("pedro");
+        playerPlan.put("subscription", "PLAYER_MONTHLY");
+        register(playerPlan).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("El plan Jugador mensual es para jugadores."));
 
-        Map<String, Object> clubInexistente = club("pedro");
-        clubInexistente.put("clubId", 99);
-        register(clubInexistente).andExpect(status().isBadRequest());
-        assertThat(usuarios.count()).isZero();
+        Map<String, Object> missingClub = club("pedro");
+        missingClub.put("clubId", 99);
+        register(missingClub).andExpect(status().isBadRequest());
+        assertThat(users.count()).isZero();
     }
 
     @Test
-    void elEnlaceDeConfirmacionSirveUnaSolaVez() throws Exception {
+    void theConfirmationLinkWorksOnlyOnce() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
-        String token = token("ana@example.com", "/api/verificar");
+        String token = token("ana@example.com", "/api/verify");
         // La cuenta de club es de RinkReports: al ingreso de RinkReports.
-        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/rinkreports/login.html?verificado"));
-        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
-        mvc.perform(get("/api/verificar").param("token", "inventado")).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
+        mvc.perform(get("/api/verify").param("token", token)).andExpect(redirectedUrl("/rinkreports/login.html?verified"));
+        mvc.perform(get("/api/verify").param("token", token)).andExpect(redirectedUrl("/rinkmetrics/login.html?verification=invalid"));
+        mvc.perform(get("/api/verify").param("token", "inventado")).andExpect(redirectedUrl("/rinkmetrics/login.html?verification=invalid"));
+        // El enlace de los mails de antes (/api/verificar) también sirve.
+        mvc.perform(get("/api/verificar").param("token", "inventado")).andExpect(redirectedUrl("/rinkmetrics/login.html?verification=invalid"));
     }
 
     @Test
-    void reenviarLaConfirmacionPorUsuarioOEmail() throws Exception {
+    void resendConfirmationByUserOrEmail() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
         // Un mail por minuto como mucho: el reenvío inmediato no manda otro.
-        mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"usuario\":\"ana\"}")).andExpect(status().isOk());
+        mvc.perform(post("/api/verification/resend").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"ana\"}")).andExpect(status().isOk());
         verify(mailer, times(1)).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("ana@example.com")));
         // Email inexistente: misma respuesta, sin mail.
-        mvc.perform(post("/api/verificacion/reenviar").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/verification/resend").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("Si hay una cuenta")));
         verify(mailer, never()).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("nadie@example.com")));
     }
 
     @Test
-    void recuperarLaClave() throws Exception {
+    void recoverThePassword() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
-        confirmar("ana@example.com");
+        confirm("ana@example.com");
 
-        String olvido = "{\"email\":\"ANA@example.com\"}";
-        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(olvido))
+        String forgot = "{\"email\":\"ANA@example.com\"}";
+        mvc.perform(post("/api/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(forgot))
                 .andExpect(status().isOk());
-        String token = token("ana@example.com", "/restablecer.html");
+        String token = token("ana@example.com", "/reset-password.html");
 
-        String corta = "{\"token\":\"%s\",\"clave\":\"corta\"}".formatted(token);
-        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corta))
+        String shortPassword = "{\"token\":\"%s\",\"password\":\"corta\"}".formatted(token);
+        mvc.perform(post("/api/password/reset").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(shortPassword))
                 .andExpect(status().isBadRequest());
-        String nueva = "{\"token\":\"%s\",\"clave\":\"otra-clave-segura\"}".formatted(token);
-        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(nueva))
+        String fresh = "{\"token\":\"%s\",\"password\":\"otra-clave-segura\"}".formatted(token);
+        mvc.perform(post("/api/password/reset").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(fresh))
                 .andExpect(status().isOk());
 
         login("ana", "clave-segura").andExpect(status().isUnauthorized());
         login("ana", "otra-clave-segura").andExpect(status().isOk());
         // El enlace no se puede volver a usar.
-        mvc.perform(post("/api/clave/restablecer").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(nueva))
+        mvc.perform(post("/api/password/reset").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(fresh))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith("El enlace venció o ya se usó")));
 
         // Email inexistente: misma respuesta y ningún mail.
-        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk());
         verify(mailer, never()).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("nadie@example.com")));
     }
 
     @Test
-    void cadaProductoTieneSuIngreso() throws Exception {
-        for (Usuario u : List.of(saved("club.uno", Perfil.CLUBFPP), saved("dt.uno", Perfil.DTFPP))) {
-            u.verificarEmail();
-            usuarios.save(u);
+    void eachProductHasItsOwnLogin() throws Exception {
+        for (UserAccount u : List.of(saved("club.uno", Profile.CLUBFPP), saved("dt.uno", Profile.COACHFPP))) {
+            u.verifyEmail();
+            users.save(u);
         }
-        assertThat(usuarios.findByUsuario("club.uno").orElseThrow().getProducto()).isEqualTo(Producto.REPORTS);
-        assertThat(usuarios.findByUsuario("dt.uno").orElseThrow().getProducto()).isEqualTo(Producto.METRICS);
+        assertThat(users.findByUsername("club.uno").orElseThrow().getProduct()).isEqualTo(Product.REPORTS);
+        assertThat(users.findByUsername("dt.uno").orElseThrow().getProduct()).isEqualTo(Product.METRICS);
         // Desde su producto, entra; desde el otro, no (ni queda la sesión), y la respuesta dice dónde ingresar.
-        loginEn("club.uno", "REPORTS").andExpect(status().isOk());
-        loginEn("dt.uno", "METRICS").andExpect(status().isOk());
-        loginEn("dt.uno", "REPORTS").andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("OTRO_PRODUCTO"))
-                .andExpect(jsonPath("$.ingreso").value("/login.html"))
+        loginTo("club.uno", "REPORTS").andExpect(status().isOk());
+        loginTo("dt.uno", "METRICS").andExpect(status().isOk());
+        loginTo("dt.uno", "REPORTS").andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("OTHER_PRODUCT"))
+                .andExpect(jsonPath("$.login").value("/rinkmetrics/login.html"))
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("RinkMetrics")));
-        loginEn("club.uno", "METRICS").andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.ingreso").value("/rinkreports/login.html"));
+        loginTo("club.uno", "METRICS").andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.login").value("/rinkreports/login.html"));
         // La sesión dice de qué producto es la cuenta.
-        mvc.perform(get("/api/sesion").with(user("club.uno").authorities(() -> "CLUBFPP")))
-                .andExpect(jsonPath("$.producto").value("REPORTS"));
+        mvc.perform(get("/api/session").with(user("club.uno").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.product").value("REPORTS"));
     }
 
     @Test
-    void elMismoEmailPuedeTenerUnaCuentaEnCadaProducto() throws Exception {
-        Map<String, Object> dt = club("profe");
-        dt.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_FREE"));
-        register(dt).andExpect(status().isCreated());
+    void theSameEmailCanHaveAnAccountInEachProduct() throws Exception {
+        Map<String, Object> coach = club("profe");
+        coach.putAll(Map.of("profile", "COACHFPP", "subscription", "COACH_FREE"));
+        register(coach).andExpect(status().isCreated());
         // Otro DT con el mismo email: no (mismo producto).
-        Map<String, Object> otroDt = new HashMap<>(dt);
-        otroDt.put("usuario", "profe2");
-        register(otroDt).andExpect(status().isConflict())
+        Map<String, Object> otherCoach = new HashMap<>(coach);
+        otherCoach.put("username", "profe2");
+        register(otherCoach).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("Ya hay una cuenta de RinkMetrics con ese email."));
         // Un jugador de RinkReports con el mismo email: sí. El usuario sigue siendo único en toda la web.
-        Map<String, Object> jugador = player("profe.jugador");
-        jugador.put("email", "profe@example.com");
-        register(jugador).andExpect(status().isCreated());
-        Map<String, Object> mismoUsuario = player("profe");
-        mismoUsuario.put("email", "otro@example.com");
-        register(mismoUsuario).andExpect(status().isConflict());
+        Map<String, Object> player = player("profe.jugador");
+        player.put("email", "profe@example.com");
+        register(player).andExpect(status().isCreated());
+        Map<String, Object> sameUser = player("profe");
+        sameUser.put("email", "otro@example.com");
+        register(sameUser).andExpect(status().isConflict());
 
         // Cada mail, con la marca de su producto.
         ArgumentCaptor<MailContent> mails = ArgumentCaptor.forClass(MailContent.class);
         verify(mailer, atLeastOnce()).send(mails.capture());
-        assertThat(mails.getAllValues()).extracting(MailContent::producto, MailContent::subject)
-                .contains(org.assertj.core.groups.Tuple.tuple(Producto.METRICS, "Confirmá tu cuenta de RinkMetrics"),
-                        org.assertj.core.groups.Tuple.tuple(Producto.REPORTS, "Confirmá tu cuenta de RinkReports"));
+        assertThat(mails.getAllValues()).extracting(MailContent::product, MailContent::subject)
+                .contains(org.assertj.core.groups.Tuple.tuple(Product.METRICS, "Confirmá tu cuenta de RinkMetrics"),
+                        org.assertj.core.groups.Tuple.tuple(Product.REPORTS, "Confirmá tu cuenta de RinkReports"));
 
         // "Olvidé mi clave" desde RinkReports va a la cuenta de RinkReports, con su enlace.
-        confirmar("profe@example.com");
-        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"email\":\"profe@example.com\",\"producto\":\"REPORTS\"}")).andExpect(status().isOk());
+        confirm("profe@example.com");
+        mvc.perform(post("/api/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"profe@example.com\",\"product\":\"REPORTS\"}")).andExpect(status().isOk());
         verify(mailer, atLeastOnce()).send(mails.capture());
-        MailContent recupero = mails.getAllValues().stream().filter(m -> m.subject().startsWith("Elegí una clave"))
+        MailContent reset = mails.getAllValues().stream().filter(m -> m.subject().startsWith("Elegí una clave"))
                 .reduce((a, b) -> b).orElseThrow();
-        assertThat(recupero.producto()).isEqualTo(Producto.REPORTS);
-        assertThat(recupero.url()).contains("/restablecer.html?producto=reports&token=");
-        assertThat(realMailer.html(recupero)).contains("RinkReports").doesNotContain(">RinkMetrics<");
+        assertThat(reset.product()).isEqualTo(Product.REPORTS);
+        assertThat(reset.url()).contains("/reset-password.html?product=reports&token=");
+        assertThat(realMailer.html(reset)).contains("RinkReports").doesNotContain(">RinkMetrics<");
     }
 
     @Test
-    void lasOpcionesDelRegistro() throws Exception {
-        mvc.perform(get("/api/registro/opciones")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.club").isBoolean()).andExpect(jsonPath("$.jugadorAmp").isBoolean());
+    void signupOptions() throws Exception {
+        mvc.perform(get("/api/signup/options")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.club").isBoolean()).andExpect(jsonPath("$.playerAmp").isBoolean());
     }
 
     @Test
-    void elMailTieneElLookDeLaWeb() {
+    void theMailHasTheWebLook() {
         MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de RinkMetrics", "Un paso más",
                 "Tu cuenta", "Confirmá tu email", "ana", List.of("Gracias por sumarte."), "Confirmar mi email",
-                "http://localhost/api/verificar?token=abc", "El enlace vale 48 horas.");
+                "http://localhost/api/verify?token=abc", "El enlace vale 48 horas.");
         String html = realMailer.html(m);
         assertThat(html).contains("#e6ecef", "#0a7ea4", "cid:logo", "Confirmá tu email", "Hola ana:",
-                "href=\"http://localhost/api/verificar?token=abc\"", "Confirmar mi email ►", "RinkMetrics");
-        assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verificar?token=abc");
+                "href=\"http://localhost/api/verify?token=abc\"", "Confirmar mi email ►", "RinkMetrics");
+        assertThat(m.text()).contains("Hola ana:", "Confirmar mi email: http://localhost/api/verify?token=abc");
         assertThat(new String(Mailer.logo(), 1, 3)).isEqualTo("PNG");
     }
 
     @Test
-    void vistaPreviaDelMail() throws Exception {
+    void mailPreview() throws Exception {
         // Copia para revisar a ojo en el navegador: target/mail-ejemplo.html (logo embebido en lugar de cid:).
         MailContent m = new MailContent("ana@example.com", "Confirmá tu cuenta de RinkMetrics", "Un paso más",
                 "Tu cuenta", "Confirmá tu email", "ana",
@@ -657,186 +669,186 @@ class SecurityTest {
     }
 
     @Test
-    void planesDeClubYDeJugador() throws Exception {
+    void clubAndPlayerPlans() throws Exception {
         // El club: el free (hasta el 31/12/2026, sin límite de informes) y el mensual, que todavía no se vende:
         // "Próximamente", con precio a definir.
-        mvc.perform(get("/api/suscripciones").param("perfil", "CLUBFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("CLUB_FREE", "CLUB_MENSUAL")))
-                .andExpect(jsonPath("$[0].precio").value(0))
-                .andExpect(jsonPath("$[0].informesPorMes").value(0))
-                .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
-                .andExpect(jsonPath("$[0].disponible").value(true))
-                .andExpect(jsonPath("$[1].precioUsd").value(20.0))
+        mvc.perform(get("/api/plans").param("profile", "CLUBFPP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].code").value(org.hamcrest.Matchers.contains("CLUB_FREE", "CLUB_MONTHLY")))
+                .andExpect(jsonPath("$[0].price").value(0))
+                .andExpect(jsonPath("$[0].reportsPerMonth").value(0))
+                .andExpect(jsonPath("$[0].validUntil").value("2026-12-31"))
+                .andExpect(jsonPath("$[0].available").value(true))
+                .andExpect(jsonPath("$[1].priceUsd").value(20.0))
                 // En pesos al dólar de respaldo de los tests ($ 1.500), redondeado hacia abajo a centenas.
-                .andExpect(jsonPath("$[1].precio").value(30000))
-                .andExpect(jsonPath("$[1].dolar").value(1500))
-                .andExpect(jsonPath("$[1].disponible").value(false))
-                .andExpect(jsonPath("$[1].precioADefinir").value(true));
-        Map<String, Object> pago = club("ana.pago");
-        pago.put("suscripcion", "CLUB_MENSUAL");
-        register(pago).andExpect(status().isBadRequest());
+                .andExpect(jsonPath("$[1].price").value(30000))
+                .andExpect(jsonPath("$[1].dollar").value(1500))
+                .andExpect(jsonPath("$[1].available").value(false))
+                .andExpect(jsonPath("$[1].priceToBeDefined").value(true));
+        Map<String, Object> paid = club("ana.pago");
+        paid.put("subscription", "CLUB_MONTHLY");
+        register(paid).andExpect(status().isBadRequest());
         // El jugador: el free (hasta el 31/12/2026) y el mensual.
-        mvc.perform(get("/api/suscripciones").param("perfil", "PLAYERFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("PLAYER_FREE", "PLAYER_MENSUAL")))
-                .andExpect(jsonPath("$[0].precio").value(0))
-                .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
-                .andExpect(jsonPath("$[0].informesPorMes").value(5))
-                .andExpect(jsonPath("$[1].precioUsd").value(7.0))
-                .andExpect(jsonPath("$[1].precio").value(10500))
-                .andExpect(jsonPath("$[1].informesPorMes").value(4))
-                .andExpect(jsonPath("$[1].vigenteHasta").value(org.hamcrest.Matchers.nullValue()));
+        mvc.perform(get("/api/plans").param("profile", "PLAYERFPP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].code").value(org.hamcrest.Matchers.contains("PLAYER_FREE", "PLAYER_MONTHLY")))
+                .andExpect(jsonPath("$[0].price").value(0))
+                .andExpect(jsonPath("$[0].validUntil").value("2026-12-31"))
+                .andExpect(jsonPath("$[0].reportsPerMonth").value(5))
+                .andExpect(jsonPath("$[1].priceUsd").value(7.0))
+                .andExpect(jsonPath("$[1].price").value(10500))
+                .andExpect(jsonPath("$[1].reportsPerMonth").value(4))
+                .andExpect(jsonPath("$[1].validUntil").value(org.hamcrest.Matchers.nullValue()));
 
         // Solo existen los planes mensuales.
-        Map<String, Object> otro = club("ana.otro");
-        otro.put("suscripcion", "CLUB_ANUAL");
-        register(otro).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Plan de suscripción inválido: CLUB_ANUAL."));
+        Map<String, Object> other = club("ana.otro");
+        other.put("subscription", "CLUB_YEARLY");
+        register(other).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Plan de suscripción inválido: CLUB_YEARLY."));
     }
 
     @Test
-    void sinTokenCsrfNoSeAceptanPost() throws Exception {
-        mvc.perform(post("/api/registro").contentType(MediaType.APPLICATION_JSON)
+    void withoutCsrfTokenPostsAreRejected() throws Exception {
+        mvc.perform(post("/api/signup").contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(club("ana")))).andExpect(status().isForbidden());
-        assertThat(usuarios.count()).isZero();
+        assertThat(users.count()).isZero();
     }
 
     @Test
-    void elClubSoloPideInformesDeSuClub() throws Exception {
-        saved("club", Perfil.CLUBFPP);
+    void theClubOnlyRequestsReportsOfItsClub() throws Exception {
+        saved("club", Profile.CLUBFPP);
         ReportService.Job job = mock(ReportService.Job.class);
         when(job.id()).thenReturn(UUID.randomUUID());
-        when(job.status()).thenReturn(ReportService.Status.PENDIENTE);
+        when(job.status()).thenReturn(ReportService.Status.PENDING);
         when(reports.submit(any(), eq("club"))).thenReturn(job);
-        String pedido = "{\"clubId\":%d,\"categoria\":\"PRIMERA\",\"rama\":\"MASCULINO\"}";
+        String request = "{\"clubId\":%d,\"category\":\"PRIMERA\",\"branch\":\"MASCULINO\"}";
 
-        mvc.perform(post("/api/informes").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(99)))
+        mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted(99)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.detail").value("Solo podés pedir informes de tu club (VELEZ)."));
-        assertThat(usuarios.findByUsuario("club").orElseThrow().getInformesPedidos()).isZero();   // el rechazado no cuenta
-        mvc.perform(post("/api/informes").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(74)))
+        assertThat(users.findByUsername("club").orElseThrow().getReportsRequested()).isZero();   // el rechazado no cuenta
+        mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted(74)))
                 .andExpect(status().isAccepted());
-        mvc.perform(post("/api/informes").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(pedido.formatted(74)))
+        mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted(74)))
                 .andExpect(status().isAccepted());
-        assertThat(usuarios.findByUsuario("club").orElseThrow().getInformesPedidos()).isEqualTo(2);
+        assertThat(users.findByUsername("club").orElseThrow().getReportsRequested()).isEqualTo(2);
     }
 
     @Test
-    void elJugadorTambienSumaInformesPedidos() throws Exception {
-        Usuario u = saved("jug", Perfil.PLAYERFPP);
-        u.vincularJugador(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
-        usuarios.save(u);
+    void playerAlsoCountsRequestedReports() throws Exception {
+        UserAccount u = saved("jug", Profile.PLAYERFPP);
+        u.linkPlayer(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
+        users.save(u);
         com.madsports.player.PlayerReportService.Job job = mock(com.madsports.player.PlayerReportService.Job.class);
         when(job.id()).thenReturn(UUID.randomUUID());
-        when(job.status()).thenReturn(ReportService.Status.PENDIENTE);
+        when(job.status()).thenReturn(ReportService.Status.PENDING);
         when(playerReports.submit(any(), eq("jug"))).thenReturn(job);
 
-        mvc.perform(post("/api/jugador/informes").with(user("jug").authorities(() -> "PLAYERFPP")).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"anio\":2026,\"periodo\":\"TEMPORADA\"}"))
+        mvc.perform(post("/api/player/reports").with(user("jug").authorities(() -> "PLAYERFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"year\":2026,\"period\":\"SEASON\"}"))
                 .andExpect(status().isAccepted());
-        assertThat(usuarios.findByUsuario("jug").orElseThrow().getInformesPedidos()).isEqualTo(1);
+        assertThat(users.findByUsername("jug").orElseThrow().getReportsRequested()).isEqualTo(1);
         // Los informes de ejemplo no cuentan.
-        mvc.perform(get("/api/ejemplo-jugador.pdf").with(user("jug").authorities(() -> "PLAYERFPP")))
+        mvc.perform(get("/api/sample-player.pdf").with(user("jug").authorities(() -> "PLAYERFPP")))
                 .andExpect(status().isOk());
-        assertThat(usuarios.findByUsuario("jug").orElseThrow().getInformesPedidos()).isEqualTo(1);
+        assertThat(users.findByUsername("jug").orElseThrow().getReportsRequested()).isEqualTo(1);
     }
 
     @Test
-    void elJugadorFreePideHasta5InformesPorMes() throws Exception {
-        Usuario u = saved("cupo", Perfil.PLAYERFPP);
-        u.vincularJugador(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
-        u.suscribir(suscripciones.findByCodigo("PLAYER_FREE").orElseThrow(), java.time.LocalDate.now());
-        usuarios.save(u);
+    void freePlayerRequestsUpTo5ReportsPerMonth() throws Exception {
+        UserAccount u = saved("cupo", Profile.PLAYERFPP);
+        u.linkPlayer(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
+        u.subscribe(subscriptions.findByCode("PLAYER_FREE").orElseThrow(), java.time.LocalDate.now());
+        users.save(u);
         com.madsports.player.PlayerReportService.Job job = mock(com.madsports.player.PlayerReportService.Job.class);
         when(job.id()).thenReturn(UUID.randomUUID());
-        when(job.status()).thenReturn(ReportService.Status.PENDIENTE);
+        when(job.status()).thenReturn(ReportService.Status.PENDING);
         when(playerReports.submit(any(), eq("cupo"))).thenReturn(job);
 
         for (int i = 1; i <= 5; i++) {
-            pedirInforme("cupo").andExpect(status().isAccepted());
+            requestReport("cupo").andExpect(status().isAccepted());
         }
         // El sexto del mes, no: 429 con el día en que se renueva. No cuenta ni se pide.
-        pedirInforme("cupo").andExpect(status().isTooManyRequests())
+        requestReport("cupo").andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith(
                         "Ya pediste los 5 informes de este mes. El cupo se renueva el 1/")));
         verify(playerReports, times(5)).submit(any(), eq("cupo"));
-        assertThat(usuarios.findByUsuario("cupo").orElseThrow().getInformesPedidos()).isEqualTo(5);
-        mvc.perform(get("/api/sesion").with(user("cupo").authorities(() -> "PLAYERFPP")))
-                .andExpect(jsonPath("$.informesMes.usados").value(5))
-                .andExpect(jsonPath("$.informesMes.limite").value(5));
+        assertThat(users.findByUsername("cupo").orElseThrow().getReportsRequested()).isEqualTo(5);
+        mvc.perform(get("/api/session").with(user("cupo").authorities(() -> "PLAYERFPP")))
+                .andExpect(jsonPath("$.monthlyReports.used").value(5))
+                .andExpect(jsonPath("$.monthlyReports.limit").value(5));
     }
 
     @Test
-    void unPedidoInvalidoNoGastaElCupo() throws Exception {
-        Usuario u = saved("cupo2", Perfil.PLAYERFPP);
-        u.vincularJugador(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
-        u.suscribir(suscripciones.findByCodigo("PLAYER_FREE").orElseThrow(), java.time.LocalDate.now());
-        usuarios.save(u);
+    void anInvalidRequestDoesNotUseTheQuota() throws Exception {
+        UserAccount u = saved("cupo2", Profile.PLAYERFPP);
+        u.linkPlayer(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
+        u.subscribe(subscriptions.findByCode("PLAYER_FREE").orElseThrow(), java.time.LocalDate.now());
+        users.save(u);
         when(playerReports.submit(any(), eq("cupo2"))).thenThrow(new IllegalArgumentException("Período inválido."));
-        pedirInforme("cupo2").andExpect(status().isBadRequest());
-        mvc.perform(get("/api/sesion").with(user("cupo2").authorities(() -> "PLAYERFPP")))
-                .andExpect(jsonPath("$.informesMes.usados").value(0));
+        requestReport("cupo2").andExpect(status().isBadRequest());
+        mvc.perform(get("/api/session").with(user("cupo2").authorities(() -> "PLAYERFPP")))
+                .andExpect(jsonPath("$.monthlyReports.used").value(0));
     }
 
-    ResultActions pedirInforme(String usuario) throws Exception {
-        return mvc.perform(post("/api/jugador/informes").with(user(usuario).authorities(() -> "PLAYERFPP")).with(csrf())
-                .contentType(MediaType.APPLICATION_JSON).content("{\"anio\":2026,\"periodo\":\"TEMPORADA\"}"));
+    ResultActions requestReport(String username) throws Exception {
+        return mvc.perform(post("/api/player/reports").with(user(username).authorities(() -> "PLAYERFPP")).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"year\":2026,\"period\":\"SEASON\"}"));
     }
 
     @Test
-    void tiposDeSuscripcionYVigencia() throws Exception {
+    void subscriptionPlansAndValidity() throws Exception {
         // Un plan mensual y uno free por tipo de usuario.
-        assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getTipoUsuario)
+        assertThat(subscriptions.findAll()).extracting(SubscriptionPlan::getCode, SubscriptionPlan::getUserType)
                 .containsExactlyInAnyOrder(
                         org.assertj.core.groups.Tuple.tuple("PLAYER_FREE", "PLAYER"),
-                        org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("PLAYER_MONTHLY", "PLAYER"),
                         org.assertj.core.groups.Tuple.tuple("CLUB_FREE", "CLUB"),
-                        org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", "CLUB"),
-                        org.assertj.core.groups.Tuple.tuple("DT_FREE", "DT"),
-                        org.assertj.core.groups.Tuple.tuple("DT_MENSUAL", "DT"));
+                        org.assertj.core.groups.Tuple.tuple("CLUB_MONTHLY", "CLUB"),
+                        org.assertj.core.groups.Tuple.tuple("COACH_FREE", "COACH"),
+                        org.assertj.core.groups.Tuple.tuple("COACH_MONTHLY", "COACH"));
 
-        java.time.LocalDate desde = java.time.LocalDate.of(2026, 10, 15);
-        assertThat(suscripciones.findByCodigo("PLAYER_MENSUAL").orElseThrow().hasta(desde)).isEqualTo("2026-11-14");
+        java.time.LocalDate from = java.time.LocalDate.of(2026, 10, 15);
+        assertThat(subscriptions.findByCode("PLAYER_MONTHLY").orElseThrow().to(from)).isEqualTo("2026-11-14");
 
-        Usuario u = saved("club", Perfil.CLUBFPP);
+        UserAccount u = saved("club", Profile.CLUBFPP);
         // A un club no se le puede asignar una suscripción de jugador.
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                        u.suscribir(suscripciones.findByCodigo("PLAYER_MENSUAL").orElseThrow(), desde))
+                        u.subscribe(subscriptions.findByCode("PLAYER_MONTHLY").orElseThrow(), from))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("es para jugadores");
-        u.suscribir(suscripciones.findByCodigo("CLUB_MENSUAL").orElseThrow(), desde);
-        usuarios.save(u);
-        Usuario leido = usuarios.findByUsuario("club").orElseThrow();
-        assertThat(leido.getSuscripcionType().getNombre()).isEqualTo("Club mensual");
-        assertThat(leido.getSuscripcionDesde()).isEqualTo("2026-10-15");
-        assertThat(leido.getSuscripcionHasta()).isEqualTo("2026-11-14");
-        mvc.perform(get("/api/sesion").with(user("club").authorities(() -> "CLUBFPP")))
-                .andExpect(jsonPath("$.suscripcion.tipo").value("CLUB_MENSUAL"))
-                .andExpect(jsonPath("$.suscripcion.tipoUsuario").value("CLUB"))
-                .andExpect(jsonPath("$.suscripcion.hasta").value("2026-11-14"))
-                .andExpect(jsonPath("$.informesPedidos").value(0));
+        u.subscribe(subscriptions.findByCode("CLUB_MONTHLY").orElseThrow(), from);
+        users.save(u);
+        UserAccount read = users.findByUsername("club").orElseThrow();
+        assertThat(read.getSubscriptionPlan().getName()).isEqualTo("Club mensual");
+        assertThat(read.getSubscriptionFrom()).isEqualTo("2026-10-15");
+        assertThat(read.getSubscriptionTo()).isEqualTo("2026-11-14");
+        mvc.perform(get("/api/session").with(user("club").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.subscription.kind").value("CLUB_MONTHLY"))
+                .andExpect(jsonPath("$.subscription.userType").value("CLUB"))
+                .andExpect(jsonPath("$.subscription.to").value("2026-11-14"))
+                .andExpect(jsonPath("$.reportsRequested").value(0));
     }
 
     @Test
-    void cadaPerfilVaASuPantalla() throws Exception {
-        mvc.perform(get("/rinkreports/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/rinkreports/jugador.html"));
-        mvc.perform(get("/api/informes/" + UUID.randomUUID()).with(user("j").authorities(() -> "PLAYERFPP")))
+    void eachProfileGoesToItsScreen() throws Exception {
+        mvc.perform(get("/rinkreports/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/rinkreports/player.html"));
+        mvc.perform(get("/api/reports/" + UUID.randomUUID()).with(user("j").authorities(() -> "PLAYERFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/rinkreports/club.html"));
-        mvc.perform(get("/api/jugador/informes/" + UUID.randomUUID()).with(user("c").authorities(() -> "CLUBFPP")))
+        mvc.perform(get("/rinkreports/player.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/rinkreports/club.html"));
+        mvc.perform(get("/api/player/reports/" + UUID.randomUUID()).with(user("c").authorities(() -> "CLUBFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/rinkreports/jugador.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/player.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
     }
 
     @Test
-    void laSesionTraeLosDatosDelUsuario() throws Exception {
-        saved("club", Perfil.CLUBFPP);
-        mvc.perform(get("/api/sesion").with(user("club").authorities(() -> "CLUBFPP")))
-                .andExpect(jsonPath("$.autenticado").value(true))
-                .andExpect(jsonPath("$.perfiles[0]").value("CLUBFPP"))
+    void theSessionHasTheUserData() throws Exception {
+        saved("club", Profile.CLUBFPP);
+        mvc.perform(get("/api/session").with(user("club").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.authenticated").value(true))
+                .andExpect(jsonPath("$.profiles[0]").value("CLUBFPP"))
                 .andExpect(jsonPath("$.club.id").value(74))
-                .andExpect(jsonPath("$.club.nombre").value("VELEZ"))
-                .andExpect(jsonPath("$.inicio").value("/rinkreports/club.html"));
+                .andExpect(jsonPath("$.club.name").value("VELEZ"))
+                .andExpect(jsonPath("$.home").value("/rinkreports/club.html"));
     }
 }

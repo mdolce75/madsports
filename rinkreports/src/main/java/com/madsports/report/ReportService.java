@@ -9,8 +9,8 @@ import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
-import com.madsports.sidgad.model.Competition.Torneo;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Competition.Tournament;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
@@ -58,32 +58,32 @@ public class ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
 
-    public enum Status { PENDIENTE, EXTRAYENDO, ANALIZANDO, GENERANDO_PDF, LISTO, ERROR }
+    public enum Status { PENDING, EXTRACTING, ANALYZING, RENDERING, READY, ERROR }
 
     /** Período que cubre el informe. */
     public enum Scope {
-        APERTURA(Torneo.APERTURA, 0, "Apertura"),
-        CLAUSURA(Torneo.CLAUSURA, 0, "Clausura"),
-        TEMPORADA(null, 0, "Apertura + Clausura"),
-        ULTIMOS_5(null, 5, "Últimos 5 partidos");
+        OPENING(Tournament.OPENING, 0, "Apertura"),
+        CLOSING(Tournament.CLOSING, 0, "Clausura"),
+        SEASON(null, 0, "Apertura + Clausura"),
+        LAST_5(null, 5, "Últimos 5 partidos");
 
-        private final Torneo torneo;
+        private final Tournament tournament;
         private final int lastMatches;
         private final String label;
 
-        Scope(Torneo torneo, int lastMatches, String label) {
-            this.torneo = torneo;
+        Scope(Tournament tournament, int lastMatches, String label) {
+            this.tournament = tournament;
             this.lastMatches = lastMatches;
             this.label = label;
         }
 
-        public Torneo torneo() { return torneo; }
+        public Tournament tournament() { return tournament; }
         public int lastMatches() { return lastMatches; }
         public String label() { return label; }
 
         public static Scope parse(String value) {
             if (value == null || value.isBlank()) {
-                return TEMPORADA;
+                return SEASON;
             }
             try {
                 return valueOf(value.trim().toUpperCase());
@@ -100,10 +100,10 @@ public class ReportService {
      * @param year       año (temporada) ya validado contra los ofrecidos
      * @param federacion federación del club (la del perfil del usuario)
      */
-    public record Request(int clubId, String category, String branch, Scope scope, int year, Federacion federacion) {
+    public record Request(int clubId, String category, String branch, Scope scope, int year, Federation federation) {
 
         public Request(int clubId, String category, String branch, Scope scope, int year) {
-            this(clubId, category, branch, scope, year, Federacion.FPP);
+            this(clubId, category, branch, scope, year, Federation.FPP);
         }
     }
 
@@ -111,7 +111,7 @@ public class ReportService {
         private final UUID id = UUID.randomUUID();
         private final Request request;
         private final String owner;
-        private volatile Status status = Status.PENDIENTE;
+        private volatile Status status = Status.PENDING;
         private volatile String message = "En cola";
         private volatile byte[] pdf;
         private volatile String html;
@@ -169,7 +169,7 @@ public class ReportService {
     /** Valida los parámetros (falla rápido) y encola el informe. */
     /** @param owner usuario que pide el informe: solo él puede consultarlo y bajarlo */
     public Job submit(Request request, String owner) {
-        Federacion fed = request.federacion();
+        Federation fed = request.federation();
         if (!catalog.available(fed, request.year())) {
             throw new IllegalArgumentException(CatalogService.unavailableMessage(fed, request.year()));
         }
@@ -187,10 +187,10 @@ public class ReportService {
             throw new IllegalArgumentException(club.name() + " no tiene equipo en " + label(category, option)
                     + " en " + request.year() + "." + (valid.isEmpty() ? "" : " Opciones: " + String.join(", ", valid) + "."));
         }
-        Torneo torneo = request.scope().torneo();
-        if (catalog.competitionsFor(fed, club.id(), category, torneo, request.year()).isEmpty()) {
+        Tournament tournament = request.scope().tournament();
+        if (catalog.competitionsFor(fed, club.id(), category, tournament, request.year()).isEmpty()) {
             throw new IllegalArgumentException(club.name() + " no participa en " + label(category, option)
-                    + (torneo == null ? "" : " - " + torneo.label()) + " en " + request.year() + ".");
+                    + (tournament == null ? "" : " - " + tournament.label()) + " en " + request.year() + ".");
         }
         Job job = new Job(request, owner);
         jobs.put(job.id(), job);
@@ -206,7 +206,7 @@ public class ReportService {
      * Informe del club completo: todas sus categorías, primero las masculinas y después las femeninas, en el período.
      * Valida (falla rápido) y encola; cada categoría se arma como su informe y lleva su análisis.
      */
-    public Job submitClub(int clubId, Scope scope, int year, Federacion fed, String owner) {
+    public Job submitClub(int clubId, Scope scope, int year, Federation fed, String owner) {
         if (!catalog.available(fed, year)) {
             throw new IllegalArgumentException(CatalogService.unavailableMessage(fed, year));
         }
@@ -214,7 +214,7 @@ public class ReportService {
         List<ClubCategory> categories = clubCategories(club, fed, scope, year);
         if (categories.isEmpty()) {
             throw new IllegalArgumentException(club.name() + " no tiene equipos"
-                    + (scope.torneo() == null ? "" : " en el " + scope.torneo().label()) + " en " + year + ".");
+                    + (scope.tournament() == null ? "" : " en el " + scope.tournament().label()) + " en " + year + ".");
         }
         Job job = new Job(new Request(clubId, null, null, scope, year, fed), owner);
         jobs.put(job.id(), job);
@@ -223,7 +223,7 @@ public class ReportService {
     }
 
     /** Las categorías del club que juegan en el período: Masculino y después Femenino, cada una de Infantil a Primera. */
-    List<ClubCategory> clubCategories(ClubView club, Federacion fed, Scope scope, int year) {
+    List<ClubCategory> clubCategories(ClubView club, Federation fed, Scope scope, int year) {
         List<ClubCategory> out = new ArrayList<>();
         for (String branch : List.of("MASCULINO", "FEMENINO")) {
             for (CatalogService.LevelView l : club.categories()) {
@@ -232,7 +232,7 @@ public class ReportService {
                 }
                 CategoryOption option = CategoryOption.parse(l.key());
                 Category category = catalog.category(fed, option.level(), branch);
-                if (!catalog.competitionsFor(fed, club.id(), category, scope.torneo(), year).isEmpty()) {
+                if (!catalog.competitionsFor(fed, club.id(), category, scope.tournament(), year).isEmpty()) {
                     out.add(new ClubCategory(category, option, l.label()));
                 }
             }
@@ -255,20 +255,20 @@ public class ReportService {
                 if (data.teams().isEmpty()) {
                     continue;
                 }
-                job.update(Status.ANALIZANDO, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
+                job.update(Status.ANALYZING, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
                 AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
                 byBranch.computeIfAbsent(c.category().branchLabel(), k -> new ArrayList<>())
                         .add(new ClubReport.CategoryBlock(c.levelLabel(), data, data.teams().getFirst(), analysis));
                 data.notPublished().forEach(n -> notPublished.add(label + ": " + n));
                 sources.addAll(data.sources());
                 logo = logo != null ? logo : data.club().logo();
-                period = period != null ? period : data.torneo();
+                period = period != null ? period : data.tournament();
             }
             job.stage = null;
-            job.update(Status.GENERANDO_PDF, "Generando el PDF");
+            job.update(Status.RENDERING, "Generando el PDF");
             ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(), logo);
             ClubReport report = new ClubReport(info, clubPeriod(job.request()), LocalDate.now(clock),
-                    job.request().federacion(),
+                    job.request().federation(),
                     byBranch.entrySet().stream().map(e -> new ClubReport.Branch(e.getKey(), e.getValue())).toList(),
                     notPublished, sources);
             job.pdf = renderer.clubPdf(report);
@@ -276,7 +276,7 @@ public class ReportService {
             job.xlsx = excel.club(report);
             job.fileName = ("informe-club-" + club.code() + "-" + job.request().scope().name() + "-"
                     + job.request().year() + ".pdf").toLowerCase().replaceAll("[^a-z0-9.-]+", "-");
-            job.update(Status.LISTO, "Informe listo");
+            job.update(Status.READY, "Informe listo");
         } catch (RuntimeException e) {
             log.error("Falló el informe del club {}", job.id(), e);
             job.stage = null;
@@ -287,9 +287,9 @@ public class ReportService {
     /** "Temporada 2026 · Apertura + Clausura", "Temporada 2026 · Apertura", "Últimos 5 partidos". */
     static String clubPeriod(Request r) {
         return switch (r.scope()) {
-            case ULTIMOS_5 -> "Temporada " + r.year() + " · Últimos 5 partidos de cada categoría";
-            default -> "Temporada " + r.year() + " · " + (r.scope().torneo() == null ? "Apertura + Clausura"
-                    : r.scope().torneo().label());
+            case LAST_5 -> "Temporada " + r.year() + " · Últimos 5 partidos de cada categoría";
+            default -> "Temporada " + r.year() + " · " + (r.scope().tournament() == null ? "Apertura + Clausura"
+                    : r.scope().tournament().label());
         };
     }
 
@@ -305,22 +305,22 @@ public class ReportService {
     private void run(Job job, ClubView club, Category category, CategoryOption option) {
         try {
             ReportData data = extract(job, club, category, option);
-            job.update(Status.ANALIZANDO, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
+            job.update(Status.ANALYZING, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
             AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
             if (analysis.foulsAnalysis().isEmpty()) {
                 analysis = analysis.withFoulsAnalysis(rules.foulsAnalysis(data));
             }
-            job.update(Status.GENERANDO_PDF, "Generando el PDF");
+            job.update(Status.RENDERING, "Generando el PDF");
             job.pdf = renderer.pdf(data, analysis);
             job.html = renderer.html(data, analysis);
             // En Excel, la categoría como un informe de club de una sola categoría.
             String level = category.levelLabel() + (option.letter() == null ? "" : " " + option.letter());
-            job.xlsx = excel.club(new ClubReport(data.club(), data.torneo(), data.generatedOn(),
-                    job.request().federacion(), List.of(new ClubReport.Branch(category.branchLabel(),
+            job.xlsx = excel.club(new ClubReport(data.club(), data.tournament(), data.generatedOn(),
+                    job.request().federation(), List.of(new ClubReport.Branch(category.branchLabel(),
                     List.of(new ClubReport.CategoryBlock(level, data, data.teams().getFirst(), analysis)))),
                     data.notPublished(), data.sources()));
             job.fileName = fileName(club, category, option, job.request().scope());
-            job.update(Status.LISTO, "Informe listo");
+            job.update(Status.READY, "Informe listo");
         } catch (RuntimeException e) {
             log.error("Falló el informe {}", job.id(), e);
             job.update(Status.ERROR, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
@@ -330,8 +330,8 @@ public class ReportService {
     ReportData extract(Job job, ClubView club, Category category, CategoryOption option) {
         Scope scope = job.request().scope();
         int year = job.request().year();
-        Federacion fed = job.request().federacion();
-        List<Competition> comps = catalog.competitionsFor(fed, club.id(), category, scope.torneo(), year);
+        Federation fed = job.request().federation();
+        List<Competition> comps = catalog.competitionsFor(fed, club.id(), category, scope.tournament(), year);
         List<CompetitionData> data = new ArrayList<>();
         List<String> notPublished = new ArrayList<>();
         Map<Competition, List<Match>> clubMatches = new LinkedHashMap<>();
@@ -339,7 +339,7 @@ public class ReportService {
         // Los pedidos a SIDGAD van en paralelo (cada uno tarda ~1,5 s, casi todo latencia del sitio). El límite de
         // pedidos simultáneos y por segundo lo pone SidgadClient, para no sobrecargar el sitio.
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
-            job.update(Status.EXTRAYENDO, "Leyendo tablas, calendarios y estadísticas");
+            job.update(Status.EXTRACTING, "Leyendo tablas, calendarios y estadísticas");
             Map<Competition, List<Future<String>>> pages = new LinkedHashMap<>();
             for (Competition c : comps) {
                 pages.put(c, List.of(
@@ -348,11 +348,11 @@ public class ReportService {
                         io.submit(() -> sidgad.playerStats(c.id()))));
             }
             for (Competition c : comps) {
-                String torneo = c.torneoLabel();
+                String tournament = c.tournamentLabel();
                 List<Future<String>> f = pages.get(c);
-                String standings = published(await(f.get(0)), "Tabla de posiciones (" + torneo + ")", notPublished);
-                String calendar = published(await(f.get(1)), "Calendario y resultados (" + torneo + ")", notPublished);
-                String players = published(await(f.get(2)), "Estadísticas por jugador (" + torneo + ")", notPublished);
+                String standings = published(await(f.get(0)), "Tabla de posiciones (" + tournament + ")", notPublished);
+                String calendar = published(await(f.get(1)), "Calendario y resultados (" + tournament + ")", notPublished);
+                String players = published(await(f.get(2)), "Estadísticas por jugador (" + tournament + ")", notPublished);
                 List<Match> matches = SidgadParser.calendar(calendar);
                 clubMatches.put(c, sheetsToRead(c, matches, club.id(), scope.lastMatches()));
                 data.add(new CompetitionData(c,
@@ -374,7 +374,7 @@ public class ReportService {
                         .forEach(m -> sheets.add(Map.entry(cd, m)));
             }
             AtomicInteger done = new AtomicInteger();
-            job.update(Status.EXTRAYENDO, "Leyendo actas de partido (0/" + sheets.size() + ")");
+            job.update(Status.EXTRACTING, "Leyendo actas de partido (0/" + sheets.size() + ")");
             int ownSheets = clubSheets;
             List<Future<SheetRead>> reads = new ArrayList<>();
             for (int i = 0; i < sheets.size(); i++) {
@@ -382,7 +382,7 @@ public class ReportService {
                 boolean own = i < ownSheets;
                 reads.add(io.submit(() -> {
                     String html = sidgad.gameSheet(e.getKey().competition().id(), e.getValue().idp());
-                    job.update(Status.EXTRAYENDO,
+                    job.update(Status.EXTRACTING,
                             "Leyendo actas de partido (" + done.incrementAndGet() + "/" + sheets.size() + ")");
                     return new SheetRead(SidgadParser.gameEvents(html), own ? SidgadParser.lineups(html) : List.of());
                 }));
@@ -435,14 +435,14 @@ public class ReportService {
         if (missingSheets > 0) {
             notPublished.add("Actas de partido: " + missingSheets + " de " + clubSheets);
         }
-        String torneos = comps.stream().map(Competition::torneoLabel).distinct().collect(Collectors.joining(" + "));
-        String label = scope == Scope.ULTIMOS_5
-                ? "Últimos 5 partidos (" + torneos + ")"
-                : "Temporada " + year + " · " + torneos;
+        String tournaments = comps.stream().map(Competition::tournamentLabel).distinct().collect(Collectors.joining(" + "));
+        String label = scope == Scope.LAST_5
+                ? "Últimos 5 partidos (" + tournaments + ")"
+                : "Temporada " + year + " · " + tournaments;
         return StatsEngine.build(club, label(category, option), label, data, LocalDate.now(clock), scope.lastMatches(),
                         option.teamKey(club.code()))
                 .withNotPublished(notPublished)
-                .withFederacion(fed)
+                .withFederation(fed)
                 .withLogo(Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))));
     }
 
@@ -494,7 +494,7 @@ public class ReportService {
         if (seasonsOf.isEmpty()) {
             return;
         }
-        job.update(Status.EXTRAYENDO, "Leyendo las fichas de temporada de los jugadores del club");
+        job.update(Status.EXTRACTING, "Leyendo las fichas de temporada de los jugadores del club");
         Map<Integer, Future<List<SeasonMatch>>> pending = new LinkedHashMap<>();
         seasonsOf.forEach((id, seasons) -> pending.put(id, io.submit(() -> {
             List<SeasonMatch> rows = new ArrayList<>();
@@ -524,7 +524,7 @@ public class ReportService {
             data.set(i, new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), cd.matches(),
                     players, cd.sheets()));
             // Con las fichas de temporada ya no falta: la tabla de SIDGAD de esa competición no hace falta.
-            notPublished.remove("Estadísticas por jugador (" + cd.competition().torneoLabel() + ")");
+            notPublished.remove("Estadísticas por jugador (" + cd.competition().tournamentLabel() + ")");
         }
     }
 

@@ -5,7 +5,7 @@ import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.catalog.CatalogService.LevelView;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.ReportData.PlayerLine;
 import com.madsports.stats.StatsEngine;
@@ -27,17 +27,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /** Informe del club completo: por rama y, dentro de la rama, por categoría, con sus cifras y sus top 3. */
-@SpringBootTest(classes = InformesTestConfig.class)
+@SpringBootTest(classes = ReportsTestConfig.class)
 class ClubReportTest {
 
-    static final LocalDate HOY = LocalDate.of(2026, 10, 13);
+    static final LocalDate TODAY = LocalDate.of(2026, 10, 13);
 
     @Autowired SampleReport sample;
     @Autowired PdfRenderer renderer;
 
     @Test
-    void ramasYCategoriasEnOrdenConSusTop3() {
-        ClubReport r = sample.clubReport(HOY);
+    void branchesAndCategoriesInOrderWithTheirTop3() {
+        ClubReport r = sample.clubReport(TODAY);
         assertThat(r.branches()).extracting(ClubReport.Branch::name).containsExactly("Masculino", "Femenino");
         assertThat(r.branches().getFirst().categories()).extracting(ClubReport.CategoryBlock::name)
                 .containsExactly("Primera", "Juvenil");
@@ -69,8 +69,8 @@ class ClubReportTest {
     }
 
     @Test
-    void elPdfSigueRamaCategoriaYSusApartados() throws Exception {
-        String html = renderer.clubHtml(sample.clubReport(HOY), true);
+    void thePdfFollowsBranchCategoryAndSections() throws Exception {
+        String html = renderer.clubHtml(sample.clubReport(TODAY), true);
         int masc = html.indexOf("Rama <span>Masculino</span>");
         int primera = html.indexOf(">Primera Masculino</h2>");
         int juvenil = html.indexOf(">Juvenil Masculino</h2>");
@@ -81,52 +81,52 @@ class ClubReportTest {
         assertThat(juvenil).isLessThan(fem);
         assertThat(fem).isLessThan(infantil);
         // Los apartados de cada categoría, en orden.
-        String bloque = html.substring(primera, juvenil);
-        List<String> apartados = List.of(">Partidos</h3>", ">Goles</h3>", ">Faltas</h3>", ">Tarjetas</h3>",
+        String block = html.substring(primera, juvenil);
+        List<String> sections = List.of(">Partidos</h3>", ">Goles</h3>", ">Faltas</h3>", ">Tarjetas</h3>",
                 ">Top 3 · Promedio de gol</h3>", ">Top 3 · Disciplina</h3>", ">Top 3 · Libres directos</h3>",
                 ">Top 3 · Penales</h3>", ">Fortalezas y debilidades</h3>");
-        int previo = -1;
-        for (String a : apartados) {
-            int i = bloque.indexOf(a);
-            assertThat(i).as(a).isGreaterThan(previo);
-            previo = i;
+        int previous = -1;
+        for (String a : sections) {
+            int i = block.indexOf(a);
+            assertThat(i).as(a).isGreaterThan(previous);
+            previous = i;
         }
-        assertThat(bloque).contains("Efectividad", "Por partido", "Amarillas", "Azules", "Rojas", "Aspectos a mejorar");
+        assertThat(block).contains("Efectividad", "Por partido", "Amarillas", "Azules", "Rojas", "Aspectos a mejorar");
 
-        byte[] pdf = renderer.clubPdf(sample.clubReport(HOY), true);
+        byte[] pdf = renderer.clubPdf(sample.clubReport(TODAY), true);
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
         Files.write(Path.of("target", "informe-club.pdf"), pdf);
         Files.writeString(Path.of("target", "informe-club.html"), html);
     }
 
     @Test
-    void lasAmarillasDeCadaJugadorSalenDeLasActas() {
+    void eachPlayerYellowsComeFromTheSheets() {
         ReportData d = StatsEngine.build(StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
-                List.of(StatsEngineTest.data(779)), HOY);
+                List.of(StatsEngineTest.data(779)), TODAY);
         ReportData.TeamReport t = d.teams().getFirst();
-        int enActas = t.timeProfile().byPeriod().stream().mapToInt(ReportData.TimeBucket::yellowOwn).sum()
+        int inSheets = t.timeProfile().byPeriod().stream().mapToInt(ReportData.TimeBucket::yellowOwn).sum()
                 + t.timeProfile().unrecorded().yellowOwn();
-        assertThat(t.squad().stream().mapToInt(PlayerLine::yellowCards).sum()).isEqualTo(enActas);
+        assertThat(t.squad().stream().mapToInt(PlayerLine::yellowCards).sum()).isEqualTo(inSheets);
     }
 
     @Test
-    void lasCategoriasDelClubPrimeroMasculinasYSoloLasQueJuegan() {
+    void clubCategoriesMaleFirstAndOnlyThoseThatPlay() {
         CatalogService catalog = mock(CatalogService.class);
         ReportService service = new ReportService(catalog, null, null, null, null, null, java.time.Clock.systemUTC());
         ClubView club = new ClubView(74, "CAVS", "VELEZ", List.of(
                 new LevelView("INFANTIL:A", "Infantil A", List.of("MASCULINO", "FEMENINO")),
                 new LevelView("INFANTIL:B", "Infantil B", List.of("MASCULINO")),
                 new LevelView("PRIMERA", "Primera", List.of("MASCULINO", "FEMENINO"))));
-        when(catalog.category(eq(Federacion.FPP), any(), any()))
+        when(catalog.category(eq(Federation.FPP), any(), any()))
                 .thenAnswer(i -> new Category(i.getArgument(1), i.getArgument(2)));
-        Competition jugada = mock(Competition.class);
+        Competition played = mock(Competition.class);
         // Primera Femenino figura en el club pero no juega en el período: queda afuera.
-        when(catalog.competitionsFor(eq(Federacion.FPP), eq(74), any(), any(), anyInt())).thenAnswer(i ->
-                i.getArgument(2).equals(new Category("PRIMERA", "FEMENINO")) ? List.of() : List.of(jugada));
+        when(catalog.competitionsFor(eq(Federation.FPP), eq(74), any(), any(), anyInt())).thenAnswer(i ->
+                i.getArgument(2).equals(new Category("PRIMERA", "FEMENINO")) ? List.of() : List.of(played));
 
-        List<ReportService.ClubCategory> todas = service.clubCategories(club, Federacion.FPP,
-                ReportService.Scope.TEMPORADA, 2026);
-        assertThat(todas).extracting(c -> c.levelLabel() + " " + c.category().branchLabel())
+        List<ReportService.ClubCategory> all = service.clubCategories(club, Federation.FPP,
+                ReportService.Scope.SEASON, 2026);
+        assertThat(all).extracting(c -> c.levelLabel() + " " + c.category().branchLabel())
                 .containsExactly("Infantil A Masculino", "Infantil B Masculino", "Primera Masculino", "Infantil A Femenino");
     }
 }

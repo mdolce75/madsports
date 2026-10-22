@@ -1,9 +1,9 @@
 package com.madsports.account;
 
-import com.madsports.account.RegistroService.ConflictException;
-import com.madsports.account.RegistroService.Registro;
+import com.madsports.account.SignupService.ConflictException;
+import com.madsports.account.SignupService.Signup;
 import com.madsports.catalog.CatalogService;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.config.SecurityConfig;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.RosterService.RosterPlayer;
@@ -44,21 +44,21 @@ import java.util.Objects;
 @RequestMapping("/api")
 public class AccountController {
 
-    public record RegistroRequest(
-            @NotNull(message = "Elegí el perfil.") Perfil perfil,
+    public record SignupRequest(
+            @NotNull(message = "Elegí el perfil.") Profile profile,
             @NotBlank(message = "El usuario es obligatorio.")
             @Pattern(regexp = "[A-Za-z0-9._-]{3,30}", message = "El usuario lleva de 3 a 30 letras, números, punto, guion o guion bajo.")
-            String usuario,
+            String username,
             @NotBlank(message = "La clave es obligatoria.")
             @Size(min = 8, max = 72, message = "La clave lleva entre 8 y 72 caracteres.")
-            String clave,
+            String password,
             @NotBlank(message = "El email es obligatorio.") @Email(message = "El email no es válido.")
             @Size(max = 120) String email,
             @Positive(message = "Elegí el club.") int clubId,
-            String categoria,
-            String rama,
-            Integer jugadorId,
-            @NotBlank(message = "Elegí un plan de suscripción.") String suscripcion) {
+            String category,
+            String branch,
+            Integer playerId,
+            @NotBlank(message = "Elegí un plan de suscripción.") String subscription) {
     }
 
     /**
@@ -74,10 +74,10 @@ public class AccountController {
      * @param vigenteHasta   último día de un plan con fecha fija de fin (el DT free); null en los mensuales
      * @param disponible     false si todavía no se puede elegir (el DT mensual: próximamente)
      */
-    public record PlanView(String codigo, String nombre, BigDecimal precio, BigDecimal precioUsd, int informesPorMes,
-                           BigDecimal dolar, LocalDate dolarFecha, int equiposMax, int partidosPorMes,
-                           LocalDate vigenteHasta, boolean disponible,
-                           boolean precioADefinir) {
+    public record PlanView(String code, String name, BigDecimal price, BigDecimal priceUsd, int reportsPerMonth,
+                           BigDecimal dollar, LocalDate dollarDate, int maxTeams, int matchesPerMonth,
+                           LocalDate validUntil, boolean available,
+                           boolean priceToBeDefined) {
     }
 
     /**
@@ -85,97 +85,98 @@ public class AccountController {
      * @param producto   REPORTS o METRICS: el producto de la cuenta
      * @param informesMes informes pedidos este mes: {usados, limite (0 = sin límite), renueva}
      */
-    public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
-                              List<String> perfiles, Map<String, Object> club, Map<String, Object> jugador,
-                              String inicio, Map<String, Object> suscripcion, int informesPedidos,
-                              String federacion, String producto, Map<String, Object> informesMes) {
+    public record SessionView(boolean authenticated, String username, String name, String lastName, String email,
+                              List<String> profiles, Map<String, Object> club, Map<String, Object> player,
+                              String home, Map<String, Object> subscription, int reportsRequested,
+                              String federation, String product, Map<String, Object> monthlyReports) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
                 "/", null, 0, null, null, null);
     }
 
-    private final RegistroService registro;
-    private final UsuarioRepository usuarios;
+    private final SignupService signup;
+    private final UserAccountRepository users;
     private final RosterService roster;
     private final CatalogService catalog;
-    private final CuentaService cuenta;
-    private final SuscripcionTypeRepository planes;
-    private final Cotizacion cotizacion;
+    private final AccountService account;
+    private final SubscriptionPlanRepository plans;
+    private final ExchangeRate exchangeRate;
     private final Clock clock;
-    private final ObjectProvider<InformesDelMes> informes;
+    private final ObjectProvider<MonthlyReports> reports;
 
-    public AccountController(RegistroService registro, UsuarioRepository usuarios, RosterService roster,
-                             CatalogService catalog, CuentaService cuenta, SuscripcionTypeRepository planes,
-                             Cotizacion cotizacion, Clock clock, ObjectProvider<InformesDelMes> informes) {
+    public AccountController(SignupService signup, UserAccountRepository users, RosterService roster,
+                             CatalogService catalog, AccountService account, SubscriptionPlanRepository plans,
+                             ExchangeRate exchangeRate, Clock clock, ObjectProvider<MonthlyReports> reports) {
         this.clock = clock;
-        this.informes = informes;
-        this.cuenta = cuenta;
-        this.planes = planes;
-        this.cotizacion = cotizacion;
-        this.registro = registro;
-        this.usuarios = usuarios;
+        this.reports = reports;
+        this.account = account;
+        this.plans = plans;
+        this.exchangeRate = exchangeRate;
+        this.signup = signup;
+        this.users = users;
         this.roster = roster;
         this.catalog = catalog;
     }
 
     /** El plan mensual del perfil (CLUBFPP, PLAYERAMP, DTFPP...), con el precio en pesos al dólar oficial del día. */
-    @GetMapping("/suscripciones")
-    public List<PlanView> planes(@RequestParam Perfil perfil) {
-        Cotizacion.Valor dolar = cotizacion.actual();
-        LocalDate hoy = LocalDate.now(clock);
-        return planes.findByTipoUsuarioOrderByPrecioUsdAscIdAsc(perfil.tipoUsuario()).stream()
-                .filter(p -> p.vigente(hoy))   // el DT free deja de ofrecerse después del 31/12/2026
-                .map(p -> new PlanView(p.getCodigo(), p.getNombre(), Cotizacion.enPesos(p.getPrecioUsd(), dolar),
-                        p.getPrecioUsd(), p.getInformesPorMes(), dolar.pesosPorDolar(), dolar.fecha(),
-                        p.getEquiposMax(), p.getPartidosPorMes(), p.getVigenteHasta(), registro.disponible(p),
-                        registro.precioADefinir(p)))
+    @GetMapping("/plans")
+    public List<PlanView> plans(@RequestParam Profile profile) {
+        ExchangeRate.Quote dollar = exchangeRate.current();
+        LocalDate today = LocalDate.now(clock);
+        return plans.findByUserTypeOrderByPriceUsdAscIdAsc(profile.userType()).stream()
+                .filter(p -> p.isValid(today))   // el DT free deja de ofrecerse después del 31/12/2026
+                .map(p -> new PlanView(p.getCode(), p.getName(), ExchangeRate.inPesos(p.getPriceUsd(), dollar),
+                        p.getPriceUsd(), p.getReportsPerMonth(), dollar.pesosPerDollar(), dollar.date(),
+                        p.getMaxTeams(), p.getMatchesPerMonth(), p.getValidUntil(), signup.available(p),
+                        signup.priceToBeDefined(p)))
                 .toList();
     }
 
     /** Alta: la cuenta queda sin confirmar y se manda el mail con el enlace para confirmarla. */
-    @PostMapping("/registro")
+    @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, String> registrar(@Valid @RequestBody RegistroRequest req) {
-        Usuario u = registro.registrar(new Registro(req.perfil(), req.usuario(), req.clave(), req.email(),
-                req.clubId(), req.categoria(), req.rama(), req.jugadorId(), req.suscripcion()));
-        cuenta.enviarVerificacion(u);
-        return Map.of("usuario", u.getUsuario(), "email", u.getEmail());
+    public Map<String, String> register(@Valid @RequestBody SignupRequest req) {
+        UserAccount u = signup.register(new Signup(req.profile(), req.username(), req.password(), req.email(),
+                req.clubId(), req.category(), req.branch(), req.playerId(), req.subscription()));
+        account.sendVerification(u);
+        return Map.of("username", u.getUsername(), "email", u.getEmail());
     }
 
     /** @param usuario alternativa al email (para reenviar la confirmación desde el ingreso) */
     /** @param producto REPORTS o METRICS: el de la pantalla (el email puede tener una cuenta en cada producto) */
-    public record EmailRequest(String email, String usuario, String producto) {
+    public record EmailRequest(String email, String username, String product) {
     }
 
-    public record RestablecerRequest(String token, String clave) {
+    public record ResetPasswordRequest(String token, String password) {
     }
 
     /** Enlace del mail de confirmación: confirma y lleva al ingreso. */
-    @GetMapping("/verificar")
-    public ResponseEntity<Void> verificar(@RequestParam(required = false) String token) {
+    // /api/verificar: el enlace de los mails mandados antes de que la API pasara al inglés.
+    @GetMapping({"/verify", "/verificar"})
+    public ResponseEntity<Void> verify(@RequestParam(required = false) String token) {
         // Al ingreso del producto de la cuenta; si el enlace no sirve, no se sabe de qué producto es: al de RinkMetrics.
-        String destino = cuenta.verificar(token).map(p -> p.ingreso() + "?verificado")
-                .orElse("/login.html?verificacion=invalida");
-        return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(destino)).build();
+        String target = account.verify(token).map(p -> p.login() + "?verified")
+                .orElse(Product.METRICS.login() + "?verification=invalid");
+        return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(target)).build();
     }
 
     /** Siempre responde lo mismo, exista o no una cuenta con ese email. */
-    @PostMapping("/verificacion/reenviar")
-    public Map<String, String> reenviar(@RequestBody EmailRequest req) {
-        cuenta.reenviarVerificacion(req.email(), req.usuario(), Producto.parse(req.producto()));
+    @PostMapping("/verification/resend")
+    public Map<String, String> resend(@RequestBody EmailRequest req) {
+        account.resendVerification(req.email(), req.username(), Product.parse(req.product()));
         return Map.of("detail", "Si hay una cuenta sin confirmar con ese email, te mandamos el enlace de nuevo.");
     }
 
     /** Siempre responde lo mismo, exista o no una cuenta con ese email. */
-    @PostMapping("/clave/olvido")
-    public Map<String, String> olvido(@RequestBody EmailRequest req) {
-        cuenta.olvideClave(req.email(), Producto.parse(req.producto()));
+    @PostMapping("/password/forgot")
+    public Map<String, String> forgot(@RequestBody EmailRequest req) {
+        account.forgotPassword(req.email(), Product.parse(req.product()));
         return Map.of("detail", "Si hay una cuenta con ese email, te mandamos un enlace para elegir una clave nueva.");
     }
 
-    @PostMapping("/clave/restablecer")
-    public Map<String, String> restablecer(@RequestBody RestablecerRequest req) {
-        cuenta.restablecerClave(req.token(), req.clave());
+    @PostMapping("/password/reset")
+    public Map<String, String> reset(@RequestBody ResetPasswordRequest req) {
+        account.resetPassword(req.token(), req.password());
         return Map.of("detail", "Listo: ya podés ingresar con tu clave nueva.");
     }
 
@@ -185,47 +186,47 @@ public class AccountController {
      * @param categoria opción de categoría del club ("INFANTIL" o "INFANTIL:B")
      * @param rama      MASCULINO o FEMENINO
      */
-    @GetMapping("/registro/jugadores")
-    public List<RosterPlayer> jugadores(@RequestParam int clubId, @RequestParam String categoria,
-                                        @RequestParam String rama,
-                                        @RequestParam(required = false) String federacion) {
-        return roster.players(Federacion.parse(federacion), clubId, catalog.defaultYear(), categoria, rama);
+    @GetMapping("/signup/players")
+    public List<RosterPlayer> players(@RequestParam int clubId, @RequestParam String category,
+                                        @RequestParam String branch,
+                                        @RequestParam(required = false) String federation) {
+        return roster.players(Federation.parse(federation), clubId, catalog.defaultYear(), category, branch);
     }
 
     /** Qué perfiles se pueden registrar hoy (las cuentas de club y los jugadores de la AMP se habilitan por configuración). */
-    @GetMapping("/registro/opciones")
-    public RegistroService.Opciones opciones() {
-        return registro.opciones();
+    @GetMapping("/signup/options")
+    public SignupService.SignupOptions options() {
+        return signup.options();
     }
 
-    @GetMapping("/sesion")
-    public SessionView sesion(Authentication auth) {
+    @GetMapping("/session")
+    public SessionView session(Authentication auth) {
         if (auth == null || auth instanceof AnonymousAuthenticationToken || !auth.isAuthenticated()) {
             return SessionView.ANONYMOUS;
         }
-        return usuarios.findByUsuario(auth.getName())
-                .map(u -> new SessionView(true, u.getUsuario(), u.getNombre(), u.getApellido(), u.getEmail(),
-                        u.getPerfiles().stream().map(Enum::name).sorted().toList(),
-                        Map.of("id", u.getClubId(), "nombre", u.getClubNombre(), "codigo", u.getClubCodigo()),
-                        u.getJugadorId() == null ? null : Map.of("id", u.getJugadorId(), "nombre", u.getJugadorNombre(),
-                                "categoria", Objects.toString(u.getCategoria(), ""), "rama", Objects.toString(u.getRama(), "")),
+        return users.findByUsername(auth.getName())
+                .map(u -> new SessionView(true, u.getUsername(), u.getName(), u.getLastName(), u.getEmail(),
+                        u.getProfiles().stream().map(Enum::name).sorted().toList(),
+                        Map.of("id", u.getClubId(), "name", u.getClubName(), "code", u.getClubCode()),
+                        u.getPlayerId() == null ? null : Map.of("id", u.getPlayerId(), "name", u.getPlayerName(),
+                                "category", Objects.toString(u.getCategory(), ""), "branch", Objects.toString(u.getBranch(), "")),
                         SecurityConfig.home(auth.getAuthorities()),
-                        u.getSuscripcionType() == null ? null : Map.of(
-                                "tipo", u.getSuscripcionType().getCodigo(),
-                                "tipoUsuario", u.getSuscripcionType().getTipoUsuario(),
-                                "nombre", u.getSuscripcionType().getNombre(),
-                                "desde", u.getSuscripcionDesde().toString(),
-                                "hasta", u.getSuscripcionHasta().toString(),
-                                "equiposMax", u.getSuscripcionType().getEquiposMax(),
-                                "partidosPorMes", u.getSuscripcionType().getPartidosPorMes()),
-                        u.getInformesPedidos(), u.federacion().name(), u.getProducto().name(), informesMes(u)))
+                        u.getSubscriptionPlan() == null ? null : Map.of(
+                                "kind", u.getSubscriptionPlan().getCode(),
+                                "userType", u.getSubscriptionPlan().getUserType(),
+                                "name", u.getSubscriptionPlan().getName(),
+                                "from", u.getSubscriptionFrom().toString(),
+                                "to", u.getSubscriptionTo().toString(),
+                                "maxTeams", u.getSubscriptionPlan().getMaxTeams(),
+                                "matchesPerMonth", u.getSubscriptionPlan().getMatchesPerMonth()),
+                        u.getReportsRequested(), u.federation().name(), u.getProduct().name(), monthlyReports(u)))
                 .orElse(SessionView.ANONYMOUS);
     }
 
     /** Lo aporta RinkReports (su cupo de informes); sin él, la sesión no lo trae. */
-    private Map<String, Object> informesMes(Usuario u) {
-        InformesDelMes informes = this.informes.getIfAvailable();
-        return informes == null ? null : informes.de(u);
+    private Map<String, Object> monthlyReports(UserAccount u) {
+        MonthlyReports reports = this.reports.getIfAvailable();
+        return reports == null ? null : reports.de(u);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
