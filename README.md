@@ -580,7 +580,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 Un solo proyecto con dos productos de Mad Sports. El código está separado en capas, camino a un proyecto `madsports`
 con un módulo por producto:
 
-| Capa | Paquetes (`com.rinkmetrics.*`) | Qué tiene |
+| Capa | Paquetes (`com.madsports.*`) | Qué tiene |
 |---|---|---|
 | Datos de hockey | `sidgad`, `catalog`, `stats` | SIDGAD, clubes y categorías, planteles (`RosterService`, `ClubTeams`) y estadísticas |
 | Plataforma | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes y el paso de plantillas a PDF (`Plantillas`) |
