@@ -17,7 +17,7 @@
     <dependencies>
         <dependency>
             <groupId>com.madsports</groupId>
-            <artifactId>plataforma</artifactId>
+            <artifactId>platform</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- Excel (.xlsx) de los informes: liviano, sin Apache POI -->

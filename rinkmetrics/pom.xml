@@ -17,7 +17,7 @@
     <dependencies>
         <dependency>
             <groupId>com.madsports</groupId>
-            <artifactId>plataforma</artifactId>
+            <artifactId>platform</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

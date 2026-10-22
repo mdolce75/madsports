@@ -10,14 +10,14 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>plataforma</artifactId>
-    <name>plataforma</name>
+    <artifactId>platform</artifactId>
+    <name>platform</name>
     <description>Plataforma de Mad Sports: cuentas, seguridad, mails, planes y plantillas a PDF</description>
 
     <dependencies>
         <dependency>
             <groupId>com.madsports</groupId>
-            <artifactId>hockey-datos</artifactId>
+            <artifactId>hockey-data</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
