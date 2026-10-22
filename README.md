@@ -278,8 +278,8 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Planes de RinkReports:** el **Jugador free** (sin costo hasta el 31/12/2026, 5 informes por mes) y el **Club
   free** (sin costo hasta el 31/12/2026, sin límite de informes). Los mensuales (pagos) figuran con el cintillo
   "Próximamente", apagados y borroneados, y con **"Precio a definir"**, mientras `SIGNUP_PLAYER_PAID` y
-  `SIGNUP_CLUB_PAID` (`madsports.signup.player-paid` y `club-paid`) sean `false`. Se muestran en `/rinkreports`
-  y en el registro.
+  `SIGNUP_CLUB_PAID` (`madsports.signup.player-paid` y `club-paid`) sean `false`. Los planes se ven y se eligen
+  solo en el registro de cada producto (las portadas no los muestran).
 - **Cupo de informes del jugador:** cada informe pedido suma uno al contador del usuario (`reports_requested`) y queda
   registrado con su fecha (`requested_report`, V23). El jugador puede pedir hasta 5 por mes calendario (el cupo de su
   plan); el sexto responde `429` con el día en que se renueva (el 1 del mes siguiente). Un pedido rechazado (por

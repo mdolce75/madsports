@@ -181,11 +181,9 @@ async function loadPlans() {
                 <span class="plan-quota"></span>
                 <ul></ul>`;
             card.querySelector("input").value = plan.code;
-            // El plan elegido en la página de la sección (?plan=DT_FREE); si no, el primero que se puede elegir.
-            // Los que todavía no se pueden elegir (el DT mensual) van con el cintillo "Próximamente".
-            const eligible = plans.filter(x => x.available !== false);
-            const request = new URLSearchParams(location.search).get("plan");
-            const chosen = eligible.find(x => x.code === request) || eligible[0];
+            // El plan se elige acá: de entrada, el primero que se puede elegir (el free). Los que todavía no se
+            // pueden elegir (los mensuales) van con el cintillo "Próximamente".
+            const chosen = plans.find(x => x.available !== false);
             card.querySelector("input").checked = plan === chosen;
             if (plan.available === false) {
                 card.classList.add("proximamente", "no-disponible");
