@@ -135,7 +135,7 @@ function showReady(job) {
  * Menú superior, al lado de la marca, con las secciones del producto de la página: RinkMetrics (inicio, la demo y
  * "Por qué RinkMetrics") o RinkReports (body data-product="reports": inicio y ejemplos). La página marca la suya con
  * data-section en el body. Se agrega cuando la página ya puso la marca. Las pantallas de RinkMetrics (body.coach-page) no
- * lo llevan: tienen su propio menú en esa barra.
+ * lo llevan: tienen su propio menú en esa barra. Todas llevan el enlace de vuelta a la home de Mad Sports.
  */
 const SECTIONS = {
     metrics: {home: "/rinkmetrics", name: "RinkMetrics", items: [["home", "Inicio", "/rinkmetrics"],
@@ -157,7 +157,15 @@ document.addEventListener("DOMContentLoaded", () => {
         link.append(...brand.childNodes);
         brand.append(link);
     }
-    if (document.body.classList.contains("coach-page")) return;
+    // Volver a Mad Sports, la home de la compañía: antes de la barra del usuario o, sin ella, después del menú.
+    const home = document.createElement("a");
+    home.className = "to-madsports";
+    home.href = "/";
+    home.textContent = "← Mad Sports";
+    if (document.body.classList.contains("coach-page")) {
+        $("userbar").before(home);
+        return;
+    }
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
@@ -169,6 +177,9 @@ document.addEventListener("DOMContentLoaded", () => {
         nav.append(a);
     }
     brand.after(nav);
+    const bar = $("userbar");
+    if (bar) bar.before(home);
+    else nav.after(home);
 });
 
 /** Marca de la barra superior (pista con barras de métricas). */
