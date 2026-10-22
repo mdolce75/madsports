@@ -1,5 +1,6 @@
 package com.rinkmetrics.player;
 
+import com.rinkmetrics.account.CupoInformes;
 import com.rinkmetrics.account.Perfil;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
@@ -45,11 +46,14 @@ public class PlayerController {
     private final PlayerReportService reports;
     private final UsuarioRepository usuarios;
     private final CatalogService catalog;
+    private final CupoInformes cupo;
 
-    public PlayerController(PlayerReportService reports, UsuarioRepository usuarios, CatalogService catalog) {
+    public PlayerController(PlayerReportService reports, UsuarioRepository usuarios, CatalogService catalog,
+                            CupoInformes cupo) {
         this.reports = reports;
         this.usuarios = usuarios;
         this.catalog = catalog;
+        this.cupo = cupo;
     }
 
     @PostMapping("/informes")
@@ -58,11 +62,11 @@ public class PlayerController {
                 .filter(x -> x.esJugador() && x.getJugadorId() != null)
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no tiene un jugador vinculado."));
         Federacion fed = u.federacion();
-        PlayerReportService.Job job = reports.submit(new PlayerReportService.Query(u.getJugadorId(), u.getJugadorNombre(),
-                u.getNombre() == null ? u.getJugadorNombre() : u.getNombre() + " " + u.getApellido(), u.getClubId(),
-                catalog.checkYear(req.anio()), Scope.parse(req.periodo()), Eligibility.searchLevels(fed, u.getCategoria()),
-                u.getRama(), fed), u.getUsuario());
-        usuarios.contarInforme(u.getUsuario());
+        // Dentro del cupo del mes (5 informes en el Jugador free): cada pedido cuenta.
+        PlayerReportService.Job job = cupo.pedir(u, () -> reports.submit(new PlayerReportService.Query(u.getJugadorId(),
+                u.getJugadorNombre(), u.getNombre() == null ? u.getJugadorNombre() : u.getNombre() + " " + u.getApellido(),
+                u.getClubId(), catalog.checkYear(req.anio()), Scope.parse(req.periodo()),
+                Eligibility.searchLevels(fed, u.getCategoria()), u.getRama(), fed), u.getUsuario()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 

@@ -269,12 +269,19 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Alta de cuentas de jugador y de DT; la de club, próximamente:** el registro de Informes
   (`/registro.html?seccion=informes`) crea cuentas de jugador de la FPP (las de la AMP, próximamente:
   `REGISTRO_JUGADOR_AMP`) y el de Métricas DT
-  (`/registro.html?seccion=dt`), de DT. El servidor rechaza el alta de club mientras `REGISTRO_CLUB`
-  (`rinkmetrics.registro.club`) sea `false`, el valor por defecto; los usuarios que ya existen siguen ingresando.
-- **Planes del jugador:** el **Jugador free** (sin costo hasta el 31/12/2026, 4 informes por mes) y el **Jugador
-  mensual**, que figura con el cintillo "Próximamente", apagado y borroneado (como el DT mensual), mientras
-  `REGISTRO_JUGADOR_PAGO` (`rinkmetrics.registro.jugador-pago`) sea `false`. Los dos se muestran en `/rinkreports` y
-  en el registro.
+  (`/registro.html?seccion=dt`), de DT. El alta de club está abierta (`REGISTRO_CLUB`,
+  `rinkmetrics.registro.club`, en `true` por defecto; en `false`, el registro la muestra como "Próximamente").
+- **Planes de RinkReports:** el **Jugador free** (sin costo hasta el 31/12/2026, 5 informes por mes) y el **Club
+  free** (sin costo hasta el 31/12/2026, sin límite de informes). Los mensuales (pagos) figuran con el cintillo
+  "Próximamente", apagados y borroneados, y con **"Precio a definir"**, mientras `REGISTRO_JUGADOR_PAGO` y
+  `REGISTRO_CLUB_PAGO` (`rinkmetrics.registro.jugador-pago` y `club-pago`) sean `false`. Se muestran en `/rinkreports`
+  y en el registro.
+- **Cupo de informes del jugador:** cada informe pedido suma uno al contador del usuario (`informes_pedidos`) y queda
+  registrado con su fecha (`informe_pedido`, V23). El jugador puede pedir hasta 5 por mes calendario (el cupo de su
+  plan); el sexto responde `429` con el día en que se renueva (el 1 del mes siguiente). Un pedido rechazado (por
+  ejemplo, un período inválido) no cuenta, y los de ejemplo tampoco. La pantalla del jugador muestra "3 de 5 informes
+  este mes · se renueva el 1/11" (`GET /api/sesion` trae `informesMes`: `usados`, `limite` y `renueva`). El club no
+  tiene límite.
 - **Cuentas por producto:** cada cuenta es de un producto. Las de **RinkReports** (Club y Jugador) se crean en
   `/rinkreports/registro.html` e ingresan por `/rinkreports/login.html`. Las de **RinkMetrics** (DT) se crean en
   `/registro.html` e ingresan por `/login.html`. Una cuenta no ingresa por el otro producto: el login responde 401
@@ -389,7 +396,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   partidos. `GET /api/suscripciones` lista los vigentes, del más barato al más caro. A un
   usuario solo se le asigna el de su perfil, con su fecha desde y su fecha hasta (un mes). También lleva `informes_pedidos`, que suma uno cada vez que pide un informe de club o de
   jugador y el pedido se acepta (los rechazados y los de ejemplo no cuentan). `GET /api/sesion` devuelve las dos cosas.
-  Todavía no hay reglas que limiten el uso según la suscripción.
+  El jugador tiene un cupo de informes por mes (ver arriba); el DT, de equipos y partidos.
 - **Home de Mad Sports** (`/`): pública. Mad Sports es la compañía que desarrolla aplicaciones de métricas,
   estadísticas e informes deportivos; la home presenta sus dos productos y cada tarjeta abre el suyo: **RinkReports**
   (`/rinkreports`, informes de jugador y de club) y **RinkMetrics** (`/rinkmetrics`, métricas en vivo para el DT).

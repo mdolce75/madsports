@@ -18,6 +18,17 @@ async function rrSessionBar() {
     return s;
 }
 
+/**
+ * El cupo de informes del mes ("3 de 5 informes este mes · se renueva el 1/11"); vacío si no tiene límite.
+ *
+ * @param m informesMes de la sesión: {usados, limite, renueva}
+ */
+function rrCupo(m) {
+    if (!m || !m.limite) return "";
+    const [, mes, dia] = m.renueva.split("-").map(Number);
+    return `${Math.min(m.usados, m.limite)} de ${m.limite} informes este mes · se renueva el ${dia}/${mes}`;
+}
+
 /** Ancho mínimo de la hoja del informe en pantalla (px); debajo, se achica entera. */
 const RR_SHEET_WIDTH = 640;
 
@@ -97,11 +108,12 @@ async function rrPlans(box, perfil, registro) {
         const precio = document.createElement("span");
         precio.className = "plan-price";
         precio.innerHTML = "<b></b> <small></small>";
-        precio.querySelector("b").textContent = gratis ? "Gratis" : "$ " + Number(p.precio).toLocaleString("es-AR");
-        precio.querySelector("small").textContent = gratis ? "" : "por mes";
+        precio.querySelector("b").textContent = gratis ? "Gratis"
+            : p.precioADefinir ? "Precio a definir" : "$ " + Number(p.precio).toLocaleString("es-AR");
+        precio.querySelector("small").textContent = gratis || p.precioADefinir ? "" : "por mes";
         const cupo = document.createElement("span");
         cupo.className = "plan-quota";
-        cupo.textContent = `Hasta ${p.informesPorMes} informes por mes`;
+        cupo.textContent = p.informesPorMes > 0 ? `Hasta ${p.informesPorMes} informes por mes` : "Informes sin límite";
         const nota = document.createElement("span");
         nota.className = "plan-month";
         nota.textContent = p.vigenteHasta ? "Sin costo hasta el " + p.vigenteHasta.split("-").reverse().join("/") + "."

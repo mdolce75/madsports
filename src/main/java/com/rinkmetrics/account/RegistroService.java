@@ -52,17 +52,20 @@ public class RegistroService {
     private final boolean jugadorPago;
     /** ¿Se pueden crear cuentas de jugador de la AMP? Por ahora no: solo de la FPP. */
     private final boolean jugadorAmp;
+    private final boolean clubPago;
 
     public RegistroService(UsuarioRepository usuarios, SuscripcionTypeRepository planes, CatalogService catalog,
                            RosterService roster, PasswordEncoder encoder, Clock clock,
-                           @Value("${rinkmetrics.registro.club:false}") boolean altaClub,
+                           @Value("${rinkmetrics.registro.club:true}") boolean altaClub,
                            @Value("${rinkmetrics.registro.dt-pago:false}") boolean dtPago,
                            @Value("${rinkmetrics.registro.jugador-pago:false}") boolean jugadorPago,
+                           @Value("${rinkmetrics.registro.club-pago:false}") boolean clubPago,
                            @Value("${rinkmetrics.registro.jugador-amp:false}") boolean jugadorAmp) {
         this.jugadorAmp = jugadorAmp;
         this.altaClub = altaClub;
         this.dtPago = dtPago;
         this.jugadorPago = jugadorPago;
+        this.clubPago = clubPago;
         this.usuarios = usuarios;
         this.planes = planes;
         this.catalog = catalog;
@@ -156,8 +159,14 @@ public class RegistroService {
         return switch (plan.getTipoUsuario()) {
             case "DT" -> dtPago;
             case "PLAYER" -> jugadorPago;
+            case "CLUB" -> clubPago;
             default -> true;
         };
+    }
+
+    /** Los planes pagos de RinkReports (jugador y club) que todavía no se venden: "Precio a definir". */
+    public boolean precioADefinir(SuscripcionType plan) {
+        return !disponible(plan) && !"DT".equals(plan.getTipoUsuario());
     }
 
     /** Jugador: el nombre y el apellido son los de SIDGAD (el jugador elegido de la planilla de su equipo). */

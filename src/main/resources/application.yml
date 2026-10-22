@@ -75,11 +75,12 @@ rinkmetrics:
     timeout: 120s
   # Precios en pesos: el precio base de los planes está en dólares y se convierte con el dólar oficial del BNA
   # (venta) del día. Si DolarAPI no responde se usa la última cotización conocida o, si nunca respondió, el respaldo.
-  # Alta de cuentas: abierta para jugadores (Informes) y DT (Métricas DT); la de clubes, cerrada por ahora. El jugador y
-  # el DT empiezan con su plan free (hasta el 31/12/2026): los mensuales (pagos) figuran como "Próximamente" hasta que
-  # se habilite el cobro.
+  # Alta de cuentas: abierta para jugadores y clubes (RinkReports) y DT (RinkMetrics). Todos empiezan con su plan free
+  # (hasta el 31/12/2026): los mensuales (pagos) figuran como "Próximamente" hasta que se habilite el cobro; los de
+  # RinkReports, además, con "Precio a definir".
   registro:
-    club: ${REGISTRO_CLUB:false}
+    club: ${REGISTRO_CLUB:true}
+    club-pago: ${REGISTRO_CLUB_PAGO:false}
     dt-pago: ${REGISTRO_DT_PAGO:false}
     jugador-pago: ${REGISTRO_JUGADOR_PAGO:false}
     # Jugadores de la AMP: próximamente (por ahora, solo de la FPP).
