@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -45,12 +47,39 @@ public class ApiController {
         }
     }
 
-    public record JobView(UUID id, ReportService.Status estado, String mensaje, String pdfUrl) {
+    /**
+     * Estado de un informe; listo, con sus tres formatos: para ver en pantalla (htmlUrl), PDF y Excel.
+     */
+    public record JobView(UUID id, ReportService.Status estado, String mensaje, String pdfUrl, String htmlUrl,
+                          String xlsxUrl) {
+
+        /** @param base "/api/informes/{id}" o "/api/jugador/informes/{id}" */
+        public static JobView of(UUID id, ReportService.Status estado, String mensaje, String base) {
+            boolean listo = estado == ReportService.Status.LISTO;
+            return new JobView(id, estado, mensaje, listo ? base + "/pdf" : null, listo ? base + "/html" : null,
+                    listo ? base + "/xlsx" : null);
+        }
 
         static JobView of(ReportService.Job job) {
-            return new JobView(job.id(), job.status(), job.message(),
-                    job.status() == ReportService.Status.LISTO ? "/api/informes/" + job.id() + "/pdf" : null);
+            return of(job.id(), job.status(), job.message(), "/api/informes/" + job.id());
         }
+    }
+
+    /** Tipo de los archivos de Excel (.xlsx). */
+    public static final MediaType XLSX =
+            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+    /** El informe para ver en pantalla (la página lo muestra dentro de un marco). */
+    public static ResponseEntity<String> html(String html) {
+        return ResponseEntity.ok().contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8)).body(html);
+    }
+
+    /** Un archivo para bajar (PDF o Excel); {@code inline} lo abre el navegador en lugar de descargarlo. */
+    public static ResponseEntity<byte[]> file(byte[] body, MediaType type, String fileName, boolean inline) {
+        ContentDisposition.Builder disposition = inline ? ContentDisposition.inline() : ContentDisposition.attachment();
+        return ResponseEntity.ok().contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.filename(fileName).build().toString())
+                .body(body);
     }
 
     private final CatalogService catalog;
@@ -103,36 +132,57 @@ public class ApiController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /** Informe modelo con datos ficticios; se abre en el navegador (inline). */
-    @GetMapping("/ejemplo.pdf")
-    public ResponseEntity<byte[]> ejemplo() {
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.inline().filename("informe-ejemplo-rinkmetrics.pdf").build().toString())
-                .body(sample.pdf());
+    /** Informe modelo de club con datos ficticios: en pantalla, en PDF (se abre en el navegador) y en Excel. */
+    @GetMapping("/ejemplo.html")
+    public ResponseEntity<String> ejemploHtml() {
+        return html(sample.club().html());
     }
 
-    /** Informe modelo de jugador con datos ficticios; se abre en el navegador (inline). */
+    @GetMapping("/ejemplo.pdf")
+    public ResponseEntity<byte[]> ejemplo() {
+        return file(sample.club().pdf(), MediaType.APPLICATION_PDF, "informe-club-ejemplo-rinkreports.pdf", true);
+    }
+
+    @GetMapping("/ejemplo.xlsx")
+    public ResponseEntity<byte[]> ejemploXlsx() {
+        return file(sample.club().xlsx(), XLSX, "informe-club-ejemplo-rinkreports.xlsx", false);
+    }
+
+    /** Informe modelo de jugador con datos ficticios: en pantalla, en PDF y en Excel. */
+    @GetMapping("/ejemplo-jugador.html")
+    public ResponseEntity<String> ejemploJugadorHtml() {
+        return html(sample.player().html());
+    }
+
     @GetMapping("/ejemplo-jugador.pdf")
     public ResponseEntity<byte[]> ejemploJugador() {
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.inline().filename("informe-jugador-ejemplo-rinkmetrics.pdf").build().toString())
-                .body(sample.playerPdf());
+        return file(sample.player().pdf(), MediaType.APPLICATION_PDF, "informe-jugador-ejemplo-rinkreports.pdf", true);
+    }
+
+    @GetMapping("/ejemplo-jugador.xlsx")
+    public ResponseEntity<byte[]> ejemploJugadorXlsx() {
+        return file(sample.player().xlsx(), XLSX, "informe-jugador-ejemplo-rinkreports.xlsx", false);
+    }
+
+    @GetMapping("/informes/{id}/html")
+    public ResponseEntity<String> verHtml(@PathVariable UUID id, Authentication auth) {
+        return ready(id, auth).map(j -> html(j.html())).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/informes/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
-        return reports.find(id, auth.getName())
-                .filter(j -> j.status() == ReportService.Status.LISTO)
-                .map(j -> ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_PDF)
-                        .header(HttpHeaders.CONTENT_DISPOSITION,
-                                ContentDisposition.attachment().filename(j.fileName()).build().toString())
-                        .body(j.pdf()))
+        return ready(id, auth).map(j -> file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/informes/{id}/xlsx")
+    public ResponseEntity<byte[]> xlsx(@PathVariable UUID id, Authentication auth) {
+        return ready(id, auth).map(j -> file(j.xlsx(), XLSX, j.fileName("xlsx"), false))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    private Optional<ReportService.Job> ready(UUID id, Authentication auth) {
+        return reports.find(id, auth.getName()).filter(j -> j.status() == ReportService.Status.LISTO);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

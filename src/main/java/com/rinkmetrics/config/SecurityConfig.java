@@ -50,8 +50,8 @@ import java.util.UUID;
 import java.util.Map;
 
 /**
- * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/club.html) CLUBFPP o CLUBAMP y la de
- * jugador (/jugador.html) PLAYERFPP o PLAYERAMP, y la del DT (/dt.html) DTFPP o DTAMP; la federación sale del perfil
+ * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/rinkreports/club.html) CLUBFPP o CLUBAMP
+ * y la de jugador (/rinkreports/jugador.html) PLAYERFPP o PLAYERAMP, y la del DT (/dt.html) DTFPP o DTAMP; la federación sale del perfil
  * del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
  * <p>
@@ -75,15 +75,16 @@ public class SecurityConfig {
                                             LimiteIntentos limites) throws Exception {
         http
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/", "/index.html", "/informes.html", "/dt-inicio.html", "/dt-demo.html", "/por-que.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/", "/rinkmetrics", "/rinkmetrics/", "/login.html", "/registro.html", "/olvido.html",
+                        .requestMatchers("/", "/index.html", "/informes.html", "/dt-inicio.html", "/dt-demo.html", "/por-que.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/", "/rinkreports/index.html", "/rinkreports/ejemplo.html", "/club.html", "/jugador.html", "/rinkmetrics", "/rinkmetrics/", "/login.html", "/registro.html", "/olvido.html",
                                 "/restablecer.html", "/css/**", "/js/**", "/img/**", "/dt-sw.js", "/error",
                                 "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
+                                "/api/ejemplo.html", "/api/ejemplo.xlsx", "/api/ejemplo-jugador.html", "/api/ejemplo-jugador.xlsx",
                                 "/api/ejemplo-jugador.pdf", "/api/verificar", "/api/verificacion/**", "/api/clave/**", "/api/suscripciones",
                                 "/actuator/health", "/actuator/health/**")
                         .permitAll()
-                        .requestMatchers("/club.html", "/api/informes", "/api/informes/**")
+                        .requestMatchers("/rinkreports/club.html", "/api/informes", "/api/informes/**")
                         .hasAnyAuthority(Perfil.CLUBFPP.name(), Perfil.CLUBAMP.name())
-                        .requestMatchers("/jugador.html", "/api/jugador/**")
+                        .requestMatchers("/rinkreports/jugador.html", "/api/jugador/**")
                         .hasAnyAuthority(Perfil.PLAYERFPP.name(), Perfil.PLAYERAMP.name())
                         .requestMatchers("/dt.html", "/api/dt/**")
                         .hasAnyAuthority(Perfil.DTFPP.name(), Perfil.DTAMP.name())
@@ -157,10 +158,10 @@ public class SecurityConfig {
     /** Pantalla de inicio según el perfil del usuario. */
     public static String home(Collection<? extends GrantedAuthority> authorities) {
         if (has(authorities, Perfil.CLUBFPP) || has(authorities, Perfil.CLUBAMP)) {
-            return "/club.html";
+            return "/rinkreports/club.html";
         }
         if (has(authorities, Perfil.PLAYERFPP) || has(authorities, Perfil.PLAYERAMP)) {
-            return "/jugador.html";
+            return "/rinkreports/jugador.html";
         }
         if (has(authorities, Perfil.DTFPP) || has(authorities, Perfil.DTAMP)) {
             return "/dt.html";

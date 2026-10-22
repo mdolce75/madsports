@@ -6,6 +6,8 @@ let db = null;           // IndexedDB; null si el navegador no lo permite (se us
 let memoria = [];        // ops si no hay IndexedDB
 let sec = 0;
 let enviando = false;
+let otraVez = false;          // llegó algo nuevo mientras se enviaba: al terminar, se vuelve a enviar
+const enEnvio = new Set();    // ids de las acciones que están viajando al servidor ahora
 let avisar = () => {};
 
 function abrir() {
@@ -67,10 +69,13 @@ async function agregar(partidoId, accion) {
     enviar();
 }
 
-/** Borra una acción: si todavía no se mandó, alcanza con sacarla de la cola. */
+/**
+ * Borra una acción: si todavía no se mandó, alcanza con sacarla de la cola. Si se está mandando justo ahora, puede
+ * llegar al servidor igual: se encola el borrado, que sale apenas termine ese envío.
+ */
 async function borrar(partidoId, accionId) {
     const alta = (await pendientes(partidoId)).find(o => o.tipo === "alta" && o.accion.id === accionId);
-    if (alta) await quitar([alta.key]);
+    if (alta && !enEnvio.has(accionId)) await quitar([alta.key]);
     else await guardar({partidoId, tipo: "baja", accionId});
     avisarCambio(null);
     enviar();
@@ -94,7 +99,8 @@ async function detalle(res) {
  * rechaza (400: no corresponde; 409: partido cerrado) se descarta y se avisa, para que no trabe a las demás.
  */
 async function enviar() {
-    if (enviando || !navigator.onLine) return;
+    if (!navigator.onLine) return;
+    if (enviando) { otraVez = true; return; }
     enviando = true;
     try {
         const ops = await todas();
@@ -102,6 +108,7 @@ async function enviar() {
             const delPartido = ops.filter(o => o.partidoId === id);
             const altas = delPartido.filter(o => o.tipo === "alta");
             if (altas.length) {
+                altas.forEach(o => enEnvio.add(o.accion.id));
                 const res = await post(`/api/dt/partidos/${id}/acciones`, altas.map(o => o.accion));
                 if (res.ok) {
                     await quitar(altas.map(o => o.key));
@@ -136,7 +143,9 @@ async function enviar() {
     } catch (e) {
         // Sin señal: queda todo para el próximo intento.
     } finally {
+        enEnvio.clear();
         enviando = false;
+        if (otraVez) { otraVez = false; enviar(); }
     }
 }
 

@@ -196,7 +196,7 @@ class SecurityTest {
         // El token cambia en cada uso; con el nuevo, también las pantallas y la API del perfil.
         Cookie nueva = r.getResponse().getCookie("RECORDARME");
         assertThat(nueva.getValue()).isNotEqualTo(c.getValue());
-        mvc.perform(get("/club.html").cookie(nueva)).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/club.html").cookie(nueva)).andExpect(status().isOk());
 
         // Sin marcar la casilla no queda recordado.
         register(club("beto")).andExpect(status().isCreated());
@@ -264,16 +264,22 @@ class SecurityTest {
         mvc.perform(get("/madsports.html")).andExpect(redirectedUrl("/"));
         // La portada de cada producto, pública.
         mvc.perform(get("/rinkreports")).andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/informes.html"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/rinkreports/index.html"));
         mvc.perform(get("/rinkmetrics")).andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/dt-inicio.html"));
         // Al ingreso, con la pantalla a la que volver después.
-        mvc.perform(get("/club.html")).andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login.html?volver=%2Fclub.html"));
-        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/login.html?volver=%2Fjugador.html"));
+        mvc.perform(get("/rinkreports/club.html")).andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login.html?volver=%2Frinkreports%2Fclub.html"));
+        mvc.perform(get("/rinkreports/jugador.html"))
+                .andExpect(redirectedUrl("/login.html?volver=%2Frinkreports%2Fjugador.html"));
+        // Las direcciones viejas de los informes llevan a RinkReports.
+        mvc.perform(get("/club.html")).andExpect(redirectedUrl("/rinkreports/club.html"));
+        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/jugador.html"));
+        mvc.perform(get("/informes.html")).andExpect(redirectedUrl("/rinkreports"));
+        // Los ejemplos de RinkReports, públicos: en pantalla, PDF y Excel.
+        mvc.perform(get("/rinkreports/ejemplo.html")).andExpect(status().isOk());
         mvc.perform(get("/login.html")).andExpect(status().isOk());
         // Las presentaciones de las dos secciones (Informes y DT) se ven sin sesión.
-        mvc.perform(get("/informes.html")).andExpect(status().isOk());
         mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
         // La demo de Métricas DT y sus capturas, también. La demo es la misma página que /dt.html (sin copia).
         mvc.perform(get("/dt-demo.html")).andExpect(status().isOk())
@@ -307,7 +313,7 @@ class SecurityTest {
                 .andExpect(jsonPath("$.code").value("EMAIL_NO_VERIFICADO"));
         confirmar("Ana.Club@example.com");
         assertThat(usuarios.findByUsuario("ana.club").orElseThrow().isEmailVerificado()).isTrue();
-        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/club.html"));
+        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.inicio").value("/rinkreports/club.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Usuario o clave incorrectos."));
     }
@@ -339,7 +345,7 @@ class SecurityTest {
         register(mismoJugador).andExpect(status().isConflict());
 
         confirmar("juan@example.com");
-        login("juan", "clave-segura").andExpect(jsonPath("$.inicio").value("/jugador.html"));
+        login("juan", "clave-segura").andExpect(jsonPath("$.inicio").value("/rinkreports/jugador.html"));
     }
 
     @Test
@@ -366,19 +372,19 @@ class SecurityTest {
         assertThat(jugador.getJugadorNombre()).isEqualTo("Victor Daniel Terraza Gomez");
 
         confirmar("murialdo@example.com");
-        login("murialdo", "clave-segura").andExpect(jsonPath("$.inicio").value("/club.html"));
+        login("murialdo", "clave-segura").andExpect(jsonPath("$.inicio").value("/rinkreports/club.html"));
         mvc.perform(get("/api/sesion").with(user("murialdo").authorities(() -> "CLUBAMP")))
                 .andExpect(jsonPath("$.federacion").value("AMP"));
         confirmar("terraza@example.com");
-        login("terraza", "clave-segura").andExpect(jsonPath("$.inicio").value("/jugador.html"));
+        login("terraza", "clave-segura").andExpect(jsonPath("$.inicio").value("/rinkreports/jugador.html"));
     }
 
     @Test
     void lasPantallasAceptanLosPerfilesDeLasDosFederaciones() throws Exception {
-        mvc.perform(get("/club.html").with(user("a").authorities(() -> "CLUBAMP"))).andExpect(status().isOk());
-        mvc.perform(get("/jugador.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "CLUBAMP"))).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
         // Cada perfil, solo su pantalla.
-        mvc.perform(get("/jugador.html").with(user("a").authorities(() -> "CLUBAMP")))
+        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "CLUBAMP")))
                 .andExpect(status().is3xxRedirection());
         mvc.perform(post("/api/informes").with(user("a").authorities(() -> "PLAYERAMP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -429,8 +435,8 @@ class SecurityTest {
         mvc.perform(get("/dt.html").with(user("a").authorities(() -> "DTAMP"))).andExpect(status().isOk());
         mvc.perform(get("/dt.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/dt.html").with(user("a").authorities(() -> "PLAYERFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/club.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/jugador.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/rinkreports/jugador.html").with(user("a").authorities(() -> "DTFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/api/dt/partidos").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
         // El service worker de la planilla (para abrirla sin señal) se baja sin sesión, como el resto de los estáticos.
         mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
@@ -683,13 +689,13 @@ class SecurityTest {
 
     @Test
     void cadaPerfilVaASuPantalla() throws Exception {
-        mvc.perform(get("/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/jugador.html"));
+        mvc.perform(get("/rinkreports/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/rinkreports/jugador.html"));
         mvc.perform(get("/api/informes/" + UUID.randomUUID()).with(user("j").authorities(() -> "PLAYERFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/club.html"));
+        mvc.perform(get("/rinkreports/jugador.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/rinkreports/club.html"));
         mvc.perform(get("/api/jugador/informes/" + UUID.randomUUID()).with(user("c").authorities(() -> "CLUBFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/jugador.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/jugador.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
     }
 
     @Test
@@ -700,6 +706,6 @@ class SecurityTest {
                 .andExpect(jsonPath("$.perfiles[0]").value("CLUBFPP"))
                 .andExpect(jsonPath("$.club.id").value(74))
                 .andExpect(jsonPath("$.club.nombre").value("VELEZ"))
-                .andExpect(jsonPath("$.inicio").value("/club.html"));
+                .andExpect(jsonPath("$.inicio").value("/rinkreports/club.html"));
     }
 }

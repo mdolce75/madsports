@@ -2,6 +2,7 @@ package com.rinkmetrics.report;
 
 import com.rinkmetrics.analysis.AnalysisResult;
 import com.rinkmetrics.analysis.RuleBasedAnalyst;
+import com.rinkmetrics.player.PlayerReport;
 import com.rinkmetrics.player.SamplePlayerData;
 import com.rinkmetrics.sidgad.model.Competition.Category;
 import com.rinkmetrics.sidgad.model.Federacion;
@@ -17,15 +18,19 @@ import java.util.List;
 public class SampleReport {
 
     private final PdfRenderer renderer;
+    private final ExcelExporter excel;
     private final RuleBasedAnalyst rules;
     private final Clock clock;
-    private volatile LocalDate builtOn;
-    private volatile byte[] pdf;
-    private volatile LocalDate playerBuiltOn;
-    private volatile byte[] playerPdf;
+    private volatile Outputs club;
+    private volatile Outputs player;
 
-    public SampleReport(PdfRenderer renderer, RuleBasedAnalyst rules, Clock clock) {
+    /** El informe en sus tres formatos: en pantalla (HTML), PDF y Excel; armado el día {@code on}. */
+    public record Outputs(LocalDate on, String html, byte[] pdf, byte[] xlsx) {
+    }
+
+    public SampleReport(PdfRenderer renderer, ExcelExporter excel, RuleBasedAnalyst rules, Clock clock) {
         this.renderer = renderer;
+        this.excel = excel;
         this.rules = rules;
         this.clock = clock;
     }
@@ -34,17 +39,24 @@ public class SampleReport {
      * Informe modelo del club completo: rama Masculino (Primera y Juvenil) y Femenino (Infantil). Se genera una vez por
      * día (las fechas del ejemplo son relativas a hoy).
      */
-    public byte[] pdf() {
+    public Outputs club() {
         LocalDate today = LocalDate.now(clock);
-        if (pdf == null || !today.equals(builtOn)) {
+        Outputs o = club;
+        if (o == null || !today.equals(o.on())) {
             synchronized (this) {
-                if (pdf == null || !today.equals(builtOn)) {
-                    pdf = renderer.clubPdf(clubReport(today), true);
-                    builtOn = today;
+                o = club;
+                if (o == null || !today.equals(o.on())) {
+                    ClubReport r = clubReport(today);
+                    o = new Outputs(today, renderer.clubHtml(r, true), renderer.clubPdf(r, true), excel.club(r));
+                    club = o;
                 }
             }
         }
-        return pdf;
+        return o;
+    }
+
+    public byte[] pdf() {
+        return club().pdf();
     }
 
     ClubReport clubReport(LocalDate today) {
@@ -67,17 +79,24 @@ public class SampleReport {
     }
 
     /** Informe modelo de jugador ("Tomás Ejemplo", de Juniors, que también juega en Primera); uno por día. */
-    public byte[] playerPdf() {
+    public Outputs player() {
         LocalDate today = LocalDate.now(clock);
-        if (playerPdf == null || !today.equals(playerBuiltOn)) {
+        Outputs o = player;
+        if (o == null || !today.equals(o.on())) {
             synchronized (this) {
-                if (playerPdf == null || !today.equals(playerBuiltOn)) {
-                    playerPdf = renderer.playerPdf(SamplePlayerData.build(today, Crests.sample("CE")), true);
-                    playerBuiltOn = today;
+                o = player;
+                if (o == null || !today.equals(o.on())) {
+                    PlayerReport r = SamplePlayerData.build(today, Crests.sample("CE"));
+                    o = new Outputs(today, renderer.playerHtml(r, true), renderer.playerPdf(r, true), excel.player(r));
+                    player = o;
                 }
             }
         }
-        return playerPdf;
+        return o;
+    }
+
+    public byte[] playerPdf() {
+        return player().pdf();
     }
 
     /** El texto de análisis sale del analista por reglas (no consume la API), con la fuente aclarada. */

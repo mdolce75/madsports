@@ -7,7 +7,7 @@
         @page {
             size: A4;
             margin: 16mm 14mm 18mm 14mm;
-            @bottom-left { content: "Informe elaborado por RinkMetrics · Datos: [(${r.federacion.name()})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-left { content: "Informe elaborado por RinkReports · Datos: [(${r.federacion.name()})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
             @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
         }
         body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
@@ -75,7 +75,7 @@
 
 <div class="sample-banner" th:if="${sample}">
     <b>Informe de ejemplo.</b> Jugador, club, rivales y resultados son ficticios: sirven solo para mostrar el formato
-    y las secciones del informe de jugador de RinkMetrics. Los informes reales usan las actas publicadas por la
+    y las secciones del informe de jugador de RinkReports. Los informes reales usan las actas publicadas por la
     <span th:text="${r.federacion.name()}">FPP</span> en SIDGAD.
 </div>
 
@@ -84,10 +84,10 @@
         <tr>
             <td class="crest" th:if="${r.club.logo != null}"><img th:src="${r.club.logo}" th:alt="|Escudo de ${r.club.name}|"/></td>
             <td>
-                <div class="brandline">RinkMetrics · Hockey sobre patines · Informe de jugador</div>
+                <div class="brandline">RinkReports · Hockey sobre patines · Informe de jugador</div>
                 <h1 th:text="${r.playerName}">Jugador</h1>
                 <div class="subtitle" th:text="|${r.club.name} · Temporada ${r.year} · ${r.period}|">Club · Temporada</div>
-                <div class="meta" th:text="|Informe elaborado por RinkMetrics para ${r.fullName} · ${f.date(r.generatedOn)}|">fecha</div>
+                <div class="meta" th:text="|Informe elaborado por RinkReports para ${r.fullName} · ${f.date(r.generatedOn)}|">fecha</div>
             </td>
         </tr>
     </table>

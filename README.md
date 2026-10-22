@@ -67,12 +67,30 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
   </tr>
 </table>
 
-<sub>Informes de ejemplo con datos ficticios ("Club Ejemplo", "Tomás Ejemplo"): `GET /api/ejemplo.pdf` y
-`GET /api/ejemplo-jugador.pdf`.</sub>
+<sub>Informes de ejemplo con datos ficticios ("Club Ejemplo", "Tomás Ejemplo"): en pantalla en
+`/rinkreports/ejemplo.html`, y en PDF y Excel en `GET /api/ejemplo.pdf|.xlsx` y `GET /api/ejemplo-jugador.pdf|.xlsx`.</sub>
+
+### RinkReports: en pantalla, PDF y Excel
+
+Los informes de jugador y de club viven en **RinkReports** (`/rinkreports`), con el mismo look and feel que RinkMetrics
+(tipografías, tableros, planillas y botones de `app.css`) y su propia paleta (`reports.css`): fondo verde noche,
+esmeralda como color principal y ámbar para lo que se destaca. La web de RinkMetrics ya no enlaza a los informes: su
+menú es solo de RinkMetrics. La portada ofrece las dos opciones,
+**Jugador** y **Club**, con su ejemplo y su registro.
+
+Cada informe **se muestra en pantalla** (el mismo contenido que el PDF, dentro de la página) y se **exporta a PDF o a
+Excel**. El Excel trae las mismas cifras en tablas para filtrar y trabajar:
+
+- **Club:** una hoja **Resumen** (una fila por categoría: partidos, efectividad, goles, faltas y tarjetas) y una hoja
+  por categoría con sus apartados, los top 3, el plantel completo, los indicadores y el análisis.
+- **Jugador:** **Resumen** (cada categoría y el total, con la incidencia de goles y tarjetas), **Partidos** (uno por
+  fila), **Minutos** (goles y tarjetas por tramo de 5') y **Fortalezas**.
+
+Las direcciones anteriores (`/informes.html`, `/club.html`, `/jugador.html`) llevan a las nuevas.
 
 ### Informe del club completo
 
-La pantalla de informes del club (`/club.html`) arma **un solo PDF con todo el club**: primero por **rama** (Masculino
+La pantalla de informes del club (`/rinkreports/club.html`) arma **un solo informe con todo el club**: primero por **rama** (Masculino
 y después Femenino) y, dentro de cada rama, una sección por **categoría** (de Infantil a Primera, solo las que juegan en
 el período). Cada categoría lleva:
 
@@ -255,7 +273,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   (`rinkmetrics.registro.club`) sea `false`, el valor por defecto; los usuarios que ya existen siguen ingresando.
 - **Planes del jugador:** el **Jugador free** (sin costo hasta el 31/12/2026, 4 informes por mes) y el **Jugador
   mensual**, que figura con el cintillo "Próximamente", apagado y borroneado (como el DT mensual), mientras
-  `REGISTRO_JUGADOR_PAGO` (`rinkmetrics.registro.jugador-pago`) sea `false`. Los dos se muestran en `/informes.html` y
+  `REGISTRO_JUGADOR_PAGO` (`rinkmetrics.registro.jugador-pago`) sea `false`. Los dos se muestran en `/rinkreports` y
   en el registro.
 - **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
   No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
@@ -369,9 +387,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   estadísticas e informes deportivos; la home presenta sus dos productos y cada tarjeta abre el suyo: **RinkReports**
   (`/rinkreports`, informes de jugador y de club) y **RinkMetrics** (`/rinkmetrics`, métricas en vivo para el DT).
   `/madsports` (la dirección vieja) lleva a la home.
-- **Club FPP** (`/club.html`): la pantalla de informes de siempre, con el club fijo en el del usuario. La API rechaza pedidos
+- **Club FPP** (`/rinkreports/club.html`): la pantalla de informes del club, con el club fijo en el del usuario. La API rechaza pedidos
   de otro club (403), y cada informe solo lo ve y lo baja quien lo pidió.
-- **Jugador FPP** (`/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
+- **Jugador FPP** (`/rinkreports/jugador.html`): muestra club, nombre y apellido, y jugador en la FPP (no editables). Pide año y
   período (Apertura, Clausura o Apertura + Clausura) y genera un PDF **agrupado por categoría**. Empieza con los
   totales y una tabla que compara las categorías. Sigue un bloque por cada categoría en que jugó, con todas sus
   estadísticas, y si jugó en más de una, cierra con la suma de todas. Cada bloque trae: partidos jugados, ganados, empatados y perdidos; goles; tarjetas amarillas, azules y rojas por
@@ -498,7 +516,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
   `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
 - `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
-- `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/pdf` (PLAYERFPP o PLAYERAMP)
+- `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/html`, `/pdf` y `/xlsx` (PLAYERFPP o PLAYERAMP)
 - Métricas DT (DTFPP o DTAMP; sin `equipo`, el primer equipo del DT; lo de otro DT da 404):
   - `GET /api/dt/equipos`: los equipos con `jugados`, `ganados`, `empatados` y `perdidos` (partidos finalizados);
     `POST /api/dt/equipos` `{"nombre"}` → `201` (`409` si ya tiene los equipos del plan); `PUT /api/dt/equipos/{id}`; `DELETE /api/dt/equipos/{id}` → `204`
@@ -529,16 +547,17 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
   `anio`: el más reciente con datos; sin `federacion`: FPP); `available: false` y `message` si el año no tiene datos
 - `GET /api/ejemplo.pdf` — informe modelo del club completo con datos ficticios ("Club Ejemplo": Primera y Juvenil
   masculinas, Infantil femenina), marcado en cada página; no consulta
-  SIDGAD ni la API de Gemini. Enlazado desde la web.
+  SIDGAD ni la API de Gemini. También `GET /api/ejemplo.html` (para ver en pantalla) y `GET /api/ejemplo.xlsx`.
 - `GET /api/ejemplo-jugador.pdf`: informe modelo de jugador con datos ficticios ("Tomás Ejemplo", de Juniors, que
   también juega en Primera del "Club Ejemplo"). Se arma con el mismo motor que los informes reales. Enlazado desde
-  el login, el registro y la pantalla de jugador.
+  RinkReports. También `GET /api/ejemplo-jugador.html` y `GET /api/ejemplo-jugador.xlsx`.
 - `POST /api/informes` (CLUBFPP o CLUBAMP, solo su club y su federación) `{"clubId":74,"categoria":"INFANTIL","rama":"FEMENINO","periodo":"TEMPORADA","anio":2026}` → `202 {id, estado}`
   (`periodo`: `APERTURA`, `CLAUSURA`, `TEMPORADA` o `ULTIMOS_5`). Sin `categoria` ni `rama`
   (`{"clubId":74,"periodo":"TEMPORADA","anio":2026}`): el informe del club completo, por rama y categoría; con una
   sola de las dos, `400`
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
-- `GET /api/informes/{id}/pdf`
+- `GET /api/informes/{id}/html` (el informe para ver en pantalla), `/pdf` y `/xlsx` (Excel); el estado listo trae
+  `htmlUrl`, `pdfUrl` y `xlsxUrl`
 
 ## Tests
 

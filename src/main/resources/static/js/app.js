@@ -73,7 +73,8 @@ function renderUserBar(s) {
         await api("/api/logout", {method: "POST"});
         // Métricas DT guarda copias para abrir sin señal: no quedan para el próximo usuario del teléfono.
         if (window.caches) await caches.delete("rinkmetrics-dt-v1").catch(() => {});
-        location.replace("/");
+        // A la portada del producto (RinkReports la indica en data-salir) o a la home.
+        location.replace(document.body.dataset.salir || "/");
     });
     bar.append(who, out);
 }
@@ -117,20 +118,28 @@ function showReady(job) {
 }
 
 /**
- * Menú superior, al lado de la marca en todas las páginas: las dos secciones (Informes y Métricas DT), la demo y
- * "Por qué RinkMetrics" (su página). La página marca la suya con data-seccion en el body.
- * Se agrega cuando la página ya puso la marca. Las pantallas de Métricas DT (body.dt-page) no lo llevan: tienen su
- * propio menú en esa barra.
+ * Menú superior, al lado de la marca, con las secciones del producto de la página: RinkMetrics (Métricas DT, la demo y
+ * "Por qué RinkMetrics") o RinkReports (body data-producto="reports": inicio y ejemplos). La página marca la suya con
+ * data-seccion en el body. Se agrega cuando la página ya puso la marca. Las pantallas de Métricas DT (body.dt-page) no
+ * lo llevan: tienen su propio menú en esa barra.
  */
+const SECCIONES = {
+    metrics: {inicio: "/rinkmetrics", nombre: "RinkMetrics", items: [["dt", "Métricas DT", "/dt-inicio.html"],
+        ["demo", "Demo", "/dt-demo.html"], ["por-que", "Por qué RinkMetrics", "/por-que.html"]]},
+    reports: {inicio: "/rinkreports", nombre: "RinkReports", items: [["inicio", "Inicio", "/rinkreports"],
+        ["ejemplos", "Ejemplos", "/rinkreports/ejemplo.html"]]}
+};
+
 document.addEventListener("DOMContentLoaded", () => {
     const marca = document.querySelector("header.brand");
     if (!marca || document.querySelector("nav.secciones")) return;
-    // El logo lleva a la portada.
+    const producto = SECCIONES[document.body.dataset.producto] || SECCIONES.metrics;
+    // El logo lleva a la portada del producto.
     if (!marca.querySelector("a.brand-link")) {
         const link = document.createElement("a");
         link.className = "brand-link";
-        link.href = "/";
-        link.setAttribute("aria-label", "RinkMetrics: ir al inicio");
+        link.href = producto.inicio;
+        link.setAttribute("aria-label", producto.nombre + ": ir al inicio");
         link.append(...marca.childNodes);
         marca.append(link);
     }
@@ -138,8 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
-    for (const [id, texto, href] of [["informes", "Informes", "/informes.html"], ["dt", "Métricas DT", "/dt-inicio.html"],
-                                     ["demo", "Demo", "/dt-demo.html"], ["por-que", "Por qué RinkMetrics", "/por-que.html"]]) {
+    for (const [id, texto, href] of producto.items) {
         const a = document.createElement("a");
         a.href = href;
         a.textContent = texto;

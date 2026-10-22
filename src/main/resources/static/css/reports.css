@@ -1,0 +1,53 @@
+/*
+ * RinkReports: el mismo look and feel que RinkMetrics (app.css: tipografías, tableros, planillas, botones) con su propia
+ * paleta: fondo verde noche, paneles verde pizarra, esmeralda como color principal y ámbar para lo que se destaca.
+ * Va después de /css/app.css y solo cambia sus variables, más el visor del informe.
+ */
+:root {
+    --bg: #08130f;
+    --panel: #10231c;
+    --panel-2: #163126;
+    --field: #0a1813;
+    --line: #234539;
+    --ink: #f1f7f4;
+    --ink-2: #cfe1d8;
+    --muted: #8fab9e;
+    --accent: #2fd3a0;      /* esmeralda de RinkReports: botón principal, selección, enlaces */
+    --accent-ink: #03140d;
+    --accent-soft: rgba(47, 211, 160, .14);
+    --brand: #2fd3a0;
+    --lime: #ffc145;        /* ámbar: lo que se destaca (cintillos) */
+    --dark: #050e0a;
+    --accent-on-dark: #2fd3a0;
+}
+body {
+    background:
+        radial-gradient(1200px 500px at 85% -10%, rgba(47, 211, 160, .16), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(255, 193, 69, .08), transparent 60%),
+        var(--bg);
+}
+.cintillo { background: var(--lime); color: #1d1300; }
+
+/* Las opciones de la portada (Jugador / Club) */
+.example footer { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0; border: 0; font-size: inherit; }
+.example footer .btn { flex: 1 1 160px; }
+
+/* Selector del ejemplo (Club / Jugador) */
+.rr-tabs { display: inline-flex; margin-top: 18px; padding: 3px; gap: 3px; background: var(--panel-2); border-radius: var(--radius); }
+.rr-tabs a { padding: 9px 18px; border-radius: 7px; color: var(--muted); text-decoration: none; font: 600 .9rem/1 var(--body); }
+.rr-tabs a[aria-current="page"] { background: var(--panel); color: var(--accent); box-shadow: var(--shadow); }
+
+/* ---------- Visor del informe: en pantalla, con exportación a PDF y Excel ---------- */
+.rr-viewer { margin-top: 24px; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--accent);
+             border-radius: var(--radius); box-shadow: var(--shadow-lg); overflow: hidden; }
+.rr-viewer .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+                  padding: 12px 16px; background: var(--dark); }
+.rr-viewer .bar h2 { margin: 0; font: 700 1.05rem/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.rr-viewer .export { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rr-viewer .export > span { font: 600 .72rem/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.rr-viewer .export .btn { display: inline-flex; align-items: center; gap: 6px; }
+.rr-viewer .export svg { width: 16px; height: 16px; }
+.rr-viewer .paper { padding: clamp(0px, 2vw, 20px); background: var(--panel-2); overflow: hidden; }
+.rr-frame { display: block; width: 100%; min-width: 640px; max-width: 900px; margin: 0 auto; border: 0; background: #fff;
+            min-height: 400px; border-radius: 4px; box-shadow: 0 4px 18px rgba(0, 0, 0, .35); }
+.rr-viewer .loading { margin: 0; padding: 24px 16px; color: var(--muted); }

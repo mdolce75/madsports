@@ -114,6 +114,8 @@ public class ReportService {
         private volatile Status status = Status.PENDIENTE;
         private volatile String message = "En cola";
         private volatile byte[] pdf;
+        private volatile String html;
+        private volatile byte[] xlsx;
         private volatile String fileName;
         /** En el informe del club: la categoría que se está armando ("Categoría 3 de 12 · Juvenil Masculino"). */
         private volatile String stage;
@@ -128,7 +130,14 @@ public class ReportService {
         public Status status() { return status; }
         public String message() { return message; }
         public byte[] pdf() { return pdf; }
+        /** El informe para ver en pantalla: el mismo HTML que el PDF. */
+        public String html() { return html; }
+        public byte[] xlsx() { return xlsx; }
+        /** "informe-club-cavs-temporada-2026.pdf" */
         public String fileName() { return fileName; }
+
+        /** El nombre del archivo con otra extensión ("xlsx"). */
+        public String fileName(String extension) { return fileName.substring(0, fileName.lastIndexOf('.') + 1) + extension; }
 
         void update(Status status, String message) {
             this.status = status;
@@ -141,17 +150,19 @@ public class ReportService {
     private final GeminiAnalyst gemini;
     private final RuleBasedAnalyst rules;
     private final PdfRenderer renderer;
+    private final ExcelExporter excel;
     private final Clock clock;
     private final Cache<UUID, Job> jobs = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build();
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
     public ReportService(CatalogService catalog, SidgadClient sidgad, GeminiAnalyst gemini,
-                         RuleBasedAnalyst rules, PdfRenderer renderer, Clock clock) {
+                         RuleBasedAnalyst rules, PdfRenderer renderer, ExcelExporter excel, Clock clock) {
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.gemini = gemini;
         this.rules = rules;
         this.renderer = renderer;
+        this.excel = excel;
         this.clock = clock;
     }
 
@@ -261,6 +272,8 @@ public class ReportService {
                     byBranch.entrySet().stream().map(e -> new ClubReport.Branch(e.getKey(), e.getValue())).toList(),
                     notPublished, sources);
             job.pdf = renderer.clubPdf(report);
+            job.html = renderer.clubHtml(report, false);
+            job.xlsx = excel.club(report);
             job.fileName = ("informe-club-" + club.code() + "-" + job.request().scope().name() + "-"
                     + job.request().year() + ".pdf").toLowerCase().replaceAll("[^a-z0-9.-]+", "-");
             job.update(Status.LISTO, "Informe listo");
@@ -299,6 +312,13 @@ public class ReportService {
             }
             job.update(Status.GENERANDO_PDF, "Generando el PDF");
             job.pdf = renderer.pdf(data, analysis);
+            job.html = renderer.html(data, analysis);
+            // En Excel, la categoría como un informe de club de una sola categoría.
+            String level = category.levelLabel() + (option.letter() == null ? "" : " " + option.letter());
+            job.xlsx = excel.club(new ClubReport(data.club(), data.torneo(), data.generatedOn(),
+                    job.request().federacion(), List.of(new ClubReport.Branch(category.branchLabel(),
+                    List.of(new ClubReport.CategoryBlock(level, data, data.teams().getFirst(), analysis)))),
+                    data.notPublished(), data.sources()));
             job.fileName = fileName(club, category, option, job.request().scope());
             job.update(Status.LISTO, "Informe listo");
         } catch (RuntimeException e) {

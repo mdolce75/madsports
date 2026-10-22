@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RinkReports · Informes de hockey sobre patines</title>
+    <meta name="description" content="RinkReports, de Mad Sports: informes de rendimiento de jugadores y clubes de hockey sobre patines, en pantalla, PDF y Excel.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232fd3a0'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%2308130f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%2308130f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/reports.css">
+</head>
+<body data-producto="reports" data-seccion="inicio">
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar">
+            <a class="btn ghost" href="/login.html?volver=%2Frinkreports">Ingresar</a>
+        </div>
+    </div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Informes de rendimiento</span>
+        <h1>Tu rendimiento,<br><em>en números.</em></h1>
+        <p class="lead">Las estadísticas oficiales de la Federación Porteña de Patín (FPP) y de la Asociación Mendocina
+            de Patín (AMP), en informes para jugadores y clubes: se leen en pantalla y se exportan a PDF o a Excel.</p>
+    </section>
+
+    <div class="board" aria-hidden="true">
+        <div><strong>5'</strong><span>Tramos de goles y tarjetas</span></div>
+        <div><strong>Top 3</strong><span>Goleo, pelota parada y disciplina</span></div>
+        <div><strong>IA</strong><span>Fortalezas y debilidades</span></div>
+    </div>
+    </div>
+    <div class="main">
+    <h2 class="section-title">Elegí tu opción</h2>
+    <p class="hint">Cada una tiene su informe de ejemplo, con datos ficticios, para que conozcas el formato.</p>
+
+    <div class="examples">
+        <article class="example" id="opcion-jugador">
+            <span class="tag">Jugador</span>
+            <h3>Informe de jugador</h3>
+            <p class="hint">Elegís tu club, tu categoría y tu nombre, y accedés a tu informe.</p>
+            <ul>
+                <li>Partidos jugados, ganados, empatados y perdidos, por categoría</li>
+                <li>Goles y tarjetas por color, con promedios por partido</li>
+                <li>Incidencia de tus goles y tarjetas en el equipo</li>
+                <li>Penales, tiros libres directos y goles por tramo de 5'</li>
+                <li>Fortalezas y aspectos a mejorar</li>
+            </ul>
+            <footer data-cta="jugador">
+                <a class="btn primary" href="/registro.html?seccion=informes">Crear cuenta de jugador</a>
+                <a class="btn ghost" href="/rinkreports/ejemplo.html?tipo=jugador">Ver ejemplo</a>
+            </footer>
+        </article>
+        <article class="example" id="opcion-club">
+            <span class="tag">Club</span>
+            <h3>Informe de club</h3>
+            <p class="hint">Elegís tu club y accedés al informe, por torneo o de la temporada completa.</p>
+            <ul>
+                <li>Por rama y, dentro de cada rama, por categoría</li>
+                <li>Partidos, efectividad, goles, faltas y tarjetas, con promedios</li>
+                <li>Top 3: promedio de gol, libres, penales y disciplina</li>
+                <li>Fortalezas y debilidades, con análisis de IA</li>
+            </ul>
+            <footer data-cta="club">
+                <a class="btn primary" href="/registro.html?seccion=informes">Crear cuenta de club</a>
+                <a class="btn ghost" href="/rinkreports/ejemplo.html?tipo=club">Ver ejemplo</a>
+            </footer>
+        </article>
+    </div>
+
+    <h2 class="section-title">Planes para jugadores</h2>
+    <div class="plans" id="plan-jugador" hidden></div>
+    <p class="alt">¿Ya tenés una cuenta? <a href="/login.html?volver=%2Frinkreports">Ingresá</a> y vas directo a tu informe.</p>
+    </div>
+    </div>
+
+    <footer>© 2026 RinkReports · Un producto de <a href="/">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/reports.js"></script>
+<script>
+    rrPlans($("plan-jugador"), "PLAYERFPP", "/registro.html?seccion=informes");
+
+    // Con sesión: en lugar de crear cuenta, el acceso directo a su informe.
+    rrSessionBar().then(s => {
+        if (!s) return;
+        for (const cta of document.querySelectorAll("[data-cta]")) {
+            const suyo = (cta.dataset.cta === "club" && s.inicio === "/rinkreports/club.html")
+                || (cta.dataset.cta === "jugador" && s.inicio === "/rinkreports/jugador.html");
+            const crear = cta.querySelector(".btn.primary");
+            if (suyo) {
+                crear.href = s.inicio;
+                crear.textContent = "Ir a mi informe";
+            } else {
+                crear.remove();
+            }
+        }
+    });
+</script>
+</body>
+</html>

@@ -15,8 +15,12 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addRedirectViewController("/madsports.html", "/");
         // Portada de cada producto.
         for (String p : new String[] {"/rinkreports", "/rinkreports/"}) {
-            registry.addViewController(p).setViewName("forward:/informes.html");
+            registry.addViewController(p).setViewName("forward:/rinkreports/index.html");
         }
+        // Los informes de jugador y de club se mudaron a RinkReports: las direcciones viejas llevan a las nuevas.
+        registry.addRedirectViewController("/informes.html", "/rinkreports");
+        registry.addRedirectViewController("/club.html", "/rinkreports/club.html");
+        registry.addRedirectViewController("/jugador.html", "/rinkreports/jugador.html");
         for (String p : new String[] {"/rinkmetrics", "/rinkmetrics/"}) {
             registry.addViewController(p).setViewName("forward:/dt-inicio.html");
         }

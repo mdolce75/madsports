@@ -3,36 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>RinkMetrics · Estadísticas de hockey sobre patines</title>
+    <title>Informe de club · RinkReports</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232fd3a0'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%2308130f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%2308130f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/reports.css">
 </head>
-<body data-seccion="informes">
+<body data-producto="reports" data-seccion="club">
 <div class="wrap">
     <div class="topbar">
-        <header class="brand">
-            <!-- Pista con barras de métricas -->
-            <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#22b8f0"/><rect x="8" y="15" width="48" height="34" rx="14" fill="none" stroke="#fff" stroke-width="4"/><rect x="20" y="33" width="6" height="9" rx="1.5" fill="#fff"/><rect x="29" y="27" width="6" height="15" rx="1.5" fill="#fff"/><rect x="38" y="21" width="6" height="21" rx="1.5" fill="#fff"/></svg>
-            <div><b>RinkMetrics</b><small>Hockey sobre patines</small></div>
-        </header>
+        <div id="brand"></div>
         <div class="userbar" id="userbar"></div>
     </div>
 
     <div class="split">
     <div class="intro">
     <section class="hero">
-        <span class="tag">Informes de rendimiento</span>
-        <h1>Tu equipo,<br><em>en números.</em></h1>
-        <p class="lead">Las estadísticas oficiales de la Federación Porteña de Patín (FPP) y de la Asociación Mendocina de Patín (AMP), en un informe PDF: resultados, goleadores, desarrollo minuto a minuto, fortalezas y aspectos a mejorar, con análisis redactado por IA.</p>
+        <span class="tag">Informe de club</span>
+        <h1>Tu club,<br><em>en números.</em></h1>
+        <p class="lead">Todas las categorías del club, por rama: partidos, goles, faltas, tarjetas, los top 3 y las
+            fortalezas y debilidades de cada una. Por torneo o de la temporada completa.</p>
     </section>
 
     <div class="board" aria-hidden="true">
-        <div><strong>12</strong><span>Indicadores de juego</span></div>
+        <div><strong>Top 3</strong><span>Goleo, pelota parada y disciplina</span></div>
         <div><strong>5'</strong><span>Tramos de goles y tarjetas</span></div>
-        <div><strong>IA</strong><span>Análisis escrito</span></div>
+        <div><strong>IA</strong><span>Análisis por categoría</span></div>
     </div>
     </div>
     <div class="main">
@@ -40,52 +38,55 @@
         <div class="sheet-head"><span>Planilla del informe</span><span id="season">Temporada</span></div>
 
         <div class="field">
-            <label for="anio"><span class="num"><i>1</i></span>Año</label>
-            <select id="anio" required disabled></select>
+            <label for="club"><span class="num"><i>1</i></span>Club</label>
+            <select id="club" required disabled><option>Cargando catálogo…</option></select>
+            <p class="hint" id="categorias"></p>
         </div>
         <div class="notice" id="no-data" role="alert" hidden></div>
 
-        <div class="field">
-            <label for="club"><span class="num"><i>2</i></span>Club</label>
-            <select id="club" required disabled><option>Cargando catálogo…</option></select>
-            <p class="hint">Tu club: el informe incluye todos sus equipos, por rama (Masculino y Femenino) y, dentro
-                de cada rama, por categoría.</p>
+        <div class="grid2">
+            <div class="field">
+                <label for="anio"><span class="num"><i>2</i></span>Año</label>
+                <select id="anio" required disabled></select>
+            </div>
+            <div class="field">
+                <label for="periodo"><span class="num"><i>3</i></span>Período</label>
+                <select id="periodo" required>
+                    <option value="TEMPORADA" selected>Temporada completa</option>
+                    <option value="APERTURA">Apertura</option>
+                    <option value="CLAUSURA">Clausura</option>
+                    <option value="ULTIMOS_5">Últimos 5 partidos</option>
+                </select>
+            </div>
         </div>
+        <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos de cada categoría: récord, goles, faltas y tarjetas de
+            esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
 
-        <div class="field">
-            <label for="periodo"><span class="num"><i>3</i></span>Período</label>
-            <select id="periodo" required>
-                <option value="TEMPORADA" selected>Apertura + Clausura</option>
-                <option value="APERTURA">Apertura</option>
-                <option value="CLAUSURA">Clausura</option>
-                <option value="ULTIMOS_5">Últimos 5 partidos</option>
-            </select>
-            <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos de cada categoría: récord, goles, faltas y
-                tarjetas de esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
-        </div>
-        <p class="hint" id="categorias"></p>
-
-        <button class="go" id="go" type="submit" disabled>Generar informe</button>
+        <button class="go" id="go" type="submit" disabled>Ver informe</button>
 
         <ul class="steps" id="steps" hidden>
             <li data-s="EXTRAYENDO">Datos de SIDGAD</li>
             <li data-s="ANALIZANDO">Análisis</li>
-            <li data-s="GENERANDO_PDF">PDF</li>
+            <li data-s="GENERANDO_PDF">Informe</li>
         </ul>
         <div id="status" role="status" aria-live="polite"></div>
     </form>
     </div>
     </div>
 
-    <footer>© 2026 RinkMetrics. Todos los derechos reservados.</footer>
+    <div id="visor" hidden></div>
+
+    <footer>© 2026 RinkReports · Un producto de <a href="/">Mad Sports</a>.</footer>
 </div>
 
 <script src="/js/app.js"></script>
+<script src="/js/reports.js"></script>
 <script>
     let catalog;
     let me;
 
     const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
+    const PERIODO = {TEMPORADA: "Temporada completa", APERTURA: "Apertura", CLAUSURA: "Clausura", ULTIMOS_5: "Últimos 5 partidos"};
 
     function selectedClub() {
         return catalog.clubs.find(c => String(c.id) === $("club").value);
@@ -103,18 +104,20 @@
         $("go").disabled = parts.length === 0;
     }
 
-    // Carga el catálogo del año (sin año: el más reciente con datos) y arma los selectores.
+    // Carga el catálogo del año (sin año: el más reciente con datos) de la federación del usuario.
     async function loadCatalog(year) {
         $("club").disabled = true;
         $("go").disabled = true;
         $("club").innerHTML = "<option>Cargando catálogo…</option>";
         $("categorias").textContent = "";
         try {
-            // El catálogo es el de la federación del usuario (FPP o AMP).
             const res = await fetch("/api/catalogo?federacion=" + me.federacion + (year ? "&anio=" + year : ""));
             if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
             catalog = await res.json();
-            fillYears();
+            const years = $("anio");
+            years.innerHTML = "";
+            catalog.years.forEach(y => years.add(new Option(y, y, false, y === catalog.year)));
+            years.disabled = false;
             $("season").textContent = "Temporada " + catalog.year;
             const noData = $("no-data");
             noData.hidden = catalog.available;
@@ -125,7 +128,7 @@
                 sel.add(new Option("Sin información para " + catalog.year));
                 return;
             }
-            // El usuario de club saca informes solo de su club: el selector queda fijo.
+            // El usuario de club pide informes solo de su club: el selector queda fijo en el suyo.
             const mine = catalog.clubs.find(c => c.id === me.club.id);
             if (!mine) {
                 sel.add(new Option(me.club.nombre));
@@ -140,19 +143,13 @@
         }
     }
 
-    function fillYears() {
-        const sel = $("anio");
-        sel.innerHTML = "";
-        catalog.years.forEach(y => sel.add(new Option(y, y, false, y === catalog.year)));
-        sel.disabled = false;
-    }
-
     $("anio").addEventListener("change", () => { status(""); loadCatalog($("anio").value); });
     $("periodo").addEventListener("change", () => { $("periodo-hint").hidden = $("periodo").value !== "ULTIMOS_5"; });
     $("form").addEventListener("submit", async ev => {
         ev.preventDefault();
         $("go").disabled = true;
         $("steps").hidden = false;
+        $("visor").hidden = true;
         showStep("PENDIENTE");
         status("Enviando…");
         try {
@@ -161,7 +158,9 @@
                 periodo: $("periodo").value,
                 anio: Number($("anio").value)
             });
-            showReady(await poll(`/api/informes/${body.id}`));
+            const job = await poll(`/api/informes/${body.id}`);
+            status("Informe listo.");
+            rrShowReport($("visor"), job, `${me.club.nombre} · ${PERIODO[$("periodo").value]} ${$("anio").value}`);
         } catch (e) {
             status(e.message, true);
         } finally {
