@@ -103,7 +103,10 @@ function acciones() {
     const bajas = new Set(pend.filter(o => o.tipo === "baja").map(o => o.accionId));
     const lista = partido.acciones.filter(a => !bajas.has(a.id));
     const ids = new Set(lista.map(a => a.id));
-    for (const o of pend) if (o.tipo === "alta" && !ids.has(o.accion.id)) lista.push(Object.assign({pendiente: true}, o.accion));
+    for (const o of pend) {
+        // Una sin enviar que ya se borró (el borrado sale cuando termine de llegar) no se muestra.
+        if (o.tipo === "alta" && !ids.has(o.accion.id) && !bajas.has(o.accion.id)) lista.push(Object.assign({pendiente: true}, o.accion));
+    }
     return lista.sort((a, b) => a.tiempo - b.tiempo || a.segundo - b.segundo);
 }
 
