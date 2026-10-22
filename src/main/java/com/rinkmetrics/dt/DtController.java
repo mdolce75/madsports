@@ -38,7 +38,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.List;
 
 /**
- * Métricas DT en vivo (perfiles DTFPP y DTAMP): equipos y jugadores (ABM), partidos, acciones, reloj e informes. Cada
+ * RinkMetrics en vivo (perfiles DTFPP y DTAMP): equipos y jugadores (ABM), partidos, acciones, reloj e informes. Cada
  * DT ve solo sus equipos, sus jugadores y sus partidos; los de otro DT responden 404.
  */
 @RestController

@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Métricas DT en vivo: partidos que carga el DT de sus equipos, sus acciones (cada una de un jugador, con tiempo y
+ * RinkMetrics en vivo: partidos que carga el DT de sus equipos, sus acciones (cada una de un jugador, con tiempo y
  * segundo) y el reloj. Todo se valida contra el DT: sus equipos, su cupo del mes y sus partidos.
  */
 @Service
@@ -273,7 +273,7 @@ public class DtService {
     void verificarCupo(Usuario u) {
         SuscripcionType plan = u.getSuscripcionType();
         if (plan == null || !"DT".equals(plan.getTipoUsuario())) {
-            throw new IllegalStateException("Tu plan no incluye Métricas DT.");
+            throw new IllegalStateException("Tu plan no incluye RinkMetrics.");
         }
         LocalDate hoy = LocalDate.now(clock);
         if (!plan.vigente(hoy)) {

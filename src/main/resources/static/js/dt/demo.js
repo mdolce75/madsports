@@ -1,4 +1,4 @@
-// Demo de Métricas DT (/dt-demo.html, la misma página que /dt.html): un equipo de ejemplo con su plantel, partidos ya
+// Demo de RinkMetrics (/dt-demo.html, la misma página que /dt.html): un equipo de ejemplo con su plantel, partidos ya
 // jugados, un partido en juego y dos programados. Los pedidos a /api/ no salen del navegador: los contesta demo-api.js
 // como lo haría el servidor. Nada se guarda: al recargar, la demo vuelve a empezar.
 import {crearApi} from "./demo-api.js";

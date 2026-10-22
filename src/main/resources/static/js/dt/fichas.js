@@ -1,4 +1,4 @@
-// Fichas de los jugadores y dashboard de Métricas DT: todo se calcula en el navegador con las acciones que cargó el
+// Fichas de los jugadores y dashboard de RinkMetrics: todo se calcula en el navegador con las acciones que cargó el
 // DT (GET /api/dt/acciones), el plantel y la lista de partidos. También dibuja los gráficos (SVG propio, sin
 // librerías, para que funcione sin señal).
 import {clave} from "./acciones.js";

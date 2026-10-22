@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Métricas DT · RinkMetrics</title>
+    <title>RinkMetrics · Métricas en vivo de hockey sobre patines</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -22,7 +22,7 @@
     <div class="split">
     <div class="intro">
     <section class="hero">
-        <span class="tag">Métricas DT</span>
+        <span class="tag">RinkMetrics · Cuerpos técnicos</span>
         <h1>Cada acción,<br><em>en vivo.</em></h1>
         <p class="lead">Diseñado para el cuerpo técnico: seleccioná el rival y la fecha, iniciá el reloj y registrá cada acción de cada jugador con dos toques, desde el celular, la tablet o la computadora.</p>
     </section>
@@ -73,7 +73,7 @@
     </div>
 
     <section class="galeria" id="asi-se-ve" aria-labelledby="galeria-titulo">
-        <h2 class="section-title" id="galeria-titulo">Así se ve Métricas DT</h2>
+        <h2 class="section-title" id="galeria-titulo">Así se ve RinkMetrics</h2>
         <p class="hint">Capturas de la demo, con un partido y un plantel de ejemplo. Probala vos mismo: no hace falta
             crear una cuenta.</p>
         <div class="galeria-grid">
@@ -175,13 +175,13 @@
         const go = document.createElement("a");
         go.className = "btn primary";
         go.href = s.inicio;
-        go.textContent = s.inicio === "/dt.html" ? "Mis métricas DT" : "Mi cuenta";
+        go.textContent = s.inicio === "/dt.html" ? "Mi RinkMetrics" : "Mi cuenta";
         $("userbar").prepend(go);
         for (const cta of document.querySelectorAll("[data-cta]")) {
             const link = document.createElement("a");
             link.className = "go-link";
             link.href = s.inicio;
-            link.textContent = s.inicio === "/dt.html" ? "Ir a Métricas DT" : "Ir a mi cuenta";
+            link.textContent = s.inicio === "/dt.html" ? "Ir a RinkMetrics" : "Ir a mi cuenta";
             cta.replaceChildren(link);
         }
     });

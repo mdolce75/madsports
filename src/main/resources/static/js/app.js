@@ -85,7 +85,7 @@ function renderUserBar(s) {
     out.textContent = "Salir";
     out.addEventListener("click", async () => {
         await api("/api/logout", {method: "POST"});
-        // Métricas DT guarda copias para abrir sin señal: no quedan para el próximo usuario del teléfono.
+        // RinkMetrics guarda copias para abrir sin señal: no quedan para el próximo usuario del teléfono.
         if (window.caches) await caches.delete("rinkmetrics-dt-v1").catch(() => {});
         // A la portada del producto (RinkReports la indica en data-salir) o a la home.
         location.replace(document.body.dataset.salir || "/");
@@ -132,13 +132,13 @@ function showReady(job) {
 }
 
 /**
- * Menú superior, al lado de la marca, con las secciones del producto de la página: RinkMetrics (Métricas DT, la demo y
+ * Menú superior, al lado de la marca, con las secciones del producto de la página: RinkMetrics (inicio, la demo y
  * "Por qué RinkMetrics") o RinkReports (body data-producto="reports": inicio y ejemplos). La página marca la suya con
- * data-seccion en el body. Se agrega cuando la página ya puso la marca. Las pantallas de Métricas DT (body.dt-page) no
+ * data-seccion en el body. Se agrega cuando la página ya puso la marca. Las pantallas de RinkMetrics (body.dt-page) no
  * lo llevan: tienen su propio menú en esa barra.
  */
 const SECCIONES = {
-    metrics: {inicio: "/rinkmetrics", nombre: "RinkMetrics", items: [["dt", "Métricas DT", "/dt-inicio.html"],
+    metrics: {inicio: "/rinkmetrics", nombre: "RinkMetrics", items: [["dt", "Inicio", "/rinkmetrics"],
         ["demo", "Demo", "/dt-demo.html"], ["por-que", "Por qué RinkMetrics", "/por-que.html"]]},
     reports: {inicio: "/rinkreports", nombre: "RinkReports", items: [["inicio", "Inicio", "/rinkreports"],
         ["ejemplos", "Ejemplos", "/rinkreports/ejemplo.html"]]}

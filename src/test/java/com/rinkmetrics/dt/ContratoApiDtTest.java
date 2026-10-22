@@ -45,7 +45,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /**
- * El servidor contra el contrato de la API de Métricas DT ({@code src/test/resources/dt/contrato-api.json}): los mismos
+ * El servidor contra el contrato de la API de RinkMetrics ({@code src/test/resources/dt/contrato-api.json}): los mismos
  * escenarios que corre la API simulada de la demo ({@code src/test/js/contrato-api.test.mjs}), así la demo y la
  * pantalla sin señal no se separan del servidor. Cada escenario arranca con la base vacía y el reloj de prueba.
  */

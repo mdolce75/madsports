@@ -9,7 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * La demo de Métricas DT (/dt-demo.html, pública) es la misma página que /dt.html (solo para DT): no hay una copia
+ * La demo de RinkMetrics (/dt-demo.html, pública) es la misma página que /dt.html (solo para DT): no hay una copia
  * que mantener. En la demo, la página carga js/dt/demo.js, que contesta la API en el navegador con datos de ejemplo.
  * Se devuelve el archivo (no un forward), porque un forward a /dt.html volvería a pedir el perfil de DT.
  */

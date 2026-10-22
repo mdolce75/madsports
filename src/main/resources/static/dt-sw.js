@@ -1,4 +1,4 @@
-// Service worker de Métricas DT (solo controla /dt.html): con señal todo va a la red y se guarda una copia; sin
+// Service worker de RinkMetrics (solo controla /dt.html): con señal todo va a la red y se guarda una copia; sin
 // señal responde la última copia, así la pantalla abre y muestra el partido aunque se recargue la página en la cancha.
 // Las copias de la API llevan el header X-Guardado (hora en que se guardaron) para que el reloj no se atrase.
 const CACHE = "rinkmetrics-dt-v1";

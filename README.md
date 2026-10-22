@@ -44,7 +44,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 |---|---|
 | 🏒 **Informe de equipo** | Resultados, posiciones, goleadores (sin arqueros), pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
 | 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, más fortalezas y debilidades contra sus compañeros. Cuenta también los partidos sin acta publicada. |
-| 📋 **Métricas DT** | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido, aunque se corte la señal. |
+| 📋 **RinkMetrics** | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido, aunque se corte la señal. |
 | ⏱️ **Minuto a minuto** | Goles, tarjetas y faltas por tramos de 5′, cómo iba el partido en cada tramo y goles recibidos con uno menos. |
 | 📊 **Gráficos** | Barras y donas en cada PDF, con el escudo del club en la cabecera. |
 | 🔐 **Usuarios** | Registro con perfil Club, Jugador o DT de la FPP o de la AMP, confirmación del email, recuperación de clave y un plan mensual con precio en pesos. |
@@ -257,18 +257,18 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Dos productos:** la home (`/`) es la de **Mad Sports**, la compañía, y presenta sus dos productos: **RinkReports**
   (`/rinkreports`: perfiles Club y Jugador, informes de ejemplo) y **RinkMetrics** (`/rinkmetrics`: las estadísticas en
   vivo del DT, y su plan). El menú "Informes / DT" está arriba en todas
-  las páginas, salvo en la pantalla de Métricas DT (y su demo): ahí la barra superior lleva solo el menú del DT
+  las páginas, salvo en la pantalla de RinkMetrics (y su demo): ahí la barra superior lleva solo el menú del DT
   (Dashboard · Partidos · Jugadores · Informes) y el logo vuelve a la portada. El ingreso es uno solo y lleva a cada usuario a la pantalla de su perfil.
 - **Por qué RinkMetrics** (`/por-que.html`, en el menú): las ventajas de la plataforma, en su propia página.
-- **Demo de Métricas DT** (`/dt-demo.html`, en el menú "Demo"): Métricas DT completo con datos de ejemplo, sin
+- **Demo de RinkMetrics** (`/dt-demo.html`, en el menú "Demo"): RinkMetrics completo con datos de ejemplo, sin
   cuenta: arranca en el Control panel y se recorren todas las pantallas (Partidos, con un partido en juego para cargar
   acciones; Equipo, con sus ABM; Estadísticas e Informes). Es la misma página que `/dt.html` (sin copia): en la demo,
   `js/dt/demo-api.js` contesta en el navegador las llamadas a la API, igual que el servidor (nada se guarda). La página de
-  la sección muestra capturas de la demo ("Así se ve Métricas DT", en `img/demo/`); se regeneran con la app levantada:
+  la sección muestra capturas de la demo ("Así se ve RinkMetrics", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
 - **Alta de cuentas de jugador y de DT; la de club, próximamente:** el registro de Informes
   (`/registro.html?seccion=informes`) crea cuentas de jugador de la FPP (las de la AMP, próximamente:
-  `REGISTRO_JUGADOR_AMP`) y el de Métricas DT
+  `REGISTRO_JUGADOR_AMP`) y el de RinkMetrics
   (`/registro.html?seccion=dt`), de DT. El alta de club está abierta (`REGISTRO_CLUB`,
   `rinkmetrics.registro.club`, en `true` por defecto; en `false`, el registro la muestra como "Próximamente").
 - **Planes de RinkReports:** el **Jugador free** (sin costo hasta el 31/12/2026, 5 informes por mes) y el **Club
@@ -294,13 +294,13 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
   usuario.
-- **DT** (Métricas DT, en vivo): elige su club y su plan; sus equipos y sus jugadores los arma después, en la
-  sección Equipo (el registro ya no los pide). Entra a `/dt.html`, la pantalla de Métricas DT (sin equipos, empieza
+- **DT** (RinkMetrics, en vivo): elige su club y su plan; sus equipos y sus jugadores los arma después, en la
+  sección Equipo (el registro ya no los pide). Entra a `/dt.html`, la pantalla de RinkMetrics (sin equipos, empieza
   por Equipo). Empieza con el plan free (`DT_FREE`: 1 equipo y 5 partidos por mes, sin costo hasta el 31/12/2026);
   el mensual (`DT_MENSUAL`: hasta 3 equipos y 25 partidos por mes) figura como "Próximamente" y no se puede elegir
   mientras `REGISTRO_DT_PAGO` (`rinkmetrics.registro.dt-pago`) sea `false`, el valor por defecto (`equipos_max` y `partidos_por_mes` en
   `suscripcion_type`, V17).
-- **Métricas DT (servidor):** cada partido es de un equipo del DT; el rival se escribe (con los ya usados para
+- **RinkMetrics (servidor):** cada partido es de un equipo del DT; el rival se escribe (con los ya usados para
   elegir), con la fecha, si es local o visitante, los minutos de cada tiempo (25 si no se eligen) y el campeonato. El
   mismo rival en la misma fecha retoma el partido en vez de crear otro. Un partido se puede eliminar con todas sus
   acciones (deja de contar en las estadísticas y los informes). Cada partido nuevo cuenta para
@@ -312,7 +312,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   las acciones. Tablas `partido_dt` y `accion_dt` (V12), `jugador_dt` (V15) y `equipo_dt` con
   `jugador_equipo_dt` (V16: los equipos de antes pasaron con su nombre y sus partidos; los jugadores traídos de SIDGAD
   salieron, y sus acciones conservan el nombre). Un partido cerrado se puede reabrir durante 48 h.
-- **Métricas DT: menú, panel, estadísticas, informes y plantel.** La pantalla del DT tiene un menú Control panel ·
+- **RinkMetrics: menú, panel, estadísticas, informes y plantel.** La pantalla del DT tiene un menú Control panel ·
   Partidos · Equipo · Estadísticas (submenú Equipo y Jugadores) · Informes (entra al Control panel).
   - **Control panel (dashboard general):** partidos cargados y del mes; estado de los partidos (programados = creados con fecha
     futura y sin iniciar, en juego, finalizados); partidos jugados por mes (los últimos 6) y los próximos partidos.
@@ -345,7 +345,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
     equipo. Un jugador dado de baja ya no
     aparece para cargar acciones, pero las suyas quedan en los partidos y los informes, que muestran el nombre
     corregido.
-- **Métricas DT (pantalla, `/dt.html`):** módulos ES sin build en `js/dt/`: `main.js` (menú y arranque),
+- **RinkMetrics (pantalla, `/dt.html`):** módulos ES sin build en `js/dt/`: `main.js` (menú y arranque),
   `panel.js`, `partidos.js`, `partido.js` (la carga en vivo), `estadisticas.js`, `informes.js`, `equipo.js`, y los
   compartidos `acciones.js` (botones y reglas de goles), `informe.js`, `fichas.js`, `cola.js` y `comun.js`. Al volver
   a la pestaña se vuelven a pedir los equipos (por si cambiaron en otro dispositivo). En el celular va en una columna; en tablet y web (desde 760 px de ancho)
@@ -532,7 +532,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `POST /api/clave/olvido` `{"email","producto"}` (`producto`: `REPORTS` o `METRICS`, el de la pantalla);
   `GET /api/registro/opciones` → `{club, jugadorAmp}` (qué perfiles se pueden registrar hoy); `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/html`, `/pdf` y `/xlsx` (PLAYERFPP o PLAYERAMP)
-- Métricas DT (DTFPP o DTAMP; sin `equipo`, el primer equipo del DT; lo de otro DT da 404):
+- RinkMetrics (DTFPP o DTAMP; sin `equipo`, el primer equipo del DT; lo de otro DT da 404):
   - `GET /api/dt/equipos`: los equipos con `jugados`, `ganados`, `empatados` y `perdidos` (partidos finalizados);
     `POST /api/dt/equipos` `{"nombre"}` → `201` (`409` si ya tiene los equipos del plan); `PUT /api/dt/equipos/{id}`; `DELETE /api/dt/equipos/{id}` → `204`
     (`409` si tiene partidos)
@@ -592,7 +592,7 @@ npm run demo    # la demo sin levantar la app: http://localhost:8099/dt-demo.htm
 | `src/test/js/*.test.mjs` | node:test | — | Los módulos de `js/dt` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
 | `src/test/e2e/*.spec.mjs` | Playwright | — | La demo en un navegador (celular y escritorio): carga de acciones, deshacer, arquero en cancha, sin señal, fin del partido con su informe, Control panel, Partidos, Estadísticas, Informes, ABM de Equipo y equipos que cambian en otro dispositivo |
 
-**Contrato de la API de Métricas DT** (`src/test/resources/dt/contrato-api.json`): escenarios de pedidos y respuestas
+**Contrato de la API de RinkMetrics** (`src/test/resources/dt/contrato-api.json`): escenarios de pedidos y respuestas
 (equipos, jugadores, partido en vivo e informes, con las métricas calculadas a mano) que corren el servidor
 (`ContratoApiDtTest` con H2 y `ContratoApiDtIT` con PostgreSQL) y la API simulada de la demo (`js/dt/demo-api.js`,
 que arma los informes con `js/dt/informe.js`, el mismo cálculo de la pantalla sin señal). Así la demo, la pantalla

@@ -2,12 +2,12 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head>
     <meta charset="UTF-8"/>
-    <title th:text="|Informe ${r.titulo} - Métricas DT|">Informe Métricas DT</title>
+    <title th:text="|Informe ${r.titulo} - RinkMetrics|">Informe RinkMetrics</title>
     <style>
         @page {
             size: A4;
             margin: 16mm 12mm 18mm 12mm;
-            @bottom-left { content: "Informe elaborado por RinkMetrics · Métricas DT"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-left { content: "Informe elaborado por RinkMetrics"; font-size: 8pt; color: #888; font-family: sans-serif; }
             @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
         }
         body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
@@ -44,7 +44,7 @@
 <body>
 
 <div class="header">
-    <div class="brandline" th:text="|RinkMetrics · Métricas DT · ${r.unPartido ? 'Informe del partido' : 'Informe del período'}|">RinkMetrics</div>
+    <div class="brandline" th:text="|RinkMetrics · ${r.unPartido ? 'Informe del partido' : 'Informe del período'}|">RinkMetrics</div>
     <h1 th:text="${r.titulo}">VELEZ 3 - 2 HURACAN</h1>
     <div class="subtitle" th:text="${r.detalle}">Primera Masculino · Local · 18/10/2026</div>
     <div class="meta" th:text="|${r.jugador != null ? 'Jugador: ' + (r.jugador.numero.isEmpty() ? '' : '#' + r.jugador.numero + ' ') + r.jugador.nombre + ' · ' : ''}${r.club} · Generado el ${f.date(r.generado)}|">meta</div>
