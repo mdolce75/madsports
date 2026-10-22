@@ -7,13 +7,13 @@ $("brand").outerHTML = brand();
 let signupOpts = {club: true, amp: false, playerAmp: false};
 if (SECTION === "dt") {
     document.querySelectorAll("input[name=rol]").forEach(r => {
-        if (r.value === "DT") r.checked = true; else r.closest("label").remove();
+        if (r.value === "COACH") r.checked = true; else r.closest("label").remove();
     });
     $("perfil-field").hidden = true;
     document.querySelector("input[name=federacion]").closest(".field").hidden = true;
 } else {
     // RinkReports: Jugador o Club (?opcion=club elige el club). La FPP queda elegida.
-    document.querySelector("input[name=rol][value=DT]").closest("label").remove();
+    document.querySelector("input[name=rol][value=COACH]").closest("label").remove();
     const chosenOption = new URLSearchParams(location.search).get("option") === "club" ? "CLUB" : "PLAYER";
     document.querySelector(`input[name=rol][value=${chosenOption}]`).checked = true;
     document.querySelector("input[name=federacion][value=FPP]").checked = true;
@@ -51,7 +51,7 @@ let clubFed = null;   // DT: la federación del club elegido
 const fed = () => SECTION === "dt" ? clubFed : (document.querySelector("input[name=federacion]:checked") || {}).value;
 const role = () => document.querySelector("input[name=rol]:checked").value;
 const isPlayer = () => role() === "PLAYER";
-const isDt = () => role() === "DT";
+const isDt = () => role() === "COACH";
 const profile = () => role() + fed();
 const ROLE_NAME = {CLUB: "Club ", PLAYER: "Jugador ", COACH: "DT "};
 const rosters = {};
@@ -212,7 +212,7 @@ async function loadPlans() {
                 ? `${plan.maxTeams === 1 ? "1 equipo" : "Hasta " + plan.maxTeams + " equipos"} y ${plan.matchesPerMonth} partidos por mes`
                 : plan.reportsPerMonth > 0 ? `Hasta ${plan.reportsPerMonth} informes por mes` : "Informes sin límite";
             const ul = card.querySelector("ul");
-            BENEFITS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("DT") ? "DT" : "CLUB"].forEach(b => {
+            BENEFITS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("COACH") ? "COACH" : "CLUB"].forEach(b => {
                 const li = document.createElement("li");
                 li.textContent = b;
                 ul.append(li);
