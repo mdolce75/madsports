@@ -1,10 +1,9 @@
 package com.rinkmetrics.monitor;
 
-import com.rinkmetrics.sidgad.SidgadClient;
-
 import com.rinkmetrics.account.MailContent;
 import com.rinkmetrics.account.Mailer;
 import com.rinkmetrics.catalog.CatalogService;
+import com.rinkmetrics.sidgad.SidgadClient;
 import com.rinkmetrics.sidgad.model.Competition;
 import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.sidgad.model.Models.Match;

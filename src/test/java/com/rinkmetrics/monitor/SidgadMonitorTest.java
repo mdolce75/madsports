@@ -1,12 +1,11 @@
 package com.rinkmetrics.monitor;
 
-import com.rinkmetrics.sidgad.SidgadClient;
-
 import com.rinkmetrics.Fixtures;
 import com.rinkmetrics.account.MailContent;
 import com.rinkmetrics.account.Mailer;
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.config.RinkMetricsProperties;
+import com.rinkmetrics.sidgad.SidgadClient;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.boot.actuate.health.Status;
