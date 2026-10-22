@@ -1,4 +1,4 @@
-package com.rinkmetrics.account;
+package com.rinkmetrics.report;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

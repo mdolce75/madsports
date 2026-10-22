@@ -1,5 +1,6 @@
 package com.rinkmetrics.player;
 
+import com.rinkmetrics.catalog.RosterService;
 import com.rinkmetrics.Fixtures;
 import com.rinkmetrics.player.PlayerReport.Line;
 import com.rinkmetrics.player.PlayerReportService.Query;

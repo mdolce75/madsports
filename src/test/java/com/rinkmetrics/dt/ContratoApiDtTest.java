@@ -10,7 +10,7 @@ import com.rinkmetrics.account.Perfil;
 import com.rinkmetrics.account.SuscripcionTypeRepository;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
-import com.rinkmetrics.player.RosterService;
+import com.rinkmetrics.catalog.RosterService;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;

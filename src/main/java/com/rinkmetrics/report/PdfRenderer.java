@@ -1,31 +1,27 @@
 package com.rinkmetrics.report;
 
 import com.rinkmetrics.analysis.AnalysisResult;
+import com.rinkmetrics.pdf.Plantillas;
 import com.rinkmetrics.player.PlayerReport;
 import com.rinkmetrics.stats.ReportData;
-import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
-import org.jsoup.Jsoup;
-import org.jsoup.helper.W3CDom;
 import org.springframework.stereotype.Component;
-import org.thymeleaf.ITemplateEngine;
-import org.thymeleaf.context.Context;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
+import java.util.HashMap;
 import java.util.Map;
 
-/** Arma los PDF desde las plantillas {@code templates/report.html} y {@code templates/player-report.html}. */
+/**
+ * Los informes de RinkReports desde sus plantillas: {@code templates/report.html} (una categoría),
+ * {@code club-report.html} (el club completo) y {@code player-report.html} (un jugador). Cada una lleva los gráficos
+ * ({@code c}) y, en los de ejemplo, la marca "datos ficticios" ({@code sample}). El paso a HTML y a PDF es el de
+ * {@link Plantillas}, común a los productos.
+ */
 @Component
 public class PdfRenderer {
 
-    private final ITemplateEngine templates;
+    private final Plantillas plantillas;
 
-    public PdfRenderer(ITemplateEngine templates) {
-        this.templates = templates;
+    public PdfRenderer(Plantillas plantillas) {
+        this.plantillas = plantillas;
     }
 
     public String html(ReportData data, AnalysisResult analysis) {
@@ -34,13 +30,7 @@ public class PdfRenderer {
 
     /** @param sample informe modelo: cada página lleva la marca "datos ficticios" */
     public String html(ReportData data, AnalysisResult analysis, boolean sample) {
-        Context ctx = new Context(Locale.forLanguageTag("es-AR"));
-        ctx.setVariable("d", data);
-        ctx.setVariable("a", analysis);
-        ctx.setVariable("f", new Format());
-        ctx.setVariable("c", new Charts());
-        ctx.setVariable("sample", sample);
-        return templates.process("report", ctx);
+        return render("report", sample, "d", data, "a", analysis);
     }
 
     public byte[] pdf(ReportData data, AnalysisResult analysis) {
@@ -48,17 +38,12 @@ public class PdfRenderer {
     }
 
     public byte[] pdf(ReportData data, AnalysisResult analysis, boolean sample) {
-        return toPdf(html(data, analysis, sample));
+        return Plantillas.toPdf(html(data, analysis, sample));
     }
 
     /** Informe del club completo (todas sus ramas y categorías), plantilla {@code templates/club-report.html}. */
     public String clubHtml(ClubReport report, boolean sample) {
-        Context ctx = new Context(Locale.forLanguageTag("es-AR"));
-        ctx.setVariable("r", report);
-        ctx.setVariable("sample", sample);
-        ctx.setVariable("f", new Format());
-        ctx.setVariable("c", new Charts());
-        return templates.process("club-report", ctx);
+        return render("club-report", sample, "r", report);
     }
 
     public byte[] clubPdf(ClubReport report) {
@@ -66,7 +51,7 @@ public class PdfRenderer {
     }
 
     public byte[] clubPdf(ClubReport report, boolean sample) {
-        return toPdf(clubHtml(report, sample));
+        return Plantillas.toPdf(clubHtml(report, sample));
     }
 
     /** Informe de un jugador (perfil PLAYERFPP), plantilla {@code templates/player-report.html}. */
@@ -76,12 +61,7 @@ public class PdfRenderer {
 
     /** @param sample informe modelo: cada página lleva la marca "datos ficticios" */
     public String playerHtml(PlayerReport report, boolean sample) {
-        Context ctx = new Context(Locale.forLanguageTag("es-AR"));
-        ctx.setVariable("r", report);
-        ctx.setVariable("sample", sample);
-        ctx.setVariable("f", new Format());
-        ctx.setVariable("c", new Charts());
-        return templates.process("player-report", ctx);
+        return render("player-report", sample, "r", report);
     }
 
     public byte[] playerPdf(PlayerReport report) {
@@ -89,90 +69,17 @@ public class PdfRenderer {
     }
 
     public byte[] playerPdf(PlayerReport report, boolean sample) {
-        return toPdf(playerHtml(report, sample));
+        return Plantillas.toPdf(playerHtml(report, sample));
     }
 
-    /** Cualquier otra plantilla (el informe del DT, {@code templates/dt-informe.html}), con el formateo de siempre. */
-    public String templateHtml(String template, Map<String, Object> vars) {
-        Context ctx = new Context(Locale.forLanguageTag("es-AR"));
-        vars.forEach(ctx::setVariable);
-        ctx.setVariable("f", new Format());
-        return templates.process(template, ctx);
-    }
-
-    public byte[] templatePdf(String template, Map<String, Object> vars) {
-        return toPdf(templateHtml(template, vars));
-    }
-
-    private static byte[] toPdf(String html) {
-        // openhtmltopdf exige XML bien formado: jsoup normaliza el HTML5 de Thymeleaf a un DOM W3C.
-        org.w3c.dom.Document dom = new W3CDom().fromJsoup(Jsoup.parse(html));
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            new PdfRendererBuilder()
-                    .useFastMode()
-                    .withW3cDocument(dom, "about:blank")
-                    .toStream(out)
-                    .run();
-            return out.toByteArray();
-        } catch (IOException e) {
-            throw new UncheckedIOException("No se pudo generar el PDF", e);
+    /** @param vars pares nombre, valor (un valor puede ser null: el informe sin análisis) */
+    private String render(String template, boolean sample, Object... vars) {
+        Map<String, Object> m = new HashMap<>();
+        for (int i = 0; i < vars.length; i += 2) {
+            m.put((String) vars[i], vars[i + 1]);
         }
-    }
-
-    /** Formateo usado desde la plantilla. */
-    public static class Format {
-        private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        public String dec(double v) {
-            return String.format(Locale.forLanguageTag("es-AR"), "%.2f", v);
-        }
-
-        public String pct(double v) {
-            return String.format(Locale.forLanguageTag("es-AR"), "%.0f%%", v);
-        }
-
-        public String date(LocalDate d) {
-            return d == null ? "a confirmar" : d.format(DATE);
-        }
-
-        /** Ancho de barra (0-100) relativo al máximo, para gráficos simples en CSS. */
-        public String bar(double value, double max) {
-            double w = max <= 0 ? 0 : Math.max(0, Math.min(100, 100 * value / max));
-            return String.format(Locale.ROOT, "width: %.1f%%", w);
-        }
-
-        public double max(double a, double b) {
-            return Math.max(a, b);
-        }
-
-        /** Minutos con decimales como reloj: 3.25 -> "3:15". */
-        public String clock(double minutes) {
-            long seconds = Math.round(minutes * 60);
-            return String.format(Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
-        }
-
-        /** Valor de un indicador del análisis de fortalezas y debilidades, según su unidad. */
-        public String indicator(double value, ReportData.Unit unit) {
-            return switch (unit) {
-                case PER_GAME -> dec(value);
-                case PERCENT -> pct(value);
-                case MINUTES -> clock(value);
-                case DIFF -> String.format(Locale.forLanguageTag("es-AR"), "%+.2f", value);
-            };
-        }
-
-        /** Número con signo: +1,50 / -0,50 / 0,00. */
-        public String signed(double v) {
-            return Math.abs(v) < 0.005 ? "0,00" : String.format(Locale.forLanguageTag("es-AR"), "%+.2f", v);
-        }
-
-        /** Porcentaje de partidos: 3 de 4 -> "75%". */
-        public String share(int part, int total) {
-            return total == 0 ? "-" : String.format(Locale.forLanguageTag("es-AR"), "%.0f%%", 100.0 * part / total);
-        }
-
-        public String fraction(int scored, int taken) {
-            return taken == 0 ? "-" : scored + "/" + taken;
-        }
+        m.put("c", new Charts());
+        m.put("sample", sample);
+        return plantillas.html(template, m);
     }
 }

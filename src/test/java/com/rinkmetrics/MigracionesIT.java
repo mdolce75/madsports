@@ -1,7 +1,7 @@
 package com.rinkmetrics;
 
 import com.rinkmetrics.catalog.CatalogService;
-import com.rinkmetrics.player.RosterService;
+import com.rinkmetrics.catalog.RosterService;
 import com.rinkmetrics.support.PostgresContainers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

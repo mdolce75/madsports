@@ -1,13 +1,13 @@
 package com.rinkmetrics.player;
 
-import com.rinkmetrics.account.CupoInformes;
 import com.rinkmetrics.account.Perfil;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.sidgad.model.Federacion;
-import com.rinkmetrics.report.ApiController;
-import com.rinkmetrics.report.ApiController.JobView;
+import com.rinkmetrics.report.CupoInformes;
+import com.rinkmetrics.report.Descargas;
+import com.rinkmetrics.report.JobView;
 import com.rinkmetrics.report.ReportService.Scope;
 import com.rinkmetrics.report.ReportService.Status;
 import com.rinkmetrics.sidgad.SidgadClient.SidgadException;
@@ -78,18 +78,18 @@ public class PlayerController {
 
     @GetMapping("/informes/{id}/html")
     public ResponseEntity<String> html(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> ApiController.html(j.html())).orElse(ResponseEntity.notFound().build());
+        return ready(id, auth).map(j -> Descargas.html(j.html())).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/informes/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> ApiController.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
+        return ready(id, auth).map(j -> Descargas.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/informes/{id}/xlsx")
     public ResponseEntity<byte[]> xlsx(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> ApiController.file(j.xlsx(), ApiController.XLSX, j.fileName("xlsx"), false))
+        return ready(id, auth).map(j -> Descargas.file(j.xlsx(), Descargas.XLSX, j.fileName("xlsx"), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 

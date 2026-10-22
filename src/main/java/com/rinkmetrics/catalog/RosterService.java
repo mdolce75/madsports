@@ -1,6 +1,5 @@
-package com.rinkmetrics.player;
+package com.rinkmetrics.catalog;
 
-import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.catalog.CatalogService.CategoryOption;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
 import com.rinkmetrics.sidgad.SidgadClient;
@@ -161,12 +160,12 @@ public class RosterService {
     }
 
     /** Jugadores de la planilla del equipo del club en ese partido (local o visitante). */
-    static List<LineupPlayer> ownSide(List<LineupPlayer> lineups, Match m, Set<Integer> teamIds) {
+    public static List<LineupPlayer> ownSide(List<LineupPlayer> lineups, Match m, Set<Integer> teamIds) {
         boolean home = teamIds.contains(m.homeTeamId());
         return lineups.stream().filter(p -> p.home() == home).toList();
     }
 
-    static List<RosterPlayer> roster(List<LineupPlayer> lineups, String category) {
+    public static List<RosterPlayer> roster(List<LineupPlayer> lineups, String category) {
         Map<Integer, LineupPlayer> players = new LinkedHashMap<>();
         lineups.forEach(p -> players.putIfAbsent(p.playerId(), p));
         return players.values().stream()

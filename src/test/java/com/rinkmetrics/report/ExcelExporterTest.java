@@ -81,11 +81,11 @@ class ExcelExporterTest {
         mvc.perform(get("/api/ejemplo-jugador.html")).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"));
         mvc.perform(get("/api/ejemplo.xlsx")).andExpect(status().isOk())
-                .andExpect(content().contentType(ApiController.XLSX))
+                .andExpect(content().contentType(Descargas.XLSX))
                 .andExpect(header().string("Content-Disposition", containsString("attachment")))
                 .andExpect(header().string("Content-Disposition", containsString(".xlsx")));
         mvc.perform(get("/api/ejemplo-jugador.xlsx")).andExpect(status().isOk())
-                .andExpect(content().contentType(ApiController.XLSX));
+                .andExpect(content().contentType(Descargas.XLSX));
     }
 
     private static int number(Row row, int cell) {

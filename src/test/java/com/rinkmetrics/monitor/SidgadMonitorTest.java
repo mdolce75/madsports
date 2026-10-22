@@ -1,4 +1,6 @@
-package com.rinkmetrics.sidgad;
+package com.rinkmetrics.monitor;
+
+import com.rinkmetrics.sidgad.SidgadClient;
 
 import com.rinkmetrics.Fixtures;
 import com.rinkmetrics.account.MailContent;

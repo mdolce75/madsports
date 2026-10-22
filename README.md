@@ -35,6 +35,7 @@ con gráficos, análisis minuto a minuto y texto redactado por IA.
 - [Usuarios y perfiles](#usuarios-y-perfiles)
 - [Correr](#correr)
 - [API](#api)
+- [Arquitectura](#arquitectura)
 - [Tests](#tests)
 - [Producción](docs/produccion.md)
 
@@ -573,6 +574,24 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `GET /api/informes/{id}` — estado: `PENDIENTE`, `EXTRAYENDO`, `ANALIZANDO`, `GENERANDO_PDF`, `LISTO`, `ERROR`
 - `GET /api/informes/{id}/html` (el informe para ver en pantalla), `/pdf` y `/xlsx` (Excel); el estado listo trae
   `htmlUrl`, `pdfUrl` y `xlsxUrl`
+
+## Arquitectura
+
+Un solo proyecto con dos productos de Mad Sports. El código está separado en capas, camino a un proyecto `madsports`
+con un módulo por producto:
+
+| Capa | Paquetes (`com.rinkmetrics.*`) | Qué tiene |
+|---|---|---|
+| Datos de hockey | `sidgad`, `catalog`, `stats` | SIDGAD, clubes y categorías, planteles (`RosterService`, `ClubTeams`) y estadísticas |
+| Plataforma | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes y el paso de plantillas a PDF (`Plantillas`) |
+| RinkReports | `report`, `player`, `analysis` | Informes de club y de jugador, Excel, análisis con IA, cupo de informes |
+| RinkMetrics | `dt` | Partidos en vivo, equipos, planteles e informes del DT |
+| App | `monitor` y la clase principal | Lo que junta todo (el chequeo diario de SIDGAD) |
+
+Cada producto usa los datos de hockey y la plataforma, **nunca el otro producto**; la plataforma no depende de los
+productos (lo que un producto aporta a la sesión, como el cupo de informes, entra por una interfaz:
+`InformesDelMes`). `ArquitecturaTest` (ArchUnit) hace cumplir estas reglas: un import que las rompa hace fallar el
+build. Queda pendiente que los datos de hockey lean su configuración sin pasar por `config`.
 
 ## Tests
 
