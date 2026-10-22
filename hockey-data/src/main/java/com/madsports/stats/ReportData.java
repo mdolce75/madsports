@@ -2,7 +2,7 @@ package com.madsports.stats;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -13,30 +13,30 @@ import java.util.List;
  * Los métodos derivados con {@code @JsonProperty} (puntos, efectividad, promedios, porcentajes, minutos por
  * partido) también van al JSON que recibe la IA, para que no tenga que hacer cuentas.
  */
-public record ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn,
+public record ReportData(ClubInfo club, String category, String tournament, LocalDate generatedOn,
                          int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league,
-                         List<String> notPublished, Federacion federacion) {
+                         List<String> notPublished, Federation federation) {
 
-    public ReportData(ClubInfo club, String category, String torneo, LocalDate generatedOn, int lastMatches,
+    public ReportData(ClubInfo club, String category, String tournament, LocalDate generatedOn, int lastMatches,
                       List<Source> sources, List<TeamReport> teams, LeagueContext league, List<String> notPublished) {
-        this(club, category, torneo, generatedOn, lastMatches, sources, teams, league, notPublished, Federacion.FPP);
+        this(club, category, tournament, generatedOn, lastMatches, sources, teams, league, notPublished, Federation.FPP);
     }
 
     /** Copia con el escudo del club (data URI, o null si no hay). */
     public ReportData withLogo(String logo) {
-        return new ReportData(new ClubInfo(club.id(), club.code(), club.name(), logo), category, torneo, generatedOn,
-                lastMatches, sources, teams, league, notPublished, federacion);
+        return new ReportData(new ClubInfo(club.id(), club.code(), club.name(), logo), category, tournament, generatedOn,
+                lastMatches, sources, teams, league, notPublished, federation);
     }
 
     /** Copia con la lista de datos que el sitio no publicó (respuestas 404 de SIDGAD). */
     public ReportData withNotPublished(List<String> items) {
-        return new ReportData(club, category, torneo, generatedOn, lastMatches, sources, teams, league,
-                List.copyOf(items), federacion);
+        return new ReportData(club, category, tournament, generatedOn, lastMatches, sources, teams, league,
+                List.copyOf(items), federation);
     }
 
     /** Copia con la federación del club (FPP o AMP). */
-    public ReportData withFederacion(Federacion fed) {
-        return new ReportData(club, category, torneo, generatedOn, lastMatches, sources, teams, league, notPublished,
+    public ReportData withFederation(Federation fed) {
+        return new ReportData(club, category, tournament, generatedOn, lastMatches, sources, teams, league, notPublished,
                 fed);
     }
 
@@ -65,7 +65,7 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
                              List<MatchLine> results, List<MatchLine> upcoming,
                              MatchLine biggestWin, MatchLine worstLoss,
                              List<PlayerLine> players, SetPieces setPieces, Discipline discipline,
-                             List<RivalLine> rivals, List<TorneoLine> byTorneo, TimeProfile timeProfile,
+                             List<RivalLine> rivals, List<TournamentLine> byTournament, TimeProfile timeProfile,
                              List<Indicator> indicators, Fouls fouls, @JsonIgnore List<PlayerLine> squad) {
 
         /** Leído del JSON (la IA no lo recibe), el plantel completo no viene: queda el de los jugadores de campo. */
@@ -83,7 +83,7 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      * @param goalsFor      goles a favor mientras duraba la sanción
      * @param finalFor      resultado final del partido (a favor / en contra)
      */
-    public record ShortHandedMatch(LocalDate date, String rival, boolean home, String sanctions, int secondsShort,
+    public record ShortHandedMatch(LocalDate date, String opponent, boolean home, String sanctions, int secondsShort,
                                    int goalsAgainst, int goalsFor, int finalFor, int finalAgainst) {
 
         /** G, E o P: cómo terminó el partido. */
@@ -101,7 +101,7 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      * @param goalMinute minuto del gol en contra ("1T 13:40")
      * @param finalFor   resultado final del partido (a favor / en contra)
      */
-    public record ConcededGoal(LocalDate date, String rival, String card, String cardMinute, String goalMinute,
+    public record ConcededGoal(LocalDate date, String opponent, String card, String cardMinute, String goalMinute,
                                int finalFor, int finalAgainst) {
 
         /** G, E o P: cómo terminó el partido. */
@@ -211,7 +211,7 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
      * @param rival           faltas de los rivales en esos mismos partidos
      * @param leaguePerTeamGame promedio de la liga: faltas por equipo y partido (todas las fichas de las competiciones)
      */
-    public record Fouls(int matches, int own, int rival, double leaguePerTeamGame) {
+    public record Fouls(int matches, int own, int opponent, double leaguePerTeamGame) {
 
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double ownPerGame() {
@@ -220,13 +220,13 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
 
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)
         public double rivalPerGame() {
-            return matches == 0 ? 0 : (double) rival / matches;
+            return matches == 0 ? 0 : (double) opponent / matches;
         }
     }
 
     /** Resultado de comparar un indicador del equipo con su referencia. */
     public enum Verdict {
-        FORTALEZA("Fortaleza"), DEBILIDAD("Debilidad"), EN_LINEA("En línea"), MUESTRA_CHICA("Muestra chica");
+        STRENGTH("Fortaleza"), WEAKNESS("Debilidad"), ON_PAR("En línea"), SMALL_SAMPLE("Muestra chica");
 
         private final String label;
 
@@ -386,7 +386,7 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
     }
 
     /** Un partido visto desde el equipo del informe. {@code outcome}: G, E, P o null si no se jugó. */
-    public record MatchLine(String torneo, int round, LocalDate date, String time, boolean home, String rival,
+    public record MatchLine(String tournament, int round, LocalDate date, String time, boolean home, String opponent,
                             Integer goalsFor, Integer goalsAgainst, String outcome, String venue) {
 
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -441,10 +441,10 @@ public record ReportData(ClubInfo club, String category, String torneo, LocalDat
         }
     }
 
-    public record RivalLine(String rival, int played, int won, int drawn, int lost, int goalsFor, int goalsAgainst) {
+    public record RivalLine(String opponent, int played, int won, int drawn, int lost, int goalsFor, int goalsAgainst) {
     }
 
-    public record TorneoLine(String torneo, TeamRecord record) {
+    public record TournamentLine(String tournament, TeamRecord record) {
     }
 
     /** Promedios de todas las competiciones incluidas en el informe (todos los equipos). */

@@ -66,7 +66,7 @@ public final class SidgadParser {
             if (id <= 0) {
                 continue;
             }
-            int fede = classNumber(a, "id_fede_");
+            int fed = classNumber(a, "id_fede_");
             int temp = classNumber(a, "temp_");
             Element input = doc.getElementById("teams_array_" + id);
             List<TeamRef> teams = input == null ? List.of() : teamsArray(input.val());
@@ -74,7 +74,7 @@ public final class SidgadParser {
             // (AMP'26- CAMP MASC "APERTURA 26"-CATEGORIA SENIOR).
             Element shown = a.selectFirst(".nombre_competicion_listado");
             String name = shown == null || shown.text().isBlank() ? a.attr("name") : shown.text();
-            result.add(Competition.of(id, clean(name), fede, temp, teams, periodMinutes(a.attr("config_params"))));
+            result.add(Competition.of(id, clean(name), fed, temp, teams, periodMinutes(a.attr("config_params"))));
         }
         return result;
     }
@@ -284,7 +284,7 @@ public final class SidgadParser {
 
     /**
      * {@code cap_cal_idc_<idc>_1.php}: {@code thead.head_jornada} marca la jornada; cada partido es un
-     * {@code tr.team_class} con clases {@code team_<local> team_<visitante>}.
+     * {@code tr.team_class} con clases {@code team_<home> team_<visitante>}.
      */
     public static List<Match> calendar(String html) {
         Document doc = Jsoup.parse(html);

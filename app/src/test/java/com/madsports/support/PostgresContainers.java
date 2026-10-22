@@ -10,13 +10,13 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 public final class PostgresContainers {
 
-    public static final String IMAGEN = "postgres:16-alpine";
+    public static final String IMAGE = "postgres:16-alpine";
 
     private PostgresContainers() {
     }
 
     /** Contenedor nuevo; la clase IT lo anota con {@code @Container} y {@link ServiceConnection}. */
     public static PostgreSQLContainer<?> postgres() {
-        return new PostgreSQLContainer<>(IMAGEN);
+        return new PostgreSQLContainer<>(IMAGE);
     }
 }

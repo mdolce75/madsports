@@ -74,7 +74,7 @@ class SidgadClientTest {
     }
 
     @Test
-    void escudosConCacheYSinFallarSiNoEstan() {
+    void crestsAreCachedAndDoNotFailIfMissing() {
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/logos/";
         SidgadClient logos = new SidgadClient(new SidgadProperties(base, "http://localhost", Duration.ZERO, 3, Duration.ofMinutes(5),
                         Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026))) {
@@ -93,7 +93,7 @@ class SidgadClientTest {
     }
 
     @Test
-    void un404DevuelveVacioYNoSeCachea() {
+    void a404ReturnsEmptyAndIsNotCached() {
         assertThat(client.calendar(1)).isEqualTo(SidgadClient.NOT_PUBLISHED);
         assertThat(client.gameSheet(1, 99)).isEqualTo(SidgadClient.NOT_PUBLISHED);
         assertThat(client.calendar(1)).isEqualTo(SidgadClient.NOT_PUBLISHED);
@@ -102,21 +102,21 @@ class SidgadClientTest {
     }
 
     @Test
-    void unaRespuestaCorrectaSeCachea() {
+    void aSuccessfulResponseIsCached() {
         assertThat(client.standings(1)).isEqualTo("<table></table>");
         assertThat(client.standings(1)).isEqualTo("<table></table>");
         assertThat(hits.get("cap_clasif_idc_1_1.php")).hasValue(1);
     }
 
     @Test
-    void otrosErroresCortanElInforme() {
+    void otherErrorsStopTheReport() {
         assertThatThrownBy(() -> client.playerStats(1))
                 .isInstanceOf(SidgadException.class)
                 .hasMessageContaining("500");
     }
 
     @Test
-    void pedidosEnParaleloConTope() throws Exception {
+    void parallelRequestsWithACap() throws Exception {
         // Tope de 3 pedidos simultáneos (configuración del test): 12 fichas lentas pedidas a la vez.
         try (var pool = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
             List<java.util.concurrent.Future<String>> futures = new java.util.ArrayList<>();

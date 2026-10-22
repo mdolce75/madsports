@@ -1,7 +1,7 @@
 package com.madsports.report;
 
 import com.madsports.analysis.AnalysisResult;
-import com.madsports.pdf.Plantillas;
+import com.madsports.pdf.Templates;
 import com.madsports.player.PlayerReport;
 import com.madsports.stats.ReportData;
 import org.springframework.stereotype.Component;
@@ -13,15 +13,15 @@ import java.util.Map;
  * Los informes de RinkReports desde sus plantillas: {@code templates/report.html} (una categoría),
  * {@code club-report.html} (el club completo) y {@code player-report.html} (un jugador). Cada una lleva los gráficos
  * ({@code c}) y, en los de ejemplo, la marca "datos ficticios" ({@code sample}). El paso a HTML y a PDF es el de
- * {@link Plantillas}, común a los productos.
+ * {@link Templates}, común a los productos.
  */
 @Component
 public class PdfRenderer {
 
-    private final Plantillas plantillas;
+    private final Templates templates;
 
-    public PdfRenderer(Plantillas plantillas) {
-        this.plantillas = plantillas;
+    public PdfRenderer(Templates templates) {
+        this.templates = templates;
     }
 
     public String html(ReportData data, AnalysisResult analysis) {
@@ -38,7 +38,7 @@ public class PdfRenderer {
     }
 
     public byte[] pdf(ReportData data, AnalysisResult analysis, boolean sample) {
-        return Plantillas.toPdf(html(data, analysis, sample));
+        return Templates.toPdf(html(data, analysis, sample));
     }
 
     /** Informe del club completo (todas sus ramas y categorías), plantilla {@code templates/club-report.html}. */
@@ -51,7 +51,7 @@ public class PdfRenderer {
     }
 
     public byte[] clubPdf(ClubReport report, boolean sample) {
-        return Plantillas.toPdf(clubHtml(report, sample));
+        return Templates.toPdf(clubHtml(report, sample));
     }
 
     /** Informe de un jugador (perfil PLAYERFPP), plantilla {@code templates/player-report.html}. */
@@ -69,7 +69,7 @@ public class PdfRenderer {
     }
 
     public byte[] playerPdf(PlayerReport report, boolean sample) {
-        return Plantillas.toPdf(playerHtml(report, sample));
+        return Templates.toPdf(playerHtml(report, sample));
     }
 
     /** @param vars pares nombre, valor (un valor puede ser null: el informe sin análisis) */
@@ -80,6 +80,6 @@ public class PdfRenderer {
         }
         m.put("c", new Charts());
         m.put("sample", sample);
-        return plantillas.html(template, m);
+        return templates.html(template, m);
     }
 }

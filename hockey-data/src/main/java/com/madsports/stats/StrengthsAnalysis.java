@@ -88,21 +88,21 @@ public final class StrengthsAnalysis {
     public static Indicator relative(String area, String metric, double value, String refLabel, double reference,
                               Unit unit, boolean higherIsBetter, int sample, String sampleNoun) {
         if (sample < MIN_SAMPLE) {
-            return new Indicator(area, metric, value, refLabel, reference, unit, Verdict.MUESTRA_CHICA,
+            return new Indicator(area, metric, value, refLabel, reference, unit, Verdict.SMALL_SAMPLE,
                     "Pocos casos para evaluar (" + sample + " " + sampleNoun + ").");
         }
         String comparison = format(value, unit) + " contra " + format(reference, unit) + " ("
                 + refLabel.toLowerCase(ES) + ")";
         if (reference == 0) {
-            Verdict v = value == 0 ? Verdict.EN_LINEA
-                    : (value > 0) == higherIsBetter ? Verdict.FORTALEZA : Verdict.DEBILIDAD;
+            Verdict v = value == 0 ? Verdict.ON_PAR
+                    : (value > 0) == higherIsBetter ? Verdict.STRENGTH : Verdict.WEAKNESS;
             return new Indicator(area, metric, value, refLabel, reference, unit, v, comparison + ".");
         }
         double diff = (value - reference) / Math.abs(reference);
         double better = higherIsBetter ? diff : -diff;
         // EPSILON: que un "exactamente 10%" no quede afuera por redondeo de punto flotante.
-        Verdict v = better >= TOLERANCE - EPSILON ? Verdict.FORTALEZA
-                : better <= -TOLERANCE + EPSILON ? Verdict.DEBILIDAD : Verdict.EN_LINEA;
+        Verdict v = better >= TOLERANCE - EPSILON ? Verdict.STRENGTH
+                : better <= -TOLERANCE + EPSILON ? Verdict.WEAKNESS : Verdict.ON_PAR;
         String pct = Math.round(Math.abs(diff) * 100) == 0 ? "igual a la referencia"
                 : String.format(ES, "%.0f%% %s", Math.abs(diff) * 100, diff >= 0 ? "más" : "menos");
         return new Indicator(area, metric, value, refLabel, reference, unit, v, comparison + ": " + pct + ".");
@@ -111,12 +111,12 @@ public final class StrengthsAnalysis {
     /** Diferencia de gol por partido en un tiempo: equilibrada entre -0,25 y +0,25. */
     static Indicator balance(String area, String metric, double diff, int sample) {
         if (sample < MIN_SAMPLE) {
-            return new Indicator(area, metric, diff, BALANCE_LABEL, 0, Unit.DIFF, Verdict.MUESTRA_CHICA,
+            return new Indicator(area, metric, diff, BALANCE_LABEL, 0, Unit.DIFF, Verdict.SMALL_SAMPLE,
                     "Pocos casos para evaluar (" + sample + " fichas).");
         }
-        Verdict v = diff > BALANCE_THRESHOLD ? Verdict.FORTALEZA
-                : diff < -BALANCE_THRESHOLD ? Verdict.DEBILIDAD : Verdict.EN_LINEA;
-        String text = v == Verdict.EN_LINEA ? "Tiempo parejo: " + format(diff, Unit.DIFF) + " goles por partido."
+        Verdict v = diff > BALANCE_THRESHOLD ? Verdict.STRENGTH
+                : diff < -BALANCE_THRESHOLD ? Verdict.WEAKNESS : Verdict.ON_PAR;
+        String text = v == Verdict.ON_PAR ? "Tiempo parejo: " + format(diff, Unit.DIFF) + " goles por partido."
                 : format(diff, Unit.DIFF) + " goles por partido de diferencia en el " + area.toLowerCase(ES) + ".";
         return new Indicator(area, metric, diff, BALANCE_LABEL, 0, Unit.DIFF, v, text);
     }
@@ -125,14 +125,14 @@ public final class StrengthsAnalysis {
         String metric = "% de los goles del máximo goleador";
         if (teamGoals < MIN_GOALS_FOR_DEPENDENCE) {
             return new Indicator("Goleo", metric, top.goalShare(), "Umbral", SCORER_DEPENDENCE, Unit.PERCENT,
-                    Verdict.MUESTRA_CHICA, "Pocos goles para evaluar (" + teamGoals + ").");
+                    Verdict.SMALL_SAMPLE, "Pocos goles para evaluar (" + teamGoals + ").");
         }
-        Verdict v = top.goalShare() >= SCORER_DEPENDENCE ? Verdict.DEBILIDAD
-                : top.goalShare() <= SCORER_SPREAD ? Verdict.FORTALEZA : Verdict.EN_LINEA;
+        Verdict v = top.goalShare() >= SCORER_DEPENDENCE ? Verdict.WEAKNESS
+                : top.goalShare() <= SCORER_SPREAD ? Verdict.STRENGTH : Verdict.ON_PAR;
         String text = top.name() + " hizo el " + format(top.goalShare(), Unit.PERCENT) + " de los goles"
                 + switch (v) {
-                    case DEBILIDAD -> ": alta dependencia de un jugador (umbral " + format(SCORER_DEPENDENCE, Unit.PERCENT) + ").";
-                    case FORTALEZA -> ": goles repartidos (hasta " + format(SCORER_SPREAD, Unit.PERCENT) + ").";
+                    case WEAKNESS -> ": alta dependencia de un jugador (umbral " + format(SCORER_DEPENDENCE, Unit.PERCENT) + ").";
+                    case STRENGTH -> ": goles repartidos (hasta " + format(SCORER_SPREAD, Unit.PERCENT) + ").";
                     default -> " (entre " + format(SCORER_SPREAD, Unit.PERCENT) + " y "
                             + format(SCORER_DEPENDENCE, Unit.PERCENT) + ").";
                 };

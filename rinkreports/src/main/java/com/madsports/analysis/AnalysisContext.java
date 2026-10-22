@@ -43,7 +43,7 @@ class AnalysisContext {
         Map<String, Object> o = new LinkedHashMap<>();
         o.put("club", data.club());
         o.put("categoria", data.category());
-        o.put("periodo", data.torneo());
+        o.put("periodo", data.tournament());
         if (data.partial()) {
             o.put("aclaracion_periodo", "Récord, resultados, rivales, time_profile y las tarjetas de disciplina cubren "
                     + "solo los últimos " + data.lastMatches() + " partidos de cada equipo (tarjetas contadas en sus fichas). "
@@ -61,7 +61,7 @@ class AnalysisContext {
             m.put("visitante", t.away());
             m.put("ultimos_resultados", t.form());
             m.put("posiciones", t.standings());
-            m.put("por_torneo", t.byTorneo());
+            m.put("por_torneo", t.byTournament());
             m.put("mayor_victoria", t.biggestWin());
             m.put("peor_derrota", t.worstLoss());
             m.put("fortalezas_debilidades", t.indicators());

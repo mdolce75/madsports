@@ -61,7 +61,7 @@ class GeminiAnalystTest {
         });
         server.start();
         data = StatsEngine.build(StatsEngineTest.VELEZ, "Infantil Femenino", "Clausura",
-                List.of(StatsEngineTest.data(765)), StatsEngineTest.HOY);
+                List.of(StatsEngineTest.data(765)), StatsEngineTest.TODAY);
     }
 
     @AfterEach
@@ -76,7 +76,7 @@ class GeminiAnalystTest {
     }
 
     @Test
-    void armaUnSoloPedidoConLosDatosYElEsquema() throws Exception {
+    void buildsASingleRequestWithDataAndSchema() throws Exception {
         AnalysisResult result = analyst("clave-de-prueba").analyze(data).orElseThrow();
 
         assertThat(paths).containsExactly("/v1beta/models/gemini-3.8-flash:generateContent");
@@ -98,14 +98,14 @@ class GeminiAnalystTest {
     }
 
     @Test
-    void anteElLimiteDelPlanGratuitoReintentaUnaVez() {
+    void onFreePlanRateLimitRetriesOnce() {
         statuses.add(429);
         assertThat(analyst("k").analyze(data)).isPresent();
         assertThat(requests).hasSize(2);
     }
 
     @Test
-    void siVuelveAFallarSeUsaElAnalisisPorReglas() {
+    void ifItFailsAgainRuleAnalysisIsUsed() {
         statuses.add(429);
         statuses.add(429);
         assertThat(analyst("k").analyze(data)).isEmpty();
@@ -115,10 +115,10 @@ class GeminiAnalystTest {
     }
 
     @Test
-    void sinApiKeyNoLlamaALaApi() {
-        GeminiAnalyst sinClave = analyst("");
-        assertThat(sinClave.available()).isFalse();
-        assertThat(sinClave.analyze(data)).isEmpty();
+    void withoutApiKeyItDoesNotCallTheApi() {
+        GeminiAnalyst withoutPassword = analyst("");
+        assertThat(withoutPassword.available()).isFalse();
+        assertThat(withoutPassword.analyze(data)).isEmpty();
         assertThat(requests).isEmpty();
     }
 }

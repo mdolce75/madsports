@@ -54,7 +54,7 @@ public class Charts {
     static final Color CARD_BLUE = new Color(0x3182ce);
     static final Color CARD_RED = new Color(0xe53e3e);
     static final Color OWN = new Color(0x22b8f0);
-    static final Color RIVAL = new Color(0x13203a);
+    static final Color RIVAL_HALF = new Color(0x13203a);
     private static final Color INK = new Color(0x1d2433);
     private static final Color MUTED = new Color(0x52514e);
     private static final Color GRID = new Color(0xe2e8f0);
@@ -186,7 +186,7 @@ public class Charts {
         return groupedColumns(b.stream().map(TimeBucket::label).toList(),
                 b.stream().mapToInt(TimeBucket::foulsOwn).toArray(),
                 b.stream().mapToInt(TimeBucket::foulsRival).toArray(),
-                OWN, RIVAL, "Faltas propias", "Faltas de los rivales");
+                OWN, RIVAL_HALF, "Faltas propias", "Faltas de los rivales");
     }
 
     // ---------- Informe de jugador ----------

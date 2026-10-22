@@ -15,7 +15,7 @@ class TeamKeysTest {
     }
 
     @Test
-    void letraEnElCodigo() {
+    void letterInCode() {
         assertThat(TeamKeys.keys(List.of(team(1, "CAVS A", "VELEZ A"), team(2, "CAVS B", "VELEZ B")), "CAVS").values())
                 .containsExactly("CAVS A", "CAVS B");
         // Pegada: "CAVSB".
@@ -24,7 +24,7 @@ class TeamKeysTest {
     }
 
     @Test
-    void mismoCodigoYLetraEnElNombreNoSeAgrupan() {
+    void sameCodeAndLetterInNameAreNotGrouped() {
         // Mini Femenino Apertura (691): los dos equipos con código "CAVS".
         assertThat(TeamKeys.keys(List.of(team(4864, "CAVS", "VELEZ A"), team(4865, "CAVS", "VELEZ B")), "CAVS"))
                 .containsEntry(4864, "CAVS A").containsEntry(4865, "CAVS B");
@@ -34,14 +34,14 @@ class TeamKeysTest {
     }
 
     @Test
-    void elQueNoTieneLetraEsElA() {
+    void theOneWithoutLetterIsA() {
         assertThat(TeamKeys.keys(List.of(team(4671, "CAVS", "VELEZ"), team(4670, "CAVS B", "VELEZ B")), "CAVS"))
                 .containsEntry(4671, "CAVS A").containsEntry(4670, "CAVS B");
         assertThat(TeamKeys.keys(List.of(team(1, "CAVS B", "VELEZ SARSFIELD B")), "CAVS", true)).containsEntry(1, "CAVS B");
     }
 
     @Test
-    void equipoUnicoEnTodoElAnioVaSinLetraAunqueSeLlameA() {
+    void singleTeamAllYearHasNoLetterEvenIfNamedA() {
         // Prejuvenil Femenino: "VELEZ A" en el Apertura (694) y "VELEZ" en el Clausura (766), único equipo.
         assertThat(TeamKeys.keys(List.of(team(4877, "CAVS", "VELEZ A")), "CAVS", false)).containsEntry(4877, "CAVS");
         // Si en algún torneo hay dos equipos, el único de otro torneo conserva su letra (o recibe la A).
@@ -50,7 +50,7 @@ class TeamKeysTest {
     }
 
     @Test
-    void equipoUnicoYCodigoQueCambiaEntreTorneos() {
+    void singleTeamAndCodeThatChangesBetweenTournaments() {
         assertThat(TeamKeys.keys(List.of(team(1, "CAVS", "VELEZ")), "CAVS")).containsEntry(1, "CAVS");
         // Huracán: "HUR" en el Apertura, "HURA" en el Clausura.
         assertThat(TeamKeys.keys(List.of(new TeamRef(4806, 22, "HUR", "HURACAN")), "HURA")).containsEntry(4806, "HURA");
@@ -58,7 +58,7 @@ class TeamKeysTest {
     }
 
     @Test
-    void unEquipoDeOtroClubConElLogoEquivocadoNoEsDelClub() {
+    void aTeamOfAnotherClubWithTheWrongLogoIsNotOfTheClub() {
         // Juniors Masculino Clausura (777): Comunicaciones figura con el logo de Vélez.
         assertThat(TeamKeys.belongs(team(5562, "COMU", "COMUNICACIONES"), "CAVS", "VELEZ")).isFalse();
         assertThat(TeamKeys.belongs(team(5563, "CAVS", "VELEZ"), "CAVS", "VELEZ")).isTrue();
@@ -66,7 +66,7 @@ class TeamKeysTest {
     }
 
     @Test
-    void nombreParaMostrar() {
+    void displayName() {
         assertThat(TeamKeys.displayName("VELEZ", "CAVS", "CAVS B")).isEqualTo("VELEZ B");
         assertThat(TeamKeys.displayName("VELEZ", "CAVS", "CAVS")).isEqualTo("VELEZ");
     }

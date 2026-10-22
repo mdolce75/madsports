@@ -3,7 +3,7 @@ package com.madsports.player;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
-import com.madsports.sidgad.model.Competition.Torneo;
+import com.madsports.sidgad.model.Competition.Tournament;
 import com.madsports.sidgad.model.Models.EventType;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
@@ -46,12 +46,12 @@ public final class SamplePlayerData {
         Category juniors = new Category("JUNIORS", "MASCULINO");
         Category primera = new Category("PRIMERA", "MASCULINO");
         List<PlayerReportService.TeamInput> inputs = List.of(
-                team(9101, Torneo.APERTURA, juniors, today.minusWeeks(30), 9, 1.0, false, today, rnd),
-                team(9102, Torneo.CLAUSURA, juniors, today.minusWeeks(5), 5, 1.0, false, today, rnd),
-                team(9201, Torneo.APERTURA, primera, today.minusWeeks(30).plusDays(1), 9, 0.55, true, today, rnd),
-                team(9202, Torneo.CLAUSURA, primera, today.minusWeeks(5).plusDays(1), 5, 0.6, false, today, rnd));
+                team(9101, Tournament.OPENING, juniors, today.minusWeeks(30), 9, 1.0, false, today, rnd),
+                team(9102, Tournament.CLOSING, juniors, today.minusWeeks(5), 5, 1.0, false, today, rnd),
+                team(9201, Tournament.OPENING, primera, today.minusWeeks(30).plusDays(1), 9, 0.55, true, today, rnd),
+                team(9202, Tournament.CLOSING, primera, today.minusWeeks(5).plusDays(1), 5, 0.6, false, today, rnd));
         PlayerReportService.Query q = new PlayerReportService.Query(PLAYER_ID, "Tomás Ejemplo", "Tomás Ejemplo",
-                CLUB_ID, today.getYear(), Scope.TEMPORADA, Eligibility.levels("JUNIORS"), "MASCULINO");
+                CLUB_ID, today.getYear(), Scope.SEASON, Eligibility.levels("JUNIORS"), "MASCULINO");
         return PlayerReportService.assemble(q, new ReportData.ClubInfo(CLUB_ID, "CEJ", "CLUB EJEMPLO", logo), today,
                 LEVELS, inputs);
     }
@@ -60,7 +60,7 @@ public final class SamplePlayerData {
      * Un equipo del club en un torneo: {@code rounds} fechas jugadas, el jugador citado con probabilidad
      * {@code presence}; con {@code missingSheet}, a la última fecha le falta el acta (como pasa en SIDGAD).
      */
-    private static PlayerReportService.TeamInput team(int id, Torneo torneo, Category category, LocalDate first,
+    private static PlayerReportService.TeamInput team(int id, Tournament tournament, Category category, LocalDate first,
                                                       int rounds, double presence, boolean missingSheet,
                                                       LocalDate today, Random rnd) {
         int base = id * 100;
@@ -68,8 +68,8 @@ public final class SamplePlayerData {
         for (int i = 0; i < TEAMS.length; i++) {
             teams.add(new TeamRef(base + i, i + 1, TEAMS[i][0], TEAMS[i][1]));
         }
-        Competition comp = new Competition(id, "TORNEO " + torneo.name() + " " + category.level() + " MASCULINO (EJEMPLO)",
-                3, 40, torneo, category, 1, teams, PERIOD_MINUTES);
+        Competition comp = new Competition(id, "TORNEO " + tournament.sidgadName() + " " + category.level() + " MASCULINO (EJEMPLO)",
+                3, 40, tournament, category, 1, teams, PERIOD_MINUTES);
         String label = category.levelLabel() + " " + category.branchLabel();
 
         List<Match> matches = new ArrayList<>();
@@ -80,14 +80,14 @@ public final class SamplePlayerData {
             if (!date.isBefore(today)) {
                 break;
             }
-            int rival = 1 + (r % (TEAMS.length - 1));
+            int opponent = 1 + (r % (TEAMS.length - 1));
             boolean home = r % 2 == 0;
             int own = rnd.nextInt(6);
             int against = rnd.nextInt(6);
             int idp = base + 50 + r;
-            matches.add(new Match(idp, r + 1, date, LocalTime.of(18, 0), "", home ? base : base + rival,
-                    home ? CLUB_ID : rival + 1, home ? TEAMS[0][1] : TEAMS[rival][1], home ? base + rival : base,
-                    home ? rival + 1 : CLUB_ID, home ? TEAMS[rival][1] : TEAMS[0][1],
+            matches.add(new Match(idp, r + 1, date, LocalTime.of(18, 0), "", home ? base : base + opponent,
+                    home ? CLUB_ID : opponent + 1, home ? TEAMS[0][1] : TEAMS[opponent][1], home ? base + opponent : base,
+                    home ? opponent + 1 : CLUB_ID, home ? TEAMS[opponent][1] : TEAMS[0][1],
                     home ? own : against, home ? against : own));
             boolean lastWithoutSheet = missingSheet && r == rounds - 1;
             if (lastWithoutSheet) {
@@ -127,7 +127,7 @@ public final class SamplePlayerData {
             // Goles del rival y de los compañeros, con minuto (para "goles con uno menos").
             for (int g = 0; g < against; g++) {
                 ev.add(new MatchEvent(1 + rnd.nextInt(2), rnd.nextInt(PERIOD_MINUTES), rnd.nextInt(60), EventType.GOAL,
-                        base + rival, rival + 1, TEAMS[rival][0], "", 0));
+                        base + opponent, opponent + 1, TEAMS[opponent][0], "", 0));
             }
             // Cuatro compañeros de campo: se reparten los goles que no hizo él, con algunas tarjetas y pelota parada
             // (son la referencia de sus fortalezas y debilidades).

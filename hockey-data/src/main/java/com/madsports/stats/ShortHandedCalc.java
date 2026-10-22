@@ -25,7 +25,7 @@ public final class ShortHandedCalc {
      * @param ownGoals   minuto (en segundos) de los goles propios
      * @param rivalGoals minuto (en segundos) de los goles del rival
      */
-    public void add(java.time.LocalDate date, String rival, boolean home, List<int[]> sanctions, int blues, int reds,
+    public void add(java.time.LocalDate date, String opponent, boolean home, List<int[]> sanctions, int blues, int reds,
                     List<Integer> ownGoals, List<Integer> rivalGoals, int matchSeconds, int finalFor, int finalAgainst) {
         List<int[]> union = union(sanctions, matchSeconds);
         int shortSeconds = length(union);
@@ -33,7 +33,7 @@ public final class ShortHandedCalc {
         otherSeconds += matchSeconds - shortSeconds;
         otherGoalsAgainst += rivalGoals.size() - against;
         if (shortSeconds > 0) {
-            matches.add(new ShortHandedMatch(date, rival, home, describe(blues, reds),
+            matches.add(new ShortHandedMatch(date, opponent, home, describe(blues, reds),
                     StatsEngine.sanctionSeconds(sanctions, matchSeconds), against, countIn(ownGoals, union),
                     finalFor, finalAgainst));
         }

@@ -3,7 +3,7 @@ package com.madsports.report;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
-import com.madsports.sidgad.model.Competition.Torneo;
+import com.madsports.sidgad.model.Competition.Tournament;
 import com.madsports.sidgad.model.Models.EventType;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
@@ -45,8 +45,8 @@ final class SampleData {
     private static final int[] SCORER_WEIGHT = {9, 6, 5, 3, 2, 2, 1, 1, 0};
 
     private static final int PERIOD_MINUTES = 25;
-    private static final int APERTURA_ROUNDS_PLAYED = 7;
-    private static final int CLAUSURA_ROUNDS_PLAYED = 4;
+    private static final int OPENING_ROUNDS_PLAYED = 7;
+    private static final int CLOSING_ROUNDS_PLAYED = 4;
 
     private SampleData() {
     }
@@ -63,9 +63,9 @@ final class SampleData {
     static ReportData build(LocalDate today, Category category, long seed, int compId) {
         Random rnd = new Random(seed);
         List<CompetitionData> data = List.of(
-                competition(compId, Torneo.APERTURA, category, today.minusWeeks(30), APERTURA_ROUNDS_PLAYED, today, rnd),
-                competition(compId + 1, Torneo.CLAUSURA, category,
-                        today.minusWeeks(CLAUSURA_ROUNDS_PLAYED).plusDays(1), CLAUSURA_ROUNDS_PLAYED, today, rnd));
+                competition(compId, Tournament.OPENING, category, today.minusWeeks(30), OPENING_ROUNDS_PLAYED, today, rnd),
+                competition(compId + 1, Tournament.CLOSING, category,
+                        today.minusWeeks(CLOSING_ROUNDS_PLAYED).plusDays(1), CLOSING_ROUNDS_PLAYED, today, rnd));
         ReportData report = StatsEngine.build(CLUB, category.label(), "Temporada " + today.getYear() + " · Apertura + Clausura",
                 data, today);
         long total = data.stream().mapToLong(cd -> cd.sheets().size()).sum();
@@ -73,15 +73,15 @@ final class SampleData {
         return report.withNotPublished(List.of("Actas de partido: " + missing + " de " + total));
     }
 
-    private static CompetitionData competition(int id, Torneo torneo, Category category, LocalDate firstRound,
+    private static CompetitionData competition(int id, Tournament tournament, Category category, LocalDate firstRound,
                                                int roundsPlayed, LocalDate today, Random rnd) {
         int base = id * 100;
         List<TeamRef> teams = new ArrayList<>();
         for (int i = 0; i < TEAMS.length; i++) {
             teams.add(new TeamRef(base + i, i + 1, TEAMS[i][0], TEAMS[i][1]));
         }
-        String name = "TORNEO " + torneo.name() + " " + category.label().toUpperCase() + " (EJEMPLO)";
-        Competition comp = new Competition(id, name, 3, 40, torneo, category, 1, teams, PERIOD_MINUTES);
+        String name = "TORNEO " + tournament.sidgadName() + " " + category.label().toUpperCase() + " (EJEMPLO)";
+        Competition comp = new Competition(id, name, 3, 40, tournament, category, 1, teams, PERIOD_MINUTES);
 
         List<Match> matches = new ArrayList<>();
         Map<Integer, List<MatchEvent>> sheets = new HashMap<>();
@@ -101,7 +101,7 @@ final class SampleData {
                         away.teamId(), away.clubId(), away.name(), hg, ag));
                 boolean clubMatch = home.clubId() == CLUB.id() || away.clubId() == CLUB.id();
                 // Una ficha "no publicada" en el Apertura, para mostrar la fila "Sin minuto registrado".
-                boolean sheetMissing = torneo == Torneo.APERTURA && round == 3;
+                boolean sheetMissing = tournament == Tournament.OPENING && round == 3;
                 if (played && clubMatch && !sheetMissing) {
                     sheets.put(idp, events(rnd, home, hg, away, ag, playerTotals));
                 } else if (played && clubMatch) {

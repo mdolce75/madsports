@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.within;
 public class StatsEngineTest {
 
     public static final ClubView VELEZ = new ClubView(74, "CAVS", "VELEZ", List.of());
-    public static final LocalDate HOY = LocalDate.of(2026, 10, 13);
+    public static final LocalDate TODAY = LocalDate.of(2026, 10, 13);
 
     public static CompetitionData data(int idc) {
         Competition comp = SidgadParser.catalog(Fixtures.read("catalogo.html")).stream()
@@ -45,8 +45,8 @@ public class StatsEngineTest {
     }
 
     @Test
-    void golesYTarjetasPorTramosDeCincoMinutos() {
-        TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "CAVS")
+    void goalsAndCardsByFiveMinuteBuckets() {
+        TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY), "CAVS")
                 .timeProfile();
 
         // Vélez 2-4 Argentinos (26390) y Vélez 7-0 Comunicaciones (26396); períodos de 25'.
@@ -70,17 +70,17 @@ public class StatsEngineTest {
     }
 
     @Test
-    void ultimosCincoPartidosRecortaRecordYResultadosPeroNoLosPromediosDelTorneo() {
+    void lastFiveMatchesTrimRecordAndResultsButNotTournamentAverages() {
         List<CompetitionData> season = List.of(data(693), data(765));
-        TeamReport full = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Temporada", season, HOY), "CAVS A");
-        ReportData lastFiveReport = StatsEngine.build(VELEZ, "Infantil Femenino", "Últimos 5", season, HOY, 5);
+        TeamReport full = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Temporada", season, TODAY), "CAVS A");
+        ReportData lastFiveReport = StatsEngine.build(VELEZ, "Infantil Femenino", "Últimos 5", season, TODAY, 5);
         TeamReport last5 = team(lastFiveReport, "CAVS A");
 
         assertThat(lastFiveReport.partial()).isTrue();
         assertThat(last5.total().played()).isEqualTo(5);
         assertThat(last5.results()).containsExactlyElementsOf(full.results().subList(full.results().size() - 5, full.results().size()));
         assertThat(last5.form()).isEqualTo(full.form());
-        assertThat(last5.byTorneo()).extracting(ReportData.TorneoLine::torneo).containsExactly("Clausura");
+        assertThat(last5.byTournament()).extracting(ReportData.TournamentLine::tournament).containsExactly("Clausura");
         assertThat(last5.rivals().stream().mapToInt(ReportData.RivalLine::played).sum()).isEqualTo(5);
         // Jugadores son del torneo completo: no cambian con el recorte.
         assertThat(last5.players()).isEqualTo(full.players());
@@ -95,9 +95,9 @@ public class StatsEngineTest {
     }
 
     @Test
-    void conUltimosPartidosLasTarjetasSeCuentanEnLasFichasDeEsosPartidos() {
+    void withLastMatchesCardsAreCountedInThoseSheets() {
         ClubView geba = new ClubView(76, "GEBA", "GEBA", List.of());
-        TeamReport gebaB = team(StatsEngine.build(geba, "Primera Masculino", "Últimos 5", List.of(data(779)), HOY, 5), "GEBA B");
+        TeamReport gebaB = team(StatsEngine.build(geba, "Primera Masculino", "Últimos 5", List.of(data(779)), TODAY, 5), "GEBA B");
 
         // Ficha de Huracán 13-2 GEBA B: GEBA B recibió 1 amarilla y 4 azules (las de Huracán son del rival).
         ReportData.Discipline d = gebaB.discipline();
@@ -112,23 +112,23 @@ public class StatsEngineTest {
 
         // Sin recorte, la disciplina sale de las estadísticas del torneo (sin amarillas).
         ReportData.Discipline season = team(StatsEngine.build(geba, "Primera Masculino", "Clausura",
-                List.of(data(779)), HOY), "GEBA B").discipline();
+                List.of(data(779)), TODAY), "GEBA B").discipline();
         assertThat(season.fromSheets()).isFalse();
         assertThat(season.yellowKnown()).isFalse();
     }
 
     @Test
-    void tiempoConUnoMenosYConUnoMasSegunLasFichas() {
+    void timeShortAndUpByProfiles() {
         // Huracán 13-2 GEBA B (26389): 4 azules a GEBA B (1T 18:21, 2T 01:05, 14:18, 22:37), sin superposición.
         ClubView geba = new ClubView(76, "GEBA", "GEBA", List.of());
-        TimeProfile gebaB = team(StatsEngine.build(geba, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "GEBA B")
+        TimeProfile gebaB = team(StatsEngine.build(geba, "Primera Masculino", "Clausura", List.of(data(779)), TODAY), "GEBA B")
                 .timeProfile();
         assertThat(gebaB.shortHandedSeconds()).isEqualTo(4 * 120);
         assertThat(gebaB.powerPlaySeconds()).isZero();
         assertThat(gebaB.shortHandedMinutesPerGame()).isEqualTo(8.0);
 
         ClubView huracan = new ClubView(22, "HURA", "HURACAN", List.of());
-        TimeProfile hura = team(StatsEngine.build(huracan, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "HURA")
+        TimeProfile hura = team(StatsEngine.build(huracan, "Primera Masculino", "Clausura", List.of(data(779)), TODAY), "HURA")
                 .timeProfile();
         assertThat(hura.shortHandedSeconds()).isZero();
         assertThat(hura.powerPlaySeconds()).isEqualTo(4 * 120);
@@ -137,7 +137,7 @@ public class StatsEngineTest {
     }
 
     @Test
-    void tarjetasEnElDescansoYDespuesDelPartido() {
+    void cardsAtHalfTimeAndAfterTheMatch() {
         CompetitionData full = data(779);
         // Vélez 7-0 Comunicaciones (26396; Vélez 5581, Comunicaciones 5586) más dos sanciones agregadas:
         // azul a Comunicaciones en el descanso (P10) y roja a Vélez después del partido (P11).
@@ -149,7 +149,7 @@ public class StatsEngineTest {
         CompetitionData cd = new CompetitionData(full.competition(), full.standings(), full.standingsDate(),
                 full.matches(), full.players(), sheets);
 
-        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 5", List.of(cd), HOY, 5), "CAVS");
+        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 5", List.of(cd), TODAY, 5), "CAVS");
         TimeProfile tp = velez.timeProfile();
 
         // Descanso: cuenta en 2T 0-5' y da 2' con uno más desde el inicio del 2T.
@@ -165,7 +165,7 @@ public class StatsEngineTest {
     }
 
     @Test
-    void sancionesSuperpuestasSeSumanYAlFinalDelPartidoSeCortan() {
+    void overlappingSanctionsAddUpAndAreCutAtTheEnd() {
         int match = 2 * 25 * 60;
         // Dos azules simultáneas: se acumulan, 4'.
         assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{600, 720}, new int[]{600, 720}), match)).isEqualTo(240);
@@ -181,8 +181,8 @@ public class StatsEngineTest {
     }
 
     @Test
-    void ultimosPartidosLimitaElPerfilPorMinuto() {
-        TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 1", List.of(data(779)), HOY, 1), "CAVS")
+    void lastMatchesLimitTheMinuteProfile() {
+        TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 1", List.of(data(779)), TODAY, 1), "CAVS")
                 .timeProfile();
 
         // Solo el último partido: Vélez 7-0 Comunicaciones.
@@ -192,32 +192,32 @@ public class StatsEngineTest {
     }
 
     @Test
-    void losGolesSinMinutoHacenQueLaTablaSumeIgualQueElRecord() {
+    void goalsWithoutMinuteMakeTheTableAddUpToTheRecord() {
         // Todas las fichas: nada sin minuto.
-        TeamReport completo = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "CAVS");
-        assertThat(completo.timeProfile().hasUnrecordedGoals()).isFalse();
-        assertTotalsMatchRecord(completo);
+        TeamReport fullName = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY), "CAVS");
+        assertThat(fullName.timeProfile().hasUnrecordedGoals()).isFalse();
+        assertTotalsMatchRecord(fullName);
 
         // Sin ninguna ficha: todo el resultado queda sin minuto.
-        TeamReport sinFichas = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A");
-        assertThat(sinFichas.timeProfile().unrecorded().goalsFor()).isEqualTo(80);
-        assertThat(sinFichas.timeProfile().unrecorded().goalsAgainst()).isEqualTo(8);
-        assertTotalsMatchRecord(sinFichas);
+        TeamReport withoutProfiles = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), TODAY), "CAVS A");
+        assertThat(withoutProfiles.timeProfile().unrecorded().goalsFor()).isEqualTo(80);
+        assertThat(withoutProfiles.timeProfile().unrecorded().goalsAgainst()).isEqualTo(8);
+        assertTotalsMatchRecord(withoutProfiles);
     }
 
     @Test
-    void partidoSinFichaYFichaIncompletaVanASinMinuto() {
+    void matchWithoutOrIncompleteProfileGoesToUnrecorded() {
         CompetitionData full = data(779);
         Map<Integer, List<MatchEvent>> sheets = new HashMap<>();
         // 26390 (Vélez 2-4 Argentinos): sin ficha.
         // 26396 (Vélez 7-0 Comunicaciones): ficha a la que le falta un gol de Vélez.
-        List<MatchEvent> incompleta = new java.util.ArrayList<>(full.sheets().get(26396));
-        incompleta.remove(incompleta.stream().filter(e -> e.type() == Models.EventType.GOAL).findFirst().orElseThrow());
-        sheets.put(26396, incompleta);
+        List<MatchEvent> incomplete = new java.util.ArrayList<>(full.sheets().get(26396));
+        incomplete.remove(incomplete.stream().filter(e -> e.type() == Models.EventType.GOAL).findFirst().orElseThrow());
+        sheets.put(26396, incomplete);
         CompetitionData partial = new CompetitionData(full.competition(), full.standings(), full.standingsDate(),
                 full.matches(), full.players(), sheets);
 
-        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(partial), HOY), "CAVS");
+        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(partial), TODAY), "CAVS");
         TimeProfile tp = velez.timeProfile();
 
         assertThat(tp.matchesWithSheet()).isEqualTo(1);
@@ -235,15 +235,15 @@ public class StatsEngineTest {
     }
 
     @Test
-    void faltasPorTramoYComoIbaElEquipo() {
-        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "CAVS");
+    void foulsByBucketAndScoreSituation() {
+        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY), "CAVS");
         TimeProfile tp = velez.timeProfile();
 
         // Vélez 2-4 Argentinos (26390): 12 faltas propias y 7 rivales; Vélez 7-0 Comunicaciones (26396): 4 y 5.
         assertThat(tp.buckets()).extracting(TimeBucket::foulsOwn).containsExactly(0, 1, 1, 1, 1, 4, 1, 2, 3, 2);
         assertThat(tp.buckets()).extracting(TimeBucket::foulsRival).containsExactly(0, 1, 1, 2, 0, 3, 2, 1, 0, 2);
         assertThat(velez.fouls().own()).isEqualTo(16);
-        assertThat(velez.fouls().rival()).isEqualTo(12);
+        assertThat(velez.fouls().opponent()).isEqualTo(12);
         assertThat(velez.fouls().ownPerGame()).isEqualTo(8.0);
         assertThat(velez.fouls().rivalPerGame()).isEqualTo(6.0);
 
@@ -260,8 +260,8 @@ public class StatsEngineTest {
     }
 
     @Test
-    void faltasSegunElMarcador() {
-        ReportData.FoulSituation s = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY),
+    void foulsByScore() {
+        ReportData.FoulSituation s = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY),
                 "CAVS").timeProfile().foulSituation();
 
         // Vélez 2-4 Argentinos y 7-0 Comunicaciones: 16 faltas propias, 12 perdiendo y 4 ganando (calculado aparte).
@@ -272,8 +272,8 @@ public class StatsEngineTest {
     }
 
     @Test
-    void golesConUnoMenosCoincidenConLosMinutosDeSancion() {
-        ReportData.TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY),
+    void shortHandedGoalsMatchSanctionMinutes() {
+        ReportData.TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY),
                 "CAVS").timeProfile();
         ReportData.ShortHanded sh = tp.shortHanded();
         // Los segundos de sanción por partido suman lo mismo que el total con uno menos del informe.
@@ -282,7 +282,7 @@ public class StatsEngineTest {
     }
 
     @Test
-    void segundosGanandoEmpatandoYPerdiendo() {
+    void secondsWinningDrawingAndLosing() {
         int[] seconds = new int[3];
         // Gol propio al 10', del rival al 20' y al 30', partido de 50'.
         StatsEngine.accumulateSituationSeconds(List.of(600), List.of(1200, 1800), 3000, seconds);
@@ -290,8 +290,8 @@ public class StatsEngineTest {
     }
 
     @Test
-    void promedioDeFaltasDeLaLigaConTodasLasFichas() {
-        ReportData d = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY);
+    void leagueFoulAverageWithAllProfiles() {
+        ReportData d = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY);
 
         // Fichas cargadas en el test: 26390 (19 faltas), 26396 (9) y 26389 (14) = 42 faltas en 3 partidos.
         assertThat(d.league().matchesWithSheet()).isEqualTo(3);
@@ -304,8 +304,8 @@ public class StatsEngineTest {
     }
 
     @Test
-    void sinActasPublicadasNoHayPerfilPorMinuto() {
-        TimeProfile tp = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A")
+    void withoutPublishedSheetsThereIsNoMinuteProfile() {
+        TimeProfile tp = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), TODAY), "CAVS A")
                 .timeProfile();
 
         assertThat(tp.hasData()).isFalse();
@@ -315,21 +315,21 @@ public class StatsEngineTest {
     }
 
     @Test
-    void enUnCruceAvsBElEventoSeAtribuyePorCodigo() {
+    void inACrossMatchTheEventIsAttributedByCode() {
         TeamRef velezA = new TeamRef(10, 74, "CAVS A", "VELEZ A");
-        MatchEvent golDelB = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS B", "");
-        MatchEvent golDelA = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS A", "");
+        MatchEvent goalOfB = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS B", "");
+        MatchEvent goalOfA = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS A", "");
 
-        assertThat(StatsEngine.isOwn(golDelA, velezA, 11, 74)).isTrue();
-        assertThat(StatsEngine.isOwn(golDelB, velezA, 11, 74)).isFalse();
+        assertThat(StatsEngine.isOwn(goalOfA, velezA, 11, 74)).isTrue();
+        assertThat(StatsEngine.isOwn(goalOfB, velezA, 11, 74)).isFalse();
         // Con team_id en el acta manda el id.
         assertThat(StatsEngine.isOwn(new MatchEvent(1, 3, 0, Models.EventType.BLUE_CARD, 11, 74, "", ""), velezA, 11, 74))
                 .isFalse();
     }
 
     @Test
-    void separaLosEquiposAyBDelClub() {
-        ReportData report = StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY);
+    void splitsTheClubTeamsAAndB() {
+        ReportData report = StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), TODAY);
 
         assertThat(report.teams()).extracting(TeamReport::code).containsExactly("CAVS A", "CAVS B");
         // Valores calculados por separado (script Python sobre el mismo HTML).
@@ -338,25 +338,25 @@ public class StatsEngineTest {
     }
 
     @Test
-    void losArquerosNoEntranEnLosGoleadores() {
+    void goalkeepersAreNotAmongScorers() {
         CompetitionData full = data(765);
-        TeamReport sin = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(full), HOY), "CAVS A");
-        ReportData.PlayerLine arquera = sin.players().getLast();
-        CompetitionData conArquera = new CompetitionData(full.competition(), full.standings(), full.standingsDate(),
-                full.matches(), full.players(), full.sheets(), java.util.Set.of(arquera.playerId()));
+        TeamReport without = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(full), TODAY), "CAVS A");
+        ReportData.PlayerLine goalkeeperWoman = without.players().getLast();
+        CompetitionData withGoalkeeperWoman = new CompetitionData(full.competition(), full.standings(), full.standingsDate(),
+                full.matches(), full.players(), full.sheets(), java.util.Set.of(goalkeeperWoman.playerId()));
 
-        TeamReport con = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(conArquera), HOY), "CAVS A");
+        TeamReport with = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(withGoalkeeperWoman), TODAY), "CAVS A");
 
-        assertThat(con.players()).hasSize(sin.players().size() - 1)
-                .noneMatch(p -> p.playerId() == arquera.playerId());
+        assertThat(with.players()).hasSize(without.players().size() - 1)
+                .noneMatch(p -> p.playerId() == goalkeeperWoman.playerId());
         // Sus tarjetas y su pelota parada siguen contando para el equipo.
-        assertThat(con.discipline()).isEqualTo(sin.discipline());
-        assertThat(con.setPieces()).isEqualTo(sin.setPieces());
+        assertThat(with.discipline()).isEqualTo(without.discipline());
+        assertThat(with.setPieces()).isEqualTo(without.setPieces());
     }
 
     @Test
-    void fichaPosicionesYJugadores() {
-        TeamReport a = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY), "CAVS A");
+    void profileStandingsAndPlayers() {
+        TeamReport a = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), TODAY), "CAVS A");
 
         assertThat(a.standings()).singleElement().satisfies(s -> {
             assertThat(s.position()).isEqualTo(4);
@@ -375,23 +375,23 @@ public class StatsEngineTest {
     }
 
     @Test
-    void proximosPartidosSoloDesdeHoy() {
-        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY), "CAVS");
+    void upcomingMatchesOnlyFromToday() {
+        TeamReport velez = team(StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY), "CAVS");
 
-        assertThat(velez.results()).extracting(ReportData.MatchLine::rival, ReportData.MatchLine::score,
+        assertThat(velez.results()).extracting(ReportData.MatchLine::opponent, ReportData.MatchLine::score,
                         ReportData.MatchLine::outcome)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple("ARGENTINOS JUNIORS", "2 - 4", "P"),
                         org.assertj.core.groups.Tuple.tuple("COMUNICACIONES", "7 - 0", "G"));
         // Jornadas 3 a 5 todavía sin fecha asignada.
         assertThat(velez.upcoming()).hasSize(3)
                 .allSatisfy(m -> assertThat(m.date()).isNull())
-                .extracting(ReportData.MatchLine::rival).containsExactly("HURACAN", "RIVER PLATE", "GEBA B");
+                .extracting(ReportData.MatchLine::opponent).containsExactly("HURACAN", "RIVER PLATE", "GEBA B");
         assertThat(velez.upcoming().getFirst().home()).isFalse();
     }
 
     @Test
-    void contextoDeLigaUsaTodosLosPartidosJugados() {
-        ReportData report = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), HOY);
+    void leagueContextUsesAllPlayedMatches() {
+        ReportData report = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY);
 
         // 8 partidos jugados: 1-3, 1-7, 13-2, 2-4 ... promedio por equipo y partido = goles / 16
         assertThat(report.league().matchesPlayed()).isEqualTo(8);
@@ -401,39 +401,39 @@ public class StatsEngineTest {
     }
 
     @Test
-    void temporadaSumaAperturaYClausuraYMarcaTablaDesactualizada() {
+    void seasonAddsOpeningAndClosingAndFlagsOutdatedTable() {
         // La tabla del Apertura (693) quedó congelada el 03/05/2026 con 10 PJ; el calendario tiene todos los partidos.
         TeamReport a = team(StatsEngine.build(VELEZ, "Infantil Femenino", "Temporada",
-                List.of(data(693), data(765)), HOY), "CAVS A");
+                List.of(data(693), data(765)), TODAY), "CAVS A");
 
-        assertThat(a.byTorneo()).extracting(ReportData.TorneoLine::torneo).containsExactly("Apertura", "Clausura");
+        assertThat(a.byTournament()).extracting(ReportData.TournamentLine::tournament).containsExactly("Apertura", "Clausura");
         assertThat(a.total().played())
-                .isEqualTo(a.byTorneo().get(0).record().played() + a.byTorneo().get(1).record().played());
+                .isEqualTo(a.byTournament().get(0).record().played() + a.byTournament().get(1).record().played());
         assertThat(a.standings()).hasSize(2);
         ReportData.StandingSnapshot apertura = a.standings().getFirst();
         assertThat(apertura.publishedOn()).isEqualTo(LocalDate.of(2026, 5, 3));
-        assertThat(apertura.played()).isLessThan(a.byTorneo().getFirst().record().played());
+        assertThat(apertura.played()).isLessThan(a.byTournament().getFirst().record().played());
         assertThat(apertura.outdated()).isTrue();
         assertThat(a.standings().get(1).outdated()).isFalse();
     }
 
     @Test
-    void elInformePuedeSerDeUnSoloEquipo() {
-        ReportData soloB = StatsEngine.build(VELEZ, "Infantil B Femenino", "Clausura", List.of(data(765)), HOY, 0, "CAVS B");
+    void theReportCanBeOfASingleTeam() {
+        ReportData onlyB = StatsEngine.build(VELEZ, "Infantil B Femenino", "Clausura", List.of(data(765)), TODAY, 0, "CAVS B");
 
-        assertThat(soloB.teams()).extracting(TeamReport::code).containsExactly("CAVS B");
-        assertThat(soloB.teams().getFirst().name()).isEqualTo("VELEZ B");
-        assertThat(soloB.teams().getFirst().total()).isEqualTo(new TeamRecord(10, 3, 0, 7, 29, 74));
+        assertThat(onlyB.teams()).extracting(TeamReport::code).containsExactly("CAVS B");
+        assertThat(onlyB.teams().getFirst().name()).isEqualTo("VELEZ B");
+        assertThat(onlyB.teams().getFirst().total()).isEqualTo(new TeamRecord(10, 3, 0, 7, 29, 74));
         // El cruce con Vélez A sigue apareciendo como rival.
-        assertThat(soloB.teams().getFirst().rivals()).anySatisfy(r -> assertThat(r.rival()).isEqualTo("VELEZ A"));
+        assertThat(onlyB.teams().getFirst().rivals()).anySatisfy(r -> assertThat(r.opponent()).isEqualTo("VELEZ A"));
     }
 
     @Test
-    void cruceEntreAyBDelMismoClubCuentaParaAmbos() {
-        ReportData report = StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), HOY);
+    void crossMatchBetweenAAndBCountsForBoth() {
+        ReportData report = StatsEngine.build(VELEZ, "Infantil Femenino", "Clausura", List.of(data(765)), TODAY);
 
-        assertThat(team(report, "CAVS A").rivals()).anySatisfy(r -> assertThat(r.rival()).isEqualTo("VELEZ B"));
-        assertThat(team(report, "CAVS B").rivals()).anySatisfy(r -> assertThat(r.rival()).isEqualTo("VELEZ A"));
+        assertThat(team(report, "CAVS A").rivals()).anySatisfy(r -> assertThat(r.opponent()).isEqualTo("VELEZ B"));
+        assertThat(team(report, "CAVS B").rivals()).anySatisfy(r -> assertThat(r.opponent()).isEqualTo("VELEZ A"));
     }
 
 

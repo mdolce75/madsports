@@ -148,8 +148,8 @@ public class GeminiAnalyst {
     Map<String, Object> request(ReportData data) throws Exception {
         String context = new AnalysisContext(data, mapper).fullContext();
         String ask = "Analizá el informe de " + data.club().name() + " (" + data.club().code() + "), categoría "
-                + data.category() + ", " + data.torneo() + ", de la " + data.federacion().nombre() + " ("
-                + data.federacion().name() + ").";
+                + data.category() + ", " + data.tournament() + ", de la " + data.federation().fullName() + " ("
+                + data.federation().name() + ").";
         return Map.of(
                 "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM))),
                 "contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text",

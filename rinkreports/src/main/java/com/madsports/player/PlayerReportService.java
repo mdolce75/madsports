@@ -14,7 +14,7 @@ import com.madsports.report.ReportService.Scope;
 import com.madsports.report.ReportService.Status;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
@@ -71,26 +71,26 @@ public class PlayerReportService {
      * @param federacion federación del jugador (la de su perfil: FPP o AMP)
      */
     public record Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
-                        List<String> levels, String branch, String base, Federacion federacion) {
+                        List<String> levels, String branch, String base, Federation federation) {
 
         public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope) {
-            this(playerId, playerName, fullName, clubId, year, scope, List.of(), null, null, Federacion.FPP);
+            this(playerId, playerName, fullName, clubId, year, scope, List.of(), null, null, Federation.FPP);
         }
 
         public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
                      List<String> levels, String branch) {
-            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null, Federacion.FPP);
+            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null, Federation.FPP);
         }
 
         public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
-                     List<String> levels, String branch, Federacion federacion) {
-            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null, federacion);
+                     List<String> levels, String branch, Federation federation) {
+            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, null, federation);
         }
 
         /** Con su categoría real: se revisan solo las categorías en que puede jugar un jugador de esa categoría. */
         Query withBase(String level) {
             return new Query(playerId, playerName, fullName, clubId, year, scope,
-                    Eligibility.levels(federacion, level), branch, level, federacion);
+                    Eligibility.levels(federation, level), branch, level, federation);
         }
 
         boolean eligible(Competition c) {
@@ -114,7 +114,7 @@ public class PlayerReportService {
     public static final class Job {
         private final UUID id = UUID.randomUUID();
         private final String owner;
-        private volatile Status status = Status.PENDIENTE;
+        private volatile Status status = Status.PENDING;
         private volatile String message = "En cola";
         private volatile byte[] pdf;
         private volatile String html;
@@ -197,11 +197,11 @@ public class PlayerReportService {
     }
 
     public Job submit(Query query, String owner) {
-        if (query.scope() == Scope.ULTIMOS_5) {
+        if (query.scope() == Scope.LAST_5) {
             throw new IllegalArgumentException("Para jugadores el período es Apertura, Clausura o Apertura + Clausura.");
         }
-        if (!catalog.available(query.federacion(), query.year())) {
-            throw new IllegalArgumentException(CatalogService.unavailableMessage(query.federacion(), query.year()));
+        if (!catalog.available(query.federation(), query.year())) {
+            throw new IllegalArgumentException(CatalogService.unavailableMessage(query.federation(), query.year()));
         }
         Job job = new Job(owner);
         jobs.put(job.id(), job);
@@ -217,13 +217,13 @@ public class PlayerReportService {
     private void run(Job job, Query q) {
         try {
             PlayerReport report = build(q, job);
-            job.update(Status.GENERANDO_PDF, "Generando el PDF");
+            job.update(Status.RENDERING, "Generando el PDF");
             job.pdf = renderer.playerPdf(report);
             job.html = renderer.playerHtml(report);
             job.xlsx = excel.player(report);
             job.fileName = "informe-jugador-" + slug(q.playerName()) + "-" + q.year() + "-"
                     + q.scope().name().toLowerCase() + ".pdf";
-            job.update(Status.LISTO, "Informe listo");
+            job.update(Status.READY, "Informe listo");
         } catch (RuntimeException e) {
             log.error("Falló el informe de jugador {}", job.id(), e);
             job.update(Status.ERROR, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
@@ -231,20 +231,20 @@ public class PlayerReportService {
     }
 
     PlayerReport build(Query q, Job job) {
-        ClubView club = catalog.club(q.federacion(), q.clubId(), q.year());
-        List<Competition> all = catalog.competitions(q.federacion(), q.year()).stream()
+        ClubView club = catalog.club(q.federation(), q.clubId(), q.year());
+        List<Competition> all = catalog.competitions(q.federation(), q.year()).stream()
                 .filter(c -> !ClubTeams.own(c, club).isEmpty())
                 .toList();
         // Las letras A/B se deciden con todo el año (como en el informe de club); después se filtra el período.
         Map<Integer, String> keys = ClubTeams.keys(all, club);
         // Solo las categorías en que puede jugar (puede subir de categoría, nunca bajar) y su rama.
         List<Competition> comps = all.stream()
-                .filter(c -> q.scope().torneo() == null || c.torneo() == q.scope().torneo())
+                .filter(c -> q.scope().tournament() == null || c.tournament() == q.scope().tournament())
                 .filter(q::eligible)
                 .toList();
         List<TeamInput> inputs = new ArrayList<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
-            job.update(Status.EXTRAYENDO, "Leyendo los calendarios de los equipos del club");
+            job.update(Status.EXTRACTING, "Leyendo los calendarios de los equipos del club");
             Map<Competition, Future<String>> calendars = new LinkedHashMap<>();
             comps.forEach(c -> calendars.put(c, io.submit(() -> sidgad.calendar(c.id()))));
             Map<Competition, List<Match>> calendar = new LinkedHashMap<>();
@@ -259,11 +259,11 @@ public class PlayerReportService {
                 }
             }
             AtomicInteger done = new AtomicInteger();
-            job.update(Status.EXTRAYENDO, "Leyendo actas de partido (0/" + toRead.size() + ")");
+            job.update(Status.EXTRACTING, "Leyendo actas de partido (0/" + toRead.size() + ")");
             Map<Integer, Future<String>> sheets = new LinkedHashMap<>();
             toRead.forEach((idp, c) -> sheets.put(idp, io.submit(() -> {
                 String html = sidgad.gameSheet(c.id(), idp);
-                job.update(Status.EXTRAYENDO, "Leyendo actas de partido (" + done.incrementAndGet() + "/" + toRead.size() + ")");
+                job.update(Status.EXTRACTING, "Leyendo actas de partido (" + done.incrementAndGet() + "/" + toRead.size() + ")");
                 return html;
             })));
 
@@ -286,9 +286,9 @@ public class PlayerReportService {
         ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(),
                 Crests.tile(sidgad.clubLogo(ReportService.logoFile(all, club.id()))));
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
-        Query resolved = baseLevel(q.federacion(), q.playerId(), inputs).map(q::withBase).orElse(q);
+        Query resolved = baseLevel(q.federation(), q.playerId(), inputs).map(q::withBase).orElse(q);
         List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
-        return assemble(resolved, info, LocalDate.now(clock), q.federacion().levels(), own);
+        return assemble(resolved, info, LocalDate.now(clock), q.federation().levels(), own);
     }
 
     /**
@@ -301,7 +301,7 @@ public class PlayerReportService {
         if (!missing) {
             return inputs;
         }
-        job.update(Status.EXTRAYENDO, "Leyendo la ficha de temporada del jugador (partidos sin acta)");
+        job.update(Status.EXTRACTING, "Leyendo la ficha de temporada del jugador (partidos sin acta)");
         List<SeasonMatch> season = new ArrayList<>();
         for (int seasonId : comps.stream().map(Competition::seasonId).distinct().toList()) {
             try {
@@ -345,10 +345,10 @@ public class PlayerReportService {
 
     /** La categoría más baja en que figura el jugador en las planillas (su categoría real), si figura en alguna. */
     static Optional<String> baseLevel(int playerId, List<TeamInput> inputs) {
-        return baseLevel(Federacion.FPP, playerId, inputs);
+        return baseLevel(Federation.FPP, playerId, inputs);
     }
 
-    static Optional<String> baseLevel(Federacion fed, int playerId, List<TeamInput> inputs) {
+    static Optional<String> baseLevel(Federation fed, int playerId, List<TeamInput> inputs) {
         return Optional.ofNullable(Eligibility.lowest(fed, inputs.stream()
                 .filter(in -> in.playedBy(playerId))
                 .map(in -> in.competition().category().level())
@@ -438,7 +438,7 @@ public class PlayerReportService {
                 addShortHanded(shortHanded, q, in, m, home, matchEvents, gf, ga);
                 addShortHanded(shortHandedByCategory.get(in.category()), q, in, m, home, matchEvents, gf, ga);
                 rows.add(new MatchRow(m.date(), in.category(),
-                        in.competition().torneo() == null ? "" : in.competition().torneo().label(),
+                        in.competition().tournament() == null ? "" : in.competition().tournament().label(),
                         home ? m.awayName() : m.homeName(), home, gf, ga, result,
                         p.starter(), p.goals(), p.yellowCards(), p.blueCards(), p.redCards(), summary != null));
             }
@@ -493,7 +493,7 @@ public class PlayerReportService {
         ReportData.ShortHanded sh = shortHanded.result();
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
                 categories, total, minutes.result(), sh, rows, notes, blocks,
-                PlayerStrengths.evaluate(q.playerId(), inputs, sh), q.federacion());
+                PlayerStrengths.evaluate(q.playerId(), inputs, sh), q.federation());
     }
 
     /**
@@ -519,7 +519,7 @@ public class PlayerReportService {
         List<int[]> sanctions = new ArrayList<>();
         List<String> sanctionCards = new ArrayList<>();
         List<Integer> own = new ArrayList<>();
-        List<Integer> rival = new ArrayList<>();
+        List<Integer> opponent = new ArrayList<>();
         int blues = 0;
         int reds = 0;
         for (MatchEvent e : events) {
@@ -530,7 +530,7 @@ public class PlayerReportService {
             int t = (p - 1) * period * 60 + (e.period() == HALFTIME_PERIOD ? 0 : e.minute() * 60 + e.second());
             if (e.type() == EventType.GOAL) {
                 boolean ours = e.teamId() > 0 ? e.teamId() == in.teamId() : e.clubId() == q.clubId();
-                (ours ? own : rival).add(t);
+                (ours ? own : opponent).add(t);
             } else if (e.playerId() == q.playerId()
                     && (e.type() == EventType.BLUE_CARD || e.type() == EventType.RED_CARD)) {
                 boolean blue = e.type() == EventType.BLUE_CARD;
@@ -542,9 +542,9 @@ public class PlayerReportService {
         }
         String rivalName = home ? m.awayName() : m.homeName();
         int end = 2 * period * 60;
-        calc.add(m.date(), rivalName, home, sanctions, blues, reds, own, rival, end, gf, ga);
+        calc.add(m.date(), rivalName, home, sanctions, blues, reds, own, opponent, end, gf, ga);
         // Cada gol en contra que cae dentro de una de sus sanciones (se cumple completa aunque haya gol).
-        for (int t : rival) {
+        for (int t : opponent) {
             for (int i = 0; i < sanctions.size(); i++) {
                 int[] s = sanctions.get(i);
                 if (t >= s[0] && t < Math.min(s[1], end)) {

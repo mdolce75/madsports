@@ -1,6 +1,6 @@
 package com.madsports.player;
 
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Categorías en que puede jugar un jugador según su categoría y su federación ({@link Federacion#allowed}): puede
+ * Categorías en que puede jugar un jugador según su categoría y su federación ({@link Federation#allowed}): puede
  * subir, nunca bajar. En la FPP:
  * <ul>
  *     <li>Infantil: Infantil, Prejuvenil y Juvenil</li>
@@ -32,25 +32,25 @@ public final class Eligibility {
     }
 
     /** Categorías habilitadas para un jugador de esa categoría; vacía si no se conoce (se revisan todas). */
-    public static List<String> levels(Federacion fed, String level) {
+    public static List<String> levels(Federation fed, String level) {
         return level == null ? List.of() : fed.allowed(level.trim().toUpperCase());
     }
 
     public static List<String> levels(String level) {
-        return levels(Federacion.FPP, level);
+        return levels(Federation.FPP, level);
     }
 
     /**
      * Categorías a las que puede pertenecer alguien que juega en {@code level} (la regla al revés): quien juega en
      * Primera puede ser Juvenil, Juniors, Reserva o Primera.
      */
-    static List<String> possibleBases(Federacion fed, String level) {
+    static List<String> possibleBases(Federation fed, String level) {
         String l = level.trim().toUpperCase();
         return fed.levels().stream().filter(b -> fed.allowed(b).contains(l)).toList();
     }
 
     static List<String> possibleBases(String level) {
-        return possibleBases(Federacion.FPP, level);
+        return possibleBases(Federation.FPP, level);
     }
 
     /**
@@ -58,7 +58,7 @@ public final class Eligibility {
      * categoría real (quien figura en Primera puede ser Juvenil y jugar también en Juvenil y Juniors). Vacía si no se
      * conoce (se busca en todas).
      */
-    public static List<String> searchLevels(Federacion fed, String level) {
+    public static List<String> searchLevels(Federation fed, String level) {
         if (level == null || fed.allowed(level.trim().toUpperCase()).isEmpty()) {
             return List.of();
         }
@@ -68,16 +68,16 @@ public final class Eligibility {
     }
 
     public static List<String> searchLevels(String level) {
-        return searchLevels(Federacion.FPP, level);
+        return searchLevels(Federation.FPP, level);
     }
 
     /** La categoría más baja (la categoría real de quien jugó en todas ellas), o null si no hay ninguna. */
-    static String lowest(Federacion fed, Collection<String> levels) {
+    static String lowest(Federation fed, Collection<String> levels) {
         List<String> order = fed.levels();
         return levels.stream().filter(order::contains).min(Comparator.comparingInt(order::indexOf)).orElse(null);
     }
 
     static String lowest(Collection<String> levels) {
-        return lowest(Federacion.FPP, levels);
+        return lowest(Federation.FPP, levels);
     }
 }

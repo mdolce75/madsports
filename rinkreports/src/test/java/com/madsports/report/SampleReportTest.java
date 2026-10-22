@@ -19,10 +19,10 @@ import com.madsports.stats.StatsEngine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-@SpringBootTest(classes = InformesTestConfig.class)
+@SpringBootTest(classes = ReportsTestConfig.class)
 class SampleReportTest {
 
-    static final LocalDate HOY = LocalDate.of(2026, 10, 13);
+    static final LocalDate TODAY = LocalDate.of(2026, 10, 13);
 
     @Autowired
     SampleReport sample;
@@ -34,15 +34,15 @@ class SampleReportTest {
     RuleBasedAnalyst rules;
 
     @Test
-    void losDatosFicticiosSonConsistentes() {
-        ReportData d = SampleData.build(HOY);
+    void sampleDataIsConsistent() {
+        ReportData d = SampleData.build(TODAY);
         TeamReport t = d.teams().getFirst();
 
         assertThat(d.club().name()).isEqualTo("CLUB EJEMPLO");
         assertThat(d.teams()).hasSize(1);
         assertThat(t.total().played()).isEqualTo(11);
         assertThat(t.upcoming()).hasSize(3);
-        assertThat(t.byTorneo()).hasSize(2);
+        assertThat(t.byTournament()).hasSize(2);
         assertThat(t.standings()).hasSize(2).allSatisfy(s -> assertThat(s.outdated()).isFalse());
         // Cada jugador aparece una sola vez (Apertura + Clausura sumados) y sus goles suman los del equipo.
         assertThat(t.players()).extracting(PlayerLine::name).doesNotHaveDuplicates().hasSize(9);
@@ -56,15 +56,15 @@ class SampleReportTest {
         assertThat(t.timeProfile().goalMismatches()).isZero();
         assertThat(d.notPublished()).containsExactly("Actas de partido: 1 de 11");
         // Determinístico: mismo día, mismo informe.
-        assertThat(SampleData.build(HOY)).isEqualTo(d);
+        assertThat(SampleData.build(TODAY)).isEqualTo(d);
     }
 
     @Autowired
     com.fasterxml.jackson.databind.ObjectMapper mapper;
 
     @Test
-    void elJsonQueRecibeLaIaTraeLasCifrasDerivadas() throws Exception {
-        ReportData d = SampleData.build(HOY);
+    void theJsonSentToTheAiHasDerivedFigures() throws Exception {
+        ReportData d = SampleData.build(TODAY);
         TeamReport t = d.teams().getFirst();
         com.fasterxml.jackson.databind.JsonNode json = mapper.readTree(mapper.writeValueAsString(d));
         com.fasterxml.jackson.databind.JsonNode team = json.at("/teams/0");
@@ -81,9 +81,9 @@ class SampleReportTest {
     }
 
     @Test
-    void analisisEscritoDeLasFaltas() {
+    void writtenFoulsAnalysis() {
         ReportData d = StatsEngine.build(com.madsports.stats.StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
-                List.of(com.madsports.stats.StatsEngineTest.data(779)), HOY);
+                List.of(com.madsports.stats.StatsEngineTest.data(779)), TODAY);
         List<String> text = rules.foulsAnalysis(d);
 
         assertThat(text).hasSize(4);
@@ -96,8 +96,8 @@ class SampleReportTest {
     }
 
     @Test
-    void informeDeEjemploDeJugador() throws Exception {
-        PlayerReport r = SamplePlayerData.build(HOY, Crests.sample("CE"));
+    void samplePlayerReport() throws Exception {
+        PlayerReport r = SamplePlayerData.build(TODAY, Crests.sample("CE"));
 
         // Juniors que también juega en Primera: las dos categorías, en orden de nivel, y el total coherente.
         assertThat(r.categories()).extracting(PlayerReport.Line::category)
@@ -128,7 +128,7 @@ class SampleReportTest {
         // Fortalezas y debilidades contra sus compañeros, con suficientes partidos para calificar.
         assertThat(r.indicators()).extracting(com.madsports.stats.ReportData.Indicator::area)
                 .contains("Goleo", "Titularidad", "Disciplina", "Pelota parada", "Resultados");
-        assertThat(r.indicators()).anyMatch(i -> i.verdict() != com.madsports.stats.ReportData.Verdict.MUESTRA_CHICA);
+        assertThat(r.indicators()).anyMatch(i -> i.verdict() != com.madsports.stats.ReportData.Verdict.SMALL_SAMPLE);
         assertThat(r.strengths().size() + r.weaknesses().size()).isPositive();
 
         // Por categoría: cada bloque compara contra los compañeros de esa categoría (sus goles por partido son los
@@ -158,8 +158,8 @@ class SampleReportTest {
     }
 
     @Test
-    void elPdfLlevaLaMarcaDeDatosFicticios() throws Exception {
-        ReportData d = SampleData.build(HOY);
+    void thePdfHasTheSampleDataWatermark() throws Exception {
+        ReportData d = SampleData.build(TODAY);
         String html = renderer.html(d, sample.analysis(d), true);
 
         assertThat(html).contains("Análisis de faltas", "Según el marcador");

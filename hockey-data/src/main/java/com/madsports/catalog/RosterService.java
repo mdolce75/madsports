@@ -4,7 +4,7 @@ import com.madsports.catalog.CatalogService.CategoryOption;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.parse.SidgadParser;
@@ -56,11 +56,11 @@ public class RosterService {
      * @param numero  número de camiseta más usado en las actas ("07"; vacío si no figura)
      * @param arquero figura como arquero ("P") en 2 planillas o más, o en la mayoría de las suyas
      */
-    public record PlantelJugador(int id, String numero, String nombre, boolean arquero) {
+    public record SquadMember(int id, String number, String name, boolean goalkeeper) {
     }
 
     /** Un equipo del club en el año: sus competiciones, sus ids de equipo en SIDGAD y su nombre ("Infantil B Femenino"). */
-    private record Equipo(ClubView club, List<Competition> comps, Set<Integer> teamIds, String label) {
+    private record Team(ClubView club, List<Competition> comps, Set<Integer> teamIds, String label) {
     }
 
     private final CatalogService catalog;
@@ -68,7 +68,7 @@ public class RosterService {
     /** Plantel por equipo (club, año, categoría, rama): las actas ya quedan en cache, esto evita re-parsearlas. */
     private final Cache<String, List<RosterPlayer>> cache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(200).build();
-    private final Cache<String, List<PlantelJugador>> plantelCache =
+    private final Cache<String, List<SquadMember>> squadCache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(200).build();
 
     public RosterService(CatalogService catalog, SidgadClient sidgad) {
@@ -80,10 +80,10 @@ public class RosterService {
      * @param categoria opción de categoría del club ("INFANTIL" o "INFANTIL:B")
      * @param rama      MASCULINO o FEMENINO
      */
-    public List<RosterPlayer> players(Federacion fed, int clubId, int year, String categoria, String rama) {
-        String key = cacheKey(fed, clubId, year, categoria, rama);
+    public List<RosterPlayer> players(Federation fed, int clubId, int year, String category, String branch) {
+        String key = cacheKey(fed, clubId, year, category, branch);
         return cache.get(key, k -> {
-            Equipo e = equipo(fed, clubId, year, categoria, rama);
+            Team e = team(fed, clubId, year, category, branch);
             return roster(lineups(e), e.label());
         });
     }
@@ -92,20 +92,20 @@ public class RosterService {
      * Plantel del equipo para la planilla del DT: cada jugador que figura en sus actas, con su número más usado y si
      * es arquero.
      */
-    public List<PlantelJugador> plantel(Federacion fed, int clubId, int year, String categoria, String rama) {
-        String key = cacheKey(fed, clubId, year, categoria, rama);
-        return plantelCache.get(key, k -> plantel(lineups(equipo(fed, clubId, year, categoria, rama))));
+    public List<SquadMember> squad(Federation fed, int clubId, int year, String category, String branch) {
+        String key = cacheKey(fed, clubId, year, category, branch);
+        return squadCache.get(key, k -> squad(lineups(team(fed, clubId, year, category, branch))));
     }
 
-    private String cacheKey(Federacion fed, int clubId, int year, String categoria, String rama) {
-        CategoryOption option = CategoryOption.parse(categoria);
-        return fed + "|" + clubId + "|" + year + "|" + option.key() + "|" + (rama == null ? "" : rama.trim().toUpperCase());
+    private String cacheKey(Federation fed, int clubId, int year, String category, String branch) {
+        CategoryOption option = CategoryOption.parse(category);
+        return fed + "|" + clubId + "|" + year + "|" + option.key() + "|" + (branch == null ? "" : branch.trim().toUpperCase());
     }
 
-    private Equipo equipo(Federacion fed, int clubId, int year, String categoria, String rama) {
+    private Team team(Federation fed, int clubId, int year, String categoryKey, String branch) {
         ClubView club = catalog.club(fed, clubId, year);
-        CategoryOption option = CategoryOption.parse(categoria);
-        Competition.Category category = catalog.category(fed, option.level(), rama);
+        CategoryOption option = CategoryOption.parse(categoryKey);
+        Competition.Category category = catalog.category(fed, option.level(), branch);
         String teamKey = option.teamKey(club.code());
         List<Competition> comps = catalog.competitionsFor(fed, club.id(), category, null, year);
         Map<Integer, String> keys = ClubTeams.keys(comps, club);
@@ -114,10 +114,10 @@ public class RosterService {
         if (comps.isEmpty() || teamIds.isEmpty()) {
             throw new IllegalArgumentException(club.name() + " no tiene ese equipo en " + year + ".");
         }
-        return new Equipo(club, comps, teamIds, ClubTeams.label(comps.getFirst(), club, teamKey));
+        return new Team(club, comps, teamIds, ClubTeams.label(comps.getFirst(), club, teamKey));
     }
 
-    private Map<Competition, List<Match>> calendars(Equipo e) {
+    private Map<Competition, List<Match>> calendars(Team e) {
         Map<Competition, List<Match>> out = new LinkedHashMap<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
             Map<Competition, Future<String>> calendars = new LinkedHashMap<>();
@@ -128,7 +128,7 @@ public class RosterService {
     }
 
     /** Planillas del equipo en sus partidos jugados con acta (cada acta trae la del local y la del visitante). */
-    private List<LineupPlayer> lineups(Equipo e) {
+    private List<LineupPlayer> lineups(Team e) {
         List<LineupPlayer> lineups = new ArrayList<>();
         Map<Competition, List<Match>> calendars = calendars(e);
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -143,19 +143,19 @@ public class RosterService {
     }
 
     /** Un jugador por id_player: su número más usado, y arquero si figura con "P" en 2 planillas o en la mayoría. */
-    static List<PlantelJugador> plantel(List<LineupPlayer> lineups) {
+    static List<SquadMember> squad(List<LineupPlayer> lineups) {
         Map<Integer, List<LineupPlayer>> byId = lineups.stream()
                 .collect(Collectors.groupingBy(LineupPlayer::playerId, LinkedHashMap::new, Collectors.toList()));
         return byId.values().stream()
                 .map(ps -> {
                     long gk = ps.stream().filter(LineupPlayer::goalkeeper).count();
-                    String numero = ps.stream().map(LineupPlayer::number).filter(n -> n != null && !n.isBlank())
+                    String number = ps.stream().map(LineupPlayer::number).filter(n -> n != null && !n.isBlank())
                             .collect(Collectors.groupingBy(n -> n, LinkedHashMap::new, Collectors.counting()))
                             .entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("");
-                    return new PlantelJugador(ps.getFirst().playerId(), numero, ps.getFirst().name(),
+                    return new SquadMember(ps.getFirst().playerId(), number, ps.getFirst().name(),
                             gk >= 2 || (gk > 0 && gk * 2 >= ps.size()));
                 })
-                .sorted(Comparator.comparing(PlantelJugador::nombre, String.CASE_INSENSITIVE_ORDER))
+                .sorted(Comparator.comparing(SquadMember::name, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 
@@ -175,8 +175,8 @@ public class RosterService {
     }
 
     /** ¿El jugador figura en ese equipo del club? (valida lo que se elige en el registro). */
-    public Optional<RosterPlayer> find(Federacion fed, int clubId, int year, String categoria, String rama,
+    public Optional<RosterPlayer> find(Federation fed, int clubId, int year, String category, String branch,
                                        int playerId) {
-        return players(fed, clubId, year, categoria, rama).stream().filter(p -> p.id() == playerId).findFirst();
+        return players(fed, clubId, year, category, branch).stream().filter(p -> p.id() == playerId).findFirst();
     }
 }

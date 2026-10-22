@@ -5,7 +5,7 @@ import com.madsports.analysis.RuleBasedAnalyst;
 import com.madsports.player.PlayerReport;
 import com.madsports.player.SamplePlayerData;
 import com.madsports.sidgad.model.Competition.Category;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.stats.ReportData;
 import org.springframework.stereotype.Component;
 
@@ -68,7 +68,7 @@ public class SampleReport {
                 SampleData.build(today, new Category("INFANTIL", "FEMENINO"), 2028, 9021));
         ReportData.ClubInfo club = primera.data().club();
         return new ClubReport(new ReportData.ClubInfo(club.id(), club.code(), club.name(), logo),
-                "Temporada " + today.getYear() + " · Apertura + Clausura", today, Federacion.FPP,
+                "Temporada " + today.getYear() + " · Apertura + Clausura", today, Federation.FPP,
                 List.of(new ClubReport.Branch("Masculino", List.of(primera, juvenil)),
                         new ClubReport.Branch("Femenino", List.of(infantil))),
                 List.of(), List.of());

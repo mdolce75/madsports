@@ -34,27 +34,27 @@ public class ExcelExporter {
 
     public byte[] club(ClubReport r) {
         return write(book -> {
-            Sheet resumen = new Sheet(book, "Resumen");
-            resumen.title("Informe de club · " + r.club().name() + " (" + r.club().code() + ")");
-            resumen.meta("Período", r.period());
-            resumen.meta("Federación", r.federacion().name());
-            resumen.meta("Generado", r.generatedOn());
-            resumen.blank();
-            resumen.header("Rama", "Categoría", "PJ", "G", "E", "P", "Efectividad", "GF", "GC", "GF por partido",
+            Sheet summaryOf = new Sheet(book, "Resumen");
+            summaryOf.title("Informe de club · " + r.club().name() + " (" + r.club().code() + ")");
+            summaryOf.meta("Período", r.period());
+            summaryOf.meta("Federación", r.federation().name());
+            summaryOf.meta("Generado", r.generatedOn());
+            summaryOf.blank();
+            summaryOf.header("Rama", "Categoría", "PJ", "G", "E", "P", "Efectividad", "GF", "GC", "GF por partido",
                     "GC por partido", "Faltas cometidas", "Faltas recibidas", "Amarillas", "Azules", "Rojas");
             for (ClubReport.Branch b : r.branches()) {
                 for (ClubReport.CategoryBlock k : b.categories()) {
                     TeamRecord t = k.record();
-                    resumen.row(b.name(), k.name(), t.played(), t.won(), t.drawn(), t.lost(), new Pct(t.effectiveness()),
+                    summaryOf.row(b.name(), k.name(), t.played(), t.won(), t.drawn(), t.lost(), new Pct(t.effectiveness()),
                             t.goalsFor(), t.goalsAgainst(), t.goalsForPerGame(), t.goalsAgainstPerGame(), k.foulsOwn(),
                             k.foulsRival(), k.yellowCards(), k.blueCards(), k.redCards());
                 }
             }
-            resumen.widths(14, 16, 7, 7, 7, 7, 12, 7, 7, 14, 14, 16, 16, 11, 9, 9);
+            summaryOf.widths(14, 16, 7, 7, 7, 7, 12, 7, 7, 14, 14, 16, 16, 11, 9, 9);
             if (!r.notPublished().isEmpty()) {
-                resumen.blank();
-                resumen.section("Sin publicar en SIDGAD");
-                r.notPublished().forEach(n -> resumen.row(n));
+                summaryOf.blank();
+                summaryOf.section("Sin publicar en SIDGAD");
+                r.notPublished().forEach(n -> summaryOf.row(n));
             }
             for (ClubReport.Branch b : r.branches()) {
                 for (ClubReport.CategoryBlock k : b.categories()) {
@@ -140,59 +140,59 @@ public class ExcelExporter {
 
     public byte[] player(PlayerReport r) {
         return write(book -> {
-            Sheet resumen = new Sheet(book, "Resumen");
-            resumen.title("Informe de jugador · " + r.fullName());
-            resumen.meta("Jugador en SIDGAD", r.playerName());
-            resumen.meta("Club", r.club().name());
-            resumen.meta("Período", r.period());
-            resumen.meta("Generado", r.generatedOn());
-            resumen.blank();
-            resumen.header("Categoría", "PJ", "G", "E", "P", "Goles", "Goles por partido", "Incidencia de goles",
+            Sheet summaryOf = new Sheet(book, "Resumen");
+            summaryOf.title("Informe de jugador · " + r.fullName());
+            summaryOf.meta("Jugador en SIDGAD", r.playerName());
+            summaryOf.meta("Club", r.club().name());
+            summaryOf.meta("Período", r.period());
+            summaryOf.meta("Generado", r.generatedOn());
+            summaryOf.blank();
+            summaryOf.header("Categoría", "PJ", "G", "E", "P", "Goles", "Goles por partido", "Incidencia de goles",
                     "Amarillas", "Azules", "Rojas", "Tarjetas por partido", "Incidencia de tarjetas", "Penales conv.",
                     "Penales tir.", "Libres conv.", "Libres tir.", "Sin acta");
             for (PlayerReport.Line l : r.categories()) {
-                line(resumen, l);
+                line(summaryOf, l);
             }
-            line(resumen, r.total());
-            resumen.widths(18, 6, 6, 6, 6, 8, 16, 18, 10, 9, 8, 18, 20, 13, 12, 12, 11, 9);
+            line(summaryOf, r.total());
+            summaryOf.widths(18, 6, 6, 6, 6, 8, 16, 18, 10, 9, 8, 18, 20, 13, 12, 12, 11, 9);
             if (!r.notes().isEmpty()) {
-                resumen.blank();
-                resumen.section("Notas");
-                r.notes().forEach(resumen::text);
+                summaryOf.blank();
+                summaryOf.section("Notas");
+                r.notes().forEach(summaryOf::text);
             }
 
-            Sheet partidos = new Sheet(book, "Partidos");
-            partidos.header("Fecha", "Categoría", "Torneo", "Rival", "Condición", "GF", "GC", "Resultado", "Titular",
+            Sheet matches = new Sheet(book, "Partidos");
+            matches.header("Fecha", "Categoría", "Torneo", "Rival", "Condición", "GF", "GC", "Resultado", "Titular",
                     "Goles", "Amarillas", "Azules", "Rojas", "Sin acta");
             for (PlayerReport.MatchRow m : r.matches()) {
-                partidos.row(m.date(), m.category(), m.torneo(), m.rival(), m.home() ? "Local" : "Visitante",
+                matches.row(m.date(), m.category(), m.tournament(), m.opponent(), m.home() ? "Local" : "Visitante",
                         m.goalsFor(), m.goalsAgainst(), m.result(), m.fromSummary() ? "" : m.starter() ? "Sí" : "No",
                         m.goals(), m.yellowCards(), m.blueCards(), m.redCards(), m.fromSummary() ? "Sí" : "");
             }
-            partidos.widths(12, 18, 14, 30, 11, 6, 6, 10, 8, 7, 10, 8, 7, 9);
-            partidos.freezeHeader();
+            matches.widths(12, 18, 14, 30, 11, 6, 6, 10, 8, 7, 10, 8, 7, 9);
+            matches.freezeHeader();
 
-            Sheet minutos = new Sheet(book, "Minutos");
-            minutos.title("Goles y tarjetas por tramo de 5 minutos");
-            minutos.header("Tramo", "Goles", "Amarillas", "Azules", "Rojas", "Tarjetas");
+            Sheet minutes = new Sheet(book, "Minutos");
+            minutes.title("Goles y tarjetas por tramo de 5 minutos");
+            minutes.header("Tramo", "Goles", "Amarillas", "Azules", "Rojas", "Tarjetas");
             for (PlayerReport.Bucket b : r.minutes().buckets()) {
-                bucket(minutos, b);
+                bucket(minutes, b);
             }
-            bucket(minutos, r.minutes().unrecorded());
-            bucket(minutos, r.minutes().total());
-            minutos.widths(22, 8, 10, 8, 8, 9);
+            bucket(minutes, r.minutes().unrecorded());
+            bucket(minutes, r.minutes().total());
+            minutes.widths(22, 8, 10, 8, 8, 9);
 
-            Sheet fortalezas = new Sheet(book, "Fortalezas");
-            fortalezas.title("Fortalezas y debilidades");
-            indicators(fortalezas, r.indicators());
+            Sheet strengths = new Sheet(book, "Fortalezas");
+            strengths.title("Fortalezas y debilidades");
+            indicators(strengths, r.indicators());
             for (PlayerReport.CategoryBlock b : r.blocks()) {
                 if (!b.indicators().isEmpty()) {
-                    fortalezas.blank();
-                    fortalezas.label(b.line().category());
-                    indicators(fortalezas, b.indicators());
+                    strengths.blank();
+                    strengths.label(b.line().category());
+                    indicators(strengths, b.indicators());
                 }
             }
-            fortalezas.widths(18, 30, 10, 14, 10, 14, 60);
+            strengths.widths(18, 30, 10, 14, 10, 14, 60);
         });
     }
 

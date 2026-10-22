@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Un mail de la cuenta (confirmar el email, elegir una clave nueva): se arma en HTML con la identidad de la web
- * ({@code templates/mail/cuenta.html}) y en texto plano para los clientes que no muestran HTML.
+ * ({@code templates/mail/account.html}) y en texto plano para los clientes que no muestran HTML.
  *
  * @param preheader  resumen que muestran las bandejas de entrada junto al asunto
  * @param tag        etiqueta naranja ("Tu cuenta")
@@ -15,12 +15,12 @@ import java.util.List;
  * @param producto   producto de la cuenta: su nombre, su logo y su color van en el mail
  */
 public record MailContent(String to, String subject, String preheader, String tag, String title, String greeting,
-                          List<String> paragraphs, String button, String url, String note, Producto producto) {
+                          List<String> paragraphs, String button, String url, String note, Product product) {
 
     /** Un mail de RinkMetrics. */
     public MailContent(String to, String subject, String preheader, String tag, String title, String greeting,
                        List<String> paragraphs, String button, String url, String note) {
-        this(to, subject, preheader, tag, title, greeting, paragraphs, button, url, note, Producto.METRICS);
+        this(to, subject, preheader, tag, title, greeting, paragraphs, button, url, note, Product.METRICS);
     }
 
     /** Versión en texto plano, con el enlace completo. */
@@ -29,7 +29,7 @@ public record MailContent(String to, String subject, String preheader, String ta
         paragraphs.forEach(p -> sb.append(p).append("\n\n"));
         sb.append(button).append(": ").append(url).append("\n\n");
         sb.append(note).append("\n\n");
-        sb.append(producto.nombre()).append(" · ").append(producto.bajada()).append(" · Un producto de Mad Sports\n");
+        sb.append(product.displayName()).append(" · ").append(product.tagline()).append(" · Un producto de Mad Sports\n");
         return sb.toString();
     }
 }

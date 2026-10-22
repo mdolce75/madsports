@@ -1,12 +1,12 @@
 package com.madsports.player;
 
-import com.madsports.account.Perfil;
-import com.madsports.account.Usuario;
-import com.madsports.account.UsuarioRepository;
+import com.madsports.account.Profile;
+import com.madsports.account.UserAccount;
+import com.madsports.account.UserAccountRepository;
 import com.madsports.catalog.CatalogService;
-import com.madsports.sidgad.model.Federacion;
-import com.madsports.report.CupoInformes;
-import com.madsports.report.Descargas;
+import com.madsports.sidgad.model.Federation;
+import com.madsports.report.ReportQuota;
+import com.madsports.report.Downloads;
 import com.madsports.report.JobView;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.report.ReportService.Status;
@@ -40,61 +40,61 @@ public class PlayerController {
      * @param anio    año (p. ej. 2026); si falta, el más reciente con datos
      * @param periodo APERTURA, CLAUSURA o TEMPORADA (Apertura + Clausura, por defecto)
      */
-    public record PlayerReportRequest(Integer anio, String periodo) {
+    public record PlayerReportRequest(Integer year, String period) {
     }
 
     private final PlayerReportService reports;
-    private final UsuarioRepository usuarios;
+    private final UserAccountRepository users;
     private final CatalogService catalog;
-    private final CupoInformes cupo;
+    private final ReportQuota quota;
 
-    public PlayerController(PlayerReportService reports, UsuarioRepository usuarios, CatalogService catalog,
-                            CupoInformes cupo) {
+    public PlayerController(PlayerReportService reports, UserAccountRepository users, CatalogService catalog,
+                            ReportQuota quota) {
         this.reports = reports;
-        this.usuarios = usuarios;
+        this.users = users;
         this.catalog = catalog;
-        this.cupo = cupo;
+        this.quota = quota;
     }
 
     @PostMapping("/informes")
-    public ResponseEntity<JobView> crear(@RequestBody PlayerReportRequest req, Authentication auth) {
-        Usuario u = usuarios.findByUsuario(auth.getName())
-                .filter(x -> x.esJugador() && x.getJugadorId() != null)
+    public ResponseEntity<JobView> create(@RequestBody PlayerReportRequest req, Authentication auth) {
+        UserAccount u = users.findByUsername(auth.getName())
+                .filter(x -> x.isPlayer() && x.getPlayerId() != null)
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no tiene un jugador vinculado."));
-        Federacion fed = u.federacion();
+        Federation fed = u.federation();
         // Dentro del cupo del mes (5 informes en el Jugador free): cada pedido cuenta.
-        PlayerReportService.Job job = cupo.pedir(u, () -> reports.submit(new PlayerReportService.Query(u.getJugadorId(),
-                u.getJugadorNombre(), u.getNombre() == null ? u.getJugadorNombre() : u.getNombre() + " " + u.getApellido(),
-                u.getClubId(), catalog.checkYear(req.anio()), Scope.parse(req.periodo()),
-                Eligibility.searchLevels(fed, u.getCategoria()), u.getRama(), fed), u.getUsuario()));
+        PlayerReportService.Job job = quota.consume(u, () -> reports.submit(new PlayerReportService.Query(u.getPlayerId(),
+                u.getPlayerName(), u.getName() == null ? u.getPlayerName() : u.getName() + " " + u.getLastName(),
+                u.getClubId(), catalog.checkYear(req.year()), Scope.parse(req.period()),
+                Eligibility.searchLevels(fed, u.getCategory()), u.getBranch(), fed), u.getUsername()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 
     @GetMapping("/informes/{id}")
-    public ResponseEntity<JobView> estado(@PathVariable UUID id, Authentication auth) {
+    public ResponseEntity<JobView> status(@PathVariable UUID id, Authentication auth) {
         return reports.find(id, auth.getName()).map(PlayerController::view).map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/informes/{id}/html")
     public ResponseEntity<String> html(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> Descargas.html(j.html())).orElse(ResponseEntity.notFound().build());
+        return ready(id, auth).map(j -> Downloads.html(j.html())).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/informes/{id}/pdf")
     public ResponseEntity<byte[]> pdf(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> Descargas.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
+        return ready(id, auth).map(j -> Downloads.file(j.pdf(), MediaType.APPLICATION_PDF, j.fileName(), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/informes/{id}/xlsx")
     public ResponseEntity<byte[]> xlsx(@PathVariable UUID id, Authentication auth) {
-        return ready(id, auth).map(j -> Descargas.file(j.xlsx(), Descargas.XLSX, j.fileName("xlsx"), false))
+        return ready(id, auth).map(j -> Downloads.file(j.xlsx(), Downloads.XLSX, j.fileName("xlsx"), false))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     private Optional<PlayerReportService.Job> ready(UUID id, Authentication auth) {
-        return reports.find(id, auth.getName()).filter(j -> j.status() == Status.LISTO);
+        return reports.find(id, auth.getName()).filter(j -> j.status() == Status.READY);
     }
 
     private static JobView view(PlayerReportService.Job job) {

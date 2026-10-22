@@ -22,7 +22,7 @@ import com.madsports.stats.ReportData.StandingSnapshot;
 import com.madsports.stats.ReportData.TeamReport;
 import com.madsports.stats.ReportData.TimeBucket;
 import com.madsports.stats.ReportData.TimeProfile;
-import com.madsports.stats.ReportData.TorneoLine;
+import com.madsports.stats.ReportData.TournamentLine;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -73,9 +73,9 @@ public final class StatsEngine {
     private StatsEngine() {
     }
 
-    public static ReportData build(ClubView club, String categoryLabel, String torneoLabel,
+    public static ReportData build(ClubView club, String categoryLabel, String tournamentLabel,
                                    List<CompetitionData> data, LocalDate today) {
-        return build(club, categoryLabel, torneoLabel, data, today, 0);
+        return build(club, categoryLabel, tournamentLabel, data, today, 0);
     }
 
     /**
@@ -83,16 +83,16 @@ public final class StatsEngine {
      *                    los últimos N partidos jugados de cada equipo (las estadísticas de jugadores siguen siendo
      *                    de los torneos completos: SIDGAD no las publica por partido)
      */
-    public static ReportData build(ClubView club, String categoryLabel, String torneoLabel,
+    public static ReportData build(ClubView club, String categoryLabel, String tournamentLabel,
                                    List<CompetitionData> data, LocalDate today, int lastMatches) {
-        return build(club, categoryLabel, torneoLabel, data, today, lastMatches, null);
+        return build(club, categoryLabel, tournamentLabel, data, today, lastMatches, null);
     }
 
     /**
      * @param teamKey solo ese equipo del club (p. ej. "CAVS B"); null = todos. Los equipos A y B de un club son
      *                equipos distintos y cada uno tiene su informe.
      */
-    public static ReportData build(ClubView club, String categoryLabel, String torneoLabel,
+    public static ReportData build(ClubView club, String categoryLabel, String tournamentLabel,
                                    List<CompetitionData> data, LocalDate today, int lastMatches, String teamKey) {
         // Un mismo equipo tiene distinto teamId en Apertura y Clausura: se agrupa por su clave (código del club + letra).
         Map<String, List<Entry>> byTeam = new LinkedHashMap<>();
@@ -115,7 +115,7 @@ public final class StatsEngine {
         List<Source> sources = data.stream()
                 .map(cd -> new Source(cd.competition().name(), cd.competition().url())).toList();
         return new ReportData(new ReportData.ClubInfo(club.id(), club.code(), club.name()),
-                categoryLabel, torneoLabel, today, lastMatches, sources, teams, league, List.of());
+                categoryLabel, tournamentLabel, today, lastMatches, sources, teams, league, List.of());
     }
 
     private static List<TeamRef> ownTeams(Competition c, ClubView club) {
@@ -142,7 +142,7 @@ public final class StatsEngine {
         List<StandingSnapshot> standings = new ArrayList<>();
         List<MatchLine> results = new ArrayList<>();
         List<MatchLine> upcoming = new ArrayList<>();
-        List<TorneoLine> byTorneo = new ArrayList<>();
+        List<TournamentLine> byTournament = new ArrayList<>();
         Map<Integer, List<PlayerStats>> playersById = new LinkedHashMap<>();
         TeamRecord total = TeamRecord.EMPTY;
         TeamRecord home = TeamRecord.EMPTY;
@@ -173,7 +173,7 @@ public final class StatsEngine {
                 }
             }
             if (compRecord.played() > 0 || lastMatches == 0) {
-                byTorneo.add(new TorneoLine(comp.torneoLabel(), compRecord));
+                byTournament.add(new TournamentLine(comp.tournamentLabel(), compRecord));
             }
             snapshot(e.data(), e.team(), playedInCalendar).ifPresent(standings::add);
             e.data().players().stream().filter(p -> p.teamId() == teamId)
@@ -227,10 +227,10 @@ public final class StatsEngine {
         Set<Integer> goalkeepers = entries.stream().flatMap(e -> e.data().goalkeepers().stream()).collect(Collectors.toSet());
         List<PlayerLine> scorers = players.stream().filter(p -> !goalkeepers.contains(p.playerId())).toList();
         TeamReport base = new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
-                biggestWin, worstLoss, scorers, setPieces, discipline, rivals(results), byTorneo, timeProfile, List.of(),
+                biggestWin, worstLoss, scorers, setPieces, discipline, rivals(results), byTournament, timeProfile, List.of(),
                 fouls, players);
         return new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
-                biggestWin, worstLoss, scorers, setPieces, discipline, base.rivals(), byTorneo, timeProfile,
+                biggestWin, worstLoss, scorers, setPieces, discipline, base.rivals(), byTournament, timeProfile,
                 StrengthsAnalysis.evaluate(base, league), fouls, players);
     }
 
@@ -485,7 +485,7 @@ public final class StatsEngine {
         return rows.stream()
                 .filter(r -> r.code().equalsIgnoreCase(team.code()) || r.name().equalsIgnoreCase(team.name()))
                 .findFirst()
-                .map(r -> new StandingSnapshot(cd.competition().torneoLabel(), r.group(), r.position(),
+                .map(r -> new StandingSnapshot(cd.competition().tournamentLabel(), r.group(), r.position(),
                         (int) rows.stream().filter(o -> o.group().equals(r.group())).count(),
                         r.points(), r.played(), r.goalsFor(), r.goalsAgainst(), r.goalDiff(),
                         cd.standingsDate(), r.played() < playedInCalendar));
@@ -496,7 +496,7 @@ public final class StatsEngine {
         Integer gf = home ? m.homeGoals() : m.awayGoals();
         Integer ga = home ? m.awayGoals() : m.homeGoals();
         String outcome = gf == null ? null : gf > ga ? "G" : gf.equals(ga) ? "E" : "P";
-        return new MatchLine(comp.torneoLabel(), m.round(), m.date(), m.time() == null ? "" : m.time().toString(),
+        return new MatchLine(comp.tournamentLabel(), m.round(), m.date(), m.time() == null ? "" : m.time().toString(),
                 home, home ? m.awayName() : m.homeName(), gf, ga, outcome, m.venue());
     }
 
@@ -525,7 +525,7 @@ public final class StatsEngine {
     }
 
     private static List<RivalLine> rivals(List<MatchLine> results) {
-        return results.stream().collect(Collectors.groupingBy(MatchLine::rival, LinkedHashMap::new, Collectors.toList()))
+        return results.stream().collect(Collectors.groupingBy(MatchLine::opponent, LinkedHashMap::new, Collectors.toList()))
                 .entrySet().stream()
                 .map(e -> {
                     List<MatchLine> ms = e.getValue();
@@ -536,7 +536,7 @@ public final class StatsEngine {
                             ms.stream().mapToInt(MatchLine::goalsFor).sum(),
                             ms.stream().mapToInt(MatchLine::goalsAgainst).sum());
                 })
-                .sorted(Comparator.comparing(RivalLine::rival))
+                .sorted(Comparator.comparing(RivalLine::opponent))
                 .toList();
     }
 

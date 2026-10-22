@@ -1,7 +1,7 @@
 package com.madsports.report;
 
 import com.madsports.analysis.AnalysisResult;
-import com.madsports.sidgad.model.Federacion;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.ReportData.PlayerLine;
 import com.madsports.stats.ReportData.TeamRecord;
@@ -18,7 +18,7 @@ import java.util.List;
  *
  * @param period "Temporada 2026 · Apertura + Clausura"
  */
-public record ClubReport(ReportData.ClubInfo club, String period, LocalDate generatedOn, Federacion federacion,
+public record ClubReport(ReportData.ClubInfo club, String period, LocalDate generatedOn, Federation federation,
                          List<Branch> branches, List<String> notPublished, List<ReportData.Source> sources) {
 
     /** Una rama ("Masculino") con sus categorías, en el orden de la federación (de Infantil a Primera). */
@@ -54,7 +54,7 @@ public record ClubReport(ReportData.ClubInfo club, String period, LocalDate gene
         }
 
         public int foulsRival() {
-            return team.fouls().rival();
+            return team.fouls().opponent();
         }
 
         /** Partidos con acta, sobre los que se cuentan las faltas y las amarillas. */
@@ -109,19 +109,19 @@ public record ClubReport(ReportData.ClubInfo club, String period, LocalDate gene
 
         /** Mejor efectividad en libres directos (convertidos sobre tirados); a igual efectividad, más tirados. */
         public List<Ranked> topDirectFree() {
-            return efectividad(team.squad().stream().filter(p -> p.directFreeTaken() > 0)
+            return effectivenessPct(team.squad().stream().filter(p -> p.directFreeTaken() > 0)
                     .map(p -> new Ranked(p, 100.0 * p.directFreeScored() / p.directFreeTaken(), p.directFreeScored(),
                             p.directFreeTaken())).toList());
         }
 
         /** Mejor efectividad en penales; a igual efectividad, más tirados. */
         public List<Ranked> topPenalties() {
-            return efectividad(team.squad().stream().filter(p -> p.penaltiesTaken() > 0)
+            return effectivenessPct(team.squad().stream().filter(p -> p.penaltiesTaken() > 0)
                     .map(p -> new Ranked(p, 100.0 * p.penaltiesScored() / p.penaltiesTaken(), p.penaltiesScored(),
                             p.penaltiesTaken())).toList());
         }
 
-        private static List<Ranked> efectividad(List<Ranked> ranked) {
+        private static List<Ranked> effectivenessPct(List<Ranked> ranked) {
             return ranked.stream().sorted(Comparator.comparingDouble(Ranked::value).reversed()
                             .thenComparing(Comparator.comparingInt(Ranked::of).reversed())
                             .thenComparing(r -> r.player().name()))
