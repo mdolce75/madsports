@@ -58,7 +58,7 @@ class AltaInformesTest {
                     "ana@example.com", 74, null, null, null, "CLUB_MENSUAL")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Las cuentas de club estarán disponibles próximamente. Por ahora podés crear tu cuenta "
-                            + "de jugador o de Métricas DT.");
+                            + "de jugador.");
         }
     }
 

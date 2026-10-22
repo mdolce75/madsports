@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ingresar · RinkReports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232fd3a0'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%2308130f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%2308130f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/reports.css">
+</head>
+<body data-producto="reports">
+<div class="wrap">
+    <div id="brand"></div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Acceso · RinkReports</span>
+        <h1>Tu rendimiento,<br><em>en números.</em></h1>
+        <p class="lead">Ingresá a RinkReports para ver tu informe de jugador o el de tu club.</p>
+    </section>
+    </div>
+    <div class="main">
+    <form class="sheet" id="form" novalidate>
+        <div class="sheet-head"><span>Ingresar</span><span></span></div>
+        <div class="notice" id="notice" role="alert" hidden></div>
+
+        <div class="field">
+            <label for="usuario">Usuario</label>
+            <input type="text" id="usuario" name="usuario" autocomplete="username" required autofocus>
+        </div>
+        <div class="field">
+            <label for="clave">Clave</label>
+            <input type="password" id="clave" name="clave" autocomplete="current-password" required>
+        </div>
+        <label class="check" for="recordarme">
+            <input type="checkbox" id="recordarme" checked>
+            <span>Mantener la sesión iniciada en este dispositivo <small>(30 días; no lo marques en una computadora
+                compartida)</small></span>
+        </label>
+
+        <button class="go" id="go" type="submit">Ingresar</button>
+        <div id="status" role="status" aria-live="polite"></div>
+        <p class="alt"><a href="/olvido.html?producto=reports">¿Olvidaste tu clave?</a></p>
+        <p class="alt">¿No tenés una cuenta? Creá la tuya de <a href="/rinkreports/registro.html?opcion=jugador">jugador</a>
+            o de <a href="/rinkreports/registro.html?opcion=club">club</a> · <a href="/rinkreports">Volver a RinkReports</a></p>
+    </form>
+    </div>
+    </div>
+
+    <footer>© 2026 RinkReports · Un producto de <a href="/">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/login.js"></script>
+</body>
+</html>

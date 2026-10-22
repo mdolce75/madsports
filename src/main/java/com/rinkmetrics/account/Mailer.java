@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Envía los mails de la cuenta por SMTP (Resend, Brevo, Gmail...): HTML con la identidad de la web y el logo como
@@ -40,7 +41,7 @@ public class Mailer {
     private final ITemplateEngine templates;
     private final String host;
     private final String from;
-    private final byte[] logo = logo();
+    private final Map<Producto, byte[]> logos = Map.of(Producto.METRICS, logo(), Producto.REPORTS, logoReports());
 
     public Mailer(ObjectProvider<JavaMailSender> sender, ITemplateEngine templates,
                   @Value("${spring.mail.host:}") String host, @Value("${rinkmetrics.mail.from}") String from) {
@@ -71,7 +72,7 @@ public class Mailer {
             helper.setTo(m.to());
             helper.setSubject(m.subject());
             helper.setText(m.text(), html(m));
-            helper.addInline("logo", new ByteArrayResource(logo), "image/png");
+            helper.addInline("logo", new ByteArrayResource(logos.get(m.producto())), "image/png");
             smtp.send(msg);
             log.info("Mail enviado a {}: {}", m.to(), m.subject());
             return true;
@@ -103,6 +104,38 @@ public class Mailer {
         } finally {
             g.dispose();
         }
+        return png(img);
+    }
+
+    /** Logo de RinkReports (el libro de informes, con renglones y una columna de totales, sobre esmeralda), en PNG. */
+    static byte[] logoReports() {
+        int px = 132;
+        BufferedImage img = new BufferedImage(px, px, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+            double k = px / 64.0;   // mismas coordenadas que el SVG de la web (viewBox 64x64)
+            g.scale(k, k);
+            g.setColor(new Color(0x2fd3a0));
+            g.fill(new RoundRectangle2D.Double(0, 0, 64, 64, 28, 28));
+            g.setColor(Color.WHITE);
+            g.fill(new RoundRectangle2D.Double(13, 11, 38, 42, 6, 6));
+            g.setColor(new Color(0x08130f));
+            g.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            for (int y : new int[] {21, 29, 37}) {
+                g.draw(new java.awt.geom.Line2D.Double(19, y, 36, y));
+                g.draw(new java.awt.geom.Line2D.Double(41, y, 45, y));
+            }
+            g.setStroke(new BasicStroke(3.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.draw(new java.awt.geom.Line2D.Double(19, 45, 45, 45));
+        } finally {
+            g.dispose();
+        }
+        return png(img);
+    }
+
+    private static byte[] png(BufferedImage img) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             ImageIO.write(img, "png", out);
