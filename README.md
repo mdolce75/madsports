@@ -275,7 +275,14 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   mensual**, que figura con el cintillo "Próximamente", apagado y borroneado (como el DT mensual), mientras
   `REGISTRO_JUGADOR_PAGO` (`rinkmetrics.registro.jugador-pago`) sea `false`. Los dos se muestran en `/rinkreports` y
   en el registro.
-- **Registro** (`/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt), email y club, obligatorios.
+- **Cuentas por producto:** cada cuenta es de un producto. Las de **RinkReports** (Club y Jugador) se crean en
+  `/rinkreports/registro.html` e ingresan por `/rinkreports/login.html`. Las de **RinkMetrics** (DT) se crean en
+  `/registro.html` e ingresan por `/login.html`. Una cuenta no ingresa por el otro producto: el login responde 401
+  `OTRO_PRODUCTO` con el ingreso que le corresponde. El mismo email puede tener una cuenta en cada producto (único
+  dentro del producto, V22); el usuario sigue siendo único en toda la web. Los mails (confirmación y clave nueva) llevan
+  el nombre, el logo y el color del producto de la cuenta, y sus enlaces llevan a su ingreso.
+- **Registro** (`/rinkreports/registro.html` o `/registro.html`): usuario, clave (mínimo 8, se guarda con BCrypt),
+  email y club, obligatorios.
   No pide nombre ni apellido: el club no los carga y el jugador los toma de la FPP (tal como los separa el acta).
   Para Jugador FPP es obligatorio el **jugador**, que se elige de la planilla de un equipo del club
   (club → categoría → nombre). La cuenta queda vinculada al `id_player` de la FPP, y cada jugador tiene un solo
@@ -515,7 +522,8 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
   (`autenticado: false` sin sesión)
 - `GET /api/verificar?token=...`: enlace del mail; confirma el email y lleva al ingreso.
   `POST /api/verificacion/reenviar` `{"email"}` o `{"usuario"}`
-- `POST /api/clave/olvido` `{"email"}`; `POST /api/clave/restablecer` `{"token","clave"}`
+- `POST /api/clave/olvido` `{"email","producto"}` (`producto`: `REPORTS` o `METRICS`, el de la pantalla);
+  `GET /api/registro/opciones` → `{club, jugadorAmp}` (qué perfiles se pueden registrar hoy); `POST /api/clave/restablecer` `{"token","clave"}`
 - `POST /api/jugador/informes` `{"anio":2026,"periodo":"TEMPORADA"}` → `202 {id, estado}`; `GET /api/jugador/informes/{id}` y `/html`, `/pdf` y `/xlsx` (PLAYERFPP o PLAYERAMP)
 - Métricas DT (DTFPP o DTAMP; sin `equipo`, el primer equipo del DT; lo de otro DT da 404):
   - `GET /api/dt/equipos`: los equipos con `jugados`, `ganados`, `empatados` y `perdidos` (partidos finalizados);

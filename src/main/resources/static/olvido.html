@@ -9,8 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='64' height='64' rx='14' fill='%2322b8f0'/%3E%3Crect x='8' y='15' width='48' height='34' rx='14' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Crect x='20' y='33' width='6' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='29' y='27' width='6' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='38' y='21' width='6' height='21' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/reports.css">
 </head>
 <body>
+<script>
+    // Página compartida por los dos productos: con ?producto=reports, la marca y la paleta de RinkReports.
+    if (new URLSearchParams(location.search).get("producto") === "reports") document.body.dataset.producto = "reports";
+</script>
 <div class="wrap">
     <div id="brand"></div>
 
@@ -41,7 +46,14 @@
 
 <script src="/js/app.js"></script>
 <script>
-    $("brand").outerHTML = BRAND;
+    $("brand").outerHTML = marca();
+    // Los enlaces y el pedido son del producto de la página.
+    const conProducto = url => producto() === "REPORTS" ? url + (url.includes("?") ? "&" : "?") + "producto=reports" : url;
+    document.querySelectorAll('a[href="/login.html"]').forEach(a => { a.href = ingreso(); });
+    document.querySelectorAll('a[href="/olvido.html"]').forEach(a => { a.href = conProducto("/olvido.html"); });
+    document.querySelectorAll("footer").forEach(f => {
+        f.textContent = `© 2026 ${producto() === "REPORTS" ? "RinkReports" : "RinkMetrics"} · Un producto de Mad Sports.`;
+    });
     session();   // deja la cookie CSRF
     $("form").addEventListener("submit", async ev => {
         ev.preventDefault();
@@ -52,7 +64,7 @@
         }
         $("go").disabled = true;
         try {
-            const r = await postJson("/api/clave/olvido", {email});
+            const r = await postJson("/api/clave/olvido", {email, producto: producto()});
             status(r.detail + " El enlace vale 1 hora.");
         } catch (e) {
             status(e.message, true);

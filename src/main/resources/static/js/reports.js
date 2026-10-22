@@ -1,13 +1,7 @@
 // RinkReports: marca, barra del usuario y visor del informe (en pantalla, con exportación a PDF y a Excel).
-// Va después de /js/app.js (usa $, session y renderUserBar). Las páginas llevan body data-producto="reports".
+// Va después de /js/app.js (usa $, session, renderUserBar y la marca). Las páginas llevan body data-producto="reports".
 
-/** Marca de la barra superior: el libro de informes, con renglones y una columna de totales. */
-const RR_BRAND = `<header class="brand">
-    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2fd3a0"/><rect x="13" y="11" width="38" height="42" rx="3" fill="#fff"/><g stroke="#08130f" stroke-width="2.4" stroke-linecap="round"><path d="M19 21 H36 M19 29 H36 M19 37 H36"/><path d="M41 21 H45 M41 29 H45 M41 37 H45"/></g><path d="M19 45 H45" stroke="#08130f" stroke-width="3.2" stroke-linecap="round"/></svg>
-    <div><b>RinkReports</b><small>Informes de hockey sobre patines</small></div>
-</header>`;
-
-$("brand").outerHTML = RR_BRAND;
+$("brand").outerHTML = marca();
 // Al salir, a la portada de RinkReports.
 document.body.dataset.salir = "/rinkreports";
 

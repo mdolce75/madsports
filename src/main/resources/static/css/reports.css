@@ -1,9 +1,10 @@
 /*
  * RinkReports: el mismo look and feel que RinkMetrics (app.css: tipografías, tableros, planillas, botones) con su propia
  * paleta: fondo verde noche, paneles verde pizarra, esmeralda como color principal y ámbar para lo que se destaca.
- * Va después de /css/app.css y solo cambia sus variables, más el visor del informe.
+ * Va después de /css/app.css y solo cambia sus variables, más el visor del informe. La paleta se aplica a las páginas
+ * con body data-producto="reports" (las compartidas, como "Olvidé mi clave", la toman según el producto).
  */
-:root {
+:root:has(> body[data-producto="reports"]) {
     --bg: #08130f;
     --panel: #10231c;
     --panel-2: #163126;
@@ -20,13 +21,13 @@
     --dark: #050e0a;
     --accent-on-dark: #2fd3a0;
 }
-body {
+body[data-producto="reports"] {
     background:
         radial-gradient(1200px 500px at 85% -10%, rgba(47, 211, 160, .16), transparent 60%),
         radial-gradient(900px 500px at -10% 110%, rgba(255, 193, 69, .08), transparent 60%),
         var(--bg);
 }
-.cintillo { background: var(--lime); color: #1d1300; }
+body[data-producto="reports"] .cintillo { background: var(--lime); color: #1d1300; }
 
 /* Las opciones de la portada (Jugador / Club) */
 .example footer { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0; border: 0; font-size: inherit; }

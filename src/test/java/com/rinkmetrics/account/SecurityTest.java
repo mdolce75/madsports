@@ -50,6 +50,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -132,21 +133,28 @@ class SecurityTest {
         return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", clave));
     }
 
+    /** Ingreso desde la pantalla de un producto (REPORTS o METRICS). */
+    ResultActions loginEn(String usuario, String producto) throws Exception {
+        return mvc.perform(post("/api/login").with(csrf()).param("usuario", usuario).param("clave", "clave-segura")
+                .param("producto", producto));
+    }
+
     /** Token del último mail enviado a esa dirección con un enlace a {@code path}. */
     String token(String email, String path) {
         ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
         verify(mailer, atLeastOnce()).send(mail.capture());
         String last = mail.getAllValues().stream().filter(m -> m.to().equals(email)).reduce((a, b) -> b)
                 .orElseThrow().url();
-        Matcher m = Pattern.compile(Pattern.quote(path) + "\\?token=([A-Za-z0-9_-]+)").matcher(last);
+        Matcher m = Pattern.compile(Pattern.quote(path) + "\\?(?:[^#]*&)?token=([A-Za-z0-9_-]+)").matcher(last);
         assertThat(m.find()).as("enlace en el mail:\n%s", last).isTrue();
         return m.group(1);
     }
 
-    /** Confirma el email con el enlace del mail. */
+    /** Confirma el email con el enlace del mail: lleva al ingreso del producto de la cuenta. */
     void confirmar(String email) throws Exception {
         mvc.perform(get("/api/verificar").param("token", token(email, "/api/verificar")))
-                .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/login.html?verificado"));
+                .andExpect(status().isSeeOther())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("login.html?verificado")));
     }
 
     Usuario saved(String usuario, Perfil perfil) {
@@ -268,10 +276,14 @@ class SecurityTest {
         mvc.perform(get("/rinkmetrics")).andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/dt-inicio.html"));
         // Al ingreso, con la pantalla a la que volver después.
+        // Las pantallas de RinkReports van a su ingreso; las de RinkMetrics, al suyo.
         mvc.perform(get("/rinkreports/club.html")).andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login.html?volver=%2Frinkreports%2Fclub.html"));
+                .andExpect(redirectedUrl("/rinkreports/login.html?volver=%2Frinkreports%2Fclub.html"));
         mvc.perform(get("/rinkreports/jugador.html"))
-                .andExpect(redirectedUrl("/login.html?volver=%2Frinkreports%2Fjugador.html"));
+                .andExpect(redirectedUrl("/rinkreports/login.html?volver=%2Frinkreports%2Fjugador.html"));
+        mvc.perform(get("/dt.html")).andExpect(redirectedUrl("/login.html?volver=%2Fdt.html"));
+        mvc.perform(get("/rinkreports/login.html")).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/registro.html")).andExpect(status().isOk());
         // Las direcciones viejas de los informes llevan a RinkReports.
         mvc.perform(get("/club.html")).andExpect(redirectedUrl("/rinkreports/club.html"));
         mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/jugador.html"));
@@ -503,7 +515,8 @@ class SecurityTest {
     void elEnlaceDeConfirmacionSirveUnaSolaVez() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
         String token = token("ana@example.com", "/api/verificar");
-        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/login.html?verificado"));
+        // La cuenta de club es de RinkReports: al ingreso de RinkReports.
+        mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/rinkreports/login.html?verificado"));
         mvc.perform(get("/api/verificar").param("token", token)).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
         mvc.perform(get("/api/verificar").param("token", "inventado")).andExpect(redirectedUrl("/login.html?verificacion=invalida"));
     }
@@ -550,6 +563,71 @@ class SecurityTest {
         mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"nadie@example.com\"}")).andExpect(status().isOk());
         verify(mailer, never()).send(org.mockito.ArgumentMatchers.argThat(m -> m.to().equals("nadie@example.com")));
+    }
+
+    @Test
+    void cadaProductoTieneSuIngreso() throws Exception {
+        for (Usuario u : List.of(saved("club.uno", Perfil.CLUBFPP), saved("dt.uno", Perfil.DTFPP))) {
+            u.verificarEmail();
+            usuarios.save(u);
+        }
+        assertThat(usuarios.findByUsuario("club.uno").orElseThrow().getProducto()).isEqualTo(Producto.REPORTS);
+        assertThat(usuarios.findByUsuario("dt.uno").orElseThrow().getProducto()).isEqualTo(Producto.METRICS);
+        // Desde su producto, entra; desde el otro, no (ni queda la sesión), y la respuesta dice dónde ingresar.
+        loginEn("club.uno", "REPORTS").andExpect(status().isOk());
+        loginEn("dt.uno", "METRICS").andExpect(status().isOk());
+        loginEn("dt.uno", "REPORTS").andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("OTRO_PRODUCTO"))
+                .andExpect(jsonPath("$.ingreso").value("/login.html"))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("RinkMetrics")));
+        loginEn("club.uno", "METRICS").andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.ingreso").value("/rinkreports/login.html"));
+        // La sesión dice de qué producto es la cuenta.
+        mvc.perform(get("/api/sesion").with(user("club.uno").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.producto").value("REPORTS"));
+    }
+
+    @Test
+    void elMismoEmailPuedeTenerUnaCuentaEnCadaProducto() throws Exception {
+        Map<String, Object> dt = club("profe");
+        dt.putAll(Map.of("perfil", "DTFPP", "suscripcion", "DT_FREE"));
+        register(dt).andExpect(status().isCreated());
+        // Otro DT con el mismo email: no (mismo producto).
+        Map<String, Object> otroDt = new HashMap<>(dt);
+        otroDt.put("usuario", "profe2");
+        register(otroDt).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya hay una cuenta de RinkMetrics con ese email."));
+        // Un jugador de RinkReports con el mismo email: sí. El usuario sigue siendo único en toda la web.
+        Map<String, Object> jugador = player("profe.jugador");
+        jugador.put("email", "profe@example.com");
+        register(jugador).andExpect(status().isCreated());
+        Map<String, Object> mismoUsuario = player("profe");
+        mismoUsuario.put("email", "otro@example.com");
+        register(mismoUsuario).andExpect(status().isConflict());
+
+        // Cada mail, con la marca de su producto.
+        ArgumentCaptor<MailContent> mails = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer, atLeastOnce()).send(mails.capture());
+        assertThat(mails.getAllValues()).extracting(MailContent::producto, MailContent::subject)
+                .contains(org.assertj.core.groups.Tuple.tuple(Producto.METRICS, "Confirmá tu cuenta de RinkMetrics"),
+                        org.assertj.core.groups.Tuple.tuple(Producto.REPORTS, "Confirmá tu cuenta de RinkReports"));
+
+        // "Olvidé mi clave" desde RinkReports va a la cuenta de RinkReports, con su enlace.
+        confirmar("profe@example.com");
+        mvc.perform(post("/api/clave/olvido").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"profe@example.com\",\"producto\":\"REPORTS\"}")).andExpect(status().isOk());
+        verify(mailer, atLeastOnce()).send(mails.capture());
+        MailContent recupero = mails.getAllValues().stream().filter(m -> m.subject().startsWith("Elegí una clave"))
+                .reduce((a, b) -> b).orElseThrow();
+        assertThat(recupero.producto()).isEqualTo(Producto.REPORTS);
+        assertThat(recupero.url()).contains("/restablecer.html?producto=reports&token=");
+        assertThat(realMailer.html(recupero)).contains("RinkReports").doesNotContain(">RinkMetrics<");
+    }
+
+    @Test
+    void lasOpcionesDelRegistro() throws Exception {
+        mvc.perform(get("/api/registro/opciones")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.club").isBoolean()).andExpect(jsonPath("$.jugadorAmp").isBoolean());
     }
 
     @Test
