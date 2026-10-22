@@ -462,8 +462,13 @@ como clave (alcanza con permiso de solo envío).
 
 ```bash
 export GEMINI_API_KEY=...   # opcional: sin key se usa el análisis por reglas
-./mvnw spring-boot:run
+./mvnw -DskipTests install       # compila los módulos (una vez, o después de cambiar alguno)
+./mvnw -pl app spring-boot:run
 ```
+
+O con el jar: `./mvnw -DskipTests package` y `java -jar app/target/madsports-app-0.1.0-SNAPSHOT.jar`, desde la raíz
+del proyecto (la base local queda en `./data`; `spring-boot:run` también arranca en la raíz). En IntelliJ, la clase
+principal es `com.madsports.MadSportsApplication`, del módulo `madsports-app`, con el directorio de trabajo en la raíz.
 
 Abrir http://localhost:8080.
 
@@ -577,21 +582,22 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 
 ## Arquitectura
 
-Un solo proyecto con dos productos de Mad Sports. El código está separado en capas, camino a un proyecto `madsports`
-con un módulo por producto:
+El proyecto **madsports** es un multi-módulo Maven con los dos productos de Mad Sports en carpetas separadas. Cada
+módulo solo usa los de abajo: Maven no compila un import de un módulo que no declaró.
 
-| Capa | Paquetes (`com.madsports.*`) | Qué tiene |
-|---|---|---|
-| Datos de hockey | `sidgad`, `catalog`, `stats` | SIDGAD, clubes y categorías, planteles (`RosterService`, `ClubTeams`) y estadísticas |
-| Plataforma | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes y el paso de plantillas a PDF (`Plantillas`) |
-| RinkReports | `report`, `player`, `analysis` | Informes de club y de jugador, Excel, análisis con IA, cupo de informes |
-| RinkMetrics | `dt` | Partidos en vivo, equipos, planteles e informes del DT |
-| App | `monitor` y la clase principal | Lo que junta todo (el chequeo diario de SIDGAD) |
+| Módulo (carpeta) | Paquetes (`com.madsports.*`) | Qué tiene | Usa |
+|---|---|---|---|
+| `hockey-datos` | `sidgad`, `catalog`, `stats` | SIDGAD, clubes y categorías, planteles (`RosterService`, `ClubTeams`) y estadísticas | — |
+| `plataforma` | `account`, `config`, `pdf` | Cuentas, seguridad, mails, planes, plantillas a PDF (`Plantillas`); `app.css`, `app.js`, ingreso y registro compartidos, mails | `hockey-datos` |
+| `rinkreports` | `report`, `player`, `analysis` | Informes de club y de jugador, Excel, análisis con IA, cupo de informes; `/rinkreports/**` | `plataforma` |
+| `rinkmetrics` | `dt` | Partidos en vivo, equipos, planteles e informes del cuerpo técnico; `dt.html`, `js/dt`, su portada | `plataforma` |
+| `app` (`madsports-app`) | `monitor` y `MadSportsApplication` | La aplicación: junta todo (un solo jar), `application.yml`, migraciones, la home de Mad Sports, el chequeo diario de SIDGAD y los tests | todos |
 
-Cada producto usa los datos de hockey y la plataforma, **nunca el otro producto**; la plataforma no depende de los
-productos (lo que un producto aporta a la sesión, como el cupo de informes, entra por una interfaz:
-`InformesDelMes`). `ArquitecturaTest` (ArchUnit) hace cumplir estas reglas: un import que las rompa hace fallar el
-build. Queda pendiente que los datos de hockey lean su configuración sin pasar por `config`.
+Cada módulo lleva su código y sus recursos (`static/`, `templates/`); la app los sirve juntos desde el classpath. Lo
+que un producto aporta a la sesión, como el cupo de informes, entra por una interfaz de la plataforma
+(`InformesDelMes`). Los tests de Java están en `app` (casi todos levantan la aplicación completa) y los de las
+pantallas de RinkMetrics (node:test y Playwright), en `rinkmetrics/src/test`. `ArquitecturaTest` (ArchUnit) controla
+además las reglas entre paquetes: ningún producto usa el otro.
 
 ## Tests
 
@@ -608,16 +614,16 @@ npm run demo    # la demo sin levantar la app: http://localhost:8099/dt-demo.htm
 |---|---|---|---|
 | `*Test` | surefire | H2 en memoria | Parsers contra fixtures, motor de estadísticas, informes, servicios y la API completa con MockMvc |
 | `*IT` | failsafe | PostgreSQL 16 (un contenedor por clase) | `MigracionesIT` (las dos carpetas de migraciones tienen las mismas versiones, se aplican todas y el esquema queda con zona horaria, cascadas y únicos) y los flujos de la API sobre la base de producción: `SecurityIT`, `AltaInformesCerradaIT`, `LimiteIntentosIT`, `DtControllerIT`, `ContratoApiDtIT` (heredan los casos de su `*Test`) |
-| `src/test/js/*.test.mjs` | node:test | — | Los módulos de `js/dt` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
-| `src/test/e2e/*.spec.mjs` | Playwright | — | La demo en un navegador (celular y escritorio): carga de acciones, deshacer, arquero en cancha, sin señal, fin del partido con su informe, Control panel, Partidos, Estadísticas, Informes, ABM de Equipo y equipos que cambian en otro dispositivo |
+| `rinkmetrics/src/test/js/*.test.mjs` | node:test | — | Los módulos de `js/dt` (períodos y métricas de los informes) y el contrato de la API contra la API simulada de la demo |
+| `rinkmetrics/src/test/e2e/*.spec.mjs` | Playwright | — | La demo en un navegador (celular y escritorio): carga de acciones, deshacer, arquero en cancha, sin señal, fin del partido con su informe, Control panel, Partidos, Estadísticas, Informes, ABM de Equipo y equipos que cambian en otro dispositivo |
 
-**Contrato de la API de RinkMetrics** (`src/test/resources/dt/contrato-api.json`): escenarios de pedidos y respuestas
+**Contrato de la API de RinkMetrics** (`app/src/test/resources/dt/contrato-api.json`): escenarios de pedidos y respuestas
 (equipos, jugadores, partido en vivo e informes, con las métricas calculadas a mano) que corren el servidor
 (`ContratoApiDtTest` con H2 y `ContratoApiDtIT` con PostgreSQL) y la API simulada de la demo (`js/dt/demo-api.js`,
 que arma los informes con `js/dt/informe.js`, el mismo cálculo de la pantalla sin señal). Así la demo, la pantalla
 sin señal y el servidor no se separan: un cambio en uno sin el otro rompe el CI.
 
-La cobertura de JaCoCo suma las dos suites y queda en `target/site/jacoco/index.html`.
+La cobertura de JaCoCo suma las dos suites y queda en `app/target/site/jacoco-aggregate/index.html` (todos los módulos).
 
 El CI de GitHub Actions (`.github/workflows/ci.yml`) corre en cada PR y en cada push a `main` dos jobs: **Backend**
 (`./mvnw verify`: publica el resumen de cobertura en la corrida, el reporte como artefacto y, si algo falla, los
@@ -625,7 +631,7 @@ reportes de surefire y failsafe) y **Pantallas** (`npm test` y los E2E con el Ch
 publica el reporte con trazas y capturas). Dependabot (`.github/dependabot.yml`) abre PRs semanales con las
 dependencias de Maven, de npm y las acciones de GitHub, que valida el mismo CI.
 
-Los parsers y el motor se prueban contra HTML real guardado en `src/test/resources/fixtures` (octubre de 2026:
+Los parsers y el motor se prueban contra HTML real guardado en `app/src/test/resources/fixtures` (octubre de 2026:
 actas, calendarios, posiciones, la ficha de temporada de un jugador y el catálogo 2026 con la FPP y la AMP). Si SIDGAD
 cambia el markup, actualizar los fixtures y ver qué test falla. La seguridad, el registro y los planes se prueban con
 MockMvc y H2 en memoria (el dólar de los tests es fijo: $ 1.500).

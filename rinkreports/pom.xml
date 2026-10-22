@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.madsports</groupId>
+        <artifactId>madsports</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>rinkreports</artifactId>
+    <name>rinkreports</name>
+    <description>RinkReports: informes de club y de jugador (en pantalla, PDF y Excel) con análisis de IA</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.madsports</groupId>
+            <artifactId>plataforma</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Excel (.xlsx) de los informes: liviano, sin Apache POI -->
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel</artifactId>
+            <version>${fastexcel.version}</version>
+        </dependency>
+    </dependencies>
+</project>

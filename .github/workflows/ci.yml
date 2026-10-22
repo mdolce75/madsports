@@ -1,4 +1,4 @@
-# CI de RinkMetrics, en cada PR y en cada push a main:
+# CI de Mad Sports (RinkReports y RinkMetrics), en cada PR y en cada push a main:
 # - Backend: tests unitarios (*Test, H2 en memoria), de integración (*IT, PostgreSQL real con Testcontainers) y
 #   cobertura de JaCoCo.
 # - Pantallas: tests de los módulos de Métricas DT y del contrato de la API contra la demo (node:test), y E2E de la
@@ -34,15 +34,15 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # Unitarios (*Test) + integración (*IT, PostgreSQL 16 con Testcontainers; Docker ya está disponible en el
-      # runner) + reporte de cobertura de JaCoCo.
+      # Todos los módulos: unitarios (*Test) + integración (*IT, PostgreSQL 16 con Testcontainers; Docker ya está
+      # disponible en el runner) + reporte de cobertura de JaCoCo de todos los módulos (app/target/site/jacoco-aggregate).
       - name: Build y tests
         run: ./mvnw -B -ntp verify
 
       - name: Resumen de cobertura
         if: always()
         run: |
-          csv=target/site/jacoco/jacoco.csv
+          csv=app/target/site/jacoco-aggregate/jacoco.csv
           [ -f "$csv" ] || exit 0
           awk -F, 'NR > 1 { lm += $8; lc += $9; bm += $6; bc += $7 }
             END { printf "### Cobertura\n\n| Líneas | Ramas |\n|---|---|\n| %.1f %% | %.1f %% |\n",
@@ -53,7 +53,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: cobertura
-          path: target/site/jacoco
+          path: app/target/site/jacoco-aggregate
           if-no-files-found: ignore
           retention-days: 14
 
@@ -63,8 +63,8 @@ jobs:
         with:
           name: reportes-tests
           path: |
-            target/surefire-reports
-            target/failsafe-reports
+            */target/surefire-reports
+            */target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14
 
