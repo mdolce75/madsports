@@ -133,7 +133,7 @@ function showReady(job) {
 
 /**
  * Menú superior, al lado de la marca, con las secciones del producto de la página: RinkMetrics (inicio, la demo y
- * "Por qué RinkMetrics") o RinkReports (body data-product="reports": inicio y ejemplos). La página marca la suya con
+ * "Por qué RinkMetrics") o RinkReports (body data-product="reports": inicio, ejemplos y "Por qué RinkReports"). La página marca la suya con
  * data-section en el body. Se agrega cuando la página ya puso la marca. Las pantallas de RinkMetrics (body.coach-page) no
  * lo llevan: tienen su propio menú en esa barra.
  */
@@ -141,7 +141,8 @@ const SECTIONS = {
     metrics: {home: "/rinkmetrics", name: "RinkMetrics", items: [["home", "Inicio", "/rinkmetrics"],
         ["demo", "Demo", "/coach-demo.html"], ["why", "Por qué RinkMetrics", "/rinkmetrics/why.html"]]},
     reports: {home: "/rinkreports", name: "RinkReports", items: [["home", "Inicio", "/rinkreports"],
-        ["samples", "Ejemplos", "/rinkreports/sample.html"]]}
+        ["samples", "Ejemplos", "/rinkreports/sample.html"],
+        ["why", "Por qué RinkReports", "/rinkreports/why.html"]]}
 };
 
 document.addEventListener("DOMContentLoaded", () => {

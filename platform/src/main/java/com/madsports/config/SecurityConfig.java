@@ -78,7 +78,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/index.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/",
-                                "/rinkreports/index.html", "/rinkreports/sample.html", "/rinkreports/login.html",
+                                "/rinkreports/index.html", "/rinkreports/sample.html", "/rinkreports/why.html", "/rinkreports/login.html",
                                 "/rinkreports/signup.html", "/rinkmetrics", "/rinkmetrics/", "/rinkmetrics/index.html",
                                 "/rinkmetrics/why.html", "/rinkmetrics/login.html", "/rinkmetrics/signup.html", "/coach-demo.html",
                                 "/forgot-password.html", "/reset-password.html", "/css/**", "/js/**", "/img/**", "/coach-sw.js",
