@@ -7,9 +7,7 @@ import org.dhatim.fastexcel.reader.Row;
 import org.dhatim.fastexcel.reader.Sheet;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -20,22 +18,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Los informes en Excel: las mismas cifras que el PDF, en hojas para trabajar los números. */
-@SpringBootTest(properties = "rinkmetrics.ai.enabled=false")
-@AutoConfigureMockMvc
+@SpringBootTest(classes = InformesTestConfig.class)
 class ExcelExporterTest {
 
     static final LocalDate HOY = LocalDate.of(2026, 10, 13);
 
     @Autowired ExcelExporter excel;
     @Autowired SampleReport sample;
-    @Autowired MockMvc mvc;
 
     @Test
     void elDeClubTieneElResumenYUnaHojaPorCategoria() throws IOException {
@@ -71,21 +62,6 @@ class ExcelExporterTest {
         Row total = hojas.get("Resumen").stream().filter(x -> "Total".equals(x.getCellText(0))).findFirst().orElseThrow();
         assertThat(number(total, 1)).isEqualTo(r.total().played());
         assertThat(number(total, 5)).isEqualTo(r.total().goals());
-    }
-
-    @Test
-    void losEjemplosSeVenEnPantallaYSeExportan() throws Exception {
-        mvc.perform(get("/api/ejemplo.html")).andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith("text/html"))
-                .andExpect(content().string(containsString("Primera Masculino")));
-        mvc.perform(get("/api/ejemplo-jugador.html")).andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith("text/html"));
-        mvc.perform(get("/api/ejemplo.xlsx")).andExpect(status().isOk())
-                .andExpect(content().contentType(Descargas.XLSX))
-                .andExpect(header().string("Content-Disposition", containsString("attachment")))
-                .andExpect(header().string("Content-Disposition", containsString(".xlsx")));
-        mvc.perform(get("/api/ejemplo-jugador.xlsx")).andExpect(status().isOk())
-                .andExpect(content().contentType(Descargas.XLSX));
     }
 
     private static int number(Row row, int cell) {

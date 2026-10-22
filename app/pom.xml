@@ -94,10 +94,12 @@
             <version>${archunit.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- Datos de prueba compartidos (Fixtures, HTML guardado de SIDGAD, partidos de StatsEngineTest). -->
         <dependency>
-            <groupId>org.dhatim</groupId>
-            <artifactId>fastexcel-reader</artifactId>
-            <version>${fastexcel.version}</version>
+            <groupId>com.madsports</groupId>
+            <artifactId>hockey-data</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
     </dependencies>

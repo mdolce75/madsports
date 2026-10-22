@@ -595,8 +595,17 @@ módulo solo usa los de abajo: Maven no compila un import de un módulo que no d
 
 Cada módulo lleva su código y sus recursos (`static/`, `templates/`); la app los sirve juntos desde el classpath. Lo
 que un producto aporta a la sesión, como el cupo de informes, entra por una interfaz de la plataforma
-(`InformesDelMes`). Los tests de Java están en `app` (casi todos levantan la aplicación completa) y los de las
-pantallas de RinkMetrics (node:test y Playwright), en `rinkmetrics/src/test`. `ArquitecturaTest` (ArchUnit) controla
+(`InformesDelMes`).
+
+**Tests, cada uno en su módulo:**
+
+| Módulo | Tests |
+|---|---|
+| `hockey-data` | Parsers y cliente de SIDGAD, catálogo, motor de estadísticas (con el HTML guardado en `src/test/resources/fixtures`, que publica como *test-jar* para los demás) |
+| `platform` | Cotización del dólar |
+| `rinkreports` | Informes de club y de jugador, PDF, Excel, ejemplos y análisis (los que usan Spring levantan solo lo de los informes: `InformesTestConfig`, sin base ni seguridad) |
+| `rinkmetrics` | Partido y acciones; las pantallas en `src/test/js` (node:test) y `src/test/e2e` (Playwright) |
+| `app` | Lo que necesita la aplicación completa: seguridad y cuentas, API de RinkMetrics y su contrato, API de los ejemplos, límites, migraciones y `ArquitecturaTest` | `ArquitecturaTest` (ArchUnit) controla
 además las reglas entre paquetes: ningún producto usa el otro.
 
 ## Tests

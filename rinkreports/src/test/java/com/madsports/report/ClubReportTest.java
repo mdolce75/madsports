@@ -27,7 +27,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /** Informe del club completo: por rama y, dentro de la rama, por categoría, con sus cifras y sus top 3. */
-@SpringBootTest(properties = "rinkmetrics.ai.enabled=false")
+@SpringBootTest(classes = InformesTestConfig.class)
 class ClubReportTest {
 
     static final LocalDate HOY = LocalDate.of(2026, 10, 13);

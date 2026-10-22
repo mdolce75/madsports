@@ -19,7 +19,7 @@ import com.madsports.stats.StatsEngine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
-@SpringBootTest(properties = "rinkmetrics.ai.enabled=false")
+@SpringBootTest(classes = InformesTestConfig.class)
 class SampleReportTest {
 
     static final LocalDate HOY = LocalDate.of(2026, 10, 13);
