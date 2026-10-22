@@ -11,11 +11,29 @@
         <relativePath/>
     </parent>
 
+    <!--
+      Mad Sports: sus productos RinkReports (informes) y RinkMetrics (métricas en vivo). Un módulo por capa; cada uno
+      solo usa los de abajo (Maven no compila un import de un módulo que no declaró):
+        hockey-datos  SIDGAD, clubes, categorías, planteles y estadísticas
+        plataforma    cuentas, seguridad, mails, planes, plantillas a PDF      (usa hockey-datos)
+        rinkreports   informes de club y de jugador, Excel, análisis con IA     (usa plataforma)
+        rinkmetrics   partidos en vivo del cuerpo técnico                       (usa plataforma)
+        app           la aplicación: junta todo, configuración, migraciones y tests
+    -->
     <groupId>com.madsports</groupId>
-    <artifactId>rink-metrics</artifactId>
+    <artifactId>madsports</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>rink-metrics</name>
-    <description>Informes PDF de estadísticas de hockey sobre patines (FPP) con análisis de IA</description>
+    <packaging>pom</packaging>
+    <name>madsports</name>
+    <description>Mad Sports: métricas, estadísticas e informes de hockey sobre patines (RinkReports y RinkMetrics)</description>
+
+    <modules>
+        <module>hockey-datos</module>
+        <module>plataforma</module>
+        <module>rinkreports</module>
+        <module>rinkmetrics</module>
+        <module>app</module>
+    </modules>
 
     <properties>
         <java.version>21</java.version>
@@ -28,130 +46,8 @@
         <jacoco.version>0.8.15</jacoco.version>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-
-        <!-- Extracción: fragmentos HTML de server2.sidgad.es -->
-        <dependency>
-            <groupId>org.jsoup</groupId>
-            <artifactId>jsoup</artifactId>
-            <version>${jsoup.version}</version>
-        </dependency>
-
-        <!-- Excel (.xlsx) de los informes: liviano, sin Apache POI -->
-        <dependency>
-            <groupId>org.dhatim</groupId>
-            <artifactId>fastexcel</artifactId>
-            <version>${fastexcel.version}</version>
-        </dependency>
-        <!-- Reglas de dependencia entre paquetes (cada producto no usa el otro): ArquitecturaTest -->
-        <dependency>
-            <groupId>com.tngtech.archunit</groupId>
-            <artifactId>archunit-junit5</artifactId>
-            <version>${archunit.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.dhatim</groupId>
-            <artifactId>fastexcel-reader</artifactId>
-            <version>${fastexcel.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- PDF: HTML (Thymeleaf) -> PDF -->
-        <dependency>
-            <groupId>io.github.openhtmltopdf</groupId>
-            <artifactId>openhtmltopdf-pdfbox</artifactId>
-            <version>${openhtmltopdf.version}</version>
-        </dependency>
-
-        <!-- Usuarios: registro, login y perfiles -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-        <!-- Flyway 10+ trae PostgreSQL en un módulo aparte. -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- Base de producción (FPP_DB_URL=jdbc:postgresql://...). -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- Health check (/actuator/health) con el estado de la base y de SIDGAD. -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Tests de integración (*IT) contra PostgreSQL real en Docker. -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-testcontainers</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
             <!-- Tests unitarios: *Test (H2 en memoria). Tests de integración (PostgreSQL con Testcontainers/Docker): *IT -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -181,9 +77,9 @@
             </plugin>
             <!--
               Cobertura: el agente de JaCoCo instrumenta los tests unitarios (surefire) y los de integración
-              (failsafe) sobre el mismo target/jacoco.exec; el reporte (target/site/jacoco) se genera en verify,
-              después de failsafe, así que suma ambas suites. Va después de failsafe porque en una misma fase
-              Maven ejecuta los plugins en el orden del POM.
+              (failsafe) sobre el mismo target/jacoco.exec de cada módulo. Va después de failsafe porque en una misma
+              fase Maven ejecuta los plugins en el orden del POM. El reporte de todos los módulos lo arma app
+              (report-aggregate).
             -->
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -194,13 +90,6 @@
                         <id>prepare-agent</id>
                         <goals>
                             <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>report</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report</goal>
                         </goals>
                     </execution>
                 </executions>

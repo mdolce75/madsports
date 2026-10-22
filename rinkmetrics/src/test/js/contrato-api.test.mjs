@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {crearApi} from "../../main/resources/static/js/dt/demo-api.js";
 
-const contrato = JSON.parse(readFileSync(new URL("../resources/dt/contrato-api.json", import.meta.url), "utf8"));
+const contrato = JSON.parse(readFileSync(new URL("../../../../app/src/test/resources/dt/contrato-api.json", import.meta.url), "utf8"));
 const {inicio} = contrato;
 
 /** Reemplaza {nombre} por lo guardado: un valor entero ("{equipo}") conserva su tipo; dentro de un texto, se concatena. */

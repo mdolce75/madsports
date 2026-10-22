@@ -2,7 +2,7 @@ import {defineConfig, devices} from "@playwright/test";
 
 /**
  * E2E de Métricas DT sobre la demo (/dt-demo.html): la misma página que usa el DT, con la API simulada en el navegador
- * (js/dt/demo-api.js, verificada contra el contrato del servidor). No necesita backend: src/test/e2e/servidor.mjs sirve
+ * (js/dt/demo-api.js, verificada contra el contrato del servidor). No necesita backend: rinkmetrics/src/test/e2e/servidor.mjs sirve
  * los archivos estáticos.
  *
  * E2E_BROWSER_CHANNEL: navegador. Por defecto el Chrome instalado (no hace falta `npx playwright install`); `chromium`
@@ -12,7 +12,7 @@ const channel = process.env.E2E_BROWSER_CHANNEL ?? "chrome";
 const PUERTO = 8099;
 
 export default defineConfig({
-    testDir: "src/test/e2e",
+    testDir: "rinkmetrics/src/test/e2e",
     testMatch: "**/*.spec.mjs",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
@@ -35,7 +35,7 @@ export default defineConfig({
         {name: "escritorio", use: {viewport: {width: 1280, height: 800}}},
     ],
     webServer: {
-        command: "node src/test/e2e/servidor.mjs",
+        command: "node rinkmetrics/src/test/e2e/servidor.mjs",
         url: `http://localhost:${PUERTO}/dt-demo.html`,
         reuseExistingServer: !process.env.CI,
     },

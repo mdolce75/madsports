@@ -88,7 +88,7 @@ Si un paso falla (o SIDGAD no responde), manda un mail a `ALERTAS_EMAIL` con el 
 vuelve a andar, manda un mail de recuperación. Calendarios sin partidos jugados (temporada que recién empieza) no son
 una falla.
 
-Qué hacer ante una alerta: abrir el portal de SIDGAD, guardar el fragmento que cambió en `src/test/resources/fixtures`,
+Qué hacer ante una alerta: abrir el portal de SIDGAD, guardar el fragmento que cambió en `app/src/test/resources/fixtures`,
 ver qué test de parser falla y ajustar `SidgadParser`.
 
 ## Respaldos
