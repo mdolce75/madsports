@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.rinkmetrics</groupId>
+    <groupId>com.madsports</groupId>
     <artifactId>rink-metrics</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>rink-metrics</name>
