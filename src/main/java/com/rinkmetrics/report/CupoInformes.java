@@ -1,5 +1,10 @@
-package com.rinkmetrics.account;
+package com.rinkmetrics.report;
 
+import com.rinkmetrics.account.InformesDelMes;
+import com.rinkmetrics.account.Perfil;
+import com.rinkmetrics.account.SuscripcionType;
+import com.rinkmetrics.account.Usuario;
+import com.rinkmetrics.account.UsuarioRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Service;
@@ -9,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -18,7 +24,7 @@ import java.util.function.Supplier;
  * rechaza (429) hasta el día 1 del mes siguiente. El club no tiene límite.
  */
 @Service
-public class CupoInformes {
+public class CupoInformes implements InformesDelMes {
 
     private static final DateTimeFormatter DIA = DateTimeFormatter.ofPattern("d/M");
 
@@ -52,6 +58,12 @@ public class CupoInformes {
         public CupoAgotado(String message) {
             super(message);
         }
+    }
+
+    @Override
+    public Map<String, Object> de(Usuario u) {
+        Cupo c = cupo(u);
+        return Map.of("usados", c.usados(), "limite", c.limite(), "renueva", c.renueva().toString());
     }
 
     public Cupo cupo(Usuario u) {

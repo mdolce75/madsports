@@ -5,8 +5,8 @@ import com.rinkmetrics.account.RegistroService.Registro;
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.sidgad.model.Federacion;
 import com.rinkmetrics.config.SecurityConfig;
-import com.rinkmetrics.player.RosterService;
-import com.rinkmetrics.player.RosterService.RosterPlayer;
+import com.rinkmetrics.catalog.RosterService;
+import com.rinkmetrics.catalog.RosterService.RosterPlayer;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -101,13 +102,13 @@ public class AccountController {
     private final SuscripcionTypeRepository planes;
     private final Cotizacion cotizacion;
     private final Clock clock;
-    private final CupoInformes cupo;
+    private final ObjectProvider<InformesDelMes> informes;
 
     public AccountController(RegistroService registro, UsuarioRepository usuarios, RosterService roster,
                              CatalogService catalog, CuentaService cuenta, SuscripcionTypeRepository planes,
-                             Cotizacion cotizacion, Clock clock, CupoInformes cupo) {
+                             Cotizacion cotizacion, Clock clock, ObjectProvider<InformesDelMes> informes) {
         this.clock = clock;
-        this.cupo = cupo;
+        this.informes = informes;
         this.cuenta = cuenta;
         this.planes = planes;
         this.cotizacion = cotizacion;
@@ -221,9 +222,10 @@ public class AccountController {
                 .orElse(SessionView.ANONYMOUS);
     }
 
+    /** Lo aporta RinkReports (su cupo de informes); sin él, la sesión no lo trae. */
     private Map<String, Object> informesMes(Usuario u) {
-        CupoInformes.Cupo c = cupo.cupo(u);
-        return Map.of("usados", c.usados(), "limite", c.limite(), "renueva", c.renueva().toString());
+        InformesDelMes informes = this.informes.getIfAvailable();
+        return informes == null ? null : informes.de(u);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

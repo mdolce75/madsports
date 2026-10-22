@@ -2,7 +2,7 @@ package com.rinkmetrics.dt;
 
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.dt.PlantelDtService.JugadorPlantel;
-import com.rinkmetrics.report.PdfRenderer;
+import com.rinkmetrics.pdf.Plantillas;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
@@ -33,11 +33,11 @@ public class DtInformeService {
     private final AccionDtRepository acciones;
     private final PlantelDtService planteles;
     private final EquipoDtService equipos;
-    private final PdfRenderer pdf;
+    private final Plantillas pdf;
     private final Clock clock;
 
     public DtInformeService(PartidoDtRepository partidos, AccionDtRepository acciones, PlantelDtService planteles,
-                            EquipoDtService equipos, PdfRenderer pdf, Clock clock) {
+                            EquipoDtService equipos, Plantillas pdf, Clock clock) {
         this.partidos = partidos;
         this.acciones = acciones;
         this.planteles = planteles;
@@ -89,11 +89,11 @@ public class DtInformeService {
         if (informe.jugador() != null) {
             nombre += "-" + slug(informe.jugador().nombre());
         }
-        return new Pdf(nombre + ".pdf", pdf.templatePdf("dt-informe", Map.of("r", informe)));
+        return new Pdf(nombre + ".pdf", pdf.pdf("dt-informe", Map.of("r", informe)));
     }
 
     public String html(InformeDt informe) {
-        return pdf.templateHtml("dt-informe", Map.of("r", informe));
+        return pdf.html("dt-informe", Map.of("r", informe));
     }
 
     private InformeDt armar(Usuario u, String titulo, String detalle, boolean unPartido, List<PartidoDt> ps,

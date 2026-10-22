@@ -1,4 +1,4 @@
-package com.rinkmetrics.player;
+package com.rinkmetrics.catalog;
 
 import com.rinkmetrics.catalog.CatalogService.ClubView;
 import com.rinkmetrics.sidgad.model.Competition;
@@ -17,20 +17,20 @@ import java.util.stream.Collectors;
  * misma regla que el informe de club: A y B son equipos distintos, y la letra va solo si el club tiene más de un
  * equipo en esa categoría y rama en algún torneo del año.
  */
-final class ClubTeams {
+public final class ClubTeams {
 
     private ClubTeams() {
     }
 
     /** Equipos del club en la competición (por club y por código o nombre: SIDGAD a veces repite logos). */
-    static List<TeamRef> own(Competition c, ClubView club) {
+    public static List<TeamRef> own(Competition c, ClubView club) {
         return c.teams().stream()
                 .filter(t -> t.clubId() == club.id() && TeamKeys.belongs(t, club.code(), club.name()))
                 .toList();
     }
 
     /** Clave de cada equipo del club ("CAVS B", o "CAVS" si es el único) por id de equipo de SIDGAD. */
-    static Map<Integer, String> keys(List<Competition> comps, ClubView club) {
+    public static Map<Integer, String> keys(List<Competition> comps, ClubView club) {
         Map<Integer, String> keys = new LinkedHashMap<>();
         Map<Competition.Category, List<Competition>> byCategory = comps.stream()
                 .collect(Collectors.groupingBy(Competition::category, LinkedHashMap::new, Collectors.toList()));
@@ -42,13 +42,13 @@ final class ClubTeams {
     }
 
     /** "Infantil B Femenino" para el equipo con esa clave en esa competición. */
-    static String label(Competition c, ClubView club, String key) {
+    public static String label(Competition c, ClubView club, String key) {
         String letter = key.length() > club.code().length() ? key.substring(club.code().length()).trim() : "";
         return c.category().levelLabel() + (letter.isEmpty() ? "" : " " + letter) + " " + c.category().branchLabel();
     }
 
     /** Espera un pedido en paralelo; si falló, relanza el error original. */
-    static <T> T await(Future<T> future) {
+    public static <T> T await(Future<T> future) {
         try {
             return future.get();
         } catch (InterruptedException e) {

@@ -22,6 +22,7 @@
         <jsoup.version>1.23.2</jsoup.version>
         <openhtmltopdf.version>1.1.97</openhtmltopdf.version>
         <fastexcel.version>0.18.4</fastexcel.version>
+        <archunit.version>1.3.0</archunit.version>
         <!-- Docker Engine 29 exige Testcontainers 1.21.4 o posterior (la versión de Spring Boot no lo detecta). -->
         <testcontainers.version>1.21.4</testcontainers.version>
         <jacoco.version>0.8.15</jacoco.version>
@@ -57,6 +58,13 @@
             <groupId>org.dhatim</groupId>
             <artifactId>fastexcel</artifactId>
             <version>${fastexcel.version}</version>
+        </dependency>
+        <!-- Reglas de dependencia entre paquetes (cada producto no usa el otro): ArquitecturaTest -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.dhatim</groupId>

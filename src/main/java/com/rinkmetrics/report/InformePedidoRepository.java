@@ -1,4 +1,4 @@
-package com.rinkmetrics.account;
+package com.rinkmetrics.report;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

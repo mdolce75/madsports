@@ -5,7 +5,7 @@ import com.rinkmetrics.account.Perfil;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.catalog.CatalogService;
-import com.rinkmetrics.player.RosterService;
+import com.rinkmetrics.catalog.RosterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

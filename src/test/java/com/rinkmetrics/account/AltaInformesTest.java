@@ -2,8 +2,8 @@ package com.rinkmetrics.account;
 
 import com.rinkmetrics.catalog.CatalogService;
 import com.rinkmetrics.catalog.CatalogService.ClubView;
-import com.rinkmetrics.player.RosterService;
-import com.rinkmetrics.player.RosterService.RosterPlayer;
+import com.rinkmetrics.catalog.RosterService;
+import com.rinkmetrics.catalog.RosterService.RosterPlayer;
 import com.rinkmetrics.sidgad.model.Federacion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
