@@ -12,6 +12,6 @@
     "demo": "node rinkmetrics/src/test/e2e/servidor.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0"
+    "@playwright/test": "1.64.1"
   }
 }
