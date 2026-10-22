@@ -1,4 +1,4 @@
-// Lo que comparten las vistas de Métricas DT: la sesión, los equipos del DT, los pedidos a la API, el aviso de abajo
+// Lo que comparten las vistas de RinkMetrics: la sesión, los equipos del DT, los pedidos a la API, el aviso de abajo
 // (toast) y utilidades de fechas y de elementos. Usa $ y api de app.js (script clásico, cargado antes).
 
 /** Estado compartido: la sesión del DT, sus equipos y si es la demo. */
@@ -90,7 +90,7 @@ export function sinEquipos(box) {
 
 /** Abre el PDF en otra pestaña (la demo no los genera). */
 export function exportarPdf(url) {
-    if (dt.demo) { toast("La demo no genera PDF: con tu cuenta de Métricas DT exportás cada informe."); return; }
+    if (dt.demo) { toast("La demo no genera PDF: con tu cuenta de RinkMetrics exportás cada informe."); return; }
     window.open(url, "_blank", "noopener");
 }
 

@@ -1,5 +1,5 @@
 {
-  "descripcion": "Contrato de la API de Métricas DT. Lo corren ContratoApiDtTest/IT (el servidor, con H2 y PostgreSQL) y src/test/js/contrato-api.test.mjs (la API simulada de la demo, js/dt/demo-api.js): los dos tienen que dar estas respuestas. Cada escenario arranca con un DT de plan mensual (3 equipos, 25 partidos por mes) del club VELEZ, sin equipos, el 16/10/2026 a las 15:00 (Buenos Aires). {nombre} se reemplaza por lo guardado antes con 'guardar'; 'respuesta' es un subconjunto de la respuesta (las listas, completas y en orden); 'detalle' es el detail del error; 'avanzar' adelanta el reloj, en segundos.",
+  "descripcion": "Contrato de la API de RinkMetrics. Lo corren ContratoApiDtTest/IT (el servidor, con H2 y PostgreSQL) y src/test/js/contrato-api.test.mjs (la API simulada de la demo, js/dt/demo-api.js): los dos tienen que dar estas respuestas. Cada escenario arranca con un DT de plan mensual (3 equipos, 25 partidos por mes) del club VELEZ, sin equipos, el 16/10/2026 a las 15:00 (Buenos Aires). {nombre} se reemplaza por lo guardado antes con 'guardar'; 'respuesta' es un subconjunto de la respuesta (las listas, completas y en orden); 'detalle' es el detail del error; 'avanzar' adelanta el reloj, en segundos.",
   "inicio": {"usuario": "profe", "club": "VELEZ", "plan": "DT_MENSUAL", "instante": "2026-10-16T18:00:00Z"},
   "escenarios": [
     {

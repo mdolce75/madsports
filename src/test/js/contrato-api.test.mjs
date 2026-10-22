@@ -1,4 +1,4 @@
-// La API simulada de la demo (js/dt/demo-api.js) contra el contrato de la API de Métricas DT: los mismos escenarios
+// La API simulada de la demo (js/dt/demo-api.js) contra el contrato de la API de RinkMetrics: los mismos escenarios
 // que corre el servidor (ContratoApiDtTest), con las mismas respuestas.
 import {test} from "node:test";
 import assert from "node:assert/strict";

@@ -1,4 +1,4 @@
-// Métricas DT (/dt.html y la demo, /dt-demo.html): el menú, las vistas y el arranque. Cada vista es un módulo:
+// RinkMetrics (/dt.html y la demo, /dt-demo.html): el menú, las vistas y el arranque. Cada vista es un módulo:
 // panel.js (Control panel), partidos.js y partido.js (la carga en vivo), estadisticas.js, informes.js y equipo.js.
 import * as Cola from "./cola.js";
 import * as Equipo from "./equipo.js";

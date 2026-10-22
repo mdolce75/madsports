@@ -1,4 +1,4 @@
-// Acciones de Métricas DT: los botones de la carga (tipo, resultado, nombre y color) y las reglas que las cuentan
+// Acciones de RinkMetrics: los botones de la carga (tipo, resultado, nombre y color) y las reglas que las cuentan
 // (goles a favor y en contra, acciones del arquero). Las mismas que TipoAccion.java e InformeDt.nombre en el servidor.
 
 // Colores de los botones: cada acción el suyo (texto blanco; la amarilla, oscuro). Defensa = campo propio, ataque =

@@ -293,7 +293,7 @@ class SecurityTest {
         mvc.perform(get("/login.html")).andExpect(status().isOk());
         // Las presentaciones de las dos secciones (Informes y DT) se ven sin sesión.
         mvc.perform(get("/dt-inicio.html")).andExpect(status().isOk());
-        // La demo de Métricas DT y sus capturas, también. La demo es la misma página que /dt.html (sin copia).
+        // La demo de RinkMetrics y sus capturas, también. La demo es la misma página que /dt.html (sin copia).
         mvc.perform(get("/dt-demo.html")).andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/js/dt/main.js")));

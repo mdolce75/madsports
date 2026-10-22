@@ -7,7 +7,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** Métricas DT completo (equipos, planteles, partidos, acciones, cupos, borrado en cascada): los mismos casos de {@link DtControllerTest}, contra PostgreSQL real (migraciones de {@code db/migration/postgresql}). */
+/** RinkMetrics completo (equipos, planteles, partidos, acciones, cupos, borrado en cascada): los mismos casos de {@link DtControllerTest}, contra PostgreSQL real (migraciones de {@code db/migration/postgresql}). */
 @Testcontainers
 // La @TestConfiguration anidada de la clase base no se hereda: se importa (reloj de prueba).
 @Import(DtControllerTest.Config.class)

@@ -24,4 +24,4 @@ createServer(async (req, res) => {
     } catch (e) {
         res.writeHead(404, {"Content-Type": "text/plain; charset=utf-8"}).end("No existe " + ruta);
     }
-}).listen(PUERTO, () => console.log(`Demo de Métricas DT: http://localhost:${PUERTO}/dt-demo.html`));
+}).listen(PUERTO, () => console.log(`Demo de RinkMetrics: http://localhost:${PUERTO}/dt-demo.html`));

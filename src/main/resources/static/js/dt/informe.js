@@ -1,4 +1,4 @@
-// Informes de Métricas DT: el de un partido (con sus eventos) y el de los partidos finalizados de un mes, un bimestre,
+// Informes de RinkMetrics: el de un partido (con sus eventos) y el de los partidos finalizados de un mes, un bimestre,
 // un semestre o un campeonato; del equipo o de un jugador. Se arma con las acciones (también las que todavía no se
 // enviaron) para verlo en vivo y sin señal. Las métricas y el armado son los mismos que los del servidor
 // (InformeDt.java): los dos se prueban contra los mismos casos (src/test/resources/dt/informes.json).

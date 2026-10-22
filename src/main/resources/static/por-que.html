@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Por qué RinkMetrics · RinkMetrics</title>
+    <title>Por qué RinkMetrics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -32,9 +32,9 @@
     <div class="examples">
         <article class="example">
             <span class="tag">Cuerpos técnicos</span>
-            <h3>Métricas DT</h3>
+            <h3>Métricas en vivo</h3>
             <p class="hint">Registro en vivo de las acciones de cada jugador, desde el celular, la tablet o la computadora.</p>
-            <a class="btn primary" href="/dt-inicio.html">Conocer Métricas DT</a>
+            <a class="btn primary" href="/rinkmetrics">Conocer RinkMetrics</a>
         </article>
         <article class="example">
             <span class="tag">Sin cuenta</span>
@@ -75,13 +75,13 @@
         const go = document.createElement("a");
         go.className = "btn primary";
         go.href = s.inicio;
-        go.textContent = s.inicio === "/dt.html" ? "Mis métricas DT" : "Mi cuenta";
+        go.textContent = s.inicio === "/dt.html" ? "Mi RinkMetrics" : "Mi cuenta";
         $("userbar").prepend(go);
         for (const cta of document.querySelectorAll("[data-cta]")) {
             const link = document.createElement("a");
             link.className = "go-link";
             link.href = s.inicio;
-            link.textContent = s.inicio === "/dt.html" ? "Ir a Métricas DT" : "Ir a mi cuenta";
+            link.textContent = s.inicio === "/dt.html" ? "Ir a RinkMetrics" : "Ir a mi cuenta";
             cta.replaceChildren(link);
         }
     });

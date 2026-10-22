@@ -44,7 +44,7 @@ public class RegistroService {
     private final RosterService roster;
     private final PasswordEncoder encoder;
     private final Clock clock;
-    /** ¿Se pueden crear cuentas de club (Informes)? Por ahora no: sí las de jugador y las de Métricas DT. */
+    /** ¿Se pueden crear cuentas de club en RinkReports? */
     private final boolean altaClub;
     /** ¿Se puede elegir un plan pago del DT (el mensual)? Por ahora no: el DT empieza con el free. */
     private final boolean dtPago;

@@ -1,4 +1,4 @@
-// API de Métricas DT simulada para la demo: contesta en el navegador lo mismo que el servidor (DtController y sus
+// API de RinkMetrics simulada para la demo: contesta en el navegador lo mismo que el servidor (DtController y sus
 // servicios: equipos, jugadores, partidos, acciones, reloj e informes), con las mismas validaciones y los mismos
 // mensajes. Se verifica contra los mismos casos que el servidor (src/test/resources/dt/contrato-api.json). No usa el
 // DOM: corre también en Node para esos tests.

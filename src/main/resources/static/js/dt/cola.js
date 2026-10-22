@@ -1,4 +1,4 @@
-// Cola de Métricas DT: cada acción (y cada borrado) se guarda primero en el teléfono, en IndexedDB, y se manda al
+// Cola de RinkMetrics: cada acción (y cada borrado) se guarda primero en el teléfono, en IndexedDB, y se manda al
 // servidor en tandas cada 5 segundos o cuando vuelve la conexión. Si se corta la señal o se recarga la página, nada se
 // pierde; el id de cada acción lo genera el teléfono, así reenviar una tanda no la duplica en el servidor.
 const DB = "rinkmetrics-dt", STORE = "ops", CADA = 5000;

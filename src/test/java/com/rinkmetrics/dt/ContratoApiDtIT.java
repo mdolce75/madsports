@@ -7,7 +7,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/** El contrato de la API de Métricas DT ({@link ContratoApiDtTest}) contra PostgreSQL real. */
+/** El contrato de la API de RinkMetrics ({@link ContratoApiDtTest}) contra PostgreSQL real. */
 @Testcontainers
 @Import(DtControllerTest.Config.class)
 class ContratoApiDtIT extends ContratoApiDtTest {
