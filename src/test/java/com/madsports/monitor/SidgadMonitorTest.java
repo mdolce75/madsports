@@ -4,7 +4,7 @@ import com.madsports.Fixtures;
 import com.madsports.account.MailContent;
 import com.madsports.account.Mailer;
 import com.madsports.catalog.CatalogService;
-import com.madsports.config.RinkMetricsProperties;
+import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.SidgadClient;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,10 +26,8 @@ import static org.mockito.Mockito.verify;
 
 class SidgadMonitorTest {
 
-    static final RinkMetricsProperties PROPS = new RinkMetricsProperties(
-            new RinkMetricsProperties.Sidgad("http://localhost/", "http://localhost", Duration.ZERO, 1,
-                    Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(1), List.of(2026, 2027)),
-            new RinkMetricsProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1)));
+    static final SidgadProperties PROPS = new SidgadProperties("http://localhost/", "http://localhost", Duration.ZERO, 1,
+                    Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(1), List.of(2026, 2027));
 
     final Mailer mailer = mock(Mailer.class);
 

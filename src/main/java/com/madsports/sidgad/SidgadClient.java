@@ -1,6 +1,5 @@
 package com.madsports.sidgad;
 
-import com.madsports.config.RinkMetricsProperties;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.jsoup.Connection;
@@ -26,7 +25,7 @@ public class SidgadClient {
     private static final Logger log = LoggerFactory.getLogger(SidgadClient.class);
     private static final String USER_AGENT = "Mozilla/5.0 (compatible; rink-metrics/0.1)";
 
-    private final RinkMetricsProperties.Sidgad props;
+    private final SidgadProperties props;
     private final Cache<String, String> dataCache;
     private final Cache<String, String> catalogCache;
     private final Cache<Integer, String> sheetCache;
@@ -36,8 +35,8 @@ public class SidgadClient {
     private final Semaphore concurrency;
     private long lastRequestNanos;
 
-    public SidgadClient(RinkMetricsProperties props) {
-        this.props = props.sidgad();
+    public SidgadClient(SidgadProperties props) {
+        this.props = props;
         this.dataCache = Caffeine.newBuilder().expireAfterWrite(this.props.dataTtl()).maximumSize(500).build();
         this.catalogCache = Caffeine.newBuilder().expireAfterWrite(this.props.catalogTtl()).maximumSize(4).build();
         this.sheetCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(3000).build();

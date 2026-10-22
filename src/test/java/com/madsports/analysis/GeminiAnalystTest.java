@@ -2,7 +2,6 @@ package com.madsports.analysis;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.madsports.config.RinkMetricsProperties;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.StatsEngine;
 import com.madsports.stats.StatsEngineTest;
@@ -72,8 +71,7 @@ class GeminiAnalystTest {
 
     GeminiAnalyst analyst(String apiKey) {
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/v1beta";
-        return new GeminiAnalyst(new RinkMetricsProperties(null,
-                new RinkMetricsProperties.Ai(true, apiKey, "gemini-3.8-flash", base, Duration.ofSeconds(10))),
+        return new GeminiAnalyst(new AiProperties(true, apiKey, "gemini-3.8-flash", base, Duration.ofSeconds(10)),
                 MAPPER, Duration.ofMillis(10));
     }
 

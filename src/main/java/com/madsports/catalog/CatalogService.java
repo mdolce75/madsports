@@ -1,7 +1,7 @@
 package com.madsports.catalog;
 
-import com.madsports.config.RinkMetricsProperties;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.sidgad.model.Federacion;
@@ -82,9 +82,9 @@ public class CatalogService {
     private final SidgadClient client;
     private final List<Integer> years;
 
-    public CatalogService(SidgadClient client, RinkMetricsProperties props) {
+    public CatalogService(SidgadClient client, SidgadProperties props) {
         this.client = client;
-        this.years = List.copyOf(props.sidgad().years());
+        this.years = List.copyOf(props.years());
     }
 
     /** Años que se ofrecen (configuración {@code rinkmetrics.sidgad.years}). */

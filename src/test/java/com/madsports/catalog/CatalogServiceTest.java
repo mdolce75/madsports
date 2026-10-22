@@ -1,7 +1,7 @@
 package com.madsports.catalog;
 
 import com.madsports.Fixtures;
-import com.madsports.config.RinkMetricsProperties;
+import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.catalog.CatalogService.CatalogView;
 import com.madsports.catalog.CatalogService.ClubView;
@@ -62,11 +62,9 @@ class CatalogServiceTest {
 
     /** Cliente con las páginas guardadas del portal y del catálogo (sin red). */
     static CatalogService serviceWithFixtures() {
-        RinkMetricsProperties props = new RinkMetricsProperties(
-                new RinkMetricsProperties.Sidgad("http://localhost/", "http://localhost",
+        SidgadProperties props = new SidgadProperties("http://localhost/", "http://localhost",
                         Duration.ZERO, 1, Duration.ofMinutes(1), Duration.ofMinutes(1),
-                        Duration.ofSeconds(1), List.of(2026, 2027)),
-                new RinkMetricsProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1)));
+                        Duration.ofSeconds(1), List.of(2026, 2027));
         SidgadClient client = new SidgadClient(props) {
             @Override
             public String portal() {

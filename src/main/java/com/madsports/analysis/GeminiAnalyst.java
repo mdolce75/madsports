@@ -2,7 +2,6 @@ package com.madsports.analysis;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.madsports.config.RinkMetricsProperties;
 import com.madsports.stats.ReportData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,18 +71,18 @@ public class GeminiAnalyst {
               programados.
             """;
 
-    private final RinkMetricsProperties.Ai props;
+    private final AiProperties props;
     private final ObjectMapper mapper;
     private final HttpClient http;
     private final Duration retryWait;
 
     @Autowired
-    public GeminiAnalyst(RinkMetricsProperties props, ObjectMapper mapper) {
+    public GeminiAnalyst(AiProperties props, ObjectMapper mapper) {
         this(props, mapper, DEFAULT_RETRY_WAIT);
     }
 
-    GeminiAnalyst(RinkMetricsProperties props, ObjectMapper mapper, Duration retryWait) {
-        this.props = props.ai();
+    GeminiAnalyst(AiProperties props, ObjectMapper mapper, Duration retryWait) {
+        this.props = props;
         this.mapper = mapper;
         this.retryWait = retryWait;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();

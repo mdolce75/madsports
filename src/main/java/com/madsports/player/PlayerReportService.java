@@ -4,7 +4,6 @@ import com.madsports.catalog.ClubTeams;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.ClubView;
-import com.madsports.config.RinkMetricsProperties;
 import com.madsports.player.PlayerReport.Line;
 import com.madsports.player.PlayerReport.MatchRow;
 import com.madsports.report.Crests;
@@ -189,7 +188,7 @@ public class PlayerReportService {
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
     public PlayerReportService(CatalogService catalog, SidgadClient sidgad, PdfRenderer renderer, ExcelExporter excel,
-                               Clock clock, RinkMetricsProperties props) {
+                               Clock clock) {
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.renderer = renderer;

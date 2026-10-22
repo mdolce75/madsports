@@ -18,8 +18,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *       producto usa los datos y la plataforma, nunca el otro producto.</li>
  *   <li><b>App</b> ({@code monitor} y la clase principal): lo que junta todo.</li>
  * </ul>
- * Pendiente para los próximos pasos: los datos de hockey todavía leen su configuración de {@code config}
- * ({@code RinkMetricsProperties}).
  */
 class ArquitecturaTest {
 
@@ -56,10 +54,8 @@ class ArquitecturaTest {
 
     @Test
     void losDatosDeHockeyNoDependenDeLaPlataformaNiDeLosProductos() {
-        // config queda permitido por ahora (sus propiedades); el resto de la plataforma, no.
         noClasses().that().resideInAnyPackage(DATOS)
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        concat(new String[] {"..madsports.account..", "..madsports.pdf.."}, RINKREPORTS, RINKMETRICS, APP))
+                .should().dependOnClassesThat().resideInAnyPackage(concat(PLATAFORMA, RINKREPORTS, RINKMETRICS, APP))
                 .check(CLASES);
     }
 

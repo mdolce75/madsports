@@ -1,6 +1,5 @@
 package com.madsports.sidgad;
 
-import com.madsports.config.RinkMetricsProperties;
 import com.madsports.sidgad.SidgadClient.SidgadException;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -65,10 +64,8 @@ class SidgadClientTest {
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.start();
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/";
-        client = new SidgadClient(new RinkMetricsProperties(
-                new RinkMetricsProperties.Sidgad(base, "http://localhost", Duration.ZERO, 3, Duration.ofMinutes(5),
-                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026)),
-                new RinkMetricsProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1))));
+        client = new SidgadClient(new SidgadProperties(base, "http://localhost", Duration.ZERO, 3, Duration.ofMinutes(5),
+                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026)));
     }
 
     @AfterEach
@@ -79,10 +76,8 @@ class SidgadClientTest {
     @Test
     void escudosConCacheYSinFallarSiNoEstan() {
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/logos/";
-        SidgadClient logos = new SidgadClient(new RinkMetricsProperties(
-                new RinkMetricsProperties.Sidgad(base, "http://localhost", Duration.ZERO, 3, Duration.ofMinutes(5),
-                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026)),
-                new RinkMetricsProperties.Ai(false, null, "m", "http://localhost", Duration.ofSeconds(1)))) {
+        SidgadClient logos = new SidgadClient(new SidgadProperties(base, "http://localhost", Duration.ZERO, 3, Duration.ofMinutes(5),
+                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026))) {
             @Override
             protected String logosUrl() {
                 return base;
