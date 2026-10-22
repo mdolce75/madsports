@@ -45,6 +45,9 @@ public class Usuario {
     private String rama;
     private boolean emailVerificado;
     private Instant creado;
+    /** Producto de la cuenta (sale del perfil): RinkReports para Club y Jugador, RinkMetrics para el DT. */
+    @Enumerated(EnumType.STRING)
+    private Producto producto;
 
     /** Suscripción comprada (null si todavía no tiene) y su vigencia. */
     @ManyToOne
@@ -77,6 +80,7 @@ public class Usuario {
         this.clubCodigo = clubCodigo;
         this.perfiles = EnumSet.copyOf(perfiles);
         this.creado = creado;
+        this.producto = Producto.de(perfiles.iterator().next());
     }
 
     /** Datos del jugador de SIDGAD vinculado (perfiles de jugador). */
@@ -101,6 +105,7 @@ public class Usuario {
     public String getCategoria() { return categoria; }
     public String getRama() { return rama; }
     public Instant getCreado() { return creado; }
+    public Producto getProducto() { return producto; }
     public boolean isEmailVerificado() { return emailVerificado; }
     public SuscripcionType getSuscripcionType() { return suscripcionType; }
     public LocalDate getSuscripcionDesde() { return suscripcionDesde; }

@@ -17,9 +17,9 @@
     <div class="split">
     <div class="intro">
     <section class="hero">
-        <span class="tag">Acceso</span>
-        <h1>Tu equipo,<br><em>en números.</em></h1>
-        <p class="lead">Ingresá para acceder a tus informes de rendimiento o a Métricas DT.</p>
+        <span class="tag">Acceso · RinkMetrics</span>
+        <h1>Cada acción,<br><em>en vivo.</em></h1>
+        <p class="lead">Ingresá a RinkMetrics para registrar las estadísticas de tus partidos y ver sus informes.</p>
     </section>
     </div>
     <div class="main">
@@ -44,87 +44,15 @@
         <button class="go" id="go" type="submit">Ingresar</button>
         <div id="status" role="status" aria-live="polite"></div>
         <p class="alt"><a href="/olvido.html">¿Olvidaste tu clave?</a></p>
-        <p class="alt">¿No tenés una cuenta? Creá la tuya de <a href="/registro.html?seccion=informes">jugador</a> o de <a href="/registro.html?seccion=dt">Métricas DT</a> · <a href="/">Volver al inicio</a></p>
+        <p class="alt">¿No tenés una cuenta? <a href="/registro.html">Creá tu cuenta de DT</a> · <a href="/rinkmetrics">Volver a RinkMetrics</a></p>
     </form>
     </div>
     </div>
 
-    <footer>© 2026 RinkMetrics. Todos los derechos reservados.</footer>
+    <footer>© 2026 RinkMetrics · Un producto de <a href="/">Mad Sports</a>.</footer>
 </div>
 
 <script src="/js/app.js"></script>
-<script>
-    $("brand").outerHTML = BRAND;
-
-    const AVISOS = {
-        sinPerfil: ["Tu usuario no tiene un perfil habilitado en esta web.", false],
-        verificado: ["Tu email quedó confirmado: ya podés ingresar.", true],
-        "verificacion=invalida": ["El enlace para confirmar el email venció o ya se usó. Ingresá con tu usuario y clave "
-            + "para pedir uno nuevo.", false],
-        clave: ["Tu clave quedó cambiada: ingresá con la nueva.", true],
-        vencida: ["Tu sesión venció: ingresá de nuevo para seguir donde estabas.", false]
-    };
-    for (const [k, [texto, ok]] of Object.entries(AVISOS)) {
-        if (location.search.includes(k)) {
-            $("notice").hidden = false;
-            $("notice").className = ok ? "notice ok" : "notice";
-            $("notice").textContent = texto;
-        }
-    }
-
-    // Email sin confirmar: ofrece reenviar el mail.
-    function ofrecerReenvio(usuario) {
-        const link = document.createElement("a");
-        link.href = "#";
-        link.textContent = "Reenviar el mail de confirmación";
-        link.addEventListener("click", async ev => {
-            ev.preventDefault();
-            try {
-                const r = await postJson("/api/verificacion/reenviar", {usuario});
-                status(r.detail);
-            } catch (e) {
-                status(e.message, true);
-            }
-        });
-        const p = document.createElement("p");
-        p.className = "alt";
-        p.append(link);
-        $("status").append(p);
-    }
-
-    // Si ya hay sesión, directo a la pantalla de su perfil.
-    session().then(s => {
-        if (s.autenticado && !s.inicio.startsWith("/login.html")) location.replace(volverA() || s.inicio);
-    });
-
-    $("form").addEventListener("submit", async ev => {
-        ev.preventDefault();
-        if (!$("usuario").value.trim() || !$("clave").value) {
-            status("Completá usuario y clave.", true);
-            return;
-        }
-        $("go").disabled = true;
-        status("Ingresando…");
-        try {
-            const res = await api("/api/login", {
-                method: "POST",
-                headers: {"Content-Type": "application/x-www-form-urlencoded"},
-                body: new URLSearchParams(Object.assign({usuario: $("usuario").value.trim(), clave: $("clave").value},
-                    $("recordarme").checked ? {recordarme: "true"} : {}))
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                status(body.detail || "No se pudo ingresar.", true);
-                if (body.code === "EMAIL_NO_VERIFICADO") ofrecerReenvio($("usuario").value.trim());
-                $("go").disabled = false;
-                return;
-            }
-            location.replace(volverA() || body.inicio);
-        } catch (e) {
-            status(e.message, true);
-            $("go").disabled = false;
-        }
-    });
-</script>
+<script src="/js/login.js"></script>
 </body>
 </html>

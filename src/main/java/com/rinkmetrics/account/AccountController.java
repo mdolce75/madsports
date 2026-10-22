@@ -80,14 +80,15 @@ public class AccountController {
 
     /**
      * @param federacion sigla de la federación de sus perfiles (FPP, AMP)
+     * @param producto   REPORTS o METRICS: el producto de la cuenta
      */
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
                               List<String> perfiles, Map<String, Object> club, Map<String, Object> jugador,
                               String inicio, Map<String, Object> suscripcion, int informesPedidos,
-                              String federacion) {
+                              String federacion, String producto) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
-                "/", null, 0, null);
+                "/", null, 0, null, null);
     }
 
     private final RegistroService registro;
@@ -136,7 +137,8 @@ public class AccountController {
     }
 
     /** @param usuario alternativa al email (para reenviar la confirmación desde el ingreso) */
-    public record EmailRequest(String email, String usuario) {
+    /** @param producto REPORTS o METRICS: el de la pantalla (el email puede tener una cuenta en cada producto) */
+    public record EmailRequest(String email, String usuario, String producto) {
     }
 
     public record RestablecerRequest(String token, String clave) {
@@ -145,21 +147,23 @@ public class AccountController {
     /** Enlace del mail de confirmación: confirma y lleva al ingreso. */
     @GetMapping("/verificar")
     public ResponseEntity<Void> verificar(@RequestParam(required = false) String token) {
-        String destino = cuenta.verificar(token) ? "/login.html?verificado" : "/login.html?verificacion=invalida";
+        // Al ingreso del producto de la cuenta; si el enlace no sirve, no se sabe de qué producto es: al de RinkMetrics.
+        String destino = cuenta.verificar(token).map(p -> p.ingreso() + "?verificado")
+                .orElse("/login.html?verificacion=invalida");
         return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(destino)).build();
     }
 
     /** Siempre responde lo mismo, exista o no una cuenta con ese email. */
     @PostMapping("/verificacion/reenviar")
     public Map<String, String> reenviar(@RequestBody EmailRequest req) {
-        cuenta.reenviarVerificacion(req.email(), req.usuario());
+        cuenta.reenviarVerificacion(req.email(), req.usuario(), Producto.parse(req.producto()));
         return Map.of("detail", "Si hay una cuenta sin confirmar con ese email, te mandamos el enlace de nuevo.");
     }
 
     /** Siempre responde lo mismo, exista o no una cuenta con ese email. */
     @PostMapping("/clave/olvido")
     public Map<String, String> olvido(@RequestBody EmailRequest req) {
-        cuenta.olvideClave(req.email());
+        cuenta.olvideClave(req.email(), Producto.parse(req.producto()));
         return Map.of("detail", "Si hay una cuenta con ese email, te mandamos un enlace para elegir una clave nueva.");
     }
 
@@ -182,6 +186,12 @@ public class AccountController {
         return roster.players(Federacion.parse(federacion), clubId, catalog.defaultYear(), categoria, rama);
     }
 
+    /** Qué perfiles se pueden registrar hoy (las cuentas de club y los jugadores de la AMP se habilitan por configuración). */
+    @GetMapping("/registro/opciones")
+    public RegistroService.Opciones opciones() {
+        return registro.opciones();
+    }
+
     @GetMapping("/sesion")
     public SessionView sesion(Authentication auth) {
         if (auth == null || auth instanceof AnonymousAuthenticationToken || !auth.isAuthenticated()) {
@@ -202,7 +212,7 @@ public class AccountController {
                                 "hasta", u.getSuscripcionHasta().toString(),
                                 "equiposMax", u.getSuscripcionType().getEquiposMax(),
                                 "partidosPorMes", u.getSuscripcionType().getPartidosPorMes()),
-                        u.getInformesPedidos(), u.federacion().name()))
+                        u.getInformesPedidos(), u.federacion().name(), u.getProducto().name()))
                 .orElse(SessionView.ANONYMOUS);
     }
 

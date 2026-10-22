@@ -66,7 +66,7 @@
     <div class="plans dt-plan" id="plan-dt" hidden></div>
 
     <div class="cta" data-cta>
-        <a class="go-link" href="/registro.html?seccion=dt">Crear cuenta de DT</a>
+        <a class="go-link" href="/registro.html">Crear cuenta de DT</a>
         <p class="alt">¿Ya tenés una cuenta? <a href="/login.html">Ingresá</a></p>
     </div>
     </div>
@@ -138,7 +138,7 @@
                 card.append(cinta);
             } else {
                 card.className = "plan plan-elegir";
-                card.href = "/registro.html?seccion=dt&plan=" + encodeURIComponent(p.codigo);
+                card.href = "/registro.html?plan=" + encodeURIComponent(p.codigo);
                 card.setAttribute("aria-label", `Elegir el plan ${p.nombre} y crear la cuenta`);
             }
             const nombre = document.createElement("span");

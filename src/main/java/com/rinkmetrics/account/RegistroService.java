@@ -78,7 +78,7 @@ public class RegistroService {
         }
         if (!r.perfil().dt() && !r.perfil().player() && !altaClub) {
             throw new IllegalArgumentException("Las cuentas de club estarán disponibles próximamente. Por ahora podés "
-                    + "crear tu cuenta de jugador o de Métricas DT.");
+                    + "crear tu cuenta de jugador.");
         }
         if (r.perfil() == Perfil.PLAYERAMP && !jugadorAmp) {
             throw new IllegalArgumentException("Las cuentas de jugador de la AMP estarán disponibles próximamente. Por "
@@ -89,8 +89,9 @@ public class RegistroService {
         if (usuarios.existsByUsuario(usuario)) {
             throw new ConflictException("El usuario " + usuario + " ya existe.");
         }
-        if (usuarios.existsByEmailIgnoreCase(email)) {
-            throw new ConflictException("Ya hay un usuario registrado con ese email.");
+        Producto producto = Producto.de(r.perfil());
+        if (usuarios.existsByEmailIgnoreCaseAndProducto(email, producto)) {
+            throw new ConflictException("Ya hay una cuenta de " + producto.nombre() + " con ese email.");
         }
         SuscripcionType plan = plan(r);
         int year = catalog.defaultYear();
@@ -140,6 +141,14 @@ public class RegistroService {
      * {@code rinkmetrics.registro.dt-pago}, y los del jugador, con {@code rinkmetrics.registro.jugador-pago}: hasta
      * que se habilite el cobro figuran como "Próximamente".
      */
+    /** Qué perfiles se pueden registrar hoy (las cuentas de club y los jugadores de la AMP, según la configuración). */
+    public record Opciones(boolean club, boolean jugadorAmp) {
+    }
+
+    public Opciones opciones() {
+        return new Opciones(altaClub, jugadorAmp);
+    }
+
     public boolean disponible(SuscripcionType plan) {
         if (plan.getPrecioUsd().signum() == 0) {
             return true;

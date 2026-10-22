@@ -18,7 +18,21 @@ async function api(url, options = {}) {
 /** Al ingreso con el aviso "Tu sesión venció"; después de ingresar vuelve a esta misma pantalla. */
 function sesionVencida(aviso = true) {
     const volver = location.pathname + location.search + location.hash;
-    location.replace(`/login.html?${aviso ? "vencida&" : ""}volver=${encodeURIComponent(volver)}`);
+    location.replace(`${ingreso()}?${aviso ? "vencida&" : ""}volver=${encodeURIComponent(volver)}`);
+}
+
+/**
+ * Producto de la pantalla: "REPORTS" en las de RinkReports (body data-producto="reports", o las compartidas con
+ * ?producto=reports); si no, "METRICS".
+ */
+function producto() {
+    return document.body.dataset.producto === "reports" || location.pathname.startsWith("/rinkreports/")
+        ? "REPORTS" : "METRICS";
+}
+
+/** Ingreso del producto de la pantalla: RinkReports tiene el suyo; el resto, el de RinkMetrics. */
+function ingreso() {
+    return producto() === "REPORTS" ? "/rinkreports/login.html" : "/login.html";
 }
 
 /** Pantalla a la que volver después de ingresar (solo una de esta web: empieza con una sola "/"). */
@@ -162,3 +176,14 @@ const BRAND = `<header class="brand">
     <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#22b8f0"/><rect x="8" y="15" width="48" height="34" rx="14" fill="none" stroke="#fff" stroke-width="4"/><rect x="20" y="33" width="6" height="9" rx="1.5" fill="#fff"/><rect x="29" y="27" width="6" height="15" rx="1.5" fill="#fff"/><rect x="38" y="21" width="6" height="21" rx="1.5" fill="#fff"/></svg>
     <div><b>RinkMetrics</b><small>Hockey sobre patines</small></div>
 </header>`;
+
+/** Marca de RinkReports: el libro de informes, con renglones y una columna de totales. */
+const RR_BRAND = `<header class="brand">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2fd3a0"/><rect x="13" y="11" width="38" height="42" rx="3" fill="#fff"/><g stroke="#08130f" stroke-width="2.4" stroke-linecap="round"><path d="M19 21 H36 M19 29 H36 M19 37 H36"/><path d="M41 21 H45 M41 29 H45 M41 37 H45"/></g><path d="M19 45 H45" stroke="#08130f" stroke-width="3.2" stroke-linecap="round"/></svg>
+    <div><b>RinkReports</b><small>Informes de hockey sobre patines</small></div>
+</header>`;
+
+/** La marca del producto de la pantalla. */
+function marca() {
+    return producto() === "REPORTS" ? RR_BRAND : BRAND;
+}

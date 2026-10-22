@@ -2,6 +2,8 @@ package com.rinkmetrics.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rinkmetrics.account.Perfil;
+import com.rinkmetrics.account.Producto;
+import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -75,7 +77,7 @@ public class SecurityConfig {
                                             LimiteIntentos limites) throws Exception {
         http
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/", "/index.html", "/informes.html", "/dt-inicio.html", "/dt-demo.html", "/por-que.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/", "/rinkreports/index.html", "/rinkreports/ejemplo.html", "/club.html", "/jugador.html", "/rinkmetrics", "/rinkmetrics/", "/login.html", "/registro.html", "/olvido.html",
+                        .requestMatchers("/", "/index.html", "/informes.html", "/dt-inicio.html", "/dt-demo.html", "/por-que.html", "/madsports", "/madsports.html", "/rinkreports", "/rinkreports/", "/rinkreports/index.html", "/rinkreports/ejemplo.html", "/rinkreports/login.html", "/rinkreports/registro.html", "/club.html", "/jugador.html", "/rinkmetrics", "/rinkmetrics/", "/login.html", "/registro.html", "/olvido.html",
                                 "/restablecer.html", "/css/**", "/js/**", "/img/**", "/dt-sw.js", "/error",
                                 "/api/registro", "/api/registro/**", "/api/sesion", "/api/catalogo", "/api/ejemplo.pdf",
                                 "/api/ejemplo.html", "/api/ejemplo.xlsx", "/api/ejemplo-jugador.html", "/api/ejemplo-jugador.xlsx",
@@ -102,17 +104,23 @@ public class SecurityConfig {
                             if (token != null) {
                                 token.getToken();
                             }
-                            // Clave correcta pero email sin confirmar: no se ingresa. Se chequea después de la clave
-                            // para no revelar a quien no la sabe si la cuenta existe.
-                            if (usuarios.findByUsuario(auth.getName()).filter(u -> !u.isEmailVerificado()).isPresent()) {
-                                recordarme.logout(req, res, auth);   // sin confirmar, tampoco queda recordado
-                                SecurityContextHolder.clearContext();
-                                HttpSession session = req.getSession(false);
-                                if (session != null) {
-                                    session.invalidate();
-                                }
+                            // Clave correcta pero email sin confirmar, o cuenta de otro producto: no se ingresa. Se
+                            // chequea después de la clave para no revelar a quien no la sabe si la cuenta existe.
+                            Usuario u = usuarios.findByUsuario(auth.getName()).orElse(null);
+                            if (u != null && !u.isEmailVerificado()) {
+                                rechazar(req, res, auth, recordarme);   // sin confirmar, tampoco queda recordado
                                 write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "EMAIL_NO_VERIFICADO",
                                         "detail", "Confirmá tu email para ingresar: te mandamos un enlace al registrarte."));
+                                return;
+                            }
+                            // Cada producto tiene su ingreso: la pantalla manda el suyo (producto=REPORTS o METRICS).
+                            Producto pedido = Producto.parse(req.getParameter("producto"));
+                            if (u != null && pedido != null && u.getProducto() != pedido) {
+                                rechazar(req, res, auth, recordarme);
+                                write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "OTRO_PRODUCTO",
+                                        "detail", "Tu cuenta es de " + u.getProducto().nombre() + ": ingresá desde "
+                                                + u.getProducto().nombre() + ".",
+                                        "ingreso", u.getProducto().ingreso()));
                                 return;
                             }
                             write(res, json, HttpStatus.OK, Map.of("inicio", home(auth.getAuthorities())));
@@ -131,10 +139,12 @@ public class SecurityConfig {
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
                 .exceptionHandling(e -> e
                         .defaultAuthenticationEntryPointFor(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), API)
-                        // Una pantalla sin sesión va al ingreso, que después vuelve a esa misma pantalla.
-                        .defaultAuthenticationEntryPointFor((req, res, ex) -> res.sendRedirect(req.getContextPath()
-                                        + "/login.html?volver=" + URLEncoder.encode(req.getRequestURI().substring(
-                                        req.getContextPath().length()), StandardCharsets.UTF_8)),
+                        // Una pantalla sin sesión va al ingreso de su producto, que después vuelve a esa pantalla.
+                        .defaultAuthenticationEntryPointFor((req, res, ex) -> {
+                                    String pantalla = req.getRequestURI().substring(req.getContextPath().length());
+                                    res.sendRedirect(req.getContextPath() + ingreso(pantalla) + "?volver="
+                                            + URLEncoder.encode(pantalla, StandardCharsets.UTF_8));
+                                },
                                 AnyRequestMatcher.INSTANCE)
                         .accessDeniedHandler((req, res, ex) -> {
                             if (API.matches(req)) {
@@ -143,8 +153,9 @@ public class SecurityConfig {
                                                 ? "Tu perfil no tiene acceso a esta sección." : ex.getMessage()));
                             } else {
                                 Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                                String pantalla = req.getRequestURI().substring(req.getContextPath().length());
                                 res.sendRedirect(req.getContextPath()
-                                        + (auth == null ? "/login.html" : home(auth.getAuthorities())));
+                                        + (auth == null ? ingreso(pantalla) : home(auth.getAuthorities())));
                             }
                         }))
                 .csrf(c -> c
@@ -153,6 +164,22 @@ public class SecurityConfig {
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
                 .addFilterBefore(new LimiteIntentosFilter(limites, json), UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    /** Saca la sesión recién creada (y el "Recordarme") de un ingreso rechazado. */
+    private static void rechazar(HttpServletRequest req, HttpServletResponse res, Authentication auth,
+                                 PersistentTokenBasedRememberMeServices recordarme) {
+        recordarme.logout(req, res, auth);
+        SecurityContextHolder.clearContext();
+        HttpSession session = req.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+    }
+
+    /** Ingreso del producto de una pantalla: las de RinkReports, el suyo; el resto, el de RinkMetrics. */
+    static String ingreso(String pantalla) {
+        return (pantalla.startsWith("/rinkreports/") ? Producto.REPORTS : Producto.METRICS).ingreso();
     }
 
     /** Pantalla de inicio según el perfil del usuario. */

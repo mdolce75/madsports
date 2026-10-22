@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
@@ -14,9 +15,13 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByUsuario(String usuario);
 
-    boolean existsByEmailIgnoreCase(String email);
+    /** El email es único dentro de cada producto (el mismo puede tener una cuenta en RinkReports y otra en RinkMetrics). */
+    boolean existsByEmailIgnoreCaseAndProducto(String email, Producto producto);
 
-    Optional<Usuario> findByEmailIgnoreCase(String email);
+    Optional<Usuario> findByEmailIgnoreCaseAndProducto(String email, Producto producto);
+
+    /** Las cuentas con ese email, una por producto como mucho. */
+    List<Usuario> findByEmailIgnoreCaseOrderByIdAsc(String email);
 
     boolean existsByJugadorId(int jugadorId);
 

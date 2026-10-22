@@ -12,9 +12,16 @@ import java.util.List;
  * @param paragraphs cuerpo del mail
  * @param button     texto del botón, que abre {@code url}
  * @param note       aclaración al pie (vencimiento, "si no lo pediste...")
+ * @param producto   producto de la cuenta: su nombre, su logo y su color van en el mail
  */
 public record MailContent(String to, String subject, String preheader, String tag, String title, String greeting,
-                          List<String> paragraphs, String button, String url, String note) {
+                          List<String> paragraphs, String button, String url, String note, Producto producto) {
+
+    /** Un mail de RinkMetrics. */
+    public MailContent(String to, String subject, String preheader, String tag, String title, String greeting,
+                       List<String> paragraphs, String button, String url, String note) {
+        this(to, subject, preheader, tag, title, greeting, paragraphs, button, url, note, Producto.METRICS);
+    }
 
     /** Versión en texto plano, con el enlace completo. */
     public String text() {
@@ -22,7 +29,7 @@ public record MailContent(String to, String subject, String preheader, String ta
         paragraphs.forEach(p -> sb.append(p).append("\n\n"));
         sb.append(button).append(": ").append(url).append("\n\n");
         sb.append(note).append("\n\n");
-        sb.append("RinkMetrics · Estadísticas de hockey sobre patines\n");
+        sb.append(producto.nombre()).append(" · ").append(producto.bajada()).append(" · Un producto de Mad Sports\n");
         return sb.toString();
     }
 }

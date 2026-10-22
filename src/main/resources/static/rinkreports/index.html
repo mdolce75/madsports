@@ -17,7 +17,7 @@
     <div class="topbar">
         <div id="brand"></div>
         <div class="userbar" id="userbar">
-            <a class="btn ghost" href="/login.html?volver=%2Frinkreports">Ingresar</a>
+            <a class="btn ghost" href="/rinkreports/login.html?volver=%2Frinkreports">Ingresar</a>
         </div>
     </div>
 
@@ -53,7 +53,7 @@
                 <li>Fortalezas y aspectos a mejorar</li>
             </ul>
             <footer data-cta="jugador">
-                <a class="btn primary" href="/registro.html?seccion=informes">Crear cuenta de jugador</a>
+                <a class="btn primary" href="/rinkreports/registro.html?opcion=jugador">Crear cuenta de jugador</a>
                 <a class="btn ghost" href="/rinkreports/ejemplo.html?tipo=jugador">Ver ejemplo</a>
             </footer>
         </article>
@@ -68,7 +68,7 @@
                 <li>Fortalezas y debilidades, con análisis de IA</li>
             </ul>
             <footer data-cta="club">
-                <a class="btn primary" href="/registro.html?seccion=informes">Crear cuenta de club</a>
+                <a class="btn primary" href="/rinkreports/registro.html?opcion=club">Crear cuenta de club</a>
                 <a class="btn ghost" href="/rinkreports/ejemplo.html?tipo=club">Ver ejemplo</a>
             </footer>
         </article>
@@ -76,7 +76,7 @@
 
     <h2 class="section-title">Planes para jugadores</h2>
     <div class="plans" id="plan-jugador" hidden></div>
-    <p class="alt">¿Ya tenés una cuenta? <a href="/login.html?volver=%2Frinkreports">Ingresá</a> y vas directo a tu informe.</p>
+    <p class="alt">¿Ya tenés una cuenta? <a href="/rinkreports/login.html?volver=%2Frinkreports">Ingresá</a> y vas directo a tu informe.</p>
     </div>
     </div>
 
@@ -86,7 +86,7 @@
 <script src="/js/app.js"></script>
 <script src="/js/reports.js"></script>
 <script>
-    rrPlans($("plan-jugador"), "PLAYERFPP", "/registro.html?seccion=informes");
+    rrPlans($("plan-jugador"), "PLAYERFPP", "/rinkreports/registro.html?opcion=jugador");
 
     // Con sesión: en lugar de crear cuenta, el acceso directo a su informe.
     rrSessionBar().then(s => {

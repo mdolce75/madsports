@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -61,50 +62,62 @@ public class CuentaService {
             return;
         }
         String token = nuevoToken(u, Tipo.VERIFICACION, VIGENCIA_VERIFICACION);
-        mailer.send(new MailContent(u.getEmail(), "Confirmá tu cuenta de RinkMetrics",
-                "Un paso más: confirmá tu email para empezar a usar RinkMetrics.",
+        Producto p = u.getProducto();
+        mailer.send(new MailContent(u.getEmail(), "Confirmá tu cuenta de " + p.nombre(),
+                "Un paso más: confirmá tu email para empezar a usar " + p.nombre() + ".",
                 "Tu cuenta", "Confirmá tu email", saludo(u),
-                List.of("Gracias por sumarte a RinkMetrics. Para activar tu cuenta (usuario " + u.getUsuario()
+                List.of("Gracias por sumarte a " + p.nombre() + ". Para activar tu cuenta (usuario " + u.getUsuario()
                         + "), confirmá tu email con el botón de abajo.",
-                        "Después ya podés ingresar y generar tus informes de hockey sobre patines."),
+                        p == Producto.METRICS ? "Después ya podés ingresar y registrar las estadísticas de tus partidos."
+                                : "Después ya podés ingresar y ver tus informes de hockey sobre patines."),
                 "Confirmar mi email", baseUrl + "/api/verificar?token=" + token,
-                "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail."));
+                "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.", p));
     }
 
-    /** Vuelve a mandar la confirmación, si hay una cuenta sin confirmar con ese email (o ese usuario). */
+    /**
+     * Vuelve a mandar la confirmación, si hay una cuenta sin confirmar con ese email (o ese usuario).
+     *
+     * @param producto el de la pantalla desde donde se pide (el email puede tener una cuenta en cada producto)
+     */
     @Transactional
-    public void reenviarVerificacion(String email, String usuario) {
-        Optional<Usuario> u = buscarPorEmail(email);
+    public void reenviarVerificacion(String email, String usuario, Producto producto) {
+        Optional<Usuario> u = buscarPorEmail(email, producto);
         if (u.isEmpty() && usuario != null && !usuario.isBlank()) {
             u = usuarios.findByUsuario(usuario.trim().toLowerCase(java.util.Locale.ROOT));
         }
         u.filter(x -> !x.isEmailVerificado()).ifPresent(this::enviarVerificacion);
     }
 
-    /** @return true si el enlace era válido y el email quedó confirmado */
+    /** @return el producto de la cuenta si el enlace era válido y el email quedó confirmado; vacío si no */
     @Transactional
-    public boolean verificar(String token) {
+    public Optional<Producto> verificar(String token) {
         Optional<TokenUsuario> t = vigente(token, Tipo.VERIFICACION);
         t.ifPresent(x -> {
             x.usar();
             x.getUsuario().verificarEmail();
         });
-        return t.isPresent();
+        return t.map(x -> x.getUsuario().getProducto());
     }
 
-    /** "Olvidé mi clave": manda el enlace para elegir una nueva, si existe una cuenta con ese email. */
+    /**
+     * "Olvidé mi clave": manda el enlace para elegir una nueva, si existe una cuenta con ese email.
+     *
+     * @param producto el de la pantalla desde donde se pide (el email puede tener una cuenta en cada producto)
+     */
     @Transactional
-    public void olvideClave(String email) {
-        buscarPorEmail(email).filter(u -> !recienEnviado(u, Tipo.RECUPERO)).ifPresent(u -> {
+    public void olvideClave(String email, Producto producto) {
+        buscarPorEmail(email, producto).filter(u -> !recienEnviado(u, Tipo.RECUPERO)).ifPresent(u -> {
             String token = nuevoToken(u, Tipo.RECUPERO, VIGENCIA_RECUPERO);
-            mailer.send(new MailContent(u.getEmail(), "Elegí una clave nueva para RinkMetrics",
-                    "Pediste cambiar la clave de tu usuario de RinkMetrics.",
+            Producto p = u.getProducto();
+            mailer.send(new MailContent(u.getEmail(), "Elegí una clave nueva para " + p.nombre(),
+                    "Pediste cambiar la clave de tu usuario de " + p.nombre() + ".",
                     "Tu cuenta", "Elegí una clave nueva", saludo(u),
                     List.of("Pediste cambiar la clave de tu usuario " + u.getUsuario()
                             + ". Elegí una nueva con el botón de abajo."),
-                    "Elegir clave nueva", baseUrl + "/restablecer.html?token=" + token,
+                    "Elegir clave nueva", baseUrl + "/restablecer.html?producto=" + p.name().toLowerCase(Locale.ROOT)
+                            + "&token=" + token,
                     "El enlace vale 1 hora y se puede usar una sola vez. Si no lo pediste, ignorá este mail: "
-                            + "tu clave sigue siendo la misma."));
+                            + "tu clave sigue siendo la misma.", p));
         });
     }
 
@@ -127,8 +140,13 @@ public class CuentaService {
         recordados.removeUserTokens(t.getUsuario().getUsuario());
     }
 
-    private Optional<Usuario> buscarPorEmail(String email) {
-        return email == null || email.isBlank() ? Optional.empty() : usuarios.findByEmailIgnoreCase(email.trim());
+    /** La cuenta con ese email en el producto; sin producto, la primera que haya (la más antigua). */
+    private Optional<Usuario> buscarPorEmail(String email, Producto producto) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        return producto != null ? usuarios.findByEmailIgnoreCaseAndProducto(email.trim(), producto)
+                : usuarios.findByEmailIgnoreCaseOrderByIdAsc(email.trim()).stream().findFirst();
     }
 
     private boolean recienEnviado(Usuario u, Tipo tipo) {
