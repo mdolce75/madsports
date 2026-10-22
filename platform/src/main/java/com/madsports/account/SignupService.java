@@ -2,9 +2,9 @@ package com.madsports.account;
 
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.ClubView;
-import com.madsports.sidgad.model.Federation;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.RosterService.RosterPlayer;
+import com.madsports.sidgad.model.Federation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -52,6 +52,8 @@ public class SignupService {
     private final boolean playerPaid;
     /** ¿Se pueden crear cuentas de jugador de la AMP? Por ahora no: solo de la FPP. */
     private final boolean playerAmp;
+    /** ¿Se ofrece la AMP? Oculta hasta nuevo aviso: sin ella, ninguna cuenta nueva es de la AMP. */
+    private final boolean amp;
     private final boolean clubPaid;
 
     public SignupService(UserAccountRepository users, SubscriptionPlanRepository plans, CatalogService catalog,
@@ -60,8 +62,10 @@ public class SignupService {
                            @Value("${madsports.signup.coach-paid:false}") boolean coachPaid,
                            @Value("${madsports.signup.player-paid:false}") boolean playerPaid,
                            @Value("${madsports.signup.club-paid:false}") boolean clubPaid,
-                           @Value("${madsports.signup.player-amp:false}") boolean playerAmp) {
+                           @Value("${madsports.signup.player-amp:false}") boolean playerAmp,
+                           @Value("${madsports.signup.amp:false}") boolean amp) {
         this.playerAmp = playerAmp;
+        this.amp = amp;
         this.clubSignup = clubSignup;
         this.coachPaid = coachPaid;
         this.playerPaid = playerPaid;
@@ -82,6 +86,9 @@ public class SignupService {
         if (!r.profile().coach() && !r.profile().player() && !clubSignup) {
             throw new IllegalArgumentException("Las cuentas de club estarán disponibles próximamente. Por ahora podés "
                     + "crear tu cuenta de jugador.");
+        }
+        if (r.profile().federation() == Federation.AMP && !amp) {
+            throw new IllegalArgumentException("Por ahora las cuentas son solo de la FPP.");
         }
         if (r.profile() == Profile.PLAYERAMP && !playerAmp) {
             throw new IllegalArgumentException("Las cuentas de jugador de la AMP estarán disponibles próximamente. Por "
@@ -144,12 +151,14 @@ public class SignupService {
      * {@code madsports.signup.coach-paid}, y los del jugador, con {@code madsports.signup.player-paid}: hasta
      * que se habilite el cobro figuran como "Próximamente".
      */
-    /** Qué perfiles se pueden registrar hoy (las cuentas de club y los jugadores de la AMP, según la configuración). */
-    public record SignupOptions(boolean club, boolean playerAmp) {
+    /**
+     * Qué perfiles se pueden registrar hoy (las cuentas de club, la AMP y sus jugadores, según la configuración).
+     */
+    public record SignupOptions(boolean club, boolean amp, boolean playerAmp) {
     }
 
     public SignupOptions options() {
-        return new SignupOptions(clubSignup, playerAmp);
+        return new SignupOptions(clubSignup, amp, amp && playerAmp);
     }
 
     public boolean available(SubscriptionPlan plan) {
