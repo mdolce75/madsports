@@ -321,7 +321,7 @@ $("form").addEventListener("submit", async ev => {
         status("Elegí un plan de suscripción.", true);
         return;
     }
-    const missing = ["usuario", "clave", "email"].filter(k => !data[k]);
+    const missing = ["username", "password", "email"].filter(k => !data[k]);
     if (missing.length || !data.clubId) {
         status("Completá todos los campos obligatorios.", true);
         return;
@@ -345,13 +345,13 @@ $("form").addEventListener("submit", async ev => {
     $("go").disabled = true;
     status("Registrando…");
     try {
-        const addPlayer = await postJson("/api/signup", data);
+        const account = await postJson("/api/signup", data);
         // Alta correcta: hay que confirmar el email antes de ingresar.
         $("form").innerHTML = "";
         const done = document.createElement("div");
         done.className = "notice ok";
         done.innerHTML = "<b>¡Listo! Revisá tu correo.</b><p></p><p class=\"alt\"><a href=\"" + login() + "\">Ir a ingresar</a></p>";
-        done.querySelector("p").textContent = `Te mandamos un mail a ${addPlayer.email} con un enlace para confirmar `
+        done.querySelector("p").textContent = `Te mandamos un mail a ${account.email} con un enlace para confirmar `
             + "tu cuenta (vale 48 horas). Después de confirmarla, ya podés ingresar.";
         $("form").append(done);
     } catch (e) {
