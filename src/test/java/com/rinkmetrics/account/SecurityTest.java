@@ -112,7 +112,7 @@ class SecurityTest {
 
     Map<String, Object> club(String usuario) {
         Map<String, Object> m = new HashMap<>(Map.of("perfil", "CLUBFPP", "usuario", usuario, "clave", "clave-segura",
-                "email", usuario + "@example.com", "clubId", 74, "suscripcion", "CLUB_MENSUAL"));
+                "email", usuario + "@example.com", "clubId", 74, "suscripcion", "CLUB_FREE"));
         return m;
     }
 
@@ -315,9 +315,9 @@ class SecurityTest {
         assertThat(u.getClave()).isNotEqualTo("clave-segura").startsWith("$2");
         assertThat(u.getClubNombre()).isEqualTo("VELEZ");
         // El plan elegido queda como suscripción desde hoy.
-        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("CLUB_MENSUAL");
+        assertThat(u.getSuscripcionType().getCodigo()).isEqualTo("CLUB_FREE");
         assertThat(u.getSuscripcionDesde()).isEqualTo(java.time.LocalDate.now());
-        assertThat(u.getSuscripcionHasta()).isEqualTo(java.time.LocalDate.now().plusMonths(1).minusDays(1));
+        assertThat(u.getSuscripcionHasta()).isEqualTo("2026-12-31");
         assertThat(u.getNombre()).isNull();   // el registro no pide nombre ni apellido
 
         // Sin confirmar el email no se ingresa (con la clave correcta se avisa por qué).
@@ -658,19 +658,29 @@ class SecurityTest {
 
     @Test
     void planesDeClubYDeJugador() throws Exception {
+        // El club: el free (hasta el 31/12/2026, sin límite de informes) y el mensual, que todavía no se vende:
+        // "Próximamente", con precio a definir.
         mvc.perform(get("/api/suscripciones").param("perfil", "CLUBFPP")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("CLUB_MENSUAL")))
-                .andExpect(jsonPath("$[0].precioUsd").value(20.0))
-                .andExpect(jsonPath("$[0].informesPorMes").value(8))
+                .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("CLUB_FREE", "CLUB_MENSUAL")))
+                .andExpect(jsonPath("$[0].precio").value(0))
+                .andExpect(jsonPath("$[0].informesPorMes").value(0))
+                .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
+                .andExpect(jsonPath("$[0].disponible").value(true))
+                .andExpect(jsonPath("$[1].precioUsd").value(20.0))
                 // En pesos al dólar de respaldo de los tests ($ 1.500), redondeado hacia abajo a centenas.
-                .andExpect(jsonPath("$[0].precio").value(30000))
-                .andExpect(jsonPath("$[0].dolar").value(1500));
+                .andExpect(jsonPath("$[1].precio").value(30000))
+                .andExpect(jsonPath("$[1].dolar").value(1500))
+                .andExpect(jsonPath("$[1].disponible").value(false))
+                .andExpect(jsonPath("$[1].precioADefinir").value(true));
+        Map<String, Object> pago = club("ana.pago");
+        pago.put("suscripcion", "CLUB_MENSUAL");
+        register(pago).andExpect(status().isBadRequest());
         // El jugador: el free (hasta el 31/12/2026) y el mensual.
         mvc.perform(get("/api/suscripciones").param("perfil", "PLAYERFPP")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].codigo").value(org.hamcrest.Matchers.contains("PLAYER_FREE", "PLAYER_MENSUAL")))
                 .andExpect(jsonPath("$[0].precio").value(0))
                 .andExpect(jsonPath("$[0].vigenteHasta").value("2026-12-31"))
-                .andExpect(jsonPath("$[0].informesPorMes").value(4))
+                .andExpect(jsonPath("$[0].informesPorMes").value(5))
                 .andExpect(jsonPath("$[1].precioUsd").value(7.0))
                 .andExpect(jsonPath("$[1].precio").value(10500))
                 .andExpect(jsonPath("$[1].informesPorMes").value(4))
@@ -734,12 +744,55 @@ class SecurityTest {
     }
 
     @Test
+    void elJugadorFreePideHasta5InformesPorMes() throws Exception {
+        Usuario u = saved("cupo", Perfil.PLAYERFPP);
+        u.vincularJugador(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
+        u.suscribir(suscripciones.findByCodigo("PLAYER_FREE").orElseThrow(), java.time.LocalDate.now());
+        usuarios.save(u);
+        com.rinkmetrics.player.PlayerReportService.Job job = mock(com.rinkmetrics.player.PlayerReportService.Job.class);
+        when(job.id()).thenReturn(UUID.randomUUID());
+        when(job.status()).thenReturn(ReportService.Status.PENDIENTE);
+        when(playerReports.submit(any(), eq("cupo"))).thenReturn(job);
+
+        for (int i = 1; i <= 5; i++) {
+            pedirInforme("cupo").andExpect(status().isAccepted());
+        }
+        // El sexto del mes, no: 429 con el día en que se renueva. No cuenta ni se pide.
+        pedirInforme("cupo").andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith(
+                        "Ya pediste los 5 informes de este mes. El cupo se renueva el 1/")));
+        verify(playerReports, times(5)).submit(any(), eq("cupo"));
+        assertThat(usuarios.findByUsuario("cupo").orElseThrow().getInformesPedidos()).isEqualTo(5);
+        mvc.perform(get("/api/sesion").with(user("cupo").authorities(() -> "PLAYERFPP")))
+                .andExpect(jsonPath("$.informesMes.usados").value(5))
+                .andExpect(jsonPath("$.informesMes.limite").value(5));
+    }
+
+    @Test
+    void unPedidoInvalidoNoGastaElCupo() throws Exception {
+        Usuario u = saved("cupo2", Perfil.PLAYERFPP);
+        u.vincularJugador(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
+        u.suscribir(suscripciones.findByCodigo("PLAYER_FREE").orElseThrow(), java.time.LocalDate.now());
+        usuarios.save(u);
+        when(playerReports.submit(any(), eq("cupo2"))).thenThrow(new IllegalArgumentException("Período inválido."));
+        pedirInforme("cupo2").andExpect(status().isBadRequest());
+        mvc.perform(get("/api/sesion").with(user("cupo2").authorities(() -> "PLAYERFPP")))
+                .andExpect(jsonPath("$.informesMes.usados").value(0));
+    }
+
+    ResultActions pedirInforme(String usuario) throws Exception {
+        return mvc.perform(post("/api/jugador/informes").with(user(usuario).authorities(() -> "PLAYERFPP")).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"anio\":2026,\"periodo\":\"TEMPORADA\"}"));
+    }
+
+    @Test
     void tiposDeSuscripcionYVigencia() throws Exception {
-        // Un plan mensual por tipo de usuario, y el jugador y el DT además tienen el free.
+        // Un plan mensual y uno free por tipo de usuario.
         assertThat(suscripciones.findAll()).extracting(SuscripcionType::getCodigo, SuscripcionType::getTipoUsuario)
                 .containsExactlyInAnyOrder(
                         org.assertj.core.groups.Tuple.tuple("PLAYER_FREE", "PLAYER"),
                         org.assertj.core.groups.Tuple.tuple("PLAYER_MENSUAL", "PLAYER"),
+                        org.assertj.core.groups.Tuple.tuple("CLUB_FREE", "CLUB"),
                         org.assertj.core.groups.Tuple.tuple("CLUB_MENSUAL", "CLUB"),
                         org.assertj.core.groups.Tuple.tuple("DT_FREE", "DT"),
                         org.assertj.core.groups.Tuple.tuple("DT_MENSUAL", "DT"));

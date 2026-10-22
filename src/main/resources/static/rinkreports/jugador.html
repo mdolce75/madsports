@@ -69,6 +69,7 @@
         </div>
         <div class="notice" id="no-data" role="alert" hidden></div>
 
+        <p class="hint" id="cupo"></p>
         <button class="go" id="go" type="submit" disabled>Ver informe</button>
 
         <ul class="steps" id="steps" hidden>
@@ -126,6 +127,7 @@
                 anio: Number($("anio").value),
                 periodo: $("periodo").value
             });
+            mostrarCupo();   // el pedido ya contó
             const job = await poll(`/api/jugador/informes/${body.id}`);
             document.querySelector('#steps li[data-s="LISTO"]').className = "done";
             status("Informe listo.");
@@ -137,8 +139,15 @@
         }
     });
 
+    // Informes del mes: el plan free tiene 5; al llegar al cupo, se renueva el día 1.
+    async function mostrarCupo(s) {
+        s = s || await session();
+        $("cupo").textContent = rrCupo(s.informesMes);
+    }
+
     requireProfile(["PLAYERFPP", "PLAYERAMP"]).then(s => {
         if (!s) return;
+        mostrarCupo(s);
         federacion = s.federacion;
         quien = s.nombre ? `${s.nombre} ${s.apellido}` : (s.jugador ? s.jugador.nombre : s.usuario);
         $("club").value = s.club.nombre;

@@ -1,5 +1,6 @@
 package com.rinkmetrics.report;
 
+import com.rinkmetrics.account.CupoInformes;
 import com.rinkmetrics.account.Usuario;
 import com.rinkmetrics.account.UsuarioRepository;
 import com.rinkmetrics.catalog.CatalogService;
@@ -86,12 +87,15 @@ public class ApiController {
     private final ReportService reports;
     private final SampleReport sample;
     private final UsuarioRepository usuarios;
+    private final CupoInformes cupo;
 
-    public ApiController(CatalogService catalog, ReportService reports, SampleReport sample, UsuarioRepository usuarios) {
+    public ApiController(CatalogService catalog, ReportService reports, SampleReport sample, UsuarioRepository usuarios,
+                         CupoInformes cupo) {
         this.catalog = catalog;
         this.reports = reports;
         this.sample = sample;
         this.usuarios = usuarios;
+        this.cupo = cupo;
     }
 
     /**
@@ -118,11 +122,10 @@ public class ApiController {
                 || req.rama() == null || req.rama().isBlank())) {
             throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
         }
-        ReportService.Job job = req.clubCompleto()
+        ReportService.Job job = cupo.pedir(u, () -> req.clubCompleto()
                 ? reports.submitClub(req.clubId(), scope, year, u.federacion(), u.getUsuario())
                 : reports.submit(new ReportService.Request(req.clubId(), req.categoria(), req.rama(), scope, year,
-                        u.federacion()), u.getUsuario());
-        usuarios.contarInforme(u.getUsuario());
+                        u.federacion()), u.getUsuario()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 

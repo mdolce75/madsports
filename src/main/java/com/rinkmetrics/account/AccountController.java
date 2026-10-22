@@ -75,20 +75,22 @@ public class AccountController {
      */
     public record PlanView(String codigo, String nombre, BigDecimal precio, BigDecimal precioUsd, int informesPorMes,
                            BigDecimal dolar, LocalDate dolarFecha, int equiposMax, int partidosPorMes,
-                           LocalDate vigenteHasta, boolean disponible) {
+                           LocalDate vigenteHasta, boolean disponible,
+                           boolean precioADefinir) {
     }
 
     /**
      * @param federacion sigla de la federación de sus perfiles (FPP, AMP)
      * @param producto   REPORTS o METRICS: el producto de la cuenta
+     * @param informesMes informes pedidos este mes: {usados, limite (0 = sin límite), renueva}
      */
     public record SessionView(boolean autenticado, String usuario, String nombre, String apellido, String email,
                               List<String> perfiles, Map<String, Object> club, Map<String, Object> jugador,
                               String inicio, Map<String, Object> suscripcion, int informesPedidos,
-                              String federacion, String producto) {
+                              String federacion, String producto, Map<String, Object> informesMes) {
 
         static final SessionView ANONYMOUS = new SessionView(false, null, null, null, null, List.of(), null, null,
-                "/", null, 0, null, null);
+                "/", null, 0, null, null, null);
     }
 
     private final RegistroService registro;
@@ -99,11 +101,13 @@ public class AccountController {
     private final SuscripcionTypeRepository planes;
     private final Cotizacion cotizacion;
     private final Clock clock;
+    private final CupoInformes cupo;
 
     public AccountController(RegistroService registro, UsuarioRepository usuarios, RosterService roster,
                              CatalogService catalog, CuentaService cuenta, SuscripcionTypeRepository planes,
-                             Cotizacion cotizacion, Clock clock) {
+                             Cotizacion cotizacion, Clock clock, CupoInformes cupo) {
         this.clock = clock;
+        this.cupo = cupo;
         this.cuenta = cuenta;
         this.planes = planes;
         this.cotizacion = cotizacion;
@@ -122,7 +126,8 @@ public class AccountController {
                 .filter(p -> p.vigente(hoy))   // el DT free deja de ofrecerse después del 31/12/2026
                 .map(p -> new PlanView(p.getCodigo(), p.getNombre(), Cotizacion.enPesos(p.getPrecioUsd(), dolar),
                         p.getPrecioUsd(), p.getInformesPorMes(), dolar.pesosPorDolar(), dolar.fecha(),
-                        p.getEquiposMax(), p.getPartidosPorMes(), p.getVigenteHasta(), registro.disponible(p)))
+                        p.getEquiposMax(), p.getPartidosPorMes(), p.getVigenteHasta(), registro.disponible(p),
+                        registro.precioADefinir(p)))
                 .toList();
     }
 
@@ -212,8 +217,13 @@ public class AccountController {
                                 "hasta", u.getSuscripcionHasta().toString(),
                                 "equiposMax", u.getSuscripcionType().getEquiposMax(),
                                 "partidosPorMes", u.getSuscripcionType().getPartidosPorMes()),
-                        u.getInformesPedidos(), u.federacion().name(), u.getProducto().name()))
+                        u.getInformesPedidos(), u.federacion().name(), u.getProducto().name(), informesMes(u)))
                 .orElse(SessionView.ANONYMOUS);
+    }
+
+    private Map<String, Object> informesMes(Usuario u) {
+        CupoInformes.Cupo c = cupo.cupo(u);
+        return Map.of("usados", c.usados(), "limite", c.limite(), "renueva", c.renueva().toString());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

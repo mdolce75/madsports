@@ -76,6 +76,8 @@
 
     <h2 class="section-title">Planes para jugadores</h2>
     <div class="plans" id="plan-jugador" hidden></div>
+    <h2 class="section-title">Planes para clubes</h2>
+    <div class="plans" id="plan-club" hidden></div>
     <p class="alt">¿Ya tenés una cuenta? <a href="/rinkreports/login.html?volver=%2Frinkreports">Ingresá</a> y vas directo a tu informe.</p>
     </div>
     </div>
@@ -87,6 +89,7 @@
 <script src="/js/reports.js"></script>
 <script>
     rrPlans($("plan-jugador"), "PLAYERFPP", "/rinkreports/registro.html?opcion=jugador");
+    rrPlans($("plan-club"), "CLUBFPP", "/rinkreports/registro.html?opcion=club");
 
     // Con sesión: en lugar de crear cuenta, el acceso directo a su informe.
     rrSessionBar().then(s => {

@@ -197,13 +197,15 @@ async function loadPlans() {
             }
             card.querySelector(".plan-name").textContent = plan.nombre.replace(/^(Club|Jugador|DT) /, "");
             const gratis = Number(plan.precio) === 0;
-            card.querySelector(".plan-price b").textContent = gratis ? "Gratis" : pesos(plan.precio);
-            card.querySelector(".plan-price small").textContent = gratis ? "" : "por mes";
+            // Los pagos de RinkReports que todavía no se venden: "Precio a definir".
+            card.querySelector(".plan-price b").textContent = gratis ? "Gratis"
+                : plan.precioADefinir ? "Precio a definir" : pesos(plan.precio);
+            card.querySelector(".plan-price small").textContent = gratis || plan.precioADefinir ? "" : "por mes";
             card.querySelector(".plan-month").textContent = plan.vigenteHasta
                 ? "Hasta el " + fecha(plan.vigenteHasta) : "Sin permanencia";
             card.querySelector(".plan-quota").textContent = plan.partidosPorMes > 0
                 ? `${plan.equiposMax === 1 ? "1 equipo" : "Hasta " + plan.equiposMax + " equipos"} y ${plan.partidosPorMes} partidos por mes`
-                : `Hasta ${plan.informesPorMes} informes por mes`;
+                : plan.informesPorMes > 0 ? `Hasta ${plan.informesPorMes} informes por mes` : "Informes sin límite";
             const ul = card.querySelector("ul");
             BENEFICIOS[p.startsWith("PLAYER") ? "PLAYER" : p.startsWith("DT") ? "DT" : "CLUB"].forEach(b => {
                 const li = document.createElement("li");
