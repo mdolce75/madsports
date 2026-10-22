@@ -492,6 +492,7 @@ Abrir http://localhost:8080.
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
 | `SIGNUP_CLUB` | `false` | Habilita el alta de cuentas de club (las de jugador y DT están abiertas) |
 | `SIGNUP_PLAYER_PAID` | `false` | Habilita elegir el plan Jugador mensual (pago) |
+| `SIGNUP_AMP` | `false` | Ofrece la AMP en el registro (oculta hasta nuevo aviso; las cuentas de la AMP que ya existen siguen andando) |
 | `SIGNUP_PLAYER_AMP` | `false` | Habilita el alta de jugadores de la AMP (por ahora, solo de la FPP) |
 | `SIGNUP_COACH_PAID` | `false` | Habilita elegir el plan DT mensual (pago) |
 | `REMEMBER_ME_DAYS` | `30` | Días que queda recordado un dispositivo |
@@ -544,7 +545,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `GET /api/verify?token=...`: enlace del mail; confirma el email y lleva al ingreso.
   `POST /api/verification/resend` `{"email"}` o `{"username"}`
 - `POST /api/password/forgot` `{"email","product"}` (`product`: `REPORTS` o `METRICS`, el de la pantalla);
-  `GET /api/signup/options` → `{club, playerAmp}` (qué perfiles se pueden registrar hoy); `POST /api/password/reset` `{"token","password"}`
+  `GET /api/signup/options` → `{club, amp, playerAmp}` (qué perfiles se pueden registrar hoy); `POST /api/password/reset` `{"token","password"}`
 - `POST /api/player/reports` `{"year":2026,"period":"SEASON"}` → `202 {id, status}`; `GET /api/player/reports/{id}` y `/html`, `/pdf` y `/xlsx` (PLAYERFPP o PLAYERAMP)
 - RinkMetrics (COACHFPP o COACHAMP; sin `team`, el primer equipo del DT; lo de otro DT da 404):
   - `GET /api/coach/teams`: los equipos con `played`, `won`, `drawn` y `lost` (partidos finalizados);

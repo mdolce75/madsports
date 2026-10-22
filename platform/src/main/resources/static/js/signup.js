@@ -3,8 +3,8 @@
 // (/rinkmetrics/signup.html), solo el DT. Las cuentas de un producto no ingresan al otro.
 const SECTION = product() === "REPORTS" ? "informes" : "dt";
 $("brand").outerHTML = brand();
-// Qué se puede registrar hoy: las cuentas de club y los jugadores de la AMP se habilitan por configuración.
-let signupOpts = {club: true, playerAmp: true};
+// Qué se puede registrar hoy: las cuentas de club, la AMP y sus jugadores se habilitan por configuración.
+let signupOpts = {club: true, amp: false, playerAmp: false};
 if (SECTION === "dt") {
     document.querySelectorAll("input[name=rol]").forEach(r => {
         if (r.value === "DT") r.checked = true; else r.closest("label").remove();
@@ -32,6 +32,13 @@ function enable(input, si, other) {
 /** RinkReports: las cuentas de club, y los jugadores de la AMP, solo si están habilitados. */
 function rules() {
     if (SECTION === "dt") return;
+    // Sin la AMP (oculta hasta nuevo aviso) la federación es la FPP y no hay nada que elegir.
+    if (!signupOpts.amp) {
+        document.querySelector("input[name=federacion][value=AMP]")?.closest("label").remove();
+        document.querySelector("input[name=federacion]").closest(".field").hidden = true;
+        return enable(document.querySelector("input[name=rol][value=CLUB]"), signupOpts.club,
+            document.querySelector("input[name=rol][value=PLAYER]"));
+    }
     enable(document.querySelector("input[name=rol][value=CLUB]"), signupOpts.club,
         document.querySelector("input[name=rol][value=PLAYER]"));
     enable(document.querySelector("input[name=federacion][value=AMP]"),
@@ -239,8 +246,8 @@ function toggleProfile() {
 }
 
 /**
- * DT: un solo combo con los clubes de las dos federaciones (sin decir de cuál es cada uno). Al elegir el club se
- * toma su federación, que define el perfil (DTFPP o DTAMP).
+ * DT: un solo combo con los clubes de las federaciones ofrecidas (sin decir de cuál es cada uno; la AMP, oculta hasta
+ * nuevo aviso). Al elegir el club se toma su federación, que define el perfil (COACHFPP o COACHAMP).
  */
 async function loadCoachClubs() {
     const sel = $("club");
@@ -249,7 +256,7 @@ async function loadCoachClubs() {
     sel.disabled = true;
     try {
         const clubList = [];
-        for (const f of ["FPP", "AMP"]) {
+        for (const f of signupOpts.amp ? ["FPP", "AMP"] : ["FPP"]) {
             if (!catalogs[f]) {
                 const res = await fetch("/api/catalog?federation=" + f);
                 const body = await res.json();
@@ -291,7 +298,8 @@ if (SECTION === "dt") {
     $("player-fields").hidden = true;
     $("coach-fields").hidden = false;
     loadPlans();
-    loadCoachClubs();
+    fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
+        .then(o => { signupOpts = o; loadCoachClubs(); });
 } else {
     // La FPP ya está elegida: clubes, categorías y planes, con lo que hoy se puede registrar.
     fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
