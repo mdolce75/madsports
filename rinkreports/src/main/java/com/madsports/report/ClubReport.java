@@ -37,10 +37,60 @@ public record ClubReport(ReportData.ClubInfo club, String period, LocalDate gene
      * @param team     su equipo
      * @param analysis el análisis escrito (Gemini o, si no responde, el de reglas)
      */
+    /**
+     * Rachas de un equipo: las más largas del período y cómo viene.
+     *
+     * @param unbeaten    partidos seguidos sin perder (la más larga)
+     * @param wins        partidos seguidos ganados
+     * @param scoring     partidos seguidos convirtiendo
+     * @param cleanSheets partidos sin goles en contra (en total)
+     * @param current     cómo viene: "3 ganados seguidos", "2 empatados seguidos", "1 perdido" (vacío sin partidos)
+     */
+    public record Streaks(int unbeaten, int wins, int scoring, int cleanSheets, String current) {
+
+        static Streaks of(List<ReportData.MatchLine> results) {
+            List<ReportData.MatchLine> played = results.stream().filter(r -> r.goalsFor() != null).toList();
+            int unbeaten = longest(played, r -> !"P".equals(r.outcome()));
+            int wins = longest(played, r -> "G".equals(r.outcome()));
+            int scoring = longest(played, r -> r.goalsFor() > 0);
+            int clean = (int) played.stream().filter(r -> r.goalsAgainst() == 0).count();
+            String current = "";
+            if (!played.isEmpty()) {
+                String last = played.getLast().outcome();
+                int run = 0;
+                for (int i = played.size() - 1; i >= 0 && played.get(i).outcome().equals(last); i--) {
+                    run++;
+                }
+                String word = switch (last) {
+                    case "G" -> run == 1 ? "ganado" : "ganados";
+                    case "E" -> run == 1 ? "empatado" : "empatados";
+                    default -> run == 1 ? "perdido" : "perdidos";
+                };
+                current = run + " " + word + (run == 1 ? "" : " seguidos");
+            }
+            return new Streaks(unbeaten, wins, scoring, clean, current);
+        }
+
+        private static int longest(List<ReportData.MatchLine> played, java.util.function.Predicate<ReportData.MatchLine> ok) {
+            int best = 0;
+            int run = 0;
+            for (ReportData.MatchLine r : played) {
+                run = ok.test(r) ? run + 1 : 0;
+                best = Math.max(best, run);
+            }
+            return best;
+        }
+    }
+
     public record CategoryBlock(String name, ReportData data, TeamReport team, AnalysisResult analysis) {
 
         public TeamRecord record() {
             return team.total();
+        }
+
+        /** Rachas de la categoría, con los resultados en orden de fecha. */
+        public Streaks streaks() {
+            return Streaks.of(team.results());
         }
 
         private double perGame(int value, int matches) {

@@ -104,7 +104,23 @@ public class ExcelExporter {
             s.row("Le convirtieron primero", sf.concededFirst(), sf.concededFirstWon(), sf.concededFirstDrawn(),
                     sf.concededFirstLost(), sf.concededFirstEffectiveness());
             s.blank();
+            s.section("Sobre la hora (últimos 5 minutos)");
+            s.header("", "Puntos");
+            s.row("Ganados", sf.latePointsWon());
+            s.row("Perdidos", -sf.latePointsLost());
+            s.blank();
         }
+        ClubReport.Streaks st = k.streaks();
+        s.section("Rachas");
+        s.header("", "Partidos");
+        s.row("Invicto (seguidos)", st.unbeaten());
+        s.row("Victorias seguidas", st.wins());
+        s.row("Seguidos convirtiendo", st.scoring());
+        s.row("Vallas invictas", st.cleanSheets());
+        if (!st.current().isEmpty()) {
+            s.text("Cómo viene: " + st.current() + ".");
+        }
+        s.blank();
         s.section("Top 3 · Promedio de gol");
         s.header("Jugador", "Goles", "Partidos", "Promedio");
         k.topScorers().forEach(x -> s.row(x.player().name(), x.count(), x.of(), x.value()));

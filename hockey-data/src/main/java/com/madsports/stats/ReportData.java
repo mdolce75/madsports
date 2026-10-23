@@ -276,13 +276,16 @@ public record ReportData(ClubInfo club, String category, String tournament, Loca
      * @param trailedWon partidos en que estuvo perdiendo en algún momento y ganó (trailedDrawn, trailedLost)
      * @param scoredFirstWon partidos en que convirtió el primer gol y ganó (scoredFirstDrawn, scoredFirstLost)
      * @param concededFirstWon partidos en que recibió el primer gol y ganó (concededFirstDrawn, concededFirstLost)
+     * @param latePointsWon  puntos que ganó en los últimos 5 minutos del partido (contra cómo iba a 5' del final)
+     * @param latePointsLost puntos que perdió en esos 5 minutos
      */
     public record ScoreFlow(int matches, int ledWon, int ledDrawn, int ledLost,
                             int trailedWon, int trailedDrawn, int trailedLost,
                             int scoredFirstWon, int scoredFirstDrawn, int scoredFirstLost,
-                            int concededFirstWon, int concededFirstDrawn, int concededFirstLost) {
+                            int concededFirstWon, int concededFirstDrawn, int concededFirstLost,
+                            int latePointsWon, int latePointsLost) {
 
-        public static final ScoreFlow EMPTY = new ScoreFlow(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        public static final ScoreFlow EMPTY = new ScoreFlow(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
         public boolean hasData() {
             return matches > 0;
