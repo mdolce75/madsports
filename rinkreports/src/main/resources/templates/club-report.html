@@ -162,6 +162,39 @@
             sobre los partidos con acta. Azules y rojas, sobre todos los partidos jugados.</p>
     </div>
 
+    <th:block th:with="sf=${k.team.timeProfile.scoreFlow}" th:if="${sf != null and sf.hasData()}">
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <h3>Según el marcador</h3>
+                <table>
+                    <tr><th class="l"></th><th>Partidos</th><th>G</th><th>E</th><th>P</th><th>Puntos</th></tr>
+                    <tr><td class="l">Estuvo arriba</td><td th:text="${sf.led()}"></td><td th:text="${sf.ledWon}"></td>
+                        <td th:text="${sf.ledDrawn}"></td><td th:text="${sf.ledLost}"></td>
+                        <td th:text="|-${sf.pointsDropped()}|"></td></tr>
+                    <tr><td class="l">Estuvo abajo</td><td th:text="${sf.trailed()}"></td><td th:text="${sf.trailedWon}"></td>
+                        <td th:text="${sf.trailedDrawn}"></td><td th:text="${sf.trailedLost}"></td>
+                        <td th:text="|+${sf.pointsRescued()}|"></td></tr>
+                </table>
+                <p class="muted">Puntos que se le escaparon estando arriba (-) y que rescató estando abajo (+).</p>
+            </td>
+            <td>
+                <h3>El primer gol</h3>
+                <table>
+                    <tr><th class="l"></th><th>Partidos</th><th>G</th><th>E</th><th>P</th><th>Efectividad</th></tr>
+                    <tr><td class="l">Convirtió primero</td><td th:text="${sf.scoredFirst()}"></td><td th:text="${sf.scoredFirstWon}"></td>
+                        <td th:text="${sf.scoredFirstDrawn}"></td><td th:text="${sf.scoredFirstLost}"></td>
+                        <td th:text="${f.pct(sf.scoredFirstEffectiveness())}"></td></tr>
+                    <tr><td class="l">Le convirtieron primero</td><td th:text="${sf.concededFirst()}"></td><td th:text="${sf.concededFirstWon}"></td>
+                        <td th:text="${sf.concededFirstDrawn}"></td><td th:text="${sf.concededFirstLost}"></td>
+                        <td th:text="${f.pct(sf.concededFirstEffectiveness())}"></td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+    <p class="muted" th:text="|Según el minuto de los goles, en los ${sf.matches} partidos con acta completa de los ${t.played} jugados.|">actas</p>
+    </th:block>
+
     <table class="two nobreak">
         <tr>
             <td>
