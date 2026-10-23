@@ -46,7 +46,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -117,8 +119,6 @@ public class ReportService {
         private volatile String html;
         private volatile byte[] xlsx;
         private volatile String fileName;
-        /** En el informe del club: la categoría que se está armando ("Categoría 3 de 12 · Juvenil Masculino"). */
-        private volatile String stage;
 
         Job(Request request, String owner) {
             this.request = request;
@@ -141,7 +141,7 @@ public class ReportService {
 
         void update(Status status, String message) {
             this.status = status;
-            this.message = stage == null ? message : stage + ": " + message;
+            this.message = message;
         }
     }
 
@@ -154,6 +154,8 @@ public class ReportService {
     private final Clock clock;
     private final Cache<UUID, Job> jobs = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build();
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
+    /** Análisis de Gemini a la vez en el informe del club (el plan gratuito limita los pedidos por minuto). */
+    static final int CLUB_ANALYSES = 3;
 
     public ReportService(CatalogService catalog, SidgadClient sidgad, GeminiAnalyst gemini,
                          RuleBasedAnalyst rules, PdfRenderer renderer, ExcelExporter excel, Clock clock) {
@@ -240,31 +242,61 @@ public class ReportService {
         return out;
     }
 
+    /**
+     * El informe del club completo: todas las categorías a la vez. Cada una lee SIDGAD en paralelo (el ritmo lo pone el
+     * cupo del informe del club en SidgadClient) y, apenas termina, pasa al análisis; los análisis van de a
+     * {@link #CLUB_ANALYSES} para no pasar el límite de pedidos por minuto de Gemini.
+     */
     private void runClub(Job job, ClubView club, List<ClubCategory> categories) {
+        long start = System.nanoTime();
         try {
+            int n = categories.size();
+            AtomicInteger read = new AtomicInteger();
+            AtomicInteger analyzed = new AtomicInteger();
+            Runnable progress = () -> job.update(read.get() < n ? Status.EXTRACTING : Status.ANALYZING,
+                    "Categorías leídas: " + read.get() + " de " + n + " · analizadas: " + analyzed.get() + " de " + n);
+            progress.run();
+            Semaphore analyses = new Semaphore(CLUB_ANALYSES);
+            List<Future<CategoryPart>> parts = new ArrayList<>();
+            try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+                for (ClubCategory c : categories) {
+                    parts.add(pool.submit(() -> {
+                        ReportData data = extract(job, club, c.category(), c.option(), m -> { });
+                        read.incrementAndGet();
+                        progress.run();
+                        AnalysisResult analysis = null;
+                        if (!data.teams().isEmpty()) {
+                            analyses.acquire();
+                            try {
+                                analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
+                            } finally {
+                                analyses.release();
+                            }
+                        }
+                        analyzed.incrementAndGet();
+                        progress.run();
+                        return new CategoryPart(c, data, analysis);
+                    }));
+                }
+            }
             Map<String, List<ClubReport.CategoryBlock>> byBranch = new LinkedHashMap<>();
             List<String> notPublished = new ArrayList<>();
             List<ReportData.Source> sources = new ArrayList<>();
             String logo = null;
-            String period = null;
-            for (int i = 0; i < categories.size(); i++) {
-                ClubCategory c = categories.get(i);
-                String label = label(c.category(), c.option());
-                job.stage = "Categoría " + (i + 1) + " de " + categories.size() + " · " + label;
-                ReportData data = extract(job, club, c.category(), c.option());
+            for (Future<CategoryPart> f : parts) {
+                CategoryPart p = await(f);
+                ReportData data = p.data();
                 if (data.teams().isEmpty()) {
                     continue;
                 }
-                job.update(Status.ANALYZING, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
-                AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
-                byBranch.computeIfAbsent(c.category().branchLabel(), k -> new ArrayList<>())
-                        .add(new ClubReport.CategoryBlock(c.levelLabel(), data, data.teams().getFirst(), analysis));
-                data.notPublished().forEach(n -> notPublished.add(label + ": " + n));
+                String label = label(p.category().category(), p.category().option());
+                byBranch.computeIfAbsent(p.category().category().branchLabel(), k -> new ArrayList<>())
+                        .add(new ClubReport.CategoryBlock(p.category().levelLabel(), data, data.teams().getFirst(),
+                                p.analysis()));
+                data.notPublished().forEach(np -> notPublished.add(label + ": " + np));
                 sources.addAll(data.sources());
                 logo = logo != null ? logo : data.club().logo();
-                period = period != null ? period : data.tournament();
             }
-            job.stage = null;
             job.update(Status.RENDERING, "Generando el PDF");
             ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(), logo);
             ClubReport report = new ClubReport(info, clubPeriod(job.request()), LocalDate.now(clock),
@@ -277,11 +309,16 @@ public class ReportService {
             job.fileName = ("informe-club-" + club.code() + "-" + job.request().scope().name() + "-"
                     + job.request().year() + ".pdf").toLowerCase().replaceAll("[^a-z0-9.-]+", "-");
             job.update(Status.READY, "Informe listo");
+            log.info("Informe del club {} ({} categorías) listo en {} s", club.code(), n,
+                    Duration.ofNanos(System.nanoTime() - start).toSeconds());
         } catch (RuntimeException e) {
             log.error("Falló el informe del club {}", job.id(), e);
-            job.stage = null;
             job.update(Status.ERROR, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
         }
+    }
+
+    /** Una categoría del informe del club: sus datos y su análisis (null si el club no juega en ella). */
+    private record CategoryPart(ClubCategory category, ReportData data, AnalysisResult analysis) {
     }
 
     /** "Temporada 2026 · Apertura + Clausura", "Temporada 2026 · Apertura", "Últimos 5 partidos". */
@@ -304,7 +341,7 @@ public class ReportService {
 
     private void run(Job job, ClubView club, Category category, CategoryOption option) {
         try {
-            ReportData data = extract(job, club, category, option);
+            ReportData data = extract(job, club, category, option, m -> job.update(Status.EXTRACTING, m));
             job.update(Status.ANALYZING, gemini.available() ? "Gemini está analizando los datos" : "Analizando los datos");
             AnalysisResult analysis = gemini.analyze(data).orElseGet(() -> rules.analyze(data));
             if (analysis.foulsAnalysis().isEmpty()) {
@@ -327,7 +364,7 @@ public class ReportService {
         }
     }
 
-    ReportData extract(Job job, ClubView club, Category category, CategoryOption option) {
+    ReportData extract(Job job, ClubView club, Category category, CategoryOption option, Consumer<String> progress) {
         Scope scope = job.request().scope();
         int year = job.request().year();
         Federation fed = job.request().federation();
@@ -339,7 +376,7 @@ public class ReportService {
         // Los pedidos a SIDGAD van en paralelo (cada uno tarda ~1,5 s, casi todo latencia del sitio). El límite de
         // pedidos simultáneos y por segundo lo pone SidgadClient, para no sobrecargar el sitio.
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
-            job.update(Status.EXTRACTING, "Leyendo tablas, calendarios y estadísticas");
+            progress.accept("Leyendo tablas, calendarios y estadísticas");
             Map<Competition, List<Future<String>>> pages = new LinkedHashMap<>();
             for (Competition c : comps) {
                 pages.put(c, List.of(
@@ -374,7 +411,7 @@ public class ReportService {
                         .forEach(m -> sheets.add(Map.entry(cd, m)));
             }
             AtomicInteger done = new AtomicInteger();
-            job.update(Status.EXTRACTING, "Leyendo actas de partido (0/" + sheets.size() + ")");
+            progress.accept("Leyendo actas de partido (0/" + sheets.size() + ")");
             int ownSheets = clubSheets;
             List<Future<SheetRead>> reads = new ArrayList<>();
             for (int i = 0; i < sheets.size(); i++) {
@@ -382,8 +419,7 @@ public class ReportService {
                 boolean own = i < ownSheets;
                 reads.add(io.submit(() -> {
                     String html = sidgad.gameSheet(e.getKey().competition().id(), e.getValue().idp());
-                    job.update(Status.EXTRACTING,
-                            "Leyendo actas de partido (" + done.incrementAndGet() + "/" + sheets.size() + ")");
+                    progress.accept("Leyendo actas de partido (" + done.incrementAndGet() + "/" + sheets.size() + ")");
                     return new SheetRead(SidgadParser.gameEvents(html), own ? SidgadParser.lineups(html) : List.of());
                 }));
             }
@@ -417,7 +453,7 @@ public class ReportService {
                     names.putIfAbsent(p.playerId(), p.name());
                 });
             }
-            replaceWithSeasonProfiles(job, io, club, data, teamOf, names, notPublished);
+            replaceWithSeasonProfiles(progress, io, club, data, teamOf, names, notPublished);
             // Arqueros: figuran con "P" en al menos 2 planillas, o en la mayoría de las suyas (con pocas actas).
             Set<Integer> goalkeepers = roles.entrySet().stream()
                     .filter(e -> e.getValue()[0] >= 2 || (e.getValue()[0] > 0 && e.getValue()[0] >= e.getValue()[1]))
@@ -485,7 +521,8 @@ public class ReportService {
      * suma los partidos con acta (y a veces no se publica), así que sus goles no llegan a los del equipo. Quien no
      * tenga ficha conserva su fila de la tabla. Los demás equipos de la liga siguen con la tabla de SIDGAD.
      */
-    private void replaceWithSeasonProfiles(Job job, ExecutorService io, ClubView club, List<CompetitionData> data,
+    private void replaceWithSeasonProfiles(Consumer<String> progress, ExecutorService io, ClubView club,
+                                           List<CompetitionData> data,
                                            Map<Competition, Map<Integer, Integer>> teamOf, Map<Integer, String> names,
                                            List<String> notPublished) {
         Map<Integer, Set<Integer>> seasonsOf = new LinkedHashMap<>();
@@ -494,7 +531,7 @@ public class ReportService {
         if (seasonsOf.isEmpty()) {
             return;
         }
-        job.update(Status.EXTRACTING, "Leyendo las fichas de temporada de los jugadores del club");
+        progress.accept("Leyendo las fichas de temporada de los jugadores del club");
         Map<Integer, Future<List<SeasonMatch>>> pending = new LinkedHashMap<>();
         seasonsOf.forEach((id, seasons) -> pending.put(id, io.submit(() -> {
             List<SeasonMatch> rows = new ArrayList<>();

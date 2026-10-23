@@ -62,9 +62,9 @@ madsports:
     # Pedidos en paralelo, sin sobrecargar el sitio: hasta 6 a la vez y como mucho 10 por segundo
     max-concurrency: 6
     min-interval: 100ms
-    # El informe del club completo (lee las actas de todas sus categorías) usa 3 veces eso: hasta 18 a la vez y 30
-    # por segundo, en su propio cupo.
-    club-factor: 3
+    # El informe del club completo (lee las actas de todas sus categorías a la vez) usa 5 veces eso: hasta 30 a la
+    # vez y 50 por segundo, en su propio cupo.
+    club-factor: 5
     data-ttl: 15m
     catalog-ttl: 6h
     timeout: 20s
