@@ -65,7 +65,7 @@ class SidgadClientTest {
         server.start();
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/";
         client = new SidgadClient(new SidgadProperties(base, "http://localhost", Duration.ZERO, 3, Duration.ofMinutes(5),
-                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026)));
+                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026), 1));
     }
 
     @AfterEach
@@ -77,7 +77,7 @@ class SidgadClientTest {
     void crestsAreCachedAndDoNotFailIfMissing() {
         String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/logos/";
         SidgadClient logos = new SidgadClient(new SidgadProperties(base, "http://localhost", Duration.ZERO, 3, Duration.ofMinutes(5),
-                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026))) {
+                        Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026), 1)) {
             @Override
             protected String logosUrl() {
                 return base;

@@ -64,7 +64,7 @@ class CatalogServiceTest {
     static CatalogService serviceWithFixtures() {
         SidgadProperties props = new SidgadProperties("http://localhost/", "http://localhost",
                         Duration.ZERO, 1, Duration.ofMinutes(1), Duration.ofMinutes(1),
-                        Duration.ofSeconds(1), List.of(2026, 2027));
+                        Duration.ofSeconds(1), List.of(2026, 2027), 1);
         SidgadClient client = new SidgadClient(props) {
             @Override
             public String portal() {
