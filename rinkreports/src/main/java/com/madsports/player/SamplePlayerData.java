@@ -53,7 +53,10 @@ public final class SamplePlayerData {
         PlayerReportService.Query q = new PlayerReportService.Query(PLAYER_ID, "Tomás Ejemplo", "Tomás Ejemplo",
                 CLUB_ID, today.getYear(), Scope.SEASON, Eligibility.levels("JUNIORS"), "MASCULINO");
         return PlayerReportService.assemble(q, new ReportData.ClubInfo(CLUB_ID, "CEJ", "CLUB EJEMPLO", logo), today,
-                LEVELS, inputs);
+                        LEVELS, inputs)
+                .withLeagueRanks(java.util.Map.of(
+                        juniors.levelLabel() + " " + juniors.branchLabel(), new PlayerReport.LeagueRank(4, 96, 0, 21),
+                        primera.levelLabel() + " " + primera.branchLabel(), new PlayerReport.LeagueRank(18, 88, 0, 25)));
     }
 
     /**

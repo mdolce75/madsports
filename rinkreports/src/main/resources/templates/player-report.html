@@ -212,6 +212,14 @@
                     <div class="kpi-l" th:text="|De los goles del equipo (${l.goals} de ${l.teamGoals})|">Incidencia</div></td>
             </tr>
         </table>
+        <table class="kpis tres nobreak liga" th:if="${b.leagueRank != null}" th:with="lr=${b.leagueRank}">
+            <tr>
+                <td><div class="kpi-v" th:text="|${lr.position}°|">0</div>
+                    <div class="kpi-l" th:text="|Goleador de la categoría, entre ${lr.players} jugadores|">Puesto</div></td>
+                <td><div class="kpi-v" th:text="|Top ${lr.topPercent()}%|">0</div><div class="kpi-l">De la tabla de goleadores</div></td>
+                <td><div class="kpi-v" th:text="${lr.leaderGoals}">0</div><div class="kpi-l">Goles del goleador de la categoría</div></td>
+            </tr>
+        </table>
         <div class="nobreak">
             <h4>Penales y libres directos</h4>
             <table class="two" th:if="${l.hasSetPieces()}">

@@ -58,11 +58,45 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
      * sanciones, sus partidos y sus fortalezas y debilidades (contra sus compañeros en esa categoría).
      */
     public record CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded,
-                                List<MatchRow> matches, List<ReportData.Indicator> indicators) {
+                                List<MatchRow> matches, List<ReportData.Indicator> indicators, LeagueRank leagueRank) {
+
+        public CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
+                             List<ReportData.Indicator> indicators) {
+            this(line, minutes, shortHanded, matches, indicators, null);
+        }
 
         public CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches) {
-            this(line, minutes, shortHanded, matches, List.of());
+            this(line, minutes, shortHanded, matches, List.of(), null);
         }
+
+        CategoryBlock withLeagueRank(LeagueRank rank) {
+            return new CategoryBlock(line, minutes, shortHanded, matches, indicators, rank);
+        }
+    }
+
+    /**
+     * Su lugar en la tabla de goleadores de la categoría (los torneos del período sumados), según las estadísticas
+     * que publica SIDGAD.
+     *
+     * @param position    puesto entre todos los jugadores de la categoría (empatados comparten puesto)
+     * @param players     jugadores de la categoría en la tabla
+     * @param goals       sus goles en esa tabla
+     * @param leaderGoals los goles del goleador de la categoría
+     */
+    public record LeagueRank(int position, int players, int goals, int leaderGoals) {
+
+        /** En qué porcentaje de arriba de la tabla está (1 a 100). */
+        public int topPercent() {
+            return players == 0 ? 100 : Math.max(1, (int) Math.ceil(100.0 * position / players));
+        }
+    }
+
+    /** El mismo informe, con el lugar en la liga de cada categoría (por nombre de categoría; las que falten, sin él). */
+    public PlayerReport withLeagueRanks(java.util.Map<String, LeagueRank> ranks) {
+        return new PlayerReport(playerId, playerName, fullName, club, year, period, generatedOn, categories, total,
+                minutes, shortHanded, matches, notes,
+                blocks.stream().map(b -> b.withLeagueRank(ranks.get(b.line().category()))).toList(),
+                indicators, federation);
     }
 
     public boolean hasData() {
