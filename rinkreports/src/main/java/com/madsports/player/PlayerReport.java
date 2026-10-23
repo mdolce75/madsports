@@ -58,19 +58,82 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
      * sanciones, sus partidos y sus fortalezas y debilidades (contra sus compañeros en esa categoría).
      */
     public record CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded,
-                                List<MatchRow> matches, List<ReportData.Indicator> indicators, LeagueRank leagueRank) {
+                                List<MatchRow> matches, List<ReportData.Indicator> indicators, LeagueRank leagueRank,
+                                GoalMoments goalMoments) {
+
+        public CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
+                             List<ReportData.Indicator> indicators, GoalMoments goalMoments) {
+            this(line, minutes, shortHanded, matches, indicators, null, goalMoments);
+        }
 
         public CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
                              List<ReportData.Indicator> indicators) {
-            this(line, minutes, shortHanded, matches, indicators, null);
+            this(line, minutes, shortHanded, matches, indicators, null, GoalMoments.EMPTY);
         }
 
         public CategoryBlock(Line line, Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches) {
-            this(line, minutes, shortHanded, matches, List.of(), null);
+            this(line, minutes, shortHanded, matches, List.of(), null, GoalMoments.EMPTY);
         }
 
         CategoryBlock withLeagueRank(LeagueRank rank) {
-            return new CategoryBlock(line, minutes, shortHanded, matches, indicators, rank);
+            return new CategoryBlock(line, minutes, shortHanded, matches, indicators, rank, goalMoments);
+        }
+
+        /** Sus rachas goleadoras en la categoría, partido a partido en orden de fecha. */
+        public ScoringStreaks scoring() {
+            return ScoringStreaks.of(matches);
+        }
+    }
+
+    /**
+     * Cuándo llegaron sus goles, según el minuto de las actas completas (las que suman el resultado).
+     *
+     * @param withMinute sus goles con minuto en esas actas (sobre los que se cuenta el resto)
+     * @param opener     abrieron el marcador
+     * @param equalizer  empataron el partido
+     * @param goAhead    pusieron a su equipo en ventaja (sin contar los que abrieron el marcador)
+     * @param winner     fueron el gol del triunfo: el que dejó a su equipo arriba para siempre en un partido ganado
+     */
+    public record GoalMoments(int withMinute, int opener, int equalizer, int goAhead, int winner) {
+
+        public static final GoalMoments EMPTY = new GoalMoments(0, 0, 0, 0, 0);
+
+        public boolean hasData() {
+            return withMinute > 0;
+        }
+
+        GoalMoments plus(GoalMoments o) {
+            return new GoalMoments(withMinute + o.withMinute, opener + o.opener, equalizer + o.equalizer,
+                    goAhead + o.goAhead, winner + o.winner);
+        }
+    }
+
+    /**
+     * Sus rachas goleadoras.
+     *
+     * @param longest   partidos seguidos convirtiendo (la más larga)
+     * @param braces    partidos con exactamente 2 goles
+     * @param hatTricks partidos con 3 goles o más
+     */
+    public record ScoringStreaks(int longest, int braces, int hatTricks) {
+
+        static ScoringStreaks of(List<MatchRow> rows) {
+            int best = 0;
+            int run = 0;
+            int braces = 0;
+            int hatTricks = 0;
+            for (MatchRow r : rows.stream().sorted(java.util.Comparator.comparing(MatchRow::date,
+                    java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))).toList()) {
+                run = r.goals() > 0 ? run + 1 : 0;
+                best = Math.max(best, run);
+                braces += r.goals() == 2 ? 1 : 0;
+                hatTricks += r.goals() >= 3 ? 1 : 0;
+            }
+            return new ScoringStreaks(best, braces, hatTricks);
+        }
+
+        public boolean hasData() {
+            return longest > 0;
         }
     }
 

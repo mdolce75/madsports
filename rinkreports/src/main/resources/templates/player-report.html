@@ -212,6 +212,23 @@
                     <div class="kpi-l" th:text="|De los goles del equipo (${l.goals} de ${l.teamGoals})|">Incidencia</div></td>
             </tr>
         </table>
+        <th:block th:with="gm=${b.goalMoments}"><table class="kpis cuatro nobreak" th:if="${gm != null and gm.hasData()}">
+            <tr>
+                <td><div class="kpi-v" th:text="${gm.opener}">0</div><div class="kpi-l">Abrió el marcador</div></td>
+                <td><div class="kpi-v" th:text="${gm.equalizer}">0</div><div class="kpi-l">Goles del empate</div></td>
+                <td><div class="kpi-v" th:text="${gm.goAhead}">0</div><div class="kpi-l">Puso en ventaja</div></td>
+                <td><div class="kpi-v" th:text="${gm.winner}">0</div><div class="kpi-l">Goles del triunfo</div></td>
+            </tr>
+        </table>
+        <p class="muted" th:if="${gm != null and gm.hasData()}"
+           th:text="|Goles importantes: sobre sus ${gm.withMinute} goles con minuto en actas completas.|">Goles importantes</p></th:block>
+        <th:block th:with="sc=${b.scoring()}"><table class="kpis tres nobreak" th:if="${sc.hasData()}">
+            <tr>
+                <td><div class="kpi-v" th:text="${sc.longest}">0</div><div class="kpi-l">Partidos seguidos convirtiendo</div></td>
+                <td><div class="kpi-v" th:text="${sc.braces}">0</div><div class="kpi-l">Partidos con 2 goles</div></td>
+                <td><div class="kpi-v" th:text="${sc.hatTricks}">0</div><div class="kpi-l">Partidos con 3 goles o más</div></td>
+            </tr>
+        </table></th:block>
         <table class="kpis tres nobreak liga" th:if="${b.leagueRank != null}" th:with="lr=${b.leagueRank}">
             <tr>
                 <td><div class="kpi-v" th:text="|${lr.position}°|">0</div>
