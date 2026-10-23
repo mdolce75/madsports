@@ -22,6 +22,7 @@ import com.madsports.sidgad.model.Models.EventType;
 import com.madsports.sidgad.model.Models.SeasonMatch;
 import com.madsports.stats.ShortHandedCalc;
 import com.madsports.sidgad.model.Models.TeamRef;
+import com.madsports.sidgad.model.Models.PlayerStats;
 import com.madsports.sidgad.parse.SidgadParser;
 import com.madsports.stats.ReportData;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -36,7 +37,9 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -243,10 +246,13 @@ public class PlayerReportService {
                 .filter(q::eligible)
                 .toList();
         List<TeamInput> inputs = new ArrayList<>();
+        Map<Competition, Future<String>> scorerTables = new LinkedHashMap<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
             job.update(Status.EXTRACTING, "Leyendo los calendarios de los equipos del club");
             Map<Competition, Future<String>> calendars = new LinkedHashMap<>();
             comps.forEach(c -> calendars.put(c, io.submit(() -> sidgad.calendar(c.id()))));
+            // La tabla de goleadores de cada torneo, para su lugar en la liga.
+            comps.forEach(c -> scorerTables.put(c, io.submit(() -> sidgad.playerStats(c.id()))));
             Map<Competition, List<Match>> calendar = new LinkedHashMap<>();
             for (Competition c : comps) {
                 calendar.put(c, SidgadParser.calendar(ClubTeams.await(calendars.get(c))));
@@ -288,7 +294,50 @@ public class PlayerReportService {
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
         Query resolved = baseLevel(q.federation(), q.playerId(), inputs).map(q::withBase).orElse(q);
         List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
-        return assemble(resolved, info, LocalDate.now(clock), q.federation().levels(), own);
+        return assemble(resolved, info, LocalDate.now(clock), q.federation().levels(), own)
+                .withLeagueRanks(leagueRanks(q.playerId(), own, scorerTables));
+    }
+
+    /**
+     * Su lugar en la tabla de goleadores de cada categoría: suma los goles de cada jugador en los torneos de esa
+     * categoría (Apertura y Clausura) y lo ubica entre todos. Sin goles, o si una tabla no se pudo leer, esa categoría
+     * queda sin lugar en la liga.
+     */
+    static Map<String, PlayerReport.LeagueRank> leagueRanks(int playerId, List<TeamInput> inputs,
+                                                            Map<Competition, Future<String>> scorerTables) {
+        Map<String, Set<Competition>> byCategory = new LinkedHashMap<>();
+        inputs.forEach(in -> byCategory.computeIfAbsent(in.category(), k -> new LinkedHashSet<>()).add(in.competition()));
+        Map<String, PlayerReport.LeagueRank> ranks = new LinkedHashMap<>();
+        byCategory.forEach((category, comps) -> {
+            List<List<PlayerStats>> tables = new ArrayList<>();
+            for (Competition c : comps) {
+                Future<String> f = scorerTables.get(c);
+                try {
+                    tables.add(f == null ? List.of() : SidgadParser.playerStats(ClubTeams.await(f)));
+                } catch (RuntimeException e) {
+                    log.info("No se pudo leer la tabla de goleadores de {}: {}", c.id(), e.getMessage());
+                    return;
+                }
+            }
+            PlayerReport.LeagueRank rank = leagueRank(playerId, tables);
+            if (rank != null) {
+                ranks.put(category, rank);
+            }
+        });
+        return ranks;
+    }
+
+    /** Su puesto entre los goleadores de unas tablas de SIDGAD sumadas; null si no tiene goles en ellas. */
+    static PlayerReport.LeagueRank leagueRank(int playerId, List<List<PlayerStats>> tables) {
+        Map<Integer, Integer> goals = new HashMap<>();
+        tables.forEach(t -> t.forEach(p -> goals.merge(p.playerId(), p.goals(), Integer::sum)));
+        int mine = goals.getOrDefault(playerId, 0);
+        if (mine == 0) {
+            return null;
+        }
+        int position = 1 + (int) goals.values().stream().filter(g -> g > mine).count();
+        int leader = goals.values().stream().mapToInt(Integer::intValue).max().orElse(mine);
+        return new PlayerReport.LeagueRank(position, goals.size(), mine, leader);
     }
 
     /**
