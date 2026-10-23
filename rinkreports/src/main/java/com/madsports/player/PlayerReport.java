@@ -1,11 +1,18 @@
 package com.madsports.player;
 
 import com.madsports.sidgad.model.Federation;
-
 import com.madsports.stats.ReportData;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Informe de un jugador: partidos, goles, tarjetas (amarilla, azul y roja por separado), penales y libres directos por
@@ -79,6 +86,42 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
             return new CategoryBlock(line, minutes, shortHanded, matches, indicators, rank, goalMoments);
         }
 
+        /** Sus partidos, goles y titularidades mes a mes, en orden. */
+        public List<MonthLine> byMonth() {
+            Map<YearMonth, int[]> months = new TreeMap<>();
+            matches.stream().filter(r -> r.date() != null).forEach(r -> {
+                int[] c = months.computeIfAbsent(YearMonth.from(r.date()), k -> new int[3]);
+                c[0]++;
+                c[1] += r.goals();
+                c[2] += r.starter() && !r.fromSummary() ? 1 : 0;
+            });
+            DateTimeFormatter f = DateTimeFormatter.ofPattern("MMMM yyyy",
+                    Locale.forLanguageTag("es-AR"));
+            return months.entrySet().stream().map(e -> {
+                String label = e.getKey().format(f);
+                return new MonthLine(Character.toUpperCase(label.charAt(0)) + label.substring(1), e.getValue()[0],
+                        e.getValue()[1], e.getValue()[2]);
+            }).toList();
+        }
+
+        /** Sus partidos y goles contra cada rival: primero contra los que más convirtió. */
+        public List<RivalLine> byRival() {
+            Map<String, int[]> rivals = new LinkedHashMap<>();
+            for (MatchRow r : matches) {
+                int[] c = rivals.computeIfAbsent(r.opponent(), k -> new int[5]);
+                c[0]++;
+                c[1] += r.goals();
+                c["G".equals(r.result()) ? 2 : "E".equals(r.result()) ? 3 : 4]++;
+            }
+            return rivals.entrySet().stream()
+                    .map(e -> new RivalLine(e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2],
+                            e.getValue()[3], e.getValue()[4]))
+                    .sorted(Comparator.comparingInt(RivalLine::goals).reversed()
+                            .thenComparing(Comparator.comparingInt(RivalLine::played).reversed())
+                            .thenComparing(RivalLine::opponent))
+                    .toList();
+        }
+
         /** Sus rachas goleadoras en la categoría, partido a partido en orden de fecha. */
         public ScoringStreaks scoring() {
             return ScoringStreaks.of(matches);
@@ -93,10 +136,12 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
      * @param equalizer  empataron el partido
      * @param goAhead    pusieron a su equipo en ventaja (sin contar los que abrieron el marcador)
      * @param winner     fueron el gol del triunfo: el que dejó a su equipo arriba para siempre en un partido ganado
+     * @param firstHalf  convertidos en el primer tiempo (secondHalf: en el segundo)
      */
-    public record GoalMoments(int withMinute, int opener, int equalizer, int goAhead, int winner) {
+    public record GoalMoments(int withMinute, int opener, int equalizer, int goAhead, int winner, int firstHalf,
+                              int secondHalf) {
 
-        public static final GoalMoments EMPTY = new GoalMoments(0, 0, 0, 0, 0);
+        public static final GoalMoments EMPTY = new GoalMoments(0, 0, 0, 0, 0, 0, 0);
 
         public boolean hasData() {
             return withMinute > 0;
@@ -104,8 +149,16 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
 
         GoalMoments plus(GoalMoments o) {
             return new GoalMoments(withMinute + o.withMinute, opener + o.opener, equalizer + o.equalizer,
-                    goAhead + o.goAhead, winner + o.winner);
+                    goAhead + o.goAhead, winner + o.winner, firstHalf + o.firstHalf, secondHalf + o.secondHalf);
         }
+    }
+
+    /** Un mes: partidos que jugó, sus goles y en cuántos fue titular (según las planillas de las actas). */
+    public record MonthLine(String month, int played, int goals, int starts) {
+    }
+
+    /** Un rival: partidos que jugó contra él, sus goles y cómo terminaron. */
+    public record RivalLine(String opponent, int played, int goals, int won, int drawn, int lost) {
     }
 
     /**
@@ -122,8 +175,8 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
             int run = 0;
             int braces = 0;
             int hatTricks = 0;
-            for (MatchRow r : rows.stream().sorted(java.util.Comparator.comparing(MatchRow::date,
-                    java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))).toList()) {
+            for (MatchRow r : rows.stream().sorted(Comparator.comparing(MatchRow::date,
+                    Comparator.nullsLast(Comparator.naturalOrder()))).toList()) {
                 run = r.goals() > 0 ? run + 1 : 0;
                 best = Math.max(best, run);
                 braces += r.goals() == 2 ? 1 : 0;
@@ -155,7 +208,7 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
     }
 
     /** El mismo informe, con el lugar en la liga de cada categoría (por nombre de categoría; las que falten, sin él). */
-    public PlayerReport withLeagueRanks(java.util.Map<String, LeagueRank> ranks) {
+    public PlayerReport withLeagueRanks(Map<String, LeagueRank> ranks) {
         return new PlayerReport(playerId, playerName, fullName, club, year, period, generatedOn, categories, total,
                 minutes, shortHanded, matches, notes,
                 blocks.stream().map(b -> b.withLeagueRank(ranks.get(b.line().category()))).toList(),
@@ -260,7 +313,7 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
          * minuto). Es lo mismo que cuentan los totales del informe.
          */
         public Bucket total() {
-            List<Bucket> all = new java.util.ArrayList<>(buckets);
+            List<Bucket> all = new ArrayList<>(buckets);
             all.add(unrecorded);
             return sum("Total", all);
         }

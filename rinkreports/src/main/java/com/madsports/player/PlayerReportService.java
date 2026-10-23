@@ -349,7 +349,7 @@ public class PlayerReportService {
                 int goalsAgainst = home ? m.awayGoals() : m.homeGoals();
                 int own = 0;
                 int rival = 0;
-                int withMinute = 0, opener = 0, equalizer = 0, goAhead = 0, winner = 0;
+                int withMinute = 0, opener = 0, equalizer = 0, goAhead = 0, winner = 0, firstHalf = 0, secondHalf = 0;
                 for (MatchEvent g : goals) {
                     boolean ours = g.teamId() == in.teamId();
                     int before = own - rival;
@@ -363,6 +363,11 @@ public class PlayerReportService {
                         continue;
                     }
                     withMinute++;
+                    if (g.period() == 1) {
+                        firstHalf++;
+                    } else {
+                        secondHalf++;
+                    }
                     if (first) {
                         opener++;
                     } else if (before == -1) {
@@ -376,7 +381,8 @@ public class PlayerReportService {
                         winner++;
                     }
                 }
-                total = total.plus(new PlayerReport.GoalMoments(withMinute, opener, equalizer, goAhead, winner));
+                total = total.plus(new PlayerReport.GoalMoments(withMinute, opener, equalizer, goAhead, winner,
+                        firstHalf, secondHalf));
             }
         }
         return total;

@@ -221,7 +221,7 @@
             </tr>
         </table>
         <p class="muted" th:if="${gm != null and gm.hasData()}"
-           th:text="|Goles importantes: sobre sus ${gm.withMinute} goles con minuto en actas completas.|">Goles importantes</p></th:block>
+           th:text="|Goles importantes: sobre sus ${gm.withMinute} goles con minuto en actas completas. Por tiempo: ${gm.firstHalf} en el 1T y ${gm.secondHalf} en el 2T.|">Goles importantes</p></th:block>
         <th:block th:with="sc=${b.scoring()}"><table class="kpis tres nobreak" th:if="${sc.hasData()}">
             <tr>
                 <td><div class="kpi-v" th:text="${sc.longest}">0</div><div class="kpi-l">Partidos seguidos convirtiendo</div></td>
@@ -325,6 +325,32 @@
         <div th:replace="~{fragments/player-short-handed :: concededGoals(${b.shortHanded})}"></div>
 
         <div th:replace="~{fragments/player-strengths :: strengths(${b.indicators}, |Fortalezas y debilidades en ${l.category}|)}"></div>
+
+        <table class="two nobreak" th:if="${!b.matches.isEmpty()}">
+            <tr>
+                <td>
+                    <h3>Mes a mes</h3>
+                    <table>
+                        <tr><th class="l">Mes</th><th>PJ</th><th>Titular</th><th>Goles</th></tr>
+                        <tr th:each="x : ${b.byMonth()}">
+                            <td class="l" th:text="${x.month}"></td><td th:text="${x.played}"></td><td th:text="${x.starts}"></td>
+                            <td th:text="${x.goals}"></td>
+                        </tr>
+                    </table>
+                    <p class="muted">Titular: partidos en el cinco inicial, según las planillas de las actas.</p>
+                </td>
+                <td>
+                    <h3>Por rival</h3>
+                    <table>
+                        <tr><th class="l">Rival</th><th>PJ</th><th>Goles</th><th>G</th><th>E</th><th>P</th></tr>
+                        <tr th:each="x : ${b.byRival()}">
+                            <td class="l" th:text="${x.opponent}"></td><td th:text="${x.played}"></td><td th:text="${x.goals}"></td>
+                            <td th:text="${x.won}"></td><td th:text="${x.drawn}"></td><td th:text="${x.lost}"></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
 
         <th:block th:if="${!b.matches.isEmpty()}">
             <h3>Partido a partido</h3>
