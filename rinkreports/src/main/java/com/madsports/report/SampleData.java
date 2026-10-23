@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Datos ficticios para el informe modelo. Clubes y jugadores inventados ("Club Ejemplo", "Rival Norte"...),
@@ -86,6 +87,7 @@ final class SampleData {
         List<Match> matches = new ArrayList<>();
         Map<Integer, List<MatchEvent>> sheets = new HashMap<>();
         Map<Integer, int[]> playerTotals = new LinkedHashMap<>();
+        Map<Integer, StatsEngine.Keeper> keepers = new HashMap<>();
         int rounds = TEAMS.length - 1;
         for (int round = 1; round <= rounds; round++) {
             LocalDate date = firstRound.plusWeeks(round - 1);
@@ -104,6 +106,8 @@ final class SampleData {
                 boolean sheetMissing = tournament == Tournament.OPENING && round == 3;
                 if (played && clubMatch && !sheetMissing) {
                     sheets.put(idp, events(rnd, home, hg, away, ag, playerTotals));
+                    // El arquero titular del club: casi siempre el primero, a veces el suplente.
+                    keepers.put(idp, rnd.nextDouble() < 0.75 ? KEEPERS[0] : KEEPERS[1]);
                 } else if (played && clubMatch) {
                     sheets.put(idp, List.of());
                     assignGoals(rnd, home.clubId() == CLUB.id() ? hg : ag, playerTotals);
@@ -111,8 +115,12 @@ final class SampleData {
             }
         }
         return new CompetitionData(comp, standings(teams, matches), today, matches,
-                players(teams, playerTotals, base, rnd), sheets);
+                players(teams, playerTotals, base, rnd), sheets, Set.of(), keepers);
     }
+
+    /** Arqueros ficticios del club (para la sección de arqueros del ejemplo). */
+    private static final StatsEngine.Keeper[] KEEPERS = {new StatsEngine.Keeper(990001, "Pablo Arquetipo"),
+            new StatsEngine.Keeper(990002, "Diego Suplente")};
 
     /** Fixture de todos contra todos (método del círculo). */
     private static List<int[]> roundRobin(int round, int n) {

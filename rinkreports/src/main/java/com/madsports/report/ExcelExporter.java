@@ -135,6 +135,13 @@ public class ExcelExporter {
                     x.goalsAgainst()));
             s.blank();
         }
+        if (k.team().keepers() != null && !k.team().keepers().isEmpty()) {
+            s.section("Arqueros (partidos de titular, según las planillas)");
+            s.header("Arquero", "PJ de titular", "Goles recibidos", "Por partido", "Vallas invictas");
+            k.team().keepers().forEach(x -> s.row(x.name(), x.matches(), x.goalsAgainst(), x.goalsAgainstPerGame(),
+                    x.cleanSheets()));
+            s.blank();
+        }
         s.section("Top 3 · Promedio de gol");
         s.header("Jugador", "Goles", "Partidos", "Promedio");
         k.topScorers().forEach(x -> s.row(x.player().name(), x.count(), x.of(), x.value()));

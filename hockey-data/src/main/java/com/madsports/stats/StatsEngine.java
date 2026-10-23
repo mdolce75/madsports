@@ -10,6 +10,7 @@ import com.madsports.sidgad.model.Models.StandingRow;
 import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.stats.ReportData.Discipline;
 import com.madsports.stats.ReportData.FoulSituation;
+import com.madsports.stats.ReportData.KeeperLine;
 import com.madsports.stats.ReportData.ScoreFlow;
 import com.madsports.stats.ReportData.Fouls;
 import com.madsports.stats.ReportData.LeagueContext;
@@ -48,14 +49,27 @@ public final class StatsEngine {
     /**
      * @param goalkeepers arqueros de los equipos del club (por id_player): no entran en los goleadores
      */
+    /**
+     * @param startingKeepers el arquero titular del equipo del club en cada partido con planilla (por idp)
+     */
     public record CompetitionData(Competition competition, List<StandingRow> standings, LocalDate standingsDate,
                                   List<Match> matches, List<PlayerStats> players, Map<Integer, List<MatchEvent>> sheets,
-                                  Set<Integer> goalkeepers) {
+                                  Set<Integer> goalkeepers, Map<Integer, Keeper> startingKeepers) {
+
+        public CompetitionData(Competition competition, List<StandingRow> standings, LocalDate standingsDate,
+                               List<Match> matches, List<PlayerStats> players, Map<Integer, List<MatchEvent>> sheets,
+                               Set<Integer> goalkeepers) {
+            this(competition, standings, standingsDate, matches, players, sheets, goalkeepers, Map.of());
+        }
 
         public CompetitionData(Competition competition, List<StandingRow> standings, LocalDate standingsDate,
                                List<Match> matches, List<PlayerStats> players, Map<Integer, List<MatchEvent>> sheets) {
-            this(competition, standings, standingsDate, matches, players, sheets, Set.of());
+            this(competition, standings, standingsDate, matches, players, sheets, Set.of(), Map.of());
         }
+    }
+
+    /** Un arquero, como figura en la planilla. */
+    public record Keeper(int playerId, String name) {
     }
 
     static final int BUCKET_MINUTES = 5;
@@ -227,12 +241,41 @@ public final class StatsEngine {
         // pelota parada sí cuentan arriba, en las del equipo.
         Set<Integer> goalkeepers = entries.stream().flatMap(e -> e.data().goalkeepers().stream()).collect(Collectors.toSet());
         List<PlayerLine> scorers = players.stream().filter(p -> !goalkeepers.contains(p.playerId())).toList();
+        List<KeeperLine> keepers = keepers(entries, included);
         TeamReport base = new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
                 biggestWin, worstLoss, scorers, setPieces, discipline, rivals(results), byTournament, timeProfile, List.of(),
-                fouls, players);
+                fouls, players, keepers);
         return new TeamReport(key, name, standings, total, home, away, form, results, upcoming,
                 biggestWin, worstLoss, scorers, setPieces, discipline, base.rivals(), byTournament, timeProfile,
-                StrengthsAnalysis.evaluate(base, league), fouls, players);
+                StrengthsAnalysis.evaluate(base, league), fouls, players, keepers);
+    }
+
+    /**
+     * Los arqueros titulares del equipo: partidos que empezaron en el arco, goles recibidos en esos partidos y vallas
+     * invictas. Solo los partidos con planilla (sin ella no se sabe quién atajó). Primero el de más partidos.
+     */
+    private static List<KeeperLine> keepers(List<Entry> entries, Set<Match> included) {
+        Map<Integer, int[]> stats = new LinkedHashMap<>();   // arquero -> {partidos, goles recibidos, vallas invictas}
+        Map<Integer, String> names = new HashMap<>();
+        for (Entry e : entries) {
+            for (Match m : e.data().matches()) {
+                Keeper k = e.data().startingKeepers().get(m.idp());
+                if (k == null || !included.contains(m) || !m.involves(e.team().teamId())) {
+                    continue;
+                }
+                int against = m.homeTeamId() == e.team().teamId() ? m.awayGoals() : m.homeGoals();
+                int[] s = stats.computeIfAbsent(k.playerId(), id -> new int[3]);
+                s[0]++;
+                s[1] += against;
+                s[2] += against == 0 ? 1 : 0;
+                names.putIfAbsent(k.playerId(), k.name());
+            }
+        }
+        return stats.entrySet().stream()
+                .map(x -> new KeeperLine(x.getKey(), names.get(x.getKey()), x.getValue()[0], x.getValue()[1],
+                        x.getValue()[2]))
+                .sorted(Comparator.comparingInt(KeeperLine::matches).reversed().thenComparing(KeeperLine::name))
+                .toList();
     }
 
     /**

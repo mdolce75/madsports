@@ -66,7 +66,8 @@ public record ReportData(ClubInfo club, String category, String tournament, Loca
                              MatchLine biggestWin, MatchLine worstLoss,
                              List<PlayerLine> players, SetPieces setPieces, Discipline discipline,
                              List<RivalLine> rivals, List<TournamentLine> byTournament, TimeProfile timeProfile,
-                             List<Indicator> indicators, Fouls fouls, @JsonIgnore List<PlayerLine> squad) {
+                             List<Indicator> indicators, Fouls fouls, @JsonIgnore List<PlayerLine> squad,
+                             List<KeeperLine> keepers) {
 
         /** Leído del JSON (la IA no lo recibe), el plantel completo no viene: queda el de los jugadores de campo. */
         public TeamReport {
@@ -521,6 +522,21 @@ public record ReportData(ClubInfo club, String category, String tournament, Loca
     }
 
     public record RivalLine(String opponent, int played, int won, int drawn, int lost, int goalsFor, int goalsAgainst) {
+    }
+
+    /**
+     * Un arquero titular del equipo.
+     *
+     * @param matches      partidos que empezó en el arco (con planilla)
+     * @param goalsAgainst goles que recibió el equipo en esos partidos
+     * @param cleanSheets  partidos de esos sin goles en contra
+     */
+    public record KeeperLine(int playerId, String name, int matches, int goalsAgainst, int cleanSheets) {
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double goalsAgainstPerGame() {
+            return matches == 0 ? 0 : (double) goalsAgainst / matches;
+        }
     }
 
     public record TournamentLine(String tournament, TeamRecord record) {
