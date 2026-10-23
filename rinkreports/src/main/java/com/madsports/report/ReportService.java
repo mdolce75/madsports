@@ -218,7 +218,7 @@ public class ReportService {
         }
         Job job = new Job(new Request(clubId, null, null, scope, year, fed), owner);
         jobs.put(job.id(), job);
-        executor.submit(() -> runClub(job, club, categories));
+        executor.submit(() -> sidgad.forClubReport(() -> runClub(job, club, categories)));
         return job;
     }
 

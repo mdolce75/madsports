@@ -33,6 +33,13 @@ public class SidgadClient {
     private final Object throttle = new Object();
     /** Pedidos simultáneos a SIDGAD como máximo ({@code madsports.sidgad.max-concurrency}). */
     private final Semaphore concurrency;
+    /** Los del informe del club completo: {@code club-factor} veces más, en su propio cupo. */
+    private final Semaphore clubConcurrency;
+    /**
+     * Marca los pedidos del informe del club completo. Es heredable: los hilos virtuales que ese informe abre para
+     * leer en paralelo también la llevan.
+     */
+    private static final InheritableThreadLocal<Boolean> CLUB_REPORT = new InheritableThreadLocal<>();
     private long lastRequestNanos;
 
     public SidgadClient(SidgadProperties props) {
@@ -42,6 +49,32 @@ public class SidgadClient {
         this.sheetCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(3000).build();
         this.logoCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(100).build();
         this.concurrency = new Semaphore(Math.max(1, this.props.maxConcurrency()), true);
+        this.clubConcurrency = new Semaphore(Math.max(1, this.props.maxConcurrency() * clubFactor()), true);
+    }
+
+    private int clubFactor() {
+        return Math.max(1, props.clubFactor());
+    }
+
+    /**
+     * Corre el informe del club completo con su propio cupo de pedidos: {@code club-factor} veces los simultáneos y los
+     * pedidos por segundo de los demás informes.
+     */
+    public void forClubReport(Runnable work) {
+        CLUB_REPORT.set(Boolean.TRUE);
+        try {
+            work.run();
+        } finally {
+            CLUB_REPORT.remove();
+        }
+    }
+
+    private static boolean clubReport() {
+        return Boolean.TRUE.equals(CLUB_REPORT.get());
+    }
+
+    private Semaphore slots() {
+        return clubReport() ? clubConcurrency : concurrency;
     }
 
     /** Contenido que se devuelve cuando SIDGAD responde 404: el dato no está publicado. */
@@ -115,8 +148,9 @@ public class SidgadClient {
         if (hit != null) {
             return hit;
         }
+        Semaphore slots = slots();
         try {
-            concurrency.acquire();
+            slots.acquire();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return null;
@@ -142,7 +176,7 @@ public class SidgadClient {
             log.info("No se pudo bajar el escudo {}: {}", file, e.getMessage());
             return null;
         } finally {
-            concurrency.release();
+            slots.release();
         }
     }
 
@@ -172,8 +206,9 @@ public class SidgadClient {
     }
 
     private String fetch(String url, Connection.Method method, Map<String, String> params, String file) {
+        Semaphore slots = slots();
         try {
-            concurrency.acquire();
+            slots.acquire();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new SidgadException("Interrumpido esperando turno", e);
@@ -181,7 +216,7 @@ public class SidgadClient {
         try {
             return doFetch(url, method, params, file);
         } finally {
-            concurrency.release();
+            slots.release();
         }
     }
 
@@ -219,7 +254,8 @@ public class SidgadClient {
 
     private void waitTurn() {
         synchronized (throttle) {
-            long wait = props.minInterval().toNanos() - (System.nanoTime() - lastRequestNanos);
+            long interval = props.minInterval().toNanos() / (clubReport() ? clubFactor() : 1);
+            long wait = interval - (System.nanoTime() - lastRequestNanos);
             if (wait > 0) {
                 try {
                     Thread.sleep(Duration.ofNanos(wait));
