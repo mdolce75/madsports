@@ -23,6 +23,8 @@
         td { border-bottom: 1px solid #e2e8f0; padding: 3px 2px; text-align: center; font-size: 8pt; }
         td.l, th.l { text-align: left; }
         tr { page-break-inside: avoid; }
+        .nobreak { page-break-inside: avoid; }
+        h3 { page-break-after: avoid; }
         tr.total td { border-top: 2px solid #12303a; background: #edf2f7; font-weight: bold; }
         table.paginar { -fs-table-paginate: paginate; }
         .kpis td { border: none; border-top: 3px solid #0a7ea4; background: #f4f6fa; padding: 6px 2px; width: 14.28%; }
@@ -99,34 +101,19 @@
 <th:block th:if="${r.player == null}">
     <h2>Estadísticas por jugador</h2>
     <p class="muted" th:if="${r.players.isEmpty()}">No hay acciones cargadas.</p>
-    <table class="paginar" th:if="${!r.players.isEmpty()}">
-        <thead>
-        <tr><th class="l">Jugador</th><th th:if="${!r.singleMatch}">PJ</th><th>G</th><th>GR</th><th>Tiros</th><th>Ef.</th>
-            <th>Ataj.</th><th>Pérd.</th><th>Rec.</th><th>FR</th><th>FC</th>
-            <th><span class="card b"></span></th><th><span class="card y"></span></th><th><span class="card r"></span></th>
-            <th>Penales</th><th>Libres</th></tr>
-        </thead>
-        <tr th:each="j : ${r.players}" th:with="m=${j.metrics}">
-            <td class="l"><span th:text="|${j.number.isEmpty() ? '' : j.number + ' '}${j.name}|"></span>
-                <span class="gk" th:if="${j.goalkeeper}"> Arq.</span></td>
-            <td th:if="${!r.singleMatch}" th:text="${j.matches}"></td>
-            <td th:text="${m.goals}"></td><td th:text="${m.goalsConceded}"></td><td th:text="${m.shots}"></td>
-            <td th:text="${m.shotEffectiveness() == null ? '-' : m.shotEffectiveness() + '%'}"></td>
-            <td th:text="${m.saves}"></td><td th:text="${m.turnovers()}"></td><td th:text="${m.recoveries()}"></td>
-            <td th:text="${m.foulsReceived}"></td><td th:text="${m.foulsCommitted}"></td>
-            <td th:text="${m.blues}"></td><td th:text="${m.yellows}"></td><td th:text="${m.reds}"></td>
-            <td th:text="${f.fraction(m.penaltyGoals, m.penalties)}"></td><td th:text="${f.fraction(m.freeHitGoals, m.freeHits)}"></td>
-        </tr>
-        <tr class="total" th:with="m=${r.totals}">
-            <td class="l">Equipo</td><td th:if="${!r.singleMatch}" th:text="${r.balance.played}"></td>
-            <td th:text="${m.goals}"></td><td th:text="${m.goalsConceded}"></td><td th:text="${m.shots}"></td>
-            <td th:text="${m.shotEffectiveness() == null ? '-' : m.shotEffectiveness() + '%'}"></td>
-            <td th:text="${m.saves}"></td><td th:text="${m.turnovers()}"></td><td th:text="${m.recoveries()}"></td>
-            <td th:text="${m.foulsReceived}"></td><td th:text="${m.foulsCommitted}"></td>
-            <td th:text="${m.blues}"></td><td th:text="${m.yellows}"></td><td th:text="${m.reds}"></td>
-            <td th:text="${f.fraction(m.penaltyGoals, m.penalties)}"></td><td th:text="${f.fraction(m.freeHitGoals, m.freeHits)}"></td>
-        </tr>
-    </table>
+    <th:block th:if="${!r.players.isEmpty()}">
+        <!-- En el informe de un partido, discriminado por tiempo y en total; en el de un período, en total. -->
+        <th:block th:if="${r.singleMatch}">
+            <div th:replace="~{fragments/coach-players :: players('Primer tiempo', 1)}"></div>
+            <div th:replace="~{fragments/coach-players :: players('Segundo tiempo', 2)}"></div>
+            <div th:replace="~{fragments/coach-players :: players('Total del partido', 0)}"></div>
+        </th:block>
+        <th:block th:if="${!r.singleMatch}">
+            <div th:replace="~{fragments/coach-players :: players(null, 0)}"></div>
+        </th:block>
+        <p class="muted">% Pérd. y % Rec.: qué parte de las pérdidas y de las recuperaciones del equipo (en ese tiempo o
+            en total) son de cada jugador.</p>
+    </th:block>
 </th:block>
 
 <th:block th:if="${r.singleMatch}">

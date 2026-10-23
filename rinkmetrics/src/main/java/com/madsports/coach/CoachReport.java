@@ -27,7 +27,8 @@ import java.util.stream.Collectors;
  */
 public record CoachReport(String title, String detail, String club, String team, LocalDate generatedAt,
                         boolean singleMatch, List<ReportMatchRow> matches, Balance balance, Metrics totals,
-                        List<PlayerRow> players, PlayerRow player, List<ReportEvent> events) {
+                        List<PlayerRow> players, PlayerRow player, List<ReportEvent> events,
+                        Metrics firstHalf, Metrics secondHalf) {
 
     /** Un partido del informe. @param resultado G, E o P */
     public record ReportMatchRow(Long id, LocalDate date, String opponent, boolean home, String tournament, int goalsFor,
@@ -111,15 +112,26 @@ public record CoachReport(String title, String detail, String club, String team,
         private static Integer pct(int a, int b) {
             return b == 0 ? null : (int) Math.round(100.0 * a / b);
         }
+
+        /** Qué parte de las pérdidas del equipo (team) son de estas (0 a 100; null si el equipo no tuvo). */
+        public Integer shareOfTurnovers(Metrics team) {
+            return pct(turnovers(), team.turnovers());
+        }
+
+        /** Qué parte de las recuperaciones del equipo (team) son de estas (0 a 100; null si el equipo no tuvo). */
+        public Integer shareOfRecoveries(Metrics team) {
+            return pct(recoveries(), team.recoveries());
+        }
     }
 
     /**
      * Un jugador del informe. @param clave "j" + id de SIDGAD, o "m" + nombre para un jugador agregado a mano
      *
      * @param partidos partidos en los que tiene acciones
+     * @param firstHalf sus métricas en el primer tiempo (secondHalf: en el segundo; metrics: en todo el partido)
      */
     public record PlayerRow(String key, String number, String name, boolean goalkeeper, int matches,
-                              Metrics metrics) {
+                              Metrics metrics, Metrics firstHalf, Metrics secondHalf) {
     }
 
     /** Un evento del partido. @param minuto tiempo jugado del período ("1T 12:18") */
@@ -157,7 +169,7 @@ public record CoachReport(String title, String detail, String club, String team,
             players.add(new PlayerRow(e.getKey(), pj == null ? "" : pj.number(),
                     pj == null ? one.getPlayerName() : pj.name(), goalkeeper,
                     (int) e.getValue().stream().map(MatchAction::getMatchId).distinct().count(),
-                    Metrics.de(e.getValue())));
+                    Metrics.de(e.getValue()), Metrics.de(inPeriod(e.getValue(), 1)), Metrics.de(inPeriod(e.getValue(), 2))));
         }
         players.sort(Comparator.comparingInt((PlayerRow j) -> number(j.number()))
                 .thenComparing(PlayerRow::name, SquadService.ALPHABETICAL));
@@ -181,7 +193,13 @@ public record CoachReport(String title, String detail, String club, String team,
         }).toList();
         List<ReportMatchRow> rows = ps.stream().map(ReportMatchRow::of).toList();
         return new CoachReport(title, detail, club, team, generatedAt, singleMatch, rows, Balance.de(rows),
-                Metrics.de(thoseOf), players, chosen, events);
+                Metrics.de(thoseOf), players, chosen, events, Metrics.de(inPeriod(thoseOf, 1)),
+                Metrics.de(inPeriod(thoseOf, 2)));
+    }
+
+    /** Las acciones de un tiempo (1 o 2). */
+    private static List<MatchAction> inPeriod(List<MatchAction> actions, int period) {
+        return actions.stream().filter(a -> a.getPeriod() == period).toList();
     }
 
     private static int number(String n) {
