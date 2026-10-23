@@ -169,7 +169,7 @@ final class PlayerCards {
             return new Raw(key, number, name, false, c.pj(), new double[]{
                     c.goals / pj, shots > 0 ? (double) c.goals / shots : 0, c.foulsRec / pj,
                     balance > 0 ? (double) c.rec / balance : 0, c.discipline()}, new String[]{
-                    num(c.goals / pj) + " goles por partido",
+                    num(c.goals / pj) + (c.goals / pj == 1 ? " gol por partido" : " goles por partido"),
                     shots > 0 ? pct((double) c.goals / shots) + " convertidos" : "Sin tiros",
                     num(c.foulsRec / pj) + " por partido",
                     balance > 0 ? pct((double) c.rec / balance) + " de balance" : "Sin datos",

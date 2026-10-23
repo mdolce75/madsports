@@ -59,7 +59,7 @@ function axes(c, goalkeeper) {
     if (!goalkeeper) {
         const shots = c.intentos;
         return {
-            attack: {v: c.goals / pj, text: `${num(c.goals / pj)} goles por partido`, a: c.goals, b: shots, labels: ["Goles", "Tiros"]},
+            attack: {v: c.goals / pj, text: `${num(c.goals / pj)} ${c.goals / pj === 1 ? "gol" : "goles"} por partido`, a: c.goals, b: shots, labels: ["Goles", "Tiros"]},
             precision: {v: shots ? c.goals / shots : 0, text: shots ? `${pct(c.goals / shots)} convertidos` : "Sin tiros",
                 a: c.goals, b: shots - c.goals, labels: ["Convertidos", "Errados"]},
             imbalance: {v: c.foulsRec / pj, text: `${num(c.foulsRec / pj)} por partido`,
