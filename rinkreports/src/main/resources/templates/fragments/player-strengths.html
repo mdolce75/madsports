@@ -4,7 +4,7 @@
 <!--/* Fortalezas y debilidades del jugador: por categoría (dentro de su bloque) y en general.
        ind = lista de ReportData.Indicator; title = título de la sección. */-->
 <div th:fragment="strengths(ind, title)" class="nobreak" th:if="${!ind.isEmpty()}"
-     th:with="fs=${ind.?[verdict.name() == 'FORTALEZA']}, ds=${ind.?[verdict.name() == 'DEBILIDAD']}">
+     th:with="fs=${ind.?[verdict.name() == 'STRENGTH']}, ds=${ind.?[verdict.name() == 'WEAKNESS']}">
     <h3 th:text="${title}">Fortalezas y debilidades</h3>
     <table class="two">
         <tr>
