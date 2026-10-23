@@ -10,6 +10,7 @@ const finished = p => p.status === "FINISHED" || p.status === "CLOSED";
 const mmss = s => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 const date = f => f ? `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}` : "";
 const pct = (a, b) => b ? Math.round(100 * a / b) : null;
+const inPeriod = (acc, period) => acc.filter(a => a.period === period);
 
 /** Las métricas de un grupo de acciones (las mismas claves que el JSON del servidor). */
 function metrics(acc) {
@@ -52,7 +53,8 @@ function build({title, detail, singleMatch, matches, actions, players = [], play
         const j = known.get(key);
         return {key: key, number: j && j.number || "", name: (j && j.name) || acc[0].playerName || "",
             goalkeeper: j ? !!j.goalkeeper : acc.some(a => GOAL_ACTIONS.has(a.kind)),
-            matches: new Set(acc.map(a => a.matchId)).size, metrics: metrics(acc)};
+            matches: new Set(acc.map(a => a.matchId)).size, metrics: metrics(acc),
+            firstHalf: metrics(inPeriod(acc, 1)), secondHalf: metrics(inPeriod(acc, 2))};
     });
     const num = n => parseInt(n, 10) || 999;
     rows.sort((a, b) => num(a.number) - num(b.number) || a.name.localeCompare(b.name, "es", {sensitivity: "base"}));
@@ -76,7 +78,7 @@ function build({title, detail, singleMatch, matches, actions, players = [], play
         drawn: ps.filter(p => p.outcome === "E").length, lost: ps.filter(p => p.outcome === "P").length,
         goalsFor: ps.reduce((s, p) => s + p.goalsFor, 0), goalsAgainst: ps.reduce((s, p) => s + p.goalsAgainst, 0)};
     return {title, detail, singleMatch, matches: ps, balance, totals: metrics(thoseOf), players: rows,
-        player: chosen, events};
+        player: chosen, events, firstHalf: metrics(inPeriod(thoseOf, 1)), secondHalf: metrics(inPeriod(thoseOf, 2))};
 }
 
 // ---------- Períodos ----------
@@ -133,6 +135,59 @@ function cards(m) {
         [m.reds, "Tarjeta roja", null, "roja"],
         [ep, "Efectividad penales", epd], [el2, "Efectividad libres", eld],
     ];
+}
+
+/**
+ * La tabla por jugador de un tiempo ("firstHalf", "secondHalf") o del total ("metrics"), con qué parte de las pérdidas y
+ * de las recuperaciones del equipo en eso es de cada jugador.
+ */
+function playersTable(inf, opts, title, field) {
+    const team = field === "metrics" ? inf.totals : inf[field];
+    const share = v => v == null ? "–" : v + "%";
+    const frag = el("div");
+    if (title) frag.append(el("h5", "inf-sub2", title));
+    const wrap = el("div", "coach-tablewrap"), tb = el("table", "coach-table inf-tabla");
+    const cols = [
+        ["G", x => x.goals], ["GR", x => x.goalsConceded], ["Tiros", x => x.shots],
+        ["Ef.", x => x.shotEffectiveness == null ? "–" : x.shotEffectiveness + "%"], ["Ataj.", x => x.saves],
+        ["Pérd.", x => x.turnovers], ["% Pérd.", x => share(pct(x.turnovers, team.turnovers))],
+        ["Rec.", x => x.recoveries], ["% Rec.", x => share(pct(x.recoveries, team.recoveries))],
+        ["FR", x => x.foulsReceived], ["FC", x => x.foulsCommitted],
+        ["Az", x => x.blues], ["Am", x => x.yellows], ["Rj", x => x.reds],
+        ["Pen.", x => x.penalties ? `${x.penaltyGoals}/${x.penalties}` : "–"],
+        ["Lib.", x => x.freeHits ? `${x.freeHitGoals}/${x.freeHits}` : "–"],
+    ];
+    if (!inf.singleMatch) cols.unshift(["PJ", null]);
+    const hr = el("tr");
+    ["Jugador", ...cols.map(c => c[0])].forEach(h => { const th = el("th", null, h); th.scope = "col"; hr.append(th); });
+    const thead = el("thead");
+    thead.append(hr);
+    const body = el("tbody");
+    for (const j of inf.players) {
+        const tr = el("tr", "clic");
+        const td = el("td");
+        td.append(document.createTextNode(`${j.number ? j.number + " " : ""}${j.name}`));
+        if (j.goalkeeper) td.append(el("span", "inf-ar", "Arq."));
+        tr.append(td);
+        for (const [h, f] of cols) tr.append(el("td", null, String(h === "PJ" ? j.matches : f(j[field]))));
+        tr.title = "Ver solo a " + j.name;
+        tr.addEventListener("click", () => opts.onPlayer && opts.onPlayer(j.key));
+        body.append(tr);
+    }
+    if (!inf.players.length) {
+        const tr = el("tr"), td = el("td", null, opts.empty || "Sin acciones cargadas.");
+        td.colSpan = cols.length + 1;
+        tr.append(td);
+        body.append(tr);
+    }
+    const foot = el("tfoot"), fr = el("tr");
+    fr.append(el("td", null, "Equipo"));
+    for (const [h, f] of cols) fr.append(el("td", null, String(h === "PJ" ? inf.balance.played : f(team))));
+    foot.append(fr);
+    tb.append(thead, body, foot);
+    wrap.append(tb);
+    frag.append(wrap);
+    return frag;
 }
 
 /**
@@ -199,45 +254,11 @@ function render(box, inf, opts = {}) {
 
     if (!inf.player) {
         box.append(el("h4", "inf-sub", "Estadísticas por jugador"));
-        const wrap = el("div", "coach-tablewrap"), tb = el("table", "coach-table inf-tabla");
-        const cols = [
-            ["G", x => x.goals], ["GR", x => x.goalsConceded], ["Tiros", x => x.shots],
-            ["Ef.", x => x.shotEffectiveness == null ? "–" : x.shotEffectiveness + "%"], ["Ataj.", x => x.saves],
-            ["Pérd.", x => x.turnovers], ["Rec.", x => x.recoveries], ["FR", x => x.foulsReceived],
-            ["FC", x => x.foulsCommitted], ["Az", x => x.blues], ["Am", x => x.yellows], ["Rj", x => x.reds],
-            ["Pen.", x => x.penalties ? `${x.penaltyGoals}/${x.penalties}` : "–"],
-            ["Lib.", x => x.freeHits ? `${x.freeHitGoals}/${x.freeHits}` : "–"],
-        ];
-        if (!inf.singleMatch) cols.unshift(["PJ", null]);
-        const hr = el("tr");
-        ["Jugador", ...cols.map(c => c[0])].forEach(h => { const th = el("th", null, h); th.scope = "col"; hr.append(th); });
-        const thead = el("thead");
-        thead.append(hr);
-        const body = el("tbody");
-        for (const j of inf.players) {
-            const tr = el("tr", "clic");
-            const td = el("td");
-            td.append(document.createTextNode(`${j.number ? j.number + " " : ""}${j.name}`));
-            if (j.goalkeeper) td.append(el("span", "inf-ar", "Arq."));
-            tr.append(td);
-            for (const [h, f] of cols) tr.append(el("td", null, String(h === "PJ" ? j.matches : f(j.metrics))));
-            tr.title = "Ver solo a " + j.name;
-            tr.addEventListener("click", () => opts.onPlayer && opts.onPlayer(j.key));
-            body.append(tr);
-        }
-        if (!inf.players.length) {
-            const tr = el("tr"), td = el("td", null, opts.empty || "Sin acciones cargadas.");
-            td.colSpan = cols.length + 1;
-            tr.append(td);
-            body.append(tr);
-        }
-        const foot = el("tfoot"), fr = el("tr");
-        fr.append(el("td", null, "Equipo"));
-        for (const [h, f] of cols) fr.append(el("td", null, String(h === "PJ" ? inf.balance.played : f(m))));
-        foot.append(fr);
-        tb.append(thead, body, foot);
-        wrap.append(tb);
-        box.append(wrap);
+        // En el informe de un partido, discriminado por tiempo y en total; en el de un período, en total.
+        const tables = inf.singleMatch
+            ? [["Primer tiempo", "firstHalf"], ["Segundo tiempo", "secondHalf"], ["Total del partido", "metrics"]]
+            : [[null, "metrics"]];
+        for (const [title, field] of tables) box.append(playersTable(inf, opts, title, field));
     }
 
     if (inf.singleMatch) {
@@ -258,7 +279,8 @@ function render(box, inf, opts = {}) {
     }
     box.append(el("p", "coach-note", "G: goles (tiros, libres y penales convertidos) · GR: goles recibidos por el arquero"
         + " · Ef.: efectividad de los tiros al arco · Ataj.: atajadas, con libres y penales atajados · Pérd. y Rec.:"
-        + " en defensa (campo propio) y en ataque (campo rival) · FR y FC: faltas recibidas y cometidas."
+        + " en defensa (campo propio) y en ataque (campo rival) · % Pérd. y % Rec.: qué parte de las pérdidas y"
+        + " recuperaciones del equipo son de cada jugador · FR y FC: faltas recibidas y cometidas."
         + (inf.singleMatch ? " Minuto: tiempo jugado del período." : " PJ: partidos con acciones del jugador.")));
 }
 

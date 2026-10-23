@@ -625,6 +625,7 @@ body.coach-vivo .coach-menu { display: none; }
 .inf-acciones select { width: auto; min-width: 220px; padding-top: 9px; padding-bottom: 9px; }
 .inf-pdf { border: 0; cursor: pointer; font: 600 .9rem/1 var(--body); }
 .inf-sub { margin: 18px 0 8px; font: 700 .8rem/1.2 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.inf-sub2 { margin: 14px 0 6px; font: 600 .78rem/1.2 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
 .inf-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .inf-kpis .coach-kpi small { display: block; margin-top: 1px; font-size: .7rem; color: var(--ink-2); }
 .inf-kpis .t-azul b { color: #60a5fa; }
