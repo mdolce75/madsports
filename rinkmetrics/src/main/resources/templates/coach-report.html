@@ -23,6 +23,8 @@
         td { border-bottom: 1px solid #e2e8f0; padding: 3px 2px; text-align: center; font-size: 8pt; }
         td.l, th.l { text-align: left; }
         tr { page-break-inside: avoid; }
+        .nobreak { page-break-inside: avoid; }
+        h3 { page-break-after: avoid; }
         tr.total td { border-top: 2px solid #12303a; background: #edf2f7; font-weight: bold; }
         table.paginar { -fs-table-paginate: paginate; }
         .kpis td { border: none; border-top: 3px solid #0a7ea4; background: #f4f6fa; padding: 6px 2px; width: 14.28%; }
@@ -106,7 +108,9 @@
             <div th:replace="~{fragments/coach-players :: players('Segundo tiempo', 2)}"></div>
             <div th:replace="~{fragments/coach-players :: players('Total del partido', 0)}"></div>
         </th:block>
-        <div th:if="${!r.singleMatch}" th:replace="~{fragments/coach-players :: players(null, 0)}"></div>
+        <th:block th:if="${!r.singleMatch}">
+            <div th:replace="~{fragments/coach-players :: players(null, 0)}"></div>
+        </th:block>
         <p class="muted">% Pérd. y % Rec.: qué parte de las pérdidas y de las recuperaciones del equipo (en ese tiempo o
             en total) son de cada jugador.</p>
     </th:block>
