@@ -57,6 +57,7 @@
                          box-shadow: inset 0 6px 8px -6px rgba(16, 24, 40, .18); }
         }
         .nobreak { page-break-inside: avoid; }
+        img.chart { width: 100%; }
         h2, h3 { page-break-after: avoid; }
         tr { page-break-inside: avoid; }
     </style>
@@ -137,6 +138,17 @@
             <td><div class="kpi-v" th:text="${f.pct(t.effectiveness())}">0</div><div class="kpi-l">Efectividad</div></td>
         </tr>
     </table>
+
+    <th:block th:with="evo=${k.team.standings.?[evolution != null and evolution.size() > 1]}">
+    <div class="nobreak" th:if="${!evo.isEmpty()}">
+        <h3>Evolución en la tabla</h3>
+        <table class="two"><tr>
+            <td th:each="s : ${evo}"><img class="chart" th:src="${c.positionLine(s)}" alt="Puesto después de cada fecha"/></td>
+        </tr></table>
+        <p class="muted">Recalculada fecha a fecha con los resultados del calendario: 3 puntos el triunfo y 1 el empate; a
+            igual puntaje, diferencia de gol y goles a favor.</p>
+    </div>
+    </th:block>
 
     <table class="two nobreak">
         <tr>
