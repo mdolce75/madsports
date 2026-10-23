@@ -1,6 +1,7 @@
 package com.madsports.report;
 
 import com.madsports.analysis.AnalysisResult;
+import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.ReportData.PlayerLine;
@@ -51,17 +52,35 @@ public record ClubReport(ReportData.ClubInfo club, String period, LocalDate gene
                 if (idx.size() < 2) {
                     return;
                 }
-                int base = idx.stream().mapToInt(Integer::intValue).min().orElseThrow();
-                List<Appearance> upper = idx.stream().filter(i -> i != base).distinct().sorted()
+                // Su categoría es la más baja según el orden de la federación (de Infantil a Primera).
+                int base = idx.stream().min(Comparator.comparingInt(i -> level(b.categories().get(i).name())))
+                        .orElseThrow();
+                List<Appearance> upper = idx.stream().filter(i -> i != base).distinct()
+                        .sorted(Comparator.comparingInt(i -> level(b.categories().get(i).name())))
                         .map(i -> new Appearance(b.categories().get(i).name(), games.getOrDefault(id + "|" + i, 0)))
                         .toList();
                 out.add(new PromotedPlayer(names.get(id), b.name(), b.categories().get(base).name(),
-                        games.getOrDefault(id + "|" + base, 0), upper, base));
+                        games.getOrDefault(id + "|" + base, 0), upper, level(b.categories().get(base).name())));
             });
         }
         out.sort(Comparator.comparing(PromotedPlayer::branch).thenComparingInt(PromotedPlayer::order)
                 .thenComparing(PromotedPlayer::name));
         return out;
+    }
+
+    /**
+     * Lugar de una categoría ("Juvenil", "Infantil B") en el orden de la federación, de Infantil a la mayor; las que no
+     * figuran van al final.
+     */
+    private int level(String category) {
+        List<String> levels = federation.levels();
+        for (int i = 0; i < levels.size(); i++) {
+            String label = new Competition.Category(levels.get(i), "").levelLabel();
+            if (category.equalsIgnoreCase(label) || category.toLowerCase().startsWith(label.toLowerCase() + " ")) {
+                return i;
+            }
+        }
+        return levels.size();
     }
 
     /** Un jugador del semillero: su categoría y las de arriba en que también juega (con sus partidos en cada una). */
