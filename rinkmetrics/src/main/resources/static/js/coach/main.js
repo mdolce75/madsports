@@ -1,20 +1,21 @@
 // RinkMetrics (/coach.html y la demo, /coach-demo.html): el menú, las vistas y el arranque. Cada vista es un módulo:
-// panel.js (Control panel), matches.js y match.js (la carga en vivo), stats.js, reports.js y team.js.
+// panel.js (Control panel), matches.js y match.js (la carga en vivo), reports.js (informes, con las estadísticas y las
+// fichas) y team.js.
 import * as Queue from "./queue.js";
 import * as Team from "./team.js";
-import * as Stats from "./stats.js";
 import * as Reports from "./reports.js";
 import * as Panel from "./panel.js";
 import * as Match from "./match.js";
 import * as Matches from "./matches.js";
 import {coach, teamsSignature, fetchTeams} from "./common.js";
 
-const VIEWS = {"dashboard": "v-dashboard", "matches": "v-elegir", "team-stats": "v-equipo",
-    "player-stats": "v-jugadores", "reports": "v-informes", "team": "v-plantel"};
+const VIEWS = {"dashboard": "v-dashboard", "matches": "v-elegir", "reports": "v-informes", "team": "v-plantel"};
 let view = null;   // la vista del menú que se muestra (null: la carga de un partido)
 // Los enlaces de antes, en castellano (#jugadores es el de antes a las fichas), siguen andando.
-const OLD_HASHES = {"partidos": "matches", "equipo": "team", "estadisticas-equipo": "team-stats",
-    "estadisticas-jugadores": "player-stats", "jugadores": "player-stats", "informes": "reports"};
+// Las estadísticas (del equipo y las fichas) pasaron a Informes.
+const OLD_HASHES = {"partidos": "matches", "equipo": "team", "estadisticas-equipo": "reports",
+    "estadisticas-jugadores": "reports", "jugadores": "reports", "informes": "reports", "team-stats": "reports",
+    "player-stats": "reports"};
 
 /** La dirección nueva de un enlace de antes, o null. */
 function renamedHash(h) {
@@ -23,15 +24,10 @@ function renamedHash(h) {
     return Object.hasOwn(OLD_HASHES, h.slice(1)) ? "#" + OLD_HASHES[h.slice(1)] : null;
 }
 
-/** Submenú Estadísticas (Equipo y Jugadores): se abre con su botón y se cierra al elegir o al tocar afuera. */
-function submenu(openItem) {
-    $("coach-sub-est-menu").hidden = !openItem;
-    document.querySelector("#coach-sub-est .coach-sub-btn").setAttribute("aria-expanded", String(openItem));
-}
 
 /**
- * #match=ID abre la carga; #dashboard (sin nada), #matches, #team-stats, #player-stats, #reports, #report=ID y #team
- * (el plantel) muestran esa vista.
+ * #match=ID abre la carga; #dashboard (sin nada), #matches, #reports, #report=ID y #team (el plantel) muestran esa
+ * vista.
  */
 function path() {
     const renamed = renamedHash(location.hash);
@@ -52,14 +48,10 @@ function path() {
     $("coach-menu").hidden = false;
     document.querySelectorAll("#coach-menu a").forEach(a =>
         a.dataset.view === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-    $("coach-sub-est").classList.toggle("activo", v.endsWith("-stats"));
-    submenu(false);
     for (const [k, id] of Object.entries(VIEWS)) $(id).hidden = k !== v;
     if (v === "reports") Reports.load(inf ? Number(inf[1]) : null);
     if (v === "dashboard") Panel.load();
     if (v === "matches") Matches.load();
-    if (v === "player-stats") Stats.loadPlayerCards();
-    if (v === "team-stats") Stats.loadTeam();
     if (v === "team") Team.load();
 }
 
@@ -81,13 +73,6 @@ async function onReturn() {
 // agrega el enlace a la portada).
 $("brand").outerHTML = BRAND;
 document.querySelector(".topbar header.brand").after($("coach-menu"));   // un solo menú arriba, al lado de la marca
-document.querySelector("#coach-sub-est .coach-sub-btn").addEventListener("click", ev => {
-    ev.stopPropagation();
-    submenu($("coach-sub-est-menu").hidden);
-});
-document.addEventListener("click", ev => { if (!ev.target.closest("#coach-sub-est")) submenu(false); });
-document.addEventListener("keydown", ev => { if (ev.key === "Escape") submenu(false); });
-for (const id of ["e-equipo", "j-equipo"]) $(id).addEventListener("change", () => path());
 Match.start();
 Matches.start();
 Reports.start();

@@ -35,13 +35,6 @@
         <a href="#dashboard" data-view="dashboard">Control panel</a>
         <a href="#matches" data-view="matches">Partidos</a>
         <a href="#team" data-view="team">Equipo</a>
-        <div class="coach-sub" id="coach-sub-est">
-            <button type="button" class="coach-sub-btn" aria-expanded="false" aria-controls="coach-sub-est-menu">Estadísticas</button>
-            <div class="coach-sub-menu" id="coach-sub-est-menu" hidden>
-                <a href="#team-stats" data-view="team-stats">Equipo</a>
-                <a href="#player-stats" data-view="player-stats">Jugadores</a>
-            </div>
-        </div>
         <a href="#reports" data-view="reports">Informes</a>
     </nav>
 
@@ -60,21 +53,6 @@
         </div>
     </section>
 
-    <!-- Equipo: estadísticas consolidadas, goleadores y pelota parada -->
-    <section id="v-equipo" class="coach-vista" hidden>
-        <div class="coach-line"><h2 class="section-title">Estadísticas del equipo</h2>
-            <select id="e-equipo" aria-label="Equipo" hidden></select></div>
-        <p class="hint">Estadísticas consolidadas de todos los partidos cargados del equipo. El balance cuenta los
-            partidos finalizados.</p>
-        <div class="coach-kpis eq-balance" id="e-balance"></div>
-        <h4 class="inf-sub">Métricas de todos los partidos</h4>
-        <div class="inf-kpis" id="e-kpis"></div>
-        <div class="dash-grid eq-rankings">
-            <div class="dash-box"><h3>Goleadores</h3><ol class="dash-ranking" id="e-goleadores"></ol></div>
-            <div class="dash-box"><h3>Penales · Top 3</h3><ol class="dash-ranking" id="e-penales"></ol></div>
-            <div class="dash-box"><h3>Libres · Top 3</h3><ol class="dash-ranking" id="e-libres"></ol></div>
-        </div>
-    </section>
 
     <!-- Equipo: ABM de equipos y de jugadores -->
     <section id="v-plantel" class="coach-vista" hidden>
@@ -140,15 +118,6 @@
         </div>
     </section>
 
-    <!-- Jugadores: la ficha de cada uno -->
-    <section id="v-jugadores" class="coach-vista" hidden>
-        <div class="coach-line"><h2 class="section-title">Estadísticas de los jugadores</h2>
-            <select id="j-equipo" aria-label="Equipo" hidden></select></div>
-        <p class="hint">Cada eje va de 0 a 100 comparado con el plantel (100 = el mejor del equipo en ese aspecto); los
-            arqueros se comparan entre sí. El índice es el promedio de los cinco ejes. Sale de las acciones cargadas en
-            tus partidos.</p>
-        <div class="fichas" id="fichas"><p class="coach-vacio">Cargando…</p></div>
-    </section>
 
     <!-- Informes: los partidos finalizados y los informes por período -->
     <section id="v-informes" class="coach-vista" hidden>

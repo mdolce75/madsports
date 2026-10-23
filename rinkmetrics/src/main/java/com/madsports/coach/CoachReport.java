@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public record CoachReport(String title, String detail, String club, String team, LocalDate generatedAt,
                         boolean singleMatch, List<ReportMatchRow> matches, Balance balance, Metrics totals,
                         List<PlayerRow> players, PlayerRow player, List<ReportEvent> events,
-                        Metrics firstHalf, Metrics secondHalf) {
+                        Metrics firstHalf, Metrics secondHalf, List<PlayerCards.Card> playerCards) {
 
     /** Un partido del informe. @param resultado G, E o P */
     public record ReportMatchRow(Long id, LocalDate date, String opponent, boolean home, String tournament, int goalsFor,
@@ -150,6 +150,77 @@ public record CoachReport(String title, String detail, String club, String team,
         return ranking(Metrics::shots, totals.shots());
     }
 
+    /** Top 5 de goleadores. */
+    public List<RankingRow> topGoals() {
+        return ranking(Metrics::goals, totals.goals()).stream().limit(5).toList();
+    }
+
+    /** Top 5 de faltas cometidas. */
+    public List<RankingRow> topFouls() {
+        return ranking(Metrics::foulsCommitted, totals.foulsCommitted()).stream().limit(5).toList();
+    }
+
+    /** Un puesto del top de tarjetas: por color, el total y el promedio por partido. */
+    public record CardRow(int position, String number, String name, int matches, int blues, int yellows, int reds,
+                          int total, double perGame) {
+    }
+
+    /** Top 5 de tarjetas (todas los colores juntos; a igual total, el de más por partido primero). */
+    public List<CardRow> topCards() {
+        List<PlayerRow> ordered = players.stream().filter(j -> cards(j.metrics()) > 0)
+                .sorted(Comparator.comparingInt((PlayerRow j) -> cards(j.metrics())).reversed()
+                        .thenComparing(Comparator.comparingDouble((PlayerRow j) ->
+                                (double) cards(j.metrics()) / Math.max(1, j.matches())).reversed()))
+                .limit(5).toList();
+        List<CardRow> out = new ArrayList<>();
+        for (int i = 0; i < ordered.size(); i++) {
+            PlayerRow j = ordered.get(i);
+            Metrics m = j.metrics();
+            out.add(new CardRow(i + 1, j.number(), j.name(), j.matches(), m.blues(), m.yellows(), m.reds(), cards(m),
+                    j.matches() == 0 ? 0 : (double) cards(m) / j.matches()));
+        }
+        return out;
+    }
+
+    private static int cards(Metrics m) {
+        return m.blues() + m.yellows() + m.reds();
+    }
+
+    /** Un puesto del top de pelota parada: convertidos, pateados y efectividad. */
+    public record SetPieceRow(int position, String number, String name, int scored, int taken, int effectiveness) {
+    }
+
+    /** Top 3 en penales a favor, por efectividad (a igual efectividad, el que más pateó). */
+    public List<SetPieceRow> topPenalties() {
+        return setPieces(Metrics::penaltyGoals, Metrics::penalties);
+    }
+
+    /** Top 3 en libres a favor, por efectividad (a igual efectividad, el que más pateó). */
+    public List<SetPieceRow> topFreeHits() {
+        return setPieces(Metrics::freeHitGoals, Metrics::freeHits);
+    }
+
+    private List<SetPieceRow> setPieces(java.util.function.ToIntFunction<Metrics> scored,
+                                        java.util.function.ToIntFunction<Metrics> taken) {
+        List<PlayerRow> ordered = players.stream().filter(j -> taken.applyAsInt(j.metrics()) > 0)
+                .sorted(Comparator.comparingInt((PlayerRow j) -> effectiveness(scored, taken, j)).reversed()
+                        .thenComparing(Comparator.comparingInt((PlayerRow j) -> taken.applyAsInt(j.metrics())).reversed())
+                        .thenComparing(PlayerRow::name, SquadService.ALPHABETICAL))
+                .limit(3).toList();
+        List<SetPieceRow> out = new ArrayList<>();
+        for (int i = 0; i < ordered.size(); i++) {
+            PlayerRow j = ordered.get(i);
+            out.add(new SetPieceRow(i + 1, j.number(), j.name(), scored.applyAsInt(j.metrics()),
+                    taken.applyAsInt(j.metrics()), effectiveness(scored, taken, j)));
+        }
+        return out;
+    }
+
+    private static int effectiveness(java.util.function.ToIntFunction<Metrics> scored,
+                                     java.util.function.ToIntFunction<Metrics> taken, PlayerRow j) {
+        return (int) Math.round(100.0 * scored.applyAsInt(j.metrics()) / taken.applyAsInt(j.metrics()));
+    }
+
     /** Ranking de pérdidas. */
     public List<RankingRow> rankingTurnovers() {
         return ranking(Metrics::turnovers, totals.turnovers());
@@ -238,7 +309,21 @@ public record CoachReport(String title, String detail, String club, String team,
         List<ReportMatchRow> rows = ps.stream().map(ReportMatchRow::of).toList();
         return new CoachReport(title, detail, club, team, generatedAt, singleMatch, rows, Balance.de(rows),
                 Metrics.de(thoseOf), players, chosen, events, Metrics.de(inPeriod(thoseOf, 1)),
-                Metrics.de(inPeriod(thoseOf, 2)));
+                Metrics.de(inPeriod(thoseOf, 2)),
+                cards(squad, actions, singleMatch, chosen));
+    }
+
+    /**
+     * Fichas del informe: las de todo el plantel en el de un período; con un jugador elegido, solo la suya (comparado
+     * con el plantel en los mismos partidos). El informe de un partido del equipo no las lleva.
+     */
+    private static List<PlayerCards.Card> cards(Map<Integer, SquadPlayer> squad, List<MatchAction> actions,
+                                                boolean singleMatch, PlayerRow chosen) {
+        if (chosen == null && singleMatch) {
+            return List.of();
+        }
+        List<PlayerCards.Card> all = PlayerCards.compute(squad.values(), actions);
+        return chosen == null ? all : all.stream().filter(c -> c.key().equals(chosen.key())).toList();
     }
 
     /** Las acciones de un tiempo (1 o 2). */
