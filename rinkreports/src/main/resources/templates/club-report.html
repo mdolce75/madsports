@@ -162,7 +162,7 @@
             sobre los partidos con acta. Azules y rojas, sobre todos los partidos jugados.</p>
     </div>
 
-    <th:block th:with="sf=${k.team.timeProfile.scoreFlow}" th:if="${sf != null and sf.hasData()}">
+    <th:block th:with="sf=${k.team.timeProfile.scoreFlow}"><th:block th:if="${sf != null and sf.hasData()}">
     <table class="two nobreak">
         <tr>
             <td>
@@ -193,7 +193,7 @@
         </tr>
     </table>
     <p class="muted" th:text="|Según el minuto de los goles, en los ${sf.matches} partidos con acta completa de los ${t.played} jugados.|">actas</p>
-    </th:block>
+    </th:block></th:block>
 
     <table class="two nobreak">
         <tr>
