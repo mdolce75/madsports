@@ -570,6 +570,8 @@ nav.secciones a { white-space: nowrap; }
 .grafico .punto { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
 
 .fichas { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); margin-top: 12px; }
+/* La ficha del jugador elegido en un informe: una sola, de un ancho razonable. */
+.inf-ficha { grid-template-columns: minmax(270px, 420px); }
 .ficha { overflow: hidden; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
          border-radius: 14px; box-shadow: var(--shadow); }
 .ficha-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding: 14px 16px 10px;

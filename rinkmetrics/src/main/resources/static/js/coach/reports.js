@@ -2,6 +2,8 @@
 // campeonato), del equipo o de un jugador. Con conexión se muestra el informe del servidor (el mismo JSON del PDF); sin
 // señal, el que se arma en el teléfono con las acciones guardadas (mismo cálculo, probado contra los mismos casos).
 import * as Report from "./report.js";
+import * as PlayerCards from "./player-cards.js";
+import {playerCard} from "./stats.js";
 import {STATUS, keyList, matchDetail, coach, el, teamOf, exportPdf, getJson, fillTeams, withoutTeams, fetchTeams}
     from "./common.js";
 
@@ -33,9 +35,9 @@ export async function load(id) {
         // El informe de un partido: se pide una vez, para elegir su equipo y armar el informe.
         const request = id ? (await getJson(`/api/coach/matches/${id}`)).data : null;
         if (request && String(request.teamId) !== sel.value) sel.value = String(request.teamId);
-        const [all, acc, teamSquad] = await teamData();
+        const [all, acc, teamSquad, squad] = await teamData();
         const team = teamOf(sel);
-        if (request) return await matchItems(request, acc.filter(a => a.matchId === request.id), teamSquad);
+        if (request) return await matchItems(request, acc.filter(a => a.matchId === request.id), teamSquad, null, squad);
         $("i-volver").hidden = true;
         document.querySelectorAll("#i-tipo button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.kind === kind)));
         const endAt = all.filter(Report.finished);
@@ -82,9 +84,23 @@ export async function load(id) {
             onPdf: () => exportPdf(`/api/coach/reports.pdf?team=${team.id}`
                 + `&period=${kind}&value=${encodeURIComponent(value)}` + (player ? "&player=" + encodeURIComponent(player) : "")),
         });
+        if (player) showCard(box, squad, acc.filter(a => ids.has(a.matchId)), player, team.name);
     } catch (err) {
         box.replaceChildren(el("p", "coach-vacio", "No se pudieron cargar los informes: " + err.message));
     }
+}
+
+/**
+ * La ficha del jugador elegido (índice y pentágono de los cinco ejes), comparado con el plantel en los mismos
+ * partidos del informe: aparece al tocar un jugador, arriba de sus estadísticas.
+ */
+function showCard(box, squad, actions, key, teamName) {
+    const f = PlayerCards.compute(squad, actions).find(c => c.key === key);
+    if (!f) return;
+    const wrap = el("div", "fichas inf-ficha");
+    wrap.append(playerCard(f, teamName));
+    const head = box.querySelector(".inf-head");
+    if (head) head.after(wrap); else box.prepend(wrap);
 }
 
 /** Partidos del DT del equipo elegido en Informes, sus acciones y el plantel (con las claves de los jugadores). */
@@ -93,10 +109,10 @@ async function teamData() {
     const q = `team=${e.id}`;
     const [list, acc, pl] = await Promise.all([getJson("/api/coach/matches").then(r => r.data),
         getJson("/api/coach/actions?" + q).then(r => r.data), getJson("/api/coach/squad?" + q).then(r => r.data).catch(() => [])]);
-    return [list.filter(p => p.teamId === e.id), acc, keyList(pl)];
+    return [list.filter(p => p.teamId === e.id), acc, keyList(pl), pl];
 }
 
-async function matchItems(p, acc, teamSquad, chosen = null) {
+async function matchItems(p, acc, teamSquad, chosen = null, squad = []) {
     $("i-lista").hidden = true;
     $("i-valor").hidden = true;
     $("i-volver").hidden = false;
@@ -108,9 +124,10 @@ async function matchItems(p, acc, teamSquad, chosen = null) {
     const inf = chosen && all.players.some(f => f.key === chosen) ? await fromServer(url(chosen), home(chosen)) : all;
     Report.render($("i-informe"), inf, {
         players: all.players,
-        onPlayer: k => matchItems(p, acc, teamSquad, k),
+        onPlayer: k => matchItems(p, acc, teamSquad, k, squad),
         onPdf: () => exportPdf(`/api/coach/matches/${p.id}/report.pdf` + (inf.player ? "?player=" + encodeURIComponent(inf.player.key) : "")),
     });
+    if (inf.player) showCard($("i-informe"), squad, acc, inf.player.key, coach.teams.find(t => t.id === p.teamId)?.name || "");
 }
 
 export function start() {

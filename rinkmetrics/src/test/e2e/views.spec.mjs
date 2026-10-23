@@ -31,16 +31,18 @@ test("Partidos: crear uno, abrirlo y eliminarlo", async ({page}) => {
     await expect(page.locator("#mis")).not.toContainText("Ferro Carril");
 });
 
-test("Estadísticas: equipo con rankings y fichas de los jugadores", async ({page}) => {
-    await page.goto("/coach-demo.html#team-stats");
-    await expect(page.locator("#e-balance .coach-kpi")).toHaveCount(6);
-    await expect(page.locator("#e-balance")).toContainText("Jugados");
-    await expect(page.locator("#e-kpis .coach-kpi")).toHaveCount(14);
-    await expect(page.locator("#e-goleadores li").first()).toContainText("1");
-
-    await page.goto("/coach-demo.html#player-stats");
-    await expect(page.locator("#fichas .ficha")).toHaveCount(10);
-    await expect(page.locator("#fichas .ficha.arquero")).toHaveCount(2);
+test("Informes del período: estadísticas del equipo, rankings y la ficha de cada jugador al tocarlo", async ({page}) => {
+    await page.goto("/coach-demo.html#reports");
+    await page.locator("#i-tipo [data-kind='YEAR']").click();
+    const inf = page.locator("#i-informe");
+    await expect(inf.locator(".inf-kpis .coach-kpi")).toHaveCount(14);
+    for (const t of ["Top 5 · Goles", "Top 5 · Faltas cometidas", "Top 5 · Tarjetas", "Top 3 · Penales", "Top 3 · Libres directos"]) {
+        await expect(inf).toContainText(t);
+    }
+    // Sin jugador elegido no hay fichas; al tocar un jugador aparece la suya.
+    await expect(inf.locator(".ficha")).toHaveCount(0);
+    await inf.locator(".inf-tabla tbody tr.clic").first().click();
+    await expect(inf.locator(".ficha")).toHaveCount(1);
 });
 
 test("Informes: el de un partido y el de un período, del equipo y de un jugador", async ({page}) => {
@@ -111,15 +113,15 @@ test("Equipo: ABM de equipos y de jugadores, con el límite del plan", async ({p
 });
 
 test("al volver a la pestaña se ven los equipos creados en otro dispositivo", async ({page}) => {
-    await page.goto("/coach-demo.html#team-stats");
-    await expect(page.locator("#e-kpis .coach-kpi")).toHaveCount(14);
-    await expect(page.locator("#e-equipo")).toBeHidden();   // con un solo equipo, el combo no se muestra
+    await page.goto("/coach-demo.html#reports");
+    await expect(page.locator("#i-lista li").first()).toBeVisible();
+    await expect(page.locator("#i-equipo")).toBeHidden();   // con un solo equipo, el combo no se muestra
     // Otro dispositivo crea un equipo (en la demo, la misma API); la pestaña vuelve a estar visible.
     await page.evaluate(() => fetch("/api/coach/teams", {method: "POST", headers: {"Content-Type": "application/json"},
         body: JSON.stringify({name: "Reserva"})}));
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-    await expect(page.locator("#e-equipo")).toBeVisible();
-    await expect(page.locator("#e-equipo option")).toHaveText(["Primera Masculino", "Reserva"]);
+    await expect(page.locator("#i-equipo")).toBeVisible();
+    await expect(page.locator("#i-equipo option")).toHaveText(["Primera Masculino", "Reserva"]);
 });
 
 test("Equipo desde una categoría del club: su plantel de SIDGAD, sin los destildados, que se suman después", async ({page}) => {
