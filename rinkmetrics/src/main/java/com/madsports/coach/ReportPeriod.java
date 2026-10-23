@@ -7,10 +7,11 @@ import java.util.Locale;
 
 /**
  * Períodos de los informes del DT: cada partido cae en un mes ("2026-10"), un bimestre ("2026-5": septiembre y
- * octubre), un semestre ("2026-2": julio a diciembre) y un campeonato (el que se cargó al crearlo; "" si no tiene).
+ * octubre), un semestre ("2026-2": julio a diciembre), un año ("2026": todos los informes del año juntos) y un
+ * campeonato (el que se cargó al crearlo; "" si no tiene).
  */
 public enum ReportPeriod {
-    MONTH, TWO_MONTHS, SEMESTER, CHAMPIONSHIP;
+    MONTH, TWO_MONTHS, SEMESTER, YEAR, CHAMPIONSHIP;
 
     private static final Locale ES = Locale.forLanguageTag("es-AR");
     private static final String[] ORDINAL = {"", "1.º", "2.º", "3.º", "4.º", "5.º", "6.º"};
@@ -21,14 +22,22 @@ public enum ReportPeriod {
             case MONTH -> String.format(Locale.ROOT, "%d-%02d", date.getYear(), date.getMonthValue());
             case TWO_MONTHS -> date.getYear() + "-" + ((date.getMonthValue() + 1) / 2);
             case SEMESTER -> date.getYear() + "-" + (date.getMonthValue() <= 6 ? 1 : 2);
+            case YEAR -> String.valueOf(date.getYear());
             case CHAMPIONSHIP -> tournament == null ? "" : tournament;
         };
     }
 
-    /** Nombre para mostrar: "Octubre 2026", "Bimestre septiembre-octubre 2026", "2.º semestre 2026". */
+    /** Nombre para mostrar: "Octubre 2026", "Bimestre septiembre-octubre 2026", "2.º semestre 2026", "Año 2026". */
     public String name(String value) {
         if (this == CHAMPIONSHIP) {
             return value == null || value.isBlank() ? "Sin campeonato" : value;
+        }
+        if (this == YEAR) {
+            try {
+                return "Año " + Integer.parseInt(value == null ? "" : value.trim());
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("El período " + value + " no es válido.");
+            }
         }
         String[] parts = value == null ? new String[0] : value.split("-");
         try {

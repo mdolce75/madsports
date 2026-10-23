@@ -134,6 +134,50 @@ public record CoachReport(String title, String detail, String club, String team,
                               Metrics metrics, Metrics firstHalf, Metrics secondHalf) {
     }
 
+    /**
+     * Un puesto de un ranking del informe de un período.
+     *
+     * @param total   lo que suma el jugador en el período (tiros, pérdidas o recuperaciones)
+     * @param perGame promedio por partido con acciones
+     * @param share   qué parte del total del equipo es suya (0 a 100)
+     */
+    public record RankingRow(int position, String number, String name, int matches, int total, double perGame,
+                             Integer share) {
+    }
+
+    /** Ranking de situaciones de gol (tiros al arco). */
+    public List<RankingRow> rankingShots() {
+        return ranking(Metrics::shots, totals.shots());
+    }
+
+    /** Ranking de pérdidas. */
+    public List<RankingRow> rankingTurnovers() {
+        return ranking(Metrics::turnovers, totals.turnovers());
+    }
+
+    /** Ranking de recuperaciones. */
+    public List<RankingRow> rankingRecoveries() {
+        return ranking(Metrics::recoveries, totals.recoveries());
+    }
+
+    /** Los jugadores con algo de esa métrica, de más a menos (a igual total, el de mejor promedio primero). */
+    private List<RankingRow> ranking(java.util.function.ToIntFunction<Metrics> metric, int teamTotal) {
+        List<PlayerRow> ordered = players.stream().filter(j -> metric.applyAsInt(j.metrics()) > 0)
+                .sorted(Comparator.comparingInt((PlayerRow j) -> metric.applyAsInt(j.metrics())).reversed()
+                        .thenComparing(Comparator.comparingDouble((PlayerRow j) ->
+                                (double) metric.applyAsInt(j.metrics()) / Math.max(1, j.matches())).reversed()))
+                .toList();
+        List<RankingRow> out = new ArrayList<>();
+        for (int i = 0; i < ordered.size(); i++) {
+            PlayerRow j = ordered.get(i);
+            int total = metric.applyAsInt(j.metrics());
+            out.add(new RankingRow(i + 1, j.number(), j.name(), j.matches(), total,
+                    j.matches() == 0 ? 0 : (double) total / j.matches(),
+                    teamTotal == 0 ? null : (int) Math.round(100.0 * total / teamTotal)));
+        }
+        return out;
+    }
+
     /** Un evento del partido. @param minuto tiempo jugado del período ("1T 12:18") */
     public record ReportEvent(int period, int atSecond, String minute, String key, String number, String player,
                          String action, String color) {

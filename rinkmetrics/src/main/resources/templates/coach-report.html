@@ -112,6 +112,15 @@
     </th:block>
 </th:block>
 
+<th:block th:if="${!r.singleMatch and r.player == null and !r.players.isEmpty()}">
+    <h2>Ranking</h2>
+    <div th:replace="~{fragments/coach-players :: ranking('Situaciones de gol (tiros)', ${r.rankingShots()})}"></div>
+    <div th:replace="~{fragments/coach-players :: ranking('Pérdidas', ${r.rankingTurnovers()})}"></div>
+    <div th:replace="~{fragments/coach-players :: ranking('Recuperaciones', ${r.rankingRecoveries()})}"></div>
+    <p class="muted">PJ: partidos con acciones del jugador. % del equipo: qué parte del total del equipo en el período es
+        suya.</p>
+</th:block>
+
 <th:block th:if="${r.singleMatch}">
     <h2>Eventos del partido</h2>
     <p class="muted" th:if="${r.events.isEmpty()}">No hay acciones cargadas.</p>
