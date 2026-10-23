@@ -22,5 +22,5 @@ import java.util.List;
 @ConfigurationProperties(prefix = "madsports.sidgad")
 public record SidgadProperties(String baseUrl, String origin, Duration minInterval, int maxConcurrency,
                                Duration dataTtl, Duration catalogTtl, Duration timeout, List<Integer> years,
-                               @DefaultValue("3") int clubFactor) {
+                               @DefaultValue("5") int clubFactor) {
 }
