@@ -3,8 +3,9 @@
 // (/rinkmetrics/signup.html), solo el DT. Las cuentas de un producto no ingresan al otro.
 const SECTION = product() === "REPORTS" ? "informes" : "dt";
 $("brand").outerHTML = brand();
-// Qué se puede registrar hoy: las cuentas de club, la AMP y sus jugadores se habilitan por configuración.
-let signupOpts = {club: true, amp: false, playerAmp: false};
+// Qué se puede registrar hoy: las cuentas de club, la AMP y sus jugadores (RinkReports) y la AMP de los DT
+// (RinkMetrics) se habilitan por configuración.
+let signupOpts = {club: true, amp: false, playerAmp: false, coachAmp: false};
 if (SECTION === "dt") {
     document.querySelectorAll("input[name=rol]").forEach(r => {
         if (r.value === "COACH") r.checked = true; else r.closest("label").remove();
@@ -32,7 +33,7 @@ function enable(input, si, other) {
 /** RinkReports: las cuentas de club, y los jugadores de la AMP, solo si están habilitados. */
 function rules() {
     if (SECTION === "dt") return;
-    // Sin la AMP (oculta hasta nuevo aviso) la federación es la FPP y no hay nada que elegir.
+    // Sin la AMP la federación es la FPP y no hay nada que elegir.
     if (!signupOpts.amp) {
         document.querySelector("input[name=federacion][value=AMP]")?.closest("label").remove();
         document.querySelector("input[name=federacion]").closest(".field").hidden = true;
@@ -246,8 +247,8 @@ function toggleProfile() {
 }
 
 /**
- * DT: un solo combo con los clubes de las federaciones ofrecidas (sin decir de cuál es cada uno; la AMP, oculta hasta
- * nuevo aviso). Al elegir el club se toma su federación, que define el perfil (COACHFPP o COACHAMP).
+ * DT: un solo combo con los clubes de las federaciones ofrecidas (sin decir de cuál es cada uno; la AMP, solo con
+ * coachAmp). Al elegir el club se toma su federación, que define el perfil (COACHFPP o COACHAMP).
  */
 async function loadCoachClubs() {
     const sel = $("club");
@@ -256,7 +257,7 @@ async function loadCoachClubs() {
     sel.disabled = true;
     try {
         const clubList = [];
-        for (const f of signupOpts.amp ? ["FPP", "AMP"] : ["FPP"]) {
+        for (const f of signupOpts.coachAmp ? ["FPP", "AMP"] : ["FPP"]) {
             if (!catalogs[f]) {
                 const res = await fetch("/api/catalog?federation=" + f);
                 const body = await res.json();

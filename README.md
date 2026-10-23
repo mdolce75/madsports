@@ -271,9 +271,9 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   la sección muestra capturas de la demo ("Así se ve RinkMetrics", en `img/demo/`); se regeneran con la app levantada:
   `node docs/capturas-demo.mjs` (usa el Chrome instalado).
 - **Alta de cuentas de jugador y de DT; la de club, próximamente:** el registro de Informes
-  (`/rinkreports/signup.html`) crea cuentas de jugador de la FPP (las de la AMP, próximamente:
-  `SIGNUP_PLAYER_AMP`) y el de RinkMetrics
-  (`/rinkmetrics/signup.html`), de DT. El alta de club está abierta (`SIGNUP_CLUB`,
+  (`/rinkreports/signup.html`) crea cuentas de club y de jugador de la FPP y de la AMP (`SIGNUP_AMP`,
+  `SIGNUP_PLAYER_AMP`) y el de RinkMetrics (`/rinkmetrics/signup.html`), de DT de la FPP (la AMP, oculta hasta nuevo
+  aviso: `SIGNUP_COACH_AMP`). El alta de club está abierta (`SIGNUP_CLUB`,
   `madsports.signup.club`, en `true` por defecto; en `false`, el registro la muestra como "Próximamente").
 - **Planes de RinkReports:** el **Jugador free** (sin costo hasta el 31/12/2026, 5 informes por mes) y el **Club
   free** (sin costo hasta el 31/12/2026, sin límite de informes). Los mensuales (pagos) figuran con el cintillo
@@ -492,8 +492,9 @@ Abrir http://localhost:8080.
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
 | `SIGNUP_CLUB` | `false` | Habilita el alta de cuentas de club (las de jugador y DT están abiertas) |
 | `SIGNUP_PLAYER_PAID` | `false` | Habilita elegir el plan Jugador mensual (pago) |
-| `SIGNUP_AMP` | `false` | Ofrece la AMP en el registro (oculta hasta nuevo aviso; las cuentas de la AMP que ya existen siguen andando) |
-| `SIGNUP_PLAYER_AMP` | `false` | Habilita el alta de jugadores de la AMP (por ahora, solo de la FPP) |
+| `SIGNUP_AMP` | `true` | Ofrece la AMP en el registro de RinkReports (clubes y jugadores) |
+| `SIGNUP_PLAYER_AMP` | `true` | Habilita el alta de jugadores de la AMP en RinkReports (con `SIGNUP_AMP`) |
+| `SIGNUP_COACH_AMP` | `false` | Ofrece los clubes de la AMP en el registro del DT de RinkMetrics (oculta hasta nuevo aviso; las cuentas de la AMP que ya existen siguen andando) |
 | `SIGNUP_COACH_PAID` | `false` | Habilita elegir el plan DT mensual (pago) |
 | `REMEMBER_ME_DAYS` | `30` | Días que queda recordado un dispositivo |
 | `REMEMBER_ME_KEY` | al azar | Clave de la sesión que arma "Recordarme" (no hace falta fijarla) |

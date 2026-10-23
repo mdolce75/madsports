@@ -50,10 +50,12 @@ public class SignupService {
     private final boolean coachPaid;
     /** ¿Se puede elegir un plan pago del jugador (el mensual)? Por ahora no: el jugador empieza con el free. */
     private final boolean playerPaid;
-    /** ¿Se pueden crear cuentas de jugador de la AMP? Por ahora no: solo de la FPP. */
+    /** ¿Se pueden crear cuentas de jugador de la AMP en RinkReports? */
     private final boolean playerAmp;
-    /** ¿Se ofrece la AMP? Oculta hasta nuevo aviso: sin ella, ninguna cuenta nueva es de la AMP. */
+    /** ¿RinkReports ofrece la AMP (clubes y jugadores)? */
     private final boolean amp;
+    /** ¿RinkMetrics ofrece los clubes de la AMP a los DT? Oculta hasta nuevo aviso: solo la FPP. */
+    private final boolean coachAmp;
     private final boolean clubPaid;
 
     public SignupService(UserAccountRepository users, SubscriptionPlanRepository plans, CatalogService catalog,
@@ -63,9 +65,11 @@ public class SignupService {
                            @Value("${madsports.signup.player-paid:false}") boolean playerPaid,
                            @Value("${madsports.signup.club-paid:false}") boolean clubPaid,
                            @Value("${madsports.signup.player-amp:false}") boolean playerAmp,
-                           @Value("${madsports.signup.amp:false}") boolean amp) {
+                           @Value("${madsports.signup.amp:false}") boolean amp,
+                           @Value("${madsports.signup.coach-amp:false}") boolean coachAmp) {
         this.playerAmp = playerAmp;
         this.amp = amp;
+        this.coachAmp = coachAmp;
         this.clubSignup = clubSignup;
         this.coachPaid = coachPaid;
         this.playerPaid = playerPaid;
@@ -87,7 +91,7 @@ public class SignupService {
             throw new IllegalArgumentException("Las cuentas de club estarán disponibles próximamente. Por ahora podés "
                     + "crear tu cuenta de jugador.");
         }
-        if (r.profile().federation() == Federation.AMP && !amp) {
+        if (r.profile().federation() == Federation.AMP && !(r.profile().coach() ? coachAmp : amp)) {
             throw new IllegalArgumentException("Por ahora las cuentas son solo de la FPP.");
         }
         if (r.profile() == Profile.PLAYERAMP && !playerAmp) {
@@ -152,13 +156,14 @@ public class SignupService {
      * que se habilite el cobro figuran como "Próximamente".
      */
     /**
-     * Qué perfiles se pueden registrar hoy (las cuentas de club, la AMP y sus jugadores, según la configuración).
+     * Qué perfiles se pueden registrar hoy, según la configuración: las cuentas de club, la AMP y sus jugadores en
+     * RinkReports, y la AMP de los DT en RinkMetrics.
      */
-    public record SignupOptions(boolean club, boolean amp, boolean playerAmp) {
+    public record SignupOptions(boolean club, boolean amp, boolean playerAmp, boolean coachAmp) {
     }
 
     public SignupOptions options() {
-        return new SignupOptions(clubSignup, amp, amp && playerAmp);
+        return new SignupOptions(clubSignup, amp, amp && playerAmp, coachAmp);
     }
 
     public boolean available(SubscriptionPlan plan) {
