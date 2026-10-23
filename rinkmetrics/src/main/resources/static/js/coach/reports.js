@@ -60,7 +60,7 @@ export async function load(id) {
         const ops = Report.options(kind, endAt);
         const v = $("i-valor");
         v.hidden = false;
-        v.replaceChildren(...ops.map(o => { const op = el("option", null, `${o.name} (${o.n} ${o.n === 1 ? "partido" : "matches"})`); op.value = o.value; return op; }));
+        v.replaceChildren(...ops.map(o => { const op = el("option", null, `${o.name} (${o.n} ${o.n === 1 ? "partido" : "partidos"})`); op.value = o.value; return op; }));
         if (!ops.length) { v.hidden = true; box.replaceChildren(el("p", "coach-vacio", "Todavía no hay partidos finalizados en este equipo.")); return; }
         if (!ops.some(o => o.value === value)) value = ops[0].value;
         v.value = value;
@@ -68,7 +68,7 @@ export async function load(id) {
         const ids = new Set(ps.map(p => p.id));
         const name = Report.name(kind, value);
         const home = j => () => Report.build({title: kind === "CHAMPIONSHIP" && value ? "Campeonato " + name : name,
-            detail: `${team.name} · ${ps.length} ${ps.length === 1 ? "partido" : "matches"}`, singleMatch: false, matches: ps,
+            detail: `${team.name} · ${ps.length} ${ps.length === 1 ? "partido" : "partidos"}`, singleMatch: false, matches: ps,
             actions: acc.filter(a => ids.has(a.matchId)), players: teamSquad, player: j});
         const url = j => `/api/coach/reports?team=${team.id}&period=${kind}&value=${encodeURIComponent(value)}`
             + (j ? "&player=" + encodeURIComponent(j) : "");

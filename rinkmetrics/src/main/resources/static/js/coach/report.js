@@ -83,7 +83,7 @@ function build({title, detail, singleMatch, matches, actions, players = [], play
 
 // ---------- Períodos ----------
 
-const TYPES = {MONTH: "Mes", TWO_MONTHS: "Bimestre", SEMESTER: "Semestre", CHAMPIONSHIP: "Campeonato"};
+const TYPES = {MONTH: "Mes", TWO_MONTHS: "Bimestre", SEMESTER: "Semestre", YEAR: "Año", CHAMPIONSHIP: "Campeonato"};
 
 /** Valor del período en el que cae un partido (igual que Periodo.java). */
 function value(kind, p) {
@@ -91,11 +91,13 @@ function value(kind, p) {
     if (kind === "MONTH") return p.date.slice(0, 7);
     if (kind === "TWO_MONTHS") return `${y}-${Math.floor((m + 1) / 2)}`;
     if (kind === "SEMESTER") return `${y}-${m <= 6 ? 1 : 2}`;
+    if (kind === "YEAR") return y;
     return p.tournament || "";
 }
 
 function name(kind, v) {
     if (kind === "CHAMPIONSHIP") return v ? v : "Sin campeonato";
+    if (kind === "YEAR") return `Año ${v}`;
     const [y, n] = v.split("-").map(Number);
     if (kind === "MONTH") return MONTHS[n - 1].replace(/^./, c => c.toUpperCase()) + " " + y;
     if (kind === "TWO_MONTHS") return `Bimestre ${MONTHS[2 * n - 2]}-${MONTHS[2 * n - 1]} ${y}`;
@@ -190,6 +192,46 @@ function playersTable(inf, opts, title, field) {
     return frag;
 }
 
+/** Un ranking del informe de un período: los jugadores con algo de esa métrica, de más a menos, con su promedio y su
+ * parte del total del equipo (igual que CoachReport.ranking). */
+function ranking(inf, key) {
+    const team = inf.totals[key];
+    return inf.players.filter(j => j.metrics[key] > 0)
+        .map(j => ({j, total: j.metrics[key], perGame: j.matches ? j.metrics[key] / j.matches : 0}))
+        .sort((a, b) => b.total - a.total || b.perGame - a.perGame)
+        .map((x, i) => ({position: i + 1, number: x.j.number, name: x.j.name, matches: x.j.matches, total: x.total,
+            perGame: x.perGame, share: pct(x.total, team)}));
+}
+
+function rankingTable(inf, title, key) {
+    const frag = el("div");
+    frag.append(el("h5", "inf-sub2", title));
+    const rows = ranking(inf, key);
+    if (!rows.length) {
+        frag.append(el("p", "hint", "Sin datos en el período."));
+        return frag;
+    }
+    const wrap = el("div", "coach-tablewrap"), tb = el("table", "coach-table inf-tabla");
+    const hr = el("tr");
+    ["#", "Jugador", "PJ", "Total", "Por partido", "% del equipo"].forEach(h => {
+        const th = el("th", null, h); th.scope = "col"; hr.append(th);
+    });
+    const thead = el("thead");
+    thead.append(hr);
+    const body = el("tbody");
+    for (const x of rows) {
+        const tr = el("tr");
+        [x.position, `${x.number ? x.number + " " : ""}${x.name}`, x.matches, x.total,
+            x.perGame.toLocaleString("es-AR", {minimumFractionDigits: 2, maximumFractionDigits: 2}),
+            x.share == null ? "–" : x.share + "%"].forEach(v => tr.append(el("td", null, String(v))));
+        body.append(tr);
+    }
+    tb.append(thead, body);
+    wrap.append(tb);
+    frag.append(wrap);
+    return frag;
+}
+
 /**
  * Muestra el informe en box. opts: onPlayer(clave o null) al elegir un jugador, onPdf() para exportar, jugadores
  * para el selector (todos los del informe del equipo) y vacio (texto sin acciones).
@@ -259,6 +301,14 @@ function render(box, inf, opts = {}) {
             ? [["Primer tiempo", "firstHalf"], ["Segundo tiempo", "secondHalf"], ["Total del partido", "metrics"]]
             : [[null, "metrics"]];
         for (const [title, field] of tables) box.append(playersTable(inf, opts, title, field));
+    }
+
+    if (!inf.singleMatch && !inf.player && inf.players.length) {
+        box.append(el("h4", "inf-sub", "Ranking"));
+        for (const [title, key] of [["Situaciones de gol (tiros)", "shots"], ["Pérdidas", "turnovers"],
+            ["Recuperaciones", "recoveries"]]) {
+            box.append(rankingTable(inf, title, key));
+        }
     }
 
     if (inf.singleMatch) {
