@@ -162,6 +162,19 @@
             sobre los partidos con acta. Azules y rojas, sobre todos los partidos jugados.</p>
     </div>
 
+    <div class="nobreak" th:with="st=${k.streaks()}">
+        <h3>Rachas</h3>
+        <table class="kpis">
+            <tr>
+                <td><div class="kpi-v" th:text="${st.unbeaten}">0</div><div class="kpi-l">Invicto (partidos seguidos)</div></td>
+                <td><div class="kpi-v" th:text="${st.wins}">0</div><div class="kpi-l">Victorias seguidas</div></td>
+                <td><div class="kpi-v" th:text="${st.scoring}">0</div><div class="kpi-l">Partidos seguidos convirtiendo</div></td>
+                <td><div class="kpi-v" th:text="${st.cleanSheets}">0</div><div class="kpi-l">Vallas invictas</div></td>
+            </tr>
+        </table>
+        <p class="muted" th:if="${!st.current.isEmpty()}" th:text="|Cómo viene: ${st.current}.|">Cómo viene</p>
+    </div>
+
     <th:block th:with="sf=${k.team.timeProfile.scoreFlow}"><th:block th:if="${sf != null and sf.hasData()}">
     <table class="two nobreak">
         <tr>
@@ -192,6 +205,7 @@
             </td>
         </tr>
     </table>
+    <p class="muted" th:text="|Sobre la hora (últimos 5 minutos): +${sf.latePointsWon} puntos ganados y -${sf.latePointsLost} perdidos.|">Sobre la hora</p>
     <p class="muted" th:text="|Según el minuto de los goles, en los ${sf.matches} partidos con acta completa de los ${t.played} jugados.|">actas</p>
     </th:block></th:block>
 

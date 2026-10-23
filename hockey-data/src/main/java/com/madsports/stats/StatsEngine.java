@@ -288,8 +288,9 @@ public final class StatsEngine {
         int[] secondsBySituation = new int[3];
         ShortHandedCalc shortHandedGoals = new ShortHandedCalc();
         // El marcador partido a partido: [0] partidos con acta completa; [1..3] estuvo arriba y ganó / empató / perdió;
-        // [4..6] estuvo abajo; [7..9] convirtió primero; [10..12] le convirtieron primero.
-        int[] flow = new int[13];
+        // [4..6] estuvo abajo; [7..9] convirtió primero; [10..12] le convirtieron primero; [13] y [14] puntos ganados y
+        // perdidos en los últimos 5 minutos.
+        int[] flow = new int[15];
 
         for (Entry e : entries) {
             TeamRef own = e.team();
@@ -371,7 +372,7 @@ public final class StatsEngine {
                 if (goalsInSheet != m.homeGoals() + m.awayGoals()) {
                     mismatches++;
                 } else {
-                    scoreFlow(ownGoalTimes, rivalGoalTimes, resultFor, resultAgainst, flow);
+                    scoreFlow(ownGoalTimes, rivalGoalTimes, resultFor, resultAgainst, 2 * matchPeriod * 60, flow);
                 }
                 // Cómo iba el partido al empezar cada tramo, según el minuto de los goles de la ficha.
                 for (int i = 0; i < 2 * perPeriod; i++) {
@@ -426,15 +427,16 @@ public final class StatsEngine {
                 shortHanded, powerPlay, new FoulSituation(foulsBySituation[0], foulsBySituation[1], foulsBySituation[2],
                         secondsBySituation[0], secondsBySituation[1], secondsBySituation[2]), shortHandedGoals.result(),
                 new ScoreFlow(flow[0], flow[1], flow[2], flow[3], flow[4], flow[5], flow[6], flow[7], flow[8], flow[9],
-                        flow[10], flow[11], flow[12]));
+                        flow[10], flow[11], flow[12], flow[13], flow[14]));
     }
 
     /**
      * Suma un partido con acta completa al marcador partido a partido (ver {@code flow} en {@link #timeProfile}): si
-     * estuvo arriba o abajo en algún momento, quién convirtió primero y cómo terminó. Dos goles en el mismo segundo
-     * cuentan primero el propio.
+     * estuvo arriba o abajo en algún momento, quién convirtió primero, cómo terminó y cuántos puntos ganó o perdió en
+     * los últimos 5 minutos. Dos goles en el mismo segundo cuentan primero el propio.
      */
-    static void scoreFlow(List<Integer> ownGoals, List<Integer> rivalGoals, int resultFor, int resultAgainst, int[] flow) {
+    static void scoreFlow(List<Integer> ownGoals, List<Integer> rivalGoals, int resultFor, int resultAgainst,
+                          int matchSeconds, int[] flow) {
         List<int[]> goals = new ArrayList<>();
         ownGoals.forEach(t -> goals.add(new int[]{t, 1}));
         rivalGoals.forEach(t -> goals.add(new int[]{t, -1}));
@@ -458,6 +460,22 @@ public final class StatsEngine {
         if (!goals.isEmpty()) {
             flow[(goals.getFirst()[1] > 0 ? 7 : 10) + outcome]++;
         }
+        // Sobre la hora: los puntos con que terminó contra los que tenía a 5 minutos del final.
+        int cutoff = matchSeconds - LATE_SECONDS;
+        int before = goals.stream().filter(g -> g[0] < cutoff).mapToInt(g -> g[1]).sum();
+        int late = points(resultFor - resultAgainst) - points(before);
+        if (late > 0) {
+            flow[13] += late;
+        } else {
+            flow[14] -= late;
+        }
+    }
+
+    /** Últimos minutos del partido que cuentan como "sobre la hora". */
+    static final int LATE_SECONDS = 5 * 60;
+
+    private static int points(int goalDiff) {
+        return goalDiff > 0 ? 3 : goalDiff == 0 ? 1 : 0;
     }
 
     /** 0 = ganando, 1 = empatando, 2 = perdiendo. */
