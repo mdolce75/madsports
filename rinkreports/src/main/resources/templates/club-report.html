@@ -51,6 +51,11 @@
         .muted { color: #718096; font-size: 8pt; }
         .pos { width: 18px; font-weight: bold; color: #0a7ea4; }
         .categoria { page-break-before: always; }
+        /* En pantalla no hay páginas: cada categoría empieza en una hoja nueva, separada de la anterior como en el PDF. */
+        @media screen {
+            .categoria { margin: 48px 0 0; padding-top: 28px; border-top: 14px solid #e6eaf0;
+                         box-shadow: inset 0 6px 8px -6px rgba(16, 24, 40, .18); }
+        }
         .nobreak { page-break-inside: avoid; }
         h2, h3 { page-break-after: avoid; }
         tr { page-break-inside: avoid; }
