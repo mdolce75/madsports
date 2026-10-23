@@ -51,6 +51,13 @@ public class ExcelExporter {
                 }
             }
             summaryOf.widths(14, 16, 7, 7, 7, 7, 12, 7, 7, 14, 14, 16, 16, 11, 9, 9);
+            List<ClubReport.PromotedPlayer> promoted = r.promoted();
+            if (!promoted.isEmpty()) {
+                summaryOf.blank();
+                summaryOf.section("Semillero: juegan también en categorías de arriba");
+                summaryOf.header("Jugador", "Rama", "Su categoría", "PJ", "También juega en");
+                promoted.forEach(p -> summaryOf.row(p.name(), p.branch(), p.category(), p.games(), p.upperText()));
+            }
             if (!r.notPublished().isEmpty()) {
                 summaryOf.blank();
                 summaryOf.section("Sin publicar en SIDGAD");
@@ -121,6 +128,13 @@ public class ExcelExporter {
             s.text("Cómo viene: " + st.current() + ".");
         }
         s.blank();
+        if (!k.team().rivals().isEmpty()) {
+            s.section("Cara a cara");
+            s.header("Rival", "PJ", "G", "E", "P", "GF", "GC");
+            k.team().rivals().forEach(x -> s.row(x.opponent(), x.played(), x.won(), x.drawn(), x.lost(), x.goalsFor(),
+                    x.goalsAgainst()));
+            s.blank();
+        }
         s.section("Top 3 · Promedio de gol");
         s.header("Jugador", "Goles", "Partidos", "Promedio");
         k.topScorers().forEach(x -> s.row(x.player().name(), x.count(), x.of(), x.value()));

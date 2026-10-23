@@ -107,6 +107,20 @@
 <p class="muted" th:if="${!r.notPublished.isEmpty()}"
    th:text="|SIDGAD no publicó: ${#strings.listJoin(r.notPublished, '; ')}.|">No publicado</p>
 
+<th:block th:with="pr=${r.promoted()}"><div th:if="${!pr.isEmpty()}">
+<h2>Semillero</h2>
+<p th:text="|${pr.size()} ${pr.size() == 1 ? 'jugador ya juega' : 'jugadores ya juegan'} también en categorías de arriba de la suya.|">Semillero</p>
+<table>
+    <tr><th class="l">Jugador</th><th class="l">Rama</th><th class="l">Su categoría</th><th>PJ</th><th class="l">También juega en</th></tr>
+    <tr th:each="p : ${pr}">
+        <td class="l" th:text="${p.name}"></td><td class="l" th:text="${p.branch}"></td>
+        <td class="l" th:text="${p.category}"></td><td th:text="${p.games}"></td>
+        <td class="l" th:text="${p.upperText()}"></td>
+    </tr>
+</table>
+<p class="muted">Su categoría es la más baja en que jugó; los partidos salen de las estadísticas de cada categoría.</p>
+</div></th:block>
+
 <th:block th:each="b : ${r.branches}">
 <div class="categoria" th:each="k, it : ${b.categories}" th:with="t=${k.record()}">
     <div class="rama" th:if="${it.first}">Rama <span th:text="${b.name}">Masculino</span>
@@ -264,6 +278,18 @@
             </td>
         </tr>
     </table>
+
+    <div class="nobreak" th:if="${!k.team.rivals.isEmpty()}">
+        <h3>Cara a cara</h3>
+        <table>
+            <tr><th class="l">Rival</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th></tr>
+            <tr th:each="x : ${k.team.rivals}">
+                <td class="l" th:text="${x.opponent}"></td><td th:text="${x.played}"></td><td th:text="${x.won}"></td>
+                <td th:text="${x.drawn}"></td><td th:text="${x.lost}"></td><td th:text="${x.goalsFor}"></td>
+                <td th:text="${x.goalsAgainst}"></td>
+            </tr>
+        </table>
+    </div>
 
     <h3>Fortalezas y debilidades</h3>
     <table class="nobreak" th:if="${!k.team.indicators.isEmpty()}">

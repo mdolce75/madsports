@@ -1,6 +1,7 @@
 package com.madsports.report;
 
 import com.madsports.analysis.AnalysisResult;
+import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.ReportData.PlayerLine;
@@ -8,8 +9,14 @@ import com.madsports.stats.ReportData.TeamRecord;
 import com.madsports.stats.ReportData.TeamReport;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Informe del club completo: primero cada rama (Masculino, Femenino) y, dentro de la rama, cada categoría del club
@@ -20,6 +27,75 @@ import java.util.List;
  */
 public record ClubReport(ReportData.ClubInfo club, String period, LocalDate generatedOn, Federation federation,
                          List<Branch> branches, List<String> notPublished, List<ReportData.Source> sources) {
+
+    /**
+     * Semillero: los jugadores que, además de su categoría (la más baja en que jugó), ya juegan en categorías de arriba
+     * de su rama, según los planteles de cada categoría. Ordenados por rama y por su categoría.
+     */
+    public List<PromotedPlayer> promoted() {
+        List<PromotedPlayer> out = new ArrayList<>();
+        for (Branch b : branches) {
+            Map<Integer, List<Integer>> where = new LinkedHashMap<>();
+            Map<Integer, String> names = new HashMap<>();
+            Map<String, Integer> games = new HashMap<>();
+            for (int i = 0; i < b.categories().size(); i++) {
+                for (PlayerLine p : b.categories().get(i).team().squad()) {
+                    if (p.games() <= 0) {
+                        continue;
+                    }
+                    where.computeIfAbsent(p.playerId(), k -> new ArrayList<>()).add(i);
+                    names.putIfAbsent(p.playerId(), p.name());
+                    games.merge(p.playerId() + "|" + i, p.games(), Integer::sum);
+                }
+            }
+            where.forEach((id, idx) -> {
+                if (idx.size() < 2) {
+                    return;
+                }
+                // Su categoría es la más baja según el orden de la federación (de Infantil a Primera).
+                int base = idx.stream().min(Comparator.comparingInt(i -> level(b.categories().get(i).name())))
+                        .orElseThrow();
+                List<Appearance> upper = idx.stream().filter(i -> i != base).distinct()
+                        .sorted(Comparator.comparingInt(i -> level(b.categories().get(i).name())))
+                        .map(i -> new Appearance(b.categories().get(i).name(), games.getOrDefault(id + "|" + i, 0)))
+                        .toList();
+                out.add(new PromotedPlayer(names.get(id), b.name(), b.categories().get(base).name(),
+                        games.getOrDefault(id + "|" + base, 0), upper, level(b.categories().get(base).name())));
+            });
+        }
+        out.sort(Comparator.comparing(PromotedPlayer::branch).thenComparingInt(PromotedPlayer::order)
+                .thenComparing(PromotedPlayer::name));
+        return out;
+    }
+
+    /**
+     * Lugar de una categoría ("Juvenil", "Infantil B") en el orden de la federación, de Infantil a la mayor; las que no
+     * figuran van al final.
+     */
+    private int level(String category) {
+        List<String> levels = federation.levels();
+        for (int i = 0; i < levels.size(); i++) {
+            String label = new Competition.Category(levels.get(i), "").levelLabel();
+            if (category.equalsIgnoreCase(label) || category.toLowerCase().startsWith(label.toLowerCase() + " ")) {
+                return i;
+            }
+        }
+        return levels.size();
+    }
+
+    /** Un jugador del semillero: su categoría y las de arriba en que también juega (con sus partidos en cada una). */
+    public record PromotedPlayer(String name, String branch, String category, int games, List<Appearance> upper,
+                                 int order) {
+
+        /** "Primera (5 PJ), Reserva (2 PJ)" */
+        public String upperText() {
+            return upper.stream().map(a -> a.category() + " (" + a.games() + " PJ)")
+                    .collect(Collectors.joining(", "));
+        }
+    }
+
+    public record Appearance(String category, int games) {
+    }
 
     /** Una rama ("Masculino") con sus categorías, en el orden de la federación (de Infantil a Primera). */
     public record Branch(String name, List<CategoryBlock> categories) {
@@ -71,7 +147,7 @@ public record ClubReport(ReportData.ClubInfo club, String period, LocalDate gene
             return new Streaks(unbeaten, wins, scoring, clean, current);
         }
 
-        private static int longest(List<ReportData.MatchLine> played, java.util.function.Predicate<ReportData.MatchLine> ok) {
+        private static int longest(List<ReportData.MatchLine> played, Predicate<ReportData.MatchLine> ok) {
             int best = 0;
             int run = 0;
             for (ReportData.MatchLine r : played) {
