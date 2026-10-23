@@ -291,6 +291,18 @@
         </table>
     </div>
 
+    <div class="nobreak" th:if="${k.team.keepers != null and !k.team.keepers.isEmpty()}">
+        <h3>Arqueros</h3>
+        <table>
+            <tr><th class="l">Arquero</th><th>PJ de titular</th><th>Goles recibidos</th><th>Por partido</th><th>Vallas invictas</th></tr>
+            <tr th:each="x : ${k.team.keepers}">
+                <td class="l" th:text="${x.name}"></td><td th:text="${x.matches}"></td><td th:text="${x.goalsAgainst}"></td>
+                <td th:text="${f.dec(x.goalsAgainstPerGame())}"></td><td th:text="${x.cleanSheets}"></td>
+            </tr>
+        </table>
+        <p class="muted">Partidos que empezó en el arco, según las planillas de las actas.</p>
+    </div>
+
     <h3>Fortalezas y debilidades</h3>
     <table class="nobreak" th:if="${!k.team.indicators.isEmpty()}">
         <tr><th class="l">Área</th><th class="l">Indicador</th><th>Equipo</th><th>Referencia</th><th>Evaluación</th></tr>

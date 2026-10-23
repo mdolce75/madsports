@@ -394,7 +394,7 @@ public class ReportService {
                 clubMatches.put(c, sheetsToRead(c, matches, club.id(), scope.lastMatches()));
                 data.add(new CompetitionData(c,
                         SidgadParser.standings(standings), SidgadParser.reportDate(standings), matches,
-                        SidgadParser.playerStats(players), new HashMap<>()));
+                        SidgadParser.playerStats(players), new HashMap<>(), Set.of(), new HashMap<>()));
             }
 
             // Fichas: las de los partidos del club (minuto de goles, tarjetas y faltas) y las del resto de la liga
@@ -441,6 +441,10 @@ public class ReportService {
                             names.putIfAbsent(p.playerId(), p.name());
                             roles.computeIfAbsent(p.playerId(), k -> new int[2])[p.goalkeeper() ? 0 : 1]++;
                         });
+                        // El arquero titular del partido ("P" en el cinco inicial).
+                        read.lineups().stream().filter(p -> p.home() == home && p.starter() && p.goalkeeper())
+                                .findFirst().ifPresent(p -> cd.startingKeepers()
+                                        .put(m.idp(), new StatsEngine.Keeper(p.playerId(), p.name())));
                     }
                 }
             }
@@ -461,7 +465,7 @@ public class ReportService {
             for (int i = 0; i < data.size(); i++) {
                 CompetitionData cd = data.get(i);
                 data.set(i, new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), cd.matches(),
-                        cd.players(), cd.sheets(), goalkeepers));
+                        cd.players(), cd.sheets(), goalkeepers, cd.startingKeepers()));
             }
         }
         // Las actas faltantes del club ya se informan en el PDF ("N actas de M partidos"); acá solo se resume.
@@ -559,7 +563,7 @@ public class ReportService {
                     .filter(p -> !clubTeams.contains(p.teamId())).toList());
             players.addAll(ours);
             data.set(i, new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), cd.matches(),
-                    players, cd.sheets()));
+                    players, cd.sheets(), cd.goalkeepers(), cd.startingKeepers()));
             // Con las fichas de temporada ya no falta: la tabla de SIDGAD de esa competición no hace falta.
             notPublished.remove("Estadísticas por jugador (" + cd.competition().tournamentLabel() + ")");
         }
