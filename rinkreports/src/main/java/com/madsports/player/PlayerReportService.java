@@ -327,6 +327,61 @@ public class PlayerReportService {
         return ranks;
     }
 
+    /**
+     * Cuándo llegaron sus goles en los partidos de unos equipos: abrió el marcador, empató, puso en ventaja o dio el
+     * triunfo. Solo las actas completas (sus goles suman el resultado), así el orden de los goles es el real; dos goles
+     * en el mismo segundo van en el orden del acta.
+     */
+    static PlayerReport.GoalMoments goalMoments(int playerId, List<TeamInput> inputs) {
+        PlayerReport.GoalMoments total = PlayerReport.GoalMoments.EMPTY;
+        for (TeamInput in : inputs) {
+            for (Match m : in.matches()) {
+                List<MatchEvent> goals = in.events().getOrDefault(m.idp(), List.of()).stream()
+                        .filter(e -> e.type() == EventType.GOAL && e.period() >= 1 && e.period() <= 2)
+                        .sorted(Comparator.comparingInt(MatchEvent::period).thenComparingInt(MatchEvent::minute)
+                                .thenComparingInt(MatchEvent::second))
+                        .toList();
+                if (!m.played() || goals.isEmpty() || goals.size() != m.homeGoals() + m.awayGoals()) {
+                    continue;
+                }
+                boolean home = m.homeTeamId() == in.teamId();
+                int goalsFor = home ? m.homeGoals() : m.awayGoals();
+                int goalsAgainst = home ? m.awayGoals() : m.homeGoals();
+                int own = 0;
+                int rival = 0;
+                int withMinute = 0, opener = 0, equalizer = 0, goAhead = 0, winner = 0;
+                for (MatchEvent g : goals) {
+                    boolean ours = g.teamId() == in.teamId();
+                    int before = own - rival;
+                    boolean first = own + rival == 0;
+                    if (ours) {
+                        own++;
+                    } else {
+                        rival++;
+                    }
+                    if (!ours || g.playerId() != playerId) {
+                        continue;
+                    }
+                    withMinute++;
+                    if (first) {
+                        opener++;
+                    } else if (before == -1) {
+                        equalizer++;
+                    } else if (before == 0) {
+                        goAhead++;
+                    }
+                    // En un partido ganado, el gol propio número (goles del rival + 1) es el que lo dejó arriba para
+                    // siempre.
+                    if (goalsFor > goalsAgainst && own == goalsAgainst + 1) {
+                        winner++;
+                    }
+                }
+                total = total.plus(new PlayerReport.GoalMoments(withMinute, opener, equalizer, goAhead, winner));
+            }
+        }
+        return total;
+    }
+
     /** Su puesto entre los goleadores de unas tablas de SIDGAD sumadas; null si no tiene goles en ellas. */
     static PlayerReport.LeagueRank leagueRank(int playerId, List<List<PlayerStats>> tables) {
         Map<Integer, Integer> goals = new HashMap<>();
@@ -536,7 +591,7 @@ public class PlayerReportService {
                     List<TeamInput> catInputs = inputs.stream().filter(in -> in.category().equals(l.category())).toList();
                     return new PlayerReport.CategoryBlock(l, minutesByCategory.get(l.category()).result(), catShort,
                             rows.stream().filter(row -> row.category().equals(l.category())).toList(),
-                            PlayerStrengths.evaluate(q.playerId(), catInputs, catShort));
+                            PlayerStrengths.evaluate(q.playerId(), catInputs, catShort), goalMoments(q.playerId(), catInputs));
                 })
                 .toList();
         ReportData.ShortHanded sh = shortHanded.result();
