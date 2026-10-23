@@ -424,9 +424,16 @@ public record ReportData(ClubInfo club, String category, String tournament, Loca
      * @param publishedOn fecha de generación de la tabla en SIDGAD (puede ser null)
      * @param outdated    true si la tabla tiene menos PJ que los partidos jugados según el calendario
      */
+    /**
+     * @param evolution su puesto después de cada fecha en que jugó, recalculado con los resultados del calendario
+     */
     public record StandingSnapshot(String competition, String group, int position, int groupSize,
                                    int points, int played, int goalsFor, int goalsAgainst, int goalDiff,
-                                   LocalDate publishedOn, boolean outdated) {
+                                   LocalDate publishedOn, boolean outdated, List<RoundPosition> evolution) {
+    }
+
+    /** Su puesto en la tabla después de una fecha. */
+    public record RoundPosition(int round, int position) {
     }
 
     public record TeamRecord(int played, int won, int drawn, int lost, int goalsFor, int goalsAgainst) {

@@ -4,6 +4,8 @@ import com.madsports.player.PlayerReport;
 import com.madsports.stats.ReportData.FoulSituation;
 import com.madsports.stats.ReportData.MatchLine;
 import com.madsports.stats.ReportData.PlayerLine;
+import com.madsports.stats.ReportData.StandingSnapshot;
+import com.madsports.stats.ReportData.RoundPosition;
 import com.madsports.stats.ReportData.TeamRecord;
 import com.madsports.stats.ReportData.TimeBucket;
 import com.madsports.stats.ReportData.TimeProfile;
@@ -159,6 +161,70 @@ public class Charts {
             g.setColor(MUTED);
             g.setFont(font(Font.PLAIN, 8));
             g.drawString("Partidos en orden cronológico →", left, h - 5);
+        });
+    }
+
+    /**
+     * Su puesto en la tabla después de cada fecha (1° arriba), en un torneo. {@code null} con menos de 2 fechas.
+     */
+    public String positionLine(StandingSnapshot s) {
+        List<RoundPosition> ev = s == null ? null : s.evolution();
+        if (ev == null || ev.size() < 2) {
+            return null;
+        }
+        int w = 400;
+        int h = 170;
+        return render(w, h, g -> {
+            int teams = Math.max(Math.max(2, s.groupSize()), ev.stream().mapToInt(RoundPosition::position).max().orElse(2));
+            int top = 26;
+            int bottom = h - 24;
+            int left = 30;
+            int right = w - 14;
+            double stepY = (bottom - top) / (double) (teams - 1);
+            double stepX = (right - left) / (double) (ev.size() - 1);
+            g.setFont(font(Font.BOLD, 9));
+            g.setColor(INK);
+            g.drawString(s.competition() + " · puesto después de cada fecha", left, 13);
+            g.setFont(font(Font.PLAIN, 8));
+            for (int p : java.util.stream.IntStream.of(1, (teams + 1) / 2, teams).distinct().toArray()) {
+                double y = top + (p - 1) * stepY;
+                g.setColor(GRID);
+                g.setStroke(new BasicStroke(1f));
+                g.draw(new java.awt.geom.Line2D.Double(left, y, right, y));
+                g.setColor(MUTED);
+                g.drawString(p + "°", 4, (float) y + 3);
+            }
+            Path2D path = new Path2D.Double();
+            for (int i = 0; i < ev.size(); i++) {
+                double x = left + i * stepX;
+                double y = top + (ev.get(i).position() - 1) * stepY;
+                if (i == 0) {
+                    path.moveTo(x, y);
+                } else {
+                    path.lineTo(x, y);
+                }
+            }
+            g.setColor(CATEGORICAL[0]);
+            g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.draw(path);
+            int every = Math.max(1, (int) Math.ceil(ev.size() / 14.0));
+            for (int i = 0; i < ev.size(); i++) {
+                double x = left + i * stepX;
+                double y = top + (ev.get(i).position() - 1) * stepY;
+                g.setColor(SURFACE);
+                g.fill(new Ellipse2D.Double(x - 4, y - 4, 8, 8));
+                g.setColor(CATEGORICAL[0]);
+                g.fill(new Ellipse2D.Double(x - 3, y - 3, 6, 6));
+                if (i % every == 0 || i == ev.size() - 1) {
+                    g.setColor(MUTED);
+                    centered(g, "F" + ev.get(i).round(), x, h - 8);
+                }
+            }
+            RoundPosition last = ev.getLast();
+            g.setColor(INK);
+            g.setFont(font(Font.BOLD, 9));
+            double ly = top + (last.position() - 1) * stepY;
+            centered(g, last.position() + "°", right - 2, ly > top + 12 ? ly - 7 : ly + 15);
         });
     }
 
