@@ -86,20 +86,21 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
             return new CategoryBlock(line, minutes, shortHanded, matches, indicators, rank, goalMoments);
         }
 
-        /** Sus partidos y goles mes a mes, en orden. */
+        /** Sus partidos, goles y titularidades mes a mes, en orden. */
         public List<MonthLine> byMonth() {
             Map<YearMonth, int[]> months = new TreeMap<>();
             matches.stream().filter(r -> r.date() != null).forEach(r -> {
-                int[] c = months.computeIfAbsent(YearMonth.from(r.date()), k -> new int[2]);
+                int[] c = months.computeIfAbsent(YearMonth.from(r.date()), k -> new int[3]);
                 c[0]++;
                 c[1] += r.goals();
+                c[2] += r.starter() && !r.fromSummary() ? 1 : 0;
             });
             DateTimeFormatter f = DateTimeFormatter.ofPattern("MMMM yyyy",
                     Locale.forLanguageTag("es-AR"));
             return months.entrySet().stream().map(e -> {
                 String label = e.getKey().format(f);
                 return new MonthLine(Character.toUpperCase(label.charAt(0)) + label.substring(1), e.getValue()[0],
-                        e.getValue()[1]);
+                        e.getValue()[1], e.getValue()[2]);
             }).toList();
         }
 
@@ -152,8 +153,8 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
         }
     }
 
-    /** Un mes: partidos que jugó y sus goles. */
-    public record MonthLine(String month, int played, int goals) {
+    /** Un mes: partidos que jugó, sus goles y en cuántos fue titular (según las planillas de las actas). */
+    public record MonthLine(String month, int played, int goals, int starts) {
     }
 
     /** Un rival: partidos que jugó contra él, sus goles y cómo terminaron. */

@@ -331,11 +331,13 @@
                 <td>
                     <h3>Mes a mes</h3>
                     <table>
-                        <tr><th class="l">Mes</th><th>PJ</th><th>Goles</th></tr>
+                        <tr><th class="l">Mes</th><th>PJ</th><th>Titular</th><th>Goles</th></tr>
                         <tr th:each="x : ${b.byMonth()}">
-                            <td class="l" th:text="${x.month}"></td><td th:text="${x.played}"></td><td th:text="${x.goals}"></td>
+                            <td class="l" th:text="${x.month}"></td><td th:text="${x.played}"></td><td th:text="${x.starts}"></td>
+                            <td th:text="${x.goals}"></td>
                         </tr>
                     </table>
+                    <p class="muted">Titular: partidos en el cinco inicial, según las planillas de las actas.</p>
                 </td>
                 <td>
                     <h3>Por rival</h3>
