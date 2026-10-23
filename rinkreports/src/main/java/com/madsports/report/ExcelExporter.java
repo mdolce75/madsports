@@ -90,6 +90,21 @@ public class ExcelExporter {
         s.row("Azules", k.blueCards(), k.bluePerGame());
         s.row("Rojas", k.redCards(), k.redPerGame());
         s.blank();
+        ReportData.ScoreFlow sf = k.team().timeProfile().scoreFlow();
+        if (sf != null && sf.hasData()) {
+            s.section("Según el marcador (partidos con acta completa: " + sf.matches() + ")");
+            s.header("", "Partidos", "Ganados", "Empatados", "Perdidos", "Puntos");
+            s.row("Estuvo arriba", sf.led(), sf.ledWon(), sf.ledDrawn(), sf.ledLost(), -sf.pointsDropped());
+            s.row("Estuvo abajo", sf.trailed(), sf.trailedWon(), sf.trailedDrawn(), sf.trailedLost(), sf.pointsRescued());
+            s.blank();
+            s.section("El primer gol");
+            s.header("", "Partidos", "Ganados", "Empatados", "Perdidos", "Efectividad (%)");
+            s.row("Convirtió primero", sf.scoredFirst(), sf.scoredFirstWon(), sf.scoredFirstDrawn(), sf.scoredFirstLost(),
+                    sf.scoredFirstEffectiveness());
+            s.row("Le convirtieron primero", sf.concededFirst(), sf.concededFirstWon(), sf.concededFirstDrawn(),
+                    sf.concededFirstLost(), sf.concededFirstEffectiveness());
+            s.blank();
+        }
         s.section("Top 3 · Promedio de gol");
         s.header("Jugador", "Goles", "Partidos", "Promedio");
         k.topScorers().forEach(x -> s.row(x.player().name(), x.count(), x.of(), x.value()));

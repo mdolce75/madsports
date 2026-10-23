@@ -267,10 +267,86 @@ public record ReportData(ClubInfo club, String category, String tournament, Loca
      *                           partidos con ficha; las sanciones superpuestas se suman
      * @param powerPlaySeconds   lo mismo con las sanciones del rival (tiempo con jugadores de más)
      */
+    /**
+     * El partido según el marcador, en los partidos con acta completa (sus goles suman el resultado): qué pasó cuando
+     * el equipo estuvo arriba o abajo en algún momento, y cuando convirtió o recibió el primer gol.
+     *
+     * @param matches partidos con acta completa
+     * @param ledWon  partidos en que estuvo ganando en algún momento y ganó (ledDrawn, ledLost: empató, perdió)
+     * @param trailedWon partidos en que estuvo perdiendo en algún momento y ganó (trailedDrawn, trailedLost)
+     * @param scoredFirstWon partidos en que convirtió el primer gol y ganó (scoredFirstDrawn, scoredFirstLost)
+     * @param concededFirstWon partidos en que recibió el primer gol y ganó (concededFirstDrawn, concededFirstLost)
+     */
+    public record ScoreFlow(int matches, int ledWon, int ledDrawn, int ledLost,
+                            int trailedWon, int trailedDrawn, int trailedLost,
+                            int scoredFirstWon, int scoredFirstDrawn, int scoredFirstLost,
+                            int concededFirstWon, int concededFirstDrawn, int concededFirstLost) {
+
+        public static final ScoreFlow EMPTY = new ScoreFlow(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        public boolean hasData() {
+            return matches > 0;
+        }
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public int led() {
+            return ledWon + ledDrawn + ledLost;
+        }
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public int trailed() {
+            return trailedWon + trailedDrawn + trailedLost;
+        }
+
+        /** Puntos que se le escaparon estando arriba: 2 por cada empate y 3 por cada derrota. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public int pointsDropped() {
+            return 2 * ledDrawn + 3 * ledLost;
+        }
+
+        /** Puntos que rescató estando abajo: 3 por cada victoria y 1 por cada empate. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public int pointsRescued() {
+            return 3 * trailedWon + trailedDrawn;
+        }
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public int scoredFirst() {
+            return scoredFirstWon + scoredFirstDrawn + scoredFirstLost;
+        }
+
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public int concededFirst() {
+            return concededFirstWon + concededFirstDrawn + concededFirstLost;
+        }
+
+        /** Partidos con acta completa que terminaron sin goles. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public int goalless() {
+            return matches - scoredFirst() - concededFirst();
+        }
+
+        /** Efectividad (puntos sobre los posibles) cuando convirtió primero. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double scoredFirstEffectiveness() {
+            return effectiveness(scoredFirstWon, scoredFirstDrawn, scoredFirst());
+        }
+
+        /** Efectividad (puntos sobre los posibles) cuando le convirtieron primero. */
+        @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+        public double concededFirstEffectiveness() {
+            return effectiveness(concededFirstWon, concededFirstDrawn, concededFirst());
+        }
+
+        private static double effectiveness(int won, int drawn, int played) {
+            return played == 0 ? 0 : 100.0 * (3 * won + drawn) / (3 * played);
+        }
+    }
+
     public record TimeProfile(int periodMinutes, int matchesPlayed, int matchesWithSheet, int goalMismatches,
                               List<TimeBucket> buckets, List<TimeBucket> byPeriod, TimeBucket unrecorded,
                               int shortHandedSeconds, int powerPlaySeconds, FoulSituation foulSituation,
-                              ShortHanded shortHanded) {
+                              ShortHanded shortHanded, ScoreFlow scoreFlow) {
 
         /** Minutos por partido con uno menos (promedio sobre los partidos con ficha). */
         @JsonProperty(access = JsonProperty.Access.READ_ONLY)

@@ -10,6 +10,7 @@ import com.madsports.sidgad.model.Models.StandingRow;
 import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.stats.ReportData.Discipline;
 import com.madsports.stats.ReportData.FoulSituation;
+import com.madsports.stats.ReportData.ScoreFlow;
 import com.madsports.stats.ReportData.Fouls;
 import com.madsports.stats.ReportData.LeagueContext;
 import com.madsports.stats.ReportData.MatchLine;
@@ -286,6 +287,9 @@ public final class StatsEngine {
         int[] foulsBySituation = new int[3];
         int[] secondsBySituation = new int[3];
         ShortHandedCalc shortHandedGoals = new ShortHandedCalc();
+        // El marcador partido a partido: [0] partidos con acta completa; [1..3] estuvo arriba y ganó / empató / perdió;
+        // [4..6] estuvo abajo; [7..9] convirtió primero; [10..12] le convirtieron primero.
+        int[] flow = new int[13];
 
         for (Entry e : entries) {
             TeamRef own = e.team();
@@ -366,6 +370,8 @@ public final class StatsEngine {
                 }
                 if (goalsInSheet != m.homeGoals() + m.awayGoals()) {
                     mismatches++;
+                } else {
+                    scoreFlow(ownGoalTimes, rivalGoalTimes, resultFor, resultAgainst, flow);
                 }
                 // Cómo iba el partido al empezar cada tramo, según el minuto de los goles de la ficha.
                 for (int i = 0; i < 2 * perPeriod; i++) {
@@ -418,7 +424,40 @@ public final class StatsEngine {
         TimeBucket unrecorded = bucket("Sin minuto registrado", 0, 0, 0, unrecordedCards, 0, new int[3]);
         return new TimeProfile(periodMinutes, played, withSheet, mismatches, buckets, byPeriod, unrecorded,
                 shortHanded, powerPlay, new FoulSituation(foulsBySituation[0], foulsBySituation[1], foulsBySituation[2],
-                        secondsBySituation[0], secondsBySituation[1], secondsBySituation[2]), shortHandedGoals.result());
+                        secondsBySituation[0], secondsBySituation[1], secondsBySituation[2]), shortHandedGoals.result(),
+                new ScoreFlow(flow[0], flow[1], flow[2], flow[3], flow[4], flow[5], flow[6], flow[7], flow[8], flow[9],
+                        flow[10], flow[11], flow[12]));
+    }
+
+    /**
+     * Suma un partido con acta completa al marcador partido a partido (ver {@code flow} en {@link #timeProfile}): si
+     * estuvo arriba o abajo en algún momento, quién convirtió primero y cómo terminó. Dos goles en el mismo segundo
+     * cuentan primero el propio.
+     */
+    static void scoreFlow(List<Integer> ownGoals, List<Integer> rivalGoals, int resultFor, int resultAgainst, int[] flow) {
+        List<int[]> goals = new ArrayList<>();
+        ownGoals.forEach(t -> goals.add(new int[]{t, 1}));
+        rivalGoals.forEach(t -> goals.add(new int[]{t, -1}));
+        goals.sort(Comparator.<int[]>comparingInt(g -> g[0]).thenComparingInt(g -> -g[1]));
+        int diff = 0;
+        boolean led = false;
+        boolean trailed = false;
+        for (int[] g : goals) {
+            diff += g[1];
+            led |= diff > 0;
+            trailed |= diff < 0;
+        }
+        int outcome = resultFor > resultAgainst ? 0 : resultFor == resultAgainst ? 1 : 2;
+        flow[0]++;
+        if (led) {
+            flow[1 + outcome]++;
+        }
+        if (trailed) {
+            flow[4 + outcome]++;
+        }
+        if (!goals.isEmpty()) {
+            flow[(goals.getFirst()[1] > 0 ? 7 : 10) + outcome]++;
+        }
     }
 
     /** 0 = ganando, 1 = empatando, 2 = perdiendo. */
