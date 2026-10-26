@@ -16,17 +16,26 @@ import java.util.TreeMap;
 
 /**
  * Informe de un jugador: partidos, goles, tarjetas (amarilla, azul y roja por separado), penales y libres directos por
- * categoría en la que jugó y en total, y goles y tarjetas por tramos de 5 minutos. Todo sale de las actas: un partido
+ * categoría en la que jugó, por torneo y en total, y goles y tarjetas por tramos de 5 minutos. Todo sale de las actas: un partido
  * cuenta si el jugador figura en la planilla de su equipo; el minuto, de los eventos del acta.
  *
  * @param playerName nombre del jugador en la FPP
  * @param fullName   nombre y apellido del usuario (como se registró)
+ * @param tournaments lo mismo que categories, por torneo de cada categoría (Apertura, Clausura...)
  */
 public record PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                            String period, LocalDate generatedOn, List<Line> categories, Line total,
                            Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
                            List<String> notes, List<CategoryBlock> blocks, List<ReportData.Indicator> indicators,
-                           Federation federation) {
+                           Federation federation, List<TournamentLine> tournaments) {
+
+    public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
+                        String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
+                        ReportData.ShortHanded shortHanded, List<MatchRow> matches, List<String> notes,
+                        List<CategoryBlock> blocks, List<ReportData.Indicator> indicators, Federation federation) {
+        this(playerId, playerName, fullName, club, year, period, generatedOn, categories, total, minutes, shortHanded,
+                matches, notes, blocks, indicators, federation, List.of());
+    }
 
     public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                         String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
@@ -212,11 +221,61 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
         return new PlayerReport(playerId, playerName, fullName, club, year, period, generatedOn, categories, total,
                 minutes, shortHanded, matches, notes,
                 blocks.stream().map(b -> b.withLeagueRank(ranks.get(b.line().category()))).toList(),
-                indicators, federation);
+                indicators, federation, tournaments);
     }
 
     public boolean hasData() {
         return total.played() > 0;
+    }
+
+    /**
+     * Un torneo de una categoría ("Juvenil · Apertura"): sus partidos, goles, tarjetas, penales y libres.
+     *
+     * @param tournament nombre del torneo; vacío si la competición no lo dice
+     */
+    public record TournamentLine(String category, String tournament, Line line) {
+
+        public String tournamentName() {
+            return tournament.isBlank() ? "Sin torneo" : tournament;
+        }
+
+        public String label() {
+            return category + " · " + tournamentName();
+        }
+
+        /** La línea con el nombre "Categoría · Torneo" (para la planilla de Excel). */
+        public Line labeled() {
+            return line.plus(Line.EMPTY, label());
+        }
+
+        TournamentLine plus(TournamentLine o) {
+            return new TournamentLine(category, tournament, line.plus(o.line, line.category()));
+        }
+    }
+
+    /** Goles acumulados en un torneo, después de cada partido que jugó (en orden de fecha). */
+    public record GoalProgression(String label, List<Integer> cumulative) {
+
+        public int total() {
+            return cumulative.isEmpty() ? 0 : cumulative.getLast();
+        }
+    }
+
+    /** La progresión de sus goles en cada torneo, en el orden de la tabla por torneo. */
+    public List<GoalProgression> goalProgression() {
+        List<GoalProgression> out = new ArrayList<>();
+        for (TournamentLine t : tournaments) {
+            List<Integer> sums = new ArrayList<>();
+            int goals = 0;
+            for (MatchRow m : matches) {
+                if (m.category().equals(t.category()) && m.tournament().equals(t.tournament())) {
+                    goals += m.goals();
+                    sums.add(goals);
+                }
+            }
+            out.add(new GoalProgression(t.label(), sums));
+        }
+        return out;
     }
 
     /**

@@ -45,7 +45,7 @@ Mad Sports: **RinkReports** (informes en pantalla, PDF y Excel) y **RinkMetrics*
 | Función | Detalle |
 |---|---|
 | 🏒 **Informe de equipo** | Resultados, posiciones, goleadores (sin arqueros), pelota parada, disciplina, faltas, fortalezas y debilidades, con análisis escrito por IA (Google Gemini) o por reglas. |
-| 👤 **Informe de jugador** | Agrupado por categoría: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, más fortalezas y debilidades contra sus compañeros. Cuenta también los partidos sin acta publicada. |
+| 👤 **Informe de jugador** | Agrupado por categoría y por torneo (Apertura, Clausura...), con los totales: partidos (G/E/P), goles, tarjetas amarillas, azules y rojas, penales y libres directos, con promedios por partido, el gráfico de progresión de goles en cada torneo y fortalezas y debilidades contra sus compañeros. Cuenta también los partidos sin acta publicada. |
 | 📋 **RinkMetrics** | Perfil DT para cargar en vivo, desde el celular, las acciones de cada jugador durante el partido, aunque se corte la señal. |
 | ⏱️ **Minuto a minuto** | Goles, tarjetas y faltas por tramos de 5′, cómo iba el partido en cada tramo y goles recibidos con uno menos. |
 | 📊 **Gráficos** | Barras y donas en cada PDF, con el escudo del club en la cabecera. |

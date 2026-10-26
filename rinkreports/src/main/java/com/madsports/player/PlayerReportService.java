@@ -475,6 +475,7 @@ public class PlayerReportService {
     static PlayerReport assemble(Query q, ReportData.ClubInfo club, LocalDate today, List<String> levels,
                                  List<TeamInput> inputs) {
         Map<String, Line> lines = new LinkedHashMap<>();
+        Map<String, PlayerReport.TournamentLine> tournamentLines = new LinkedHashMap<>();
         Map<String, Integer> order = new LinkedHashMap<>();
         List<MatchRow> rows = new ArrayList<>();
         // Tramos según la duración de tiempo más larga entre las categorías en que jugó (20' o 25').
@@ -558,6 +559,9 @@ public class PlayerReportService {
             Line line = new Line(in.category(), played, won, drawn, lost, goals, yellow, blue, red,
                     penScored, penTaken, fdScored, fdTaken, withoutSheet, teamGoals, teamCards, sheetCards);
             lines.merge(in.category(), line, (a, b) -> a.plus(b, a.category()));
+            String tournament = in.competition().tournament() == null ? "" : in.competition().tournament().label();
+            tournamentLines.merge(in.category() + "|" + tournament,
+                    new PlayerReport.TournamentLine(in.category(), tournament, line), PlayerReport.TournamentLine::plus);
             order.putIfAbsent(in.category(), levels.indexOf(in.competition().category().level()));
         }
         List<Line> categories = lines.values().stream()
@@ -565,6 +569,15 @@ public class PlayerReportService {
                 .toList();
         Line total = categories.stream().reduce(Line.EMPTY, (a, b) -> a.plus(b, "Total"));
         rows.sort(Comparator.comparing(MatchRow::date, Comparator.nullsLast(Comparator.naturalOrder())));
+        // Por torneo: en el orden de las categorías y, dentro de cada una, por la fecha de su primer partido.
+        Map<String, LocalDate> firstDate = new LinkedHashMap<>();
+        rows.forEach(r -> firstDate.putIfAbsent(r.category() + "|" + r.tournament(), r.date()));
+        List<PlayerReport.TournamentLine> tournaments = tournamentLines.values().stream()
+                .sorted(Comparator.comparing((PlayerReport.TournamentLine t) -> order.get(t.category()))
+                        .thenComparing(PlayerReport.TournamentLine::category)
+                        .thenComparing(t -> firstDate.get(t.category() + "|" + t.tournament()),
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
 
         List<String> notes = new ArrayList<>();
         if (q.base() != null && q.eligibleLabel() != null) {
@@ -603,7 +616,7 @@ public class PlayerReportService {
         ReportData.ShortHanded sh = shortHanded.result();
         return new PlayerReport(q.playerId(), q.playerName(), q.fullName(), club, q.year(), q.scope().label(), today,
                 categories, total, minutes.result(), sh, rows, notes, blocks,
-                PlayerStrengths.evaluate(q.playerId(), inputs, sh), q.federation());
+                PlayerStrengths.evaluate(q.playerId(), inputs, sh), q.federation(), tournaments);
     }
 
     /**

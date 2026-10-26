@@ -279,6 +279,85 @@ public class Charts {
                 new Color[]{CARD_YELLOW, CARD_BLUE, CARD_RED}, new String[]{"Amarillas", "Azules", "Rojas"});
     }
 
+    /**
+     * Progresión de sus goles en cada torneo: goles acumulados después de cada partido que jugó en él, una línea por
+     * torneo (los colores categóricos en orden; hasta 5 torneos, los primeros de la tabla). {@code null} sin goles.
+     */
+    public String goalProgression(List<PlayerReport.GoalProgression> series) {
+        List<PlayerReport.GoalProgression> s = series == null ? List.of() : series.stream()
+                .filter(p -> !p.cumulative().isEmpty()).limit(CATEGORICAL.length).toList();
+        if (s.stream().allMatch(p -> p.total() == 0)) {
+            return null;
+        }
+        int w = 400;
+        int h = 200;
+        return render(w, h, g -> {
+            // Leyenda arriba, en tantos renglones como haga falta.
+            g.setFont(font(Font.PLAIN, 9));
+            FontMetrics fm = g.getFontMetrics();
+            double lx = 30;
+            double ly = 12;
+            for (int i = 0; i < s.size(); i++) {
+                String name = s.get(i).label();
+                double width = 13 + fm.stringWidth(name) + 14;
+                if (lx + width > w - 8 && lx > 30) {
+                    lx = 30;
+                    ly += 13;
+                }
+                g.setColor(CATEGORICAL[i]);
+                g.fill(new java.awt.geom.RoundRectangle2D.Double(lx, ly - 8, 9, 9, 3, 3));
+                g.setColor(INK);
+                g.drawString(name, (float) (lx + 13), (float) ly);
+                lx += width;
+            }
+            int maxGoals = Math.max(1, s.stream().mapToInt(PlayerReport.GoalProgression::total).max().orElse(1));
+            int maxGames = s.stream().mapToInt(p -> p.cumulative().size()).max().orElse(1);
+            double top = ly + 14;
+            double bottom = h - 26;
+            double left = 30;
+            double right = w - 22;
+            double unit = (bottom - top) / maxGoals;
+            double stepX = (right - left) / maxGames;
+            yTicks(g, left, right, bottom, unit, maxGoals, false);
+            baseline(g, left, right, bottom);
+            // Partidos: 1, 2, 3... (sin amontonar los números con muchos partidos).
+            g.setColor(MUTED);
+            g.setFont(font(Font.PLAIN, 8));
+            int every = Math.max(1, (int) Math.ceil(maxGames / 12.0));
+            for (int k = 1; k <= maxGames; k++) {
+                if (k % every == 0 || k == 1 || k == maxGames) {
+                    centered(g, String.valueOf(k), left + k * stepX, bottom + 11);
+                }
+            }
+            g.drawString("Partidos jugados en el torneo →", (float) left, h - 4);
+            for (int i = 0; i < s.size(); i++) {
+                List<Integer> sums = s.get(i).cumulative();
+                Path2D path = new Path2D.Double();
+                path.moveTo(left, bottom);   // antes del primer partido: 0 goles
+                for (int k = 0; k < sums.size(); k++) {
+                    path.lineTo(left + (k + 1) * stepX, bottom - sums.get(k) * unit);
+                }
+                g.setColor(CATEGORICAL[i]);
+                g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g.draw(path);
+                for (int k = 0; k < sums.size(); k++) {
+                    double x = left + (k + 1) * stepX;
+                    double y = bottom - sums.get(k) * unit;
+                    g.setColor(SURFACE);
+                    g.fill(new Ellipse2D.Double(x - 4, y - 4, 8, 8));
+                    g.setColor(CATEGORICAL[i]);
+                    g.fill(new Ellipse2D.Double(x - 3, y - 3, 6, 6));
+                }
+                // El total del torneo al final de su línea.
+                double ex = left + sums.size() * stepX;
+                double ey = bottom - sums.getLast() * unit;
+                g.setColor(INK);
+                g.setFont(font(Font.BOLD, 9));
+                g.drawString(String.valueOf(sums.getLast()), (float) (ex + 6), (float) (ey + 3));
+            }
+        });
+    }
+
     /** Dona de convertidos y errados de penales o libres directos, con "convertidos/tirados" al centro. */
     public String setPieceDonut(int scored, int taken, String what) {
         if (taken <= 0) {
