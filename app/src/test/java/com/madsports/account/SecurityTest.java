@@ -82,6 +82,8 @@ class SecurityTest {
     @Autowired SubscriptionPlanRepository subscriptions;
     @MockitoBean Mailer mailer;
     @Autowired org.thymeleaf.ITemplateEngine templates;
+    @Autowired com.madsports.report.ReportArchive archive;
+    @Autowired com.madsports.report.RequestedReportRepository requests;
 
     /** Mailer de verdad (sin SMTP) para revisar el HTML; el de la app está simulado para capturar los envíos. */
     Mailer realMailer;
@@ -659,6 +661,52 @@ class SecurityTest {
                 .map(m -> m.paragraphs().get(0)))
                 .anySatisfy(t -> assertThat(t).contains("mail.club"))
                 .anySatisfy(t -> assertThat(t).contains("mail.jugador"));
+    }
+
+    /** Un informe listo, como los que guarda el historial. */
+    static com.madsports.report.ReadyReport readyReport(String name) {
+        return new com.madsports.report.ReadyReport() {
+            public void whenReady(Runnable action) { action.run(); }
+            public byte[] pdf() { return "%PDF-1.7 informe".getBytes(); }
+            public byte[] xlsx() { return new byte[] {80, 75, 3, 4}; }
+            public String html() { return "<html><body><h1>Informe guardado</h1></body></html>"; }
+            public String fileName() { return name; }
+        };
+    }
+
+    @Test
+    void eachUserSeesAndDownloadsOnlyTheirOwnSavedReports() throws Exception {
+        UserAccount mine = saved("club.historial", Profile.CLUBFPP);
+        saved("otro.historial", Profile.CLUBFPP);
+        com.madsports.report.RequestedReport r = requests.save(new com.madsports.report.RequestedReport(mine.getId(),
+                Instant.now(), "Club completo · Apertura 2026"));
+        archive.save(r.getId(), mine.getId(), readyReport("informe-club-cavs-apertura-2026.pdf"));
+        // Pedido hace dos años: sus archivos ya no se conservan (12 meses) y la limpieza diaria los borra.
+        com.madsports.report.RequestedReport old = requests.save(new com.madsports.report.RequestedReport(mine.getId(),
+                Instant.now().minus(java.time.Duration.ofDays(730)), "Club completo · Clausura 2024"));
+        archive.save(old.getId(), mine.getId(), readyReport("informe-club-cavs-clausura-2024.pdf"));
+        archive.cleanup();
+
+        var me = user("club.historial").authorities(() -> "CLUBFPP");
+        mvc.perform(get("/api/history").with(me)).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].detail").value("Club completo · Apertura 2026"))
+                .andExpect(jsonPath("$[0].available").value(true))
+                .andExpect(jsonPath("$[1].available").value(false));
+        mvc.perform(get("/api/history/" + r.getId() + ".pdf").with(me)).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("informe-club-cavs-apertura-2026.pdf")))
+                .andExpect(content().bytes("%PDF-1.7 informe".getBytes()));
+        mvc.perform(get("/api/history/" + r.getId() + ".xlsx").with(me)).andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("informe-club-cavs-apertura-2026.xlsx")));
+        mvc.perform(get("/api/history/" + r.getId() + "/html").with(me)).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Informe guardado")));
+        // El vencido ya no se baja; el de otro usuario, tampoco (404, como si no existiera).
+        mvc.perform(get("/api/history/" + old.getId() + ".pdf").with(me)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/history/" + r.getId() + ".pdf").with(user("otro.historial").authorities(() -> "CLUBFPP")))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/history/" + r.getId() + ".pdf")).andExpect(status().isUnauthorized());
     }
 
     @Test

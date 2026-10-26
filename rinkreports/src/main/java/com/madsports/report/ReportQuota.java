@@ -31,13 +31,16 @@ public class ReportQuota implements MonthlyReports {
     private final RequestedReportRepository requests;
     private final UserAccountRepository users;
     private final Clock clock;
+    private final ReportArchive archive;
     /** Un pedido a la vez por usuario: dos pedidos simultáneos no pasan los dos el último lugar del cupo. */
     private final ConcurrentHashMap<Long, Object> locks = new ConcurrentHashMap<>();
 
-    public ReportQuota(RequestedReportRepository requests, UserAccountRepository users, Clock clock) {
+    public ReportQuota(RequestedReportRepository requests, UserAccountRepository users, Clock clock,
+                       ReportArchive archive) {
         this.requests = requests;
         this.users = users;
         this.clock = clock;
+        this.archive = archive;
     }
 
     /**
@@ -104,7 +107,11 @@ public class ReportQuota implements MonthlyReports {
                         + c.renews().format(DAY) + ".");
             }
             T outcome = request.get();
-            requests.save(new RequestedReport(u.getId(), clock.instant(), detail));
+            RequestedReport saved = requests.save(new RequestedReport(u.getId(), clock.instant(), detail));
+            // Al quedar listo, sus archivos se guardan para tenerlo a mano desde el historial.
+            if (outcome instanceof ReadyReport report && saved != null && saved.getId() != null) {
+                report.whenReady(() -> archive.save(saved.getId(), u.getId(), report));
+            }
             users.countReport(u.getId());
             return outcome;
         }

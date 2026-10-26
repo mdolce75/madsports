@@ -115,6 +115,14 @@ www.rinkmetrics.com.ar {
 }
 ```
 
+## Informes guardados
+
+Cada informe que pide un club o un jugador se guarda (PDF, Excel y la versión para pantalla) para verlo y bajarlo
+desde su historial, tal como salió ese día: en `REPORTS_DIR` (por defecto `./data/informes`), una carpeta por usuario.
+En el servidor, esa carpeta va en un **volumen** (si no, se pierde al recrear el contenedor) y entra en los respaldos.
+Pesan entre 0,1 y 2 MB por informe; se conservan `REPORTS_RETENTION_MONTHS` meses (12) y una tarea diaria borra los
+más viejos.
+
 ## Health check
 
 `GET /actuator/health` es público y devuelve el estado general y el de cada componente, sin detalles:

@@ -24,11 +24,17 @@ public class RequestedReport {
     private Instant createdAt;
     /** Qué informe fue; vacío en los pedidos de antes del historial. */
     private String detail;
+    /** Sus archivos (PDF, Excel y HTML) están guardados ({@link ReportArchive}); false si todavía no o si ya vencieron. */
+    private boolean archived;
+    /** Nombre del PDF para descargarlo ("informe-club-cavs-temporada-2026.pdf"). */
+    private String fileName;
+    /** Bytes del PDF y el Excel guardados. */
+    private Long sizeBytes;
 
     protected RequestedReport() {
     }
 
-    RequestedReport(Long userId, Instant createdAt, String detail) {
+    public RequestedReport(Long userId, Instant createdAt, String detail) {
         this.userId = userId;
         this.createdAt = createdAt;
         this.detail = detail;
@@ -38,4 +44,18 @@ public class RequestedReport {
     public Long getUserId() { return userId; }
     public Instant getCreatedAt() { return createdAt; }
     public String getDetail() { return detail; }
+    public boolean isArchived() { return archived; }
+    public String getFileName() { return fileName; }
+    public Long getSizeBytes() { return sizeBytes; }
+
+    void archived(String fileName, long sizeBytes) {
+        this.archived = true;
+        this.fileName = fileName;
+        this.sizeBytes = sizeBytes;
+    }
+
+    /** Sus archivos se borraron (pasó el tiempo que se conservan); el pedido queda en el historial. */
+    void expired() {
+        this.archived = false;
+    }
 }
