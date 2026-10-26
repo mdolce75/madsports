@@ -106,22 +106,33 @@ async function loadClubs() {
     }
 }
 
-// Equipos del club: cada categoría en cada rama ("Infantil B Femenino"). Los usa el jugador.
-function loadTeams() {
-    const club = catalog && catalog.clubs.find(c => String(c.id) === $("club").value);
-    for (const [id, empty] of [["equipo", "Elegí la categoría"]]) {
-        const sel = $(id);
-        sel.innerHTML = "";
-        sel.disabled = true;
-        if (!club) {
-            sel.add(new Option("Elegí el club", ""));
-            continue;
-        }
-        sel.add(new Option(empty, ""));
-        ["MASCULINO", "FEMENINO"].forEach(b => club.categories.filter(c => c.branches.includes(b))
-            .forEach(c => sel.add(new Option(`${c.label} ${BRANCH_LABEL[b]}`, `${c.key}|${b}`))));
-        sel.disabled = false;
+// Equipos del club: cada categoría en cada rama ("Infantil B Femenino"), solo las que tienen jugadores en SIDGAD
+// (sin jugadores no hay a quién elegir). Los usa el jugador.
+async function loadTeams() {
+    const clubId = $("club").value;
+    let club = catalog && catalog.clubs.find(c => String(c.id) === clubId);
+    const sel = $("equipo");
+    sel.innerHTML = "";
+    sel.disabled = true;
+    if (!club) {
+        sel.add(new Option("Elegí el club", ""));
+        loadPlayers();
+        return;
     }
+    sel.add(new Option("Cargando categorías…", ""));
+    try {
+        const res = await fetch(`/api/catalog/club?clubId=${club.id}&year=${catalog.year}&federation=${fed()}`);
+        if (res.ok) club = await res.json();
+    } catch (e) {
+        // Sin respuesta: las del catálogo.
+    }
+    if ($("club").value !== clubId) return;   // eligió otro club mientras tanto
+    sel.innerHTML = "";
+    const options = ["MASCULINO", "FEMENINO"].flatMap(b => club.categories.filter(c => c.branches.includes(b))
+        .map(c => new Option(`${c.label} ${BRANCH_LABEL[b]}`, `${c.key}|${b}`)));
+    sel.add(new Option(options.length ? "Elegí la categoría" : "El club no tiene jugadores en SIDGAD", ""));
+    options.forEach(o => sel.add(o));
+    sel.disabled = !options.length;
     loadPlayers();
 }
 

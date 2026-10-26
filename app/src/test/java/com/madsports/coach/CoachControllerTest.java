@@ -49,6 +49,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -313,16 +315,19 @@ class CoachControllerTest {
                 new RosterPlayer(504, "Dante Paz", "Dante", "Paz", "Primera Masculino")));
         when(roster.squad(Federation.FPP, 74, 2026, "PRIMERA", "MASCULINO")).thenReturn(List.of(
                 new SquadMember(504, "10", "Dante Paz", false)));
+        // Infantil B Masculino no tiene jugadores en SIDGAD: no se ofrece.
+        when(roster.withPlayers(eq(Federation.FPP), any(), eq(2026))).thenReturn(new ClubView(74, "CAVS", "VELEZ", List.of(
+                new LevelView("PRIMERA", "Primera", List.of("MASCULINO")),
+                new LevelView("INFANTIL:B", "Infantil B", List.of("FEMENINO")))));
     }
 
     @Test
     void teamFromAClubCategoryWithItsSidgadSquad() throws Exception {
         clubInSidgad();
         mvc.perform(get("/api/coach/club/categories").with(como("profe"))).andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].name").value(contains("Primera Masculino", "Infantil B Masculino",
-                        "Infantil B Femenino")))
+                .andExpect(jsonPath("$[*].name").value(contains("Primera Masculino", "Infantil B Femenino")))
                 .andExpect(jsonPath("$[1].key").value("INFANTIL:B"))
-                .andExpect(jsonPath("$[1].branch").value("MASCULINO"));
+                .andExpect(jsonPath("$[1].branch").value("FEMENINO"));
         // Su plantel en SIDGAD, por apellido, con el número más usado ("07" -> "7") y los arqueros.
         mvc.perform(get("/api/coach/club/squad").param("category", "INFANTIL:B").param("branch", "FEMENINO")
                         .with(como("profe"))).andExpect(status().isOk())

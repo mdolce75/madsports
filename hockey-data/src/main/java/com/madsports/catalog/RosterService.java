@@ -70,6 +70,9 @@ public class RosterService {
             Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(200).build();
     private final Cache<String, List<SquadMember>> squadCache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(200).build();
+    /** ¿La categoría del club tiene jugadores en SIDGAD? (club, año, categoría, rama). */
+    private final Cache<String, Boolean> playersCache =
+            Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(2000).build();
 
     public RosterService(CatalogService catalog, SidgadClient sidgad) {
         this.catalog = catalog;
@@ -95,6 +98,58 @@ public class RosterService {
     public List<SquadMember> squad(Federation fed, int clubId, int year, String category, String branch) {
         String key = cacheKey(fed, clubId, year, category, branch);
         return squadCache.get(key, k -> squad(lineups(team(fed, clubId, year, category, branch))));
+    }
+
+    /**
+     * ¿El equipo del club en esa categoría tiene jugadores en SIDGAD? Sí, si en alguno de sus partidos jugados el acta
+     * trae su planilla (alcanza con la primera que se encuentre). Una categoría sin jugadores no se ofrece (registro
+     * del jugador, informe del club, equipos del DT). Si SIDGAD no responde, se ofrece igual: no se esconde por error.
+     */
+    public boolean hasPlayers(Federation fed, int clubId, int year, String category, String branch) {
+        return playersCache.get(cacheKey(fed, clubId, year, category, branch), k -> {
+            Team e;
+            try {
+                e = team(fed, clubId, year, category, branch);
+            } catch (IllegalArgumentException noTeam) {
+                return false;
+            }
+            try {
+                for (Map.Entry<Competition, List<Match>> c : calendars(e).entrySet()) {
+                    for (Match m : c.getValue()) {
+                        if (m.played() && m.idp() > 0
+                                && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId()))
+                                && !ownSide(SidgadParser.lineups(sidgad.gameSheet(c.getKey().id(), m.idp())), m,
+                                e.teamIds()).isEmpty()) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            } catch (RuntimeException sidgadDown) {
+                return true;
+            }
+        });
+    }
+
+    /** El club con solo las categorías (y ramas) que tienen jugadores en SIDGAD ({@link #hasPlayers}). */
+    public ClubView withPlayers(Federation fed, ClubView club, int year) {
+        Map<String, Future<Boolean>> checks = new LinkedHashMap<>();
+        try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (CatalogService.LevelView l : club.categories()) {
+                for (String b : l.branches()) {
+                    checks.put(l.key() + "|" + b, io.submit(() -> hasPlayers(fed, club.id(), year, l.key(), b)));
+                }
+            }
+        }
+        List<CatalogService.LevelView> levels = new ArrayList<>();
+        for (CatalogService.LevelView l : club.categories()) {
+            List<String> branches = l.branches().stream()
+                    .filter(b -> ClubTeams.await(checks.get(l.key() + "|" + b))).toList();
+            if (!branches.isEmpty()) {
+                levels.add(new CatalogService.LevelView(l.key(), l.label(), branches));
+            }
+        }
+        return new ClubView(club.id(), club.code(), club.name(), levels);
     }
 
     private String cacheKey(Federation fed, int clubId, int year, String category, String branch) {
