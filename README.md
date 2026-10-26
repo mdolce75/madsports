@@ -489,6 +489,8 @@ Abrir http://localhost:8080.
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
 | `MAIL_FROM` | `MadSports <info@madsports.com.ar>` | Remitente (tiene que ser un dominio verificado en el proveedor). El nombre lo pone cada mail: el del producto de la cuenta |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
+| `REPORTS_DIR` | `./data/informes` | Carpeta donde se guardan los informes generados (PDF, Excel y HTML de cada pedido) para verlos y bajarlos desde el historial. En el servidor, un volumen |
+| `REPORTS_RETENTION_MONTHS` | `12` | Meses que se conservan los informes guardados; todos los días a las 4:30 se borran los más viejos (el pedido queda en el historial) |
 | `APP_URL_MADSPORTS`, `APP_URL_RINKREPORTS`, `APP_URL_RINKMETRICS` | vacío (`APP_BASE_URL`) | Un dominio por sitio (`https://madsports.com.ar`, `https://rinkreports.com.ar`, `https://rinkmetrics.com.ar`): la raíz de cada producto es su portada, sus páginas pedidas en otro dominio llevan al suyo y los mails enlazan al del producto de la cuenta. Ver `docs/produccion.md` |
 | `DOLLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
 | `DOLLAR_FALLBACK` | `1500` | Pesos por dólar si DolarAPI nunca respondió |

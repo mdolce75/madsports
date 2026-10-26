@@ -109,7 +109,7 @@ public class ReportService {
         }
     }
 
-    public static final class Job {
+    public static final class Job implements ReadyReport {
         private final UUID id = UUID.randomUUID();
         private final Request request;
         private final String owner;
@@ -139,7 +139,30 @@ public class ReportService {
         /** El nombre del archivo con otra extensión ("xlsx"). */
         public String fileName(String extension) { return fileName.substring(0, fileName.lastIndexOf('.') + 1) + extension; }
 
+        /** Lo que corre al quedar listo (guardarlo en el historial), antes de que se vea como listo. */
+        private final java.util.List<Runnable> onReady = new java.util.ArrayList<>();
+
+        @Override
+        public void whenReady(Runnable action) {
+            synchronized (onReady) {
+                if (status != Status.READY) {
+                    onReady.add(action);
+                    return;
+                }
+            }
+            action.run();
+        }
+
         void update(Status status, String message) {
+            if (status == Status.READY) {
+                synchronized (onReady) {
+                    onReady.forEach(ReadyReport::runQuietly);
+                    onReady.clear();
+                    this.message = message;
+                    this.status = status;
+                }
+                return;
+            }
             this.status = status;
             this.message = message;
         }

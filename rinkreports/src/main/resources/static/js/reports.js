@@ -45,7 +45,10 @@ function rrWhen(iso) {
     return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
 }
 
-/** Los informes que generó el usuario (los últimos 50): fecha y hora, y cuál fue. */
+/**
+ * Los informes que generó el usuario (los últimos 50): fecha y hora, cuál fue y, mientras se conserven, para verlo de
+ * nuevo o bajarlo en PDF o Excel tal como salió.
+ */
 async function rrHistory() {
     const box = $("historial-lista");
     if (!box) return;
@@ -59,14 +62,38 @@ async function rrHistory() {
         }
         const table = document.createElement("table");
         table.className = "rr-history-table";
-        table.innerHTML = '<thead><tr><th scope="col">Fecha y hora</th><th scope="col">Informe</th></tr></thead><tbody></tbody>';
+        table.innerHTML = '<thead><tr><th scope="col">Fecha y hora</th><th scope="col">Informe</th>'
+            + '<th scope="col"><span class="sr-only">Archivos</span></th></tr></thead><tbody></tbody>';
         for (const it of items) {
             const tr = document.createElement("tr");
             const when = document.createElement("td");
             when.textContent = rrWhen(it.createdAt);
             const what = document.createElement("td");
             what.textContent = it.detail || "Informe";
-            tr.append(when, what);
+            const files = document.createElement("td");
+            files.className = "files";
+            if (it.available) {
+                const urls = {htmlUrl: `/api/history/${it.id}/html`, pdfUrl: `/api/history/${it.id}.pdf`,
+                    xlsxUrl: `/api/history/${it.id}.xlsx`};
+                const view = document.createElement("button");
+                view.type = "button";
+                view.className = "btn ghost";
+                view.textContent = "Ver";
+                view.addEventListener("click", () => rrShowReport($("visor"), urls, `${it.detail || "Informe"} · ${rrWhen(it.createdAt)}`));
+                const pdf = document.createElement("a");
+                pdf.className = "btn ghost";
+                pdf.href = urls.pdfUrl;
+                pdf.textContent = "PDF";
+                const xlsx = document.createElement("a");
+                xlsx.className = "btn ghost";
+                xlsx.href = urls.xlsxUrl;
+                xlsx.textContent = "Excel";
+                files.append(view, pdf, xlsx);
+            } else {
+                files.textContent = "No disponible";
+                files.title = "Los archivos de este informe ya no se conservan.";
+            }
+            tr.append(when, what, files);
             table.tBodies[0].append(tr);
         }
         box.replaceChildren(table);

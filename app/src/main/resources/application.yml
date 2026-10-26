@@ -57,6 +57,11 @@ madsports:
     from: ${MAIL_FROM:MadSports <info@madsports.com.ar>}
     # Dirección pública de la web, para armar los enlaces de los mails
     base-url: ${APP_BASE_URL:http://localhost:8080}
+  # Informes generados, guardados para tenerlos a mano desde el historial (ReportArchive): carpeta (un volumen en el
+  # servidor) y cuántos meses se conservan; todos los días a las 4:30 se borran los más viejos.
+  reports:
+    dir: ${REPORTS_DIR:./data/informes}
+    retention-months: ${REPORTS_RETENTION_MONTHS:12}
   # Un dominio por sitio (SiteUrls, DomainFilter): https://madsports.com.ar, https://rinkreports.com.ar y
   # https://rinkmetrics.com.ar. El que queda vacío usa APP_BASE_URL; vacíos los tres, todo en una sola dirección.
   urls:

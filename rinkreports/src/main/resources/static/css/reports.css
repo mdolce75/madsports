@@ -60,3 +60,6 @@ body[data-product="reports"] .cintillo { background: var(--lime); color: #1d1300
                        font: 600 .75rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
 .rr-history-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--ink); }
 .rr-history-table td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
+.rr-history-table td.files { white-space: nowrap; text-align: right; color: var(--muted); font-size: .8rem; }
+.rr-history-table td.files .btn { padding: 4px 10px; font-size: .75rem; margin-left: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

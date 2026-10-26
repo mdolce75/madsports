@@ -12,4 +12,7 @@ public interface RequestedReportRepository extends JpaRepository<RequestedReport
 
     /** Los últimos informes que pidió el usuario, del más nuevo al más viejo (su historial). */
     List<RequestedReport> findTop50ByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /** Pedidos con archivos guardados de antes de una fecha (los que ya no se conservan). */
+    List<RequestedReport> findByArchivedTrueAndCreatedAtBefore(java.time.Instant limit);
 }
