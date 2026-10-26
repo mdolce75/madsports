@@ -52,7 +52,8 @@ async function postJson(url, body) {
 
 /** Datos del usuario logueado ({autenticado:false} si no hay sesión). También deja la cookie CSRF. */
 async function session() {
-    const res = await fetch("/api/session", {credentials: "same-origin"});
+    // La sesión de este producto: la de RinkReports no cuenta en RinkMetrics, ni al revés.
+    const res = await fetch("/api/session?product=" + product(), {credentials: "same-origin"});
     return res.json();
 }
 
