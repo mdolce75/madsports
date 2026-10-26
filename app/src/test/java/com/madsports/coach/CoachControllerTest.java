@@ -361,6 +361,15 @@ class CoachControllerTest {
                 .andExpect(jsonPath("$.pending").isEmpty());
         mvc.perform(get("/api/coach/squad").param("team", String.valueOf(infantil)).with(como("profe")))
                 .andExpect(jsonPath("$", hasSize(3)));
+        // Destildarla la saca del equipo y la deja como "no incluida", para volver a sumarla.
+        mvc.perform(delete("/api/coach/players/503/teams/" + infantil).with(como("profe")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.teams").isEmpty())
+                .andExpect(jsonPath("$.pending[0]").value((int) infantil));
+        mvc.perform(get("/api/coach/squad").param("team", String.valueOf(infantil)).with(como("profe")))
+                .andExpect(jsonPath("$", hasSize(2)));
+        mvc.perform(post("/api/coach/players/503/teams/" + infantil).with(como("profe")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.pending").isEmpty());
 
         // Otro equipo con una jugadora que ya tiene: no se duplica, suma el equipo.
         String other = send(post("/api/coach/teams"), "profe", Map.of("name", "Primera", "category", "PRIMERA",
@@ -495,12 +504,14 @@ class CoachControllerTest {
     }
 
     @Test
-    void theFreePlanIsOneTeamAndFiveMatchesPerMonthUntilEndOf2026() throws Exception {
+    void theFreePlanIsThreeTeamsAndFiveMatchesPerMonthUntilEndOf2026() throws Exception {
         coach("gratis", "COACH_FREE");
         team("gratis", "Mi equipo");
+        team("gratis", "Segundo");
+        team("gratis", "Tercero");
         send(post("/api/coach/teams"), "gratis", Map.of("name", "Otro")).andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Tu plan DT free permite 1 equipo. Para sumar otro, borrá uno sin "
-                        + "partidos o pasate al plan mensual."));
+                .andExpect(jsonPath("$.detail").value("Tu plan DT free permite hasta 3 equipos. Para sumar otro, borrá "
+                        + "uno sin partidos o pasate al plan mensual."));
         for (int i = 0; i < 5; i++) {
             send(post("/api/coach/matches"), "gratis", Map.of("opponent", "Rival " + i)).andExpect(status().isCreated());
         }

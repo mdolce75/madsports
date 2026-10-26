@@ -475,7 +475,7 @@ class SecurityTest {
         mvc.perform(get("/api/plans").param("profile", "COACHFPP")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code").value(org.hamcrest.Matchers.contains("COACH_FREE", "COACH_MONTHLY")))
                 .andExpect(jsonPath("$[0].price").value(0))
-                .andExpect(jsonPath("$[0].maxTeams").value(1))
+                .andExpect(jsonPath("$[0].maxTeams").value(3))
                 .andExpect(jsonPath("$[0].matchesPerMonth").value(5))
                 .andExpect(jsonPath("$[0].validUntil").value("2026-12-31"))
                 .andExpect(jsonPath("$[1].validUntil").value(org.hamcrest.Matchers.nullValue()))

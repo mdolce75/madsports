@@ -745,6 +745,11 @@ body.coach-vivo .coach-menu { display: none; }
 .cat-branch label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: .9rem; color: var(--ink); }
 .cat-list { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 0 0 24px; }
 .cats input { width: 18px; height: 18px; accent-color: var(--accent); }
+/* Jugadores de un equipo del DT: tildados los que juegan, destildados (atenuados) los que quedaron afuera */
+.pl-lista li.pl-tilde { display: block; }
+.pl-lista li.pl-tilde label { display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer; }
+.pl-lista li.pl-tilde input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+.pl-lista li.pl-tilde.pendiente .quien { opacity: .55; }
 .pl-equipos { border: 0; padding: 0; margin: 16px 0 0; }
 .pl-equipos legend { padding: 0; margin-bottom: 7px; font: 700 .72rem/1 var(--display); letter-spacing: .14em;
                      text-transform: uppercase; color: var(--muted); }

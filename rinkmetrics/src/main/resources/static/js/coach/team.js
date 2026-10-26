@@ -1,15 +1,13 @@
-// Equipo: ABM de los equipos del DT (con su balance) y de sus jugadores (asignados a uno o varios equipos). Un equipo
-// se arma desde una categoría del club en SIDGAD: su plantel viene tildado y el DT destilda a los que no van, que
-// quedan en la lista como "no incluidos" para sumarlos después.
+// Equipo: los equipos del DT (con su balance) y sus jugadores. Un equipo se arma desde una categoría del club en
+// SIDGAD: su plantel viene tildado y el DT destilda a los que no van. Los jugadores no se cargan a mano: salen de
+// SIDGAD, y en la lista de cada equipo se tildan (juegan) o destildan (quedan afuera, para sumarlos después).
 import {crud, coach, el, getJson, fetchTeams} from "./common.js";
 
 let teamEditing = null;   // id del equipo que se está renombrando (null: alta)
-let playerEditing = null;   // id del jugador que se está editando (null: alta)
 let coachPlayers = [];
 let categoryList = null;   // categorías del club en SIDGAD ([{clave, rama, nombre}]); null: todavía no se pidieron
 let sidgadSquad = null;   // el plantel de SIDGAD de la categoría elegida (null: no hay o se está leyendo)
 let autoName = "";   // el nombre que se completó solo con la categoría (si el DT no lo cambió, se reemplaza)
-const OTHER = "otro";
 
 export async function load() {
     if (categoryList === null) loadCategories();
@@ -25,7 +23,7 @@ export async function load() {
 
 // ---------- Equipo desde una categoría del club ----------
 
-/** Las categorías del club en SIDGAD para el combo; sin señal o sin SIDGAD, solo "Otro" (nombre libre). */
+/** Las categorías del club en SIDGAD para el combo (los equipos salen de ahí, con su plantel). */
 async function loadCategories() {
     const sel = $("eq-categoria");
     try {
@@ -35,10 +33,7 @@ async function loadCategories() {
     }
     const choose = el("option", null, categoryList.length ? "Elegí la categoría" : "No se pudieron leer las categorías de SIDGAD");
     choose.value = "";
-    const other = el("option", null, "Otro: nombre libre, sin jugadores de SIDGAD");
-    other.value = OTHER;
-    sel.replaceChildren(choose, ...categoryList.map(c => { const o = el("option", null, c.name); o.value = c.key + "|" + c.branch; return o; }), other);
-    if (!categoryList.length) sel.value = OTHER;
+    sel.replaceChildren(choose, ...categoryList.map(c => { const o = el("option", null, c.name); o.value = c.key + "|" + c.branch; return o; }));
     paintTeams();
 }
 
@@ -91,20 +86,20 @@ function countSidgad() {
 }
 
 /** ¿Se está escribiendo en un formulario del ABM? (para no pisarlo al refrescar) */
-export const editing = () => teamEditing != null || playerEditing != null
-    || ["eq-nombre", "pl-nombre", "pl-apellido", "pl-numero"].some(id => $(id).value.trim());
+export const editing = () => teamEditing != null || !!$("eq-nombre").value.trim();
 
 function paintTeams() {
     const teams = coach.teams;
     const ul = $("eq-lista");
-    // Cuántos equipos usa de los que permite su plan (free 1, mensual 3).
+    // Cuántos equipos usa de los que permite su plan (free y mensual, 3).
     const max = coach.session.subscription && coach.session.subscription.maxTeams;
     $("eq-n").textContent = max ? `${teams.length} de ${max} ${max === 1 ? "equipo" : "equipos"}`
         : teams.length ? `${teams.length} ${teams.length === 1 ? "equipo" : "equipos"}` : "";
     const full = max && teams.length >= max && teamEditing == null;
     $("eq-nombre").disabled = $("eq-guardar").disabled = !!full;
     if (full && !$("eq-status").textContent) crudStatus("eq-status", `Tu plan permite ${max === 1 ? "1 equipo" : max + " equipos"}: `
-        + "para sumar otro, borrá uno sin partidos" + (max === 1 ? " o pasate al plan mensual." : "."));
+        + "para sumar otro, borrá uno sin partidos"
+        + (coach.session.subscription.kind === "COACH_FREE" ? " o pasate al plan mensual." : "."));
     ul.replaceChildren();
     if (!teams.length) ul.append(el("li", "coach-vacio", "Todavía no creaste equipos: agregá el primero."));
     for (const e of teams) {
@@ -137,68 +132,41 @@ function paintTeams() {
         li.append(whoName, bal, acc);
         ul.append(li);
     }
-    // Equipos en el formulario de jugadores y en el filtro de la lista.
-    $("pl-sin-equipos").hidden = teams.length > 0;
-    for (const id of ["pl-nombre", "pl-apellido", "pl-numero", "pl-arquero", "pl-guardar"]) $(id).disabled = !teams.length;
-    const markedIds = new Set([...document.querySelectorAll("#pl-equipos input:checked")].map(i => i.value));
-    $("pl-equipos").replaceChildren(...teams.map(e => {
-        const l = el("label", "pl-eq");
-        const c = el("input");
-        c.type = "checkbox";
-        c.value = String(e.id);
-        c.checked = markedIds.has(c.value) || teams.length === 1;
-        l.append(c, " " + e.name);
-        return l;
-    }));
+    // El equipo cuya lista de jugadores se ve (uno por vez: ahí se tildan o destildan).
     const f = $("pl-filtro"), before = f.value;
-    const all = el("option", null, "Todos los equipos");
-    all.value = "";
-    f.replaceChildren(all, ...teams.map(e => { const o = el("option", null, e.name); o.value = String(e.id); return o; }));
-    f.value = teams.some(e => String(e.id) === before) ? before : "";
-    f.hidden = teams.length < 2;
+    f.replaceChildren(...teams.map(e => { const o = el("option", null, e.name); o.value = String(e.id); return o; }));
+    f.value = teams.some(e => String(e.id) === before) ? before : teams.length ? String(teams[0].id) : "";
+    f.hidden = !teams.length;
 }
 
+/** Los jugadores del equipo elegido: tildados los que juegan, destildados los que quedaron afuera. */
 function paintPlayers() {
     const ul = $("pl-lista");
-    const filterBy = $("pl-filtro").value;
-    const list = coachPlayers.filter(j => !filterBy || j.teams.map(String).includes(filterBy)
-        || (j.pending || []).map(String).includes(filterBy));
-    $("pl-n").textContent = coachPlayers.length ? `${coachPlayers.length} ${coachPlayers.length === 1 ? "jugador" : "jugadores"}` : "";
+    const teamId = Number($("pl-filtro").value);
     ul.replaceChildren();
-    if (!list.length) ul.append(el("li", "coach-vacio", coachPlayers.length ? "No hay jugadores en ese equipo."
-        : "Todavía no hay jugadores: agregá el primero."));
-    const names = new Map(coach.teams.map(e => [e.id, e.name]));
+    if (!coach.teams.length) {
+        $("pl-n").textContent = "";
+        ul.append(el("li", "coach-vacio", "Creá un equipo desde una categoría de tu club: sus jugadores salen de SIDGAD."));
+        return;
+    }
+    const list = coachPlayers.filter(j => j.teams.includes(teamId) || (j.pending || []).includes(teamId));
+    const playing = list.filter(j => j.teams.includes(teamId)).length;
+    $("pl-n").textContent = list.length ? `${playing} de ${list.length} juegan` : "";
+    if (!list.length) ul.append(el("li", "coach-vacio", "Este equipo no tiene jugadores de SIDGAD."));
     for (const j of list) {
-        const li = el("li");
-        li.classList.toggle("editando", j.id === playerEditing);
-        const pending = (j.pending || []).filter(id => names.has(id));
-        li.classList.toggle("pendiente", !!filterBy && pending.map(String).includes(filterBy));
-        const whoName = el("div", "quien");
+        const li = el("li", "pl-tilde");
+        const label = el("label");
+        const box = el("input");
+        box.type = "checkbox";
+        box.checked = j.teams.includes(teamId);
+        box.setAttribute("aria-label", (box.checked ? "Sacar a " : "Incluir a ") + j.name);
+        box.addEventListener("change", () => playerToggle(j, teamId, box));
+        const whoName = el("span", "quien");
         whoName.append(el("b", null, j.name));
         if (j.goalkeeper) whoName.append(el("span", "inf-ar", "Arquero"));
-        if (li.classList.contains("pendiente")) whoName.append(el("span", "pl-tag-pend", "No incluido"));
-        const de = [...j.teams.map(id => names.get(id)).filter(Boolean),
-            ...pending.map(id => `no incluido en ${names.get(id)}`)];
-        whoName.append(el("small", "pl-de", de.join(" · ")));
-        const edit = el("button", "coach-link", "Editar");
-        edit.type = "button";
-        edit.setAttribute("aria-label", "Editar a " + j.name);
-        edit.addEventListener("click", () => playerForm(j));
-        const deactivate = el("button", "coach-link pl-baja", "Dar de baja");
-        deactivate.type = "button";
-        deactivate.setAttribute("aria-label", "Dar de baja a " + j.name);
-        deactivate.addEventListener("click", () => playerDeactivate(j));
-        const acc = el("div", "acc");
-        // Sumarlo a los equipos donde quedó "no incluido" (con filtro, solo al equipo filtrado).
-        for (const id of pending.filter(id => !filterBy || String(id) === filterBy)) {
-            const inc = el("button", "coach-link", filterBy ? "Incluir" : "Incluir en " + names.get(id));
-            inc.type = "button";
-            inc.setAttribute("aria-label", `Incluir a ${j.name} en ${names.get(id)}`);
-            inc.addEventListener("click", () => playerInclude(j, id, names.get(id)));
-            acc.append(inc);
-        }
-        acc.append(edit, deactivate);
-        li.append(el("span", "pl-num", j.number ? "#" + j.number : "s/n"), whoName, acc);
+        label.append(box, el("span", "pl-num", j.number ? "#" + j.number : "s/n"), whoName);
+        li.classList.toggle("pendiente", !box.checked);
+        li.append(label);
         ul.append(li);
     }
 }
@@ -229,8 +197,8 @@ async function teamSave(ev) {
     const name = $("eq-nombre").value.trim();
     const id = teamEditing;
     const cat = id ? null : chosenCategory();
-    if (!id && !cat && $("eq-categoria").value !== OTHER) {
-        crudStatus("eq-status", "Elegí la categoría de tu club (u «Otro», para un equipo sin jugadores de SIDGAD).", true);
+    if (!id && !cat) {
+        crudStatus("eq-status", "Elegí la categoría de tu club: el equipo sale de SIDGAD, con su plantel.", true);
         $("eq-categoria").focus();
         return;
     }
@@ -249,9 +217,9 @@ async function teamSave(ev) {
             : total ? `Equipo creado: ${data.name}, con ${total - excluded.length} de los ${total} jugadores de SIDGAD`
                 + (excluded.length === 1 ? " (1 no incluido: está en la lista para sumarlo después)."
                     : excluded.length ? ` (${excluded.length} no incluidos: están en la lista para sumarlos después).` : ".")
-            : `Equipo creado: ${data.name}. Ahora cargá sus jugadores.`);
+            : `Equipo creado: ${data.name}.`);
         await load();
-        // El equipo nuevo queda elegido en la lista de jugadores: se ven sus jugadores y los no incluidos.
+        // El equipo nuevo queda elegido en la lista de jugadores: se ven los que juegan y los que quedaron afuera.
         if (!id) { $("pl-filtro").value = String(data.id); paintPlayers(); }
     } catch (err) {
         crudStatus("eq-status", offline(err), true);
@@ -272,75 +240,26 @@ async function teamDelete(e) {
     }
 }
 
-/** El formulario de jugadores en modo alta (j null) o para editar a j. */
-function playerForm(j) {
-    playerEditing = j ? j.id : null;
-    $("pl-titulo").textContent = j ? "Editar jugador" : "Nuevo jugador";
-    $("pl-guardar").textContent = j ? "Guardar cambios" : "Agregar jugador";
-    $("pl-cancelar").hidden = !j;
-    $("pl-nombre").value = j ? j.names : "";
-    $("pl-apellido").value = j ? j.lastName : "";
-    $("pl-numero").value = j ? j.number : "";
-    $("pl-arquero").checked = j ? j.goalkeeper : false;
-    document.querySelectorAll("#pl-equipos input").forEach(c => {
-        c.checked = j ? j.teams.map(String).includes(c.value) : coach.teams.length === 1;
-    });
-    crudStatus("pl-status", "");
-    paintPlayers();
-    if (j) $("pl-nombre").focus();
-}
-
-async function playerSave(ev) {
-    ev.preventDefault();
-    const body = {name: $("pl-nombre").value, lastName: $("pl-apellido").value, number: $("pl-numero").value,
-        goalkeeper: $("pl-arquero").checked,
-        teams: [...document.querySelectorAll("#pl-equipos input:checked")].map(c => Number(c.value))};
-    if (!body.name.trim()) { crudStatus("pl-status", "Escribí el nombre del jugador.", true); $("pl-nombre").focus(); return; }
-    if (!body.lastName.trim()) { crudStatus("pl-status", "Escribí el apellido del jugador.", true); $("pl-apellido").focus(); return; }
-    if (!body.teams.length) { crudStatus("pl-status", "Asigná el jugador a un equipo.", true); return; }
-    $("pl-guardar").disabled = true;
+/** Tilda (incluye) o destilda (saca) a un jugador del equipo elegido; destildado queda en la lista para volver. */
+async function playerToggle(j, teamId, box) {
+    const team = (coach.teams.find(e => e.id === teamId) || {}).name || "el equipo";
+    box.disabled = true;
     try {
-        const id = playerEditing;
-        const data = await crud(id ? "PUT" : "POST", id ? `/api/coach/players/${id}` : "/api/coach/players", body);
-        playerForm(null);
-        crudStatus("pl-status", id ? `Guardado: ${data.name}.` : `Agregado: ${data.name}.`);
-        $("pl-nombre").focus();
-        await load();
+        const data = await crud(box.checked ? "POST" : "DELETE", `/api/coach/players/${j.id}/teams/${teamId}`);
+        Object.assign(j, data);
+        crudStatus("pl-status", box.checked ? `${j.name} juega en ${team}.` : `${j.name} quedó afuera de ${team}.`);
+        paintPlayers();
+        fetchTeams(true).then(paintTeams).catch(() => { });
     } catch (err) {
-        crudStatus("pl-status", offline(err), true);
-    } finally {
-        $("pl-guardar").disabled = !coach.teams.length;
-    }
-}
-
-/** Suma al equipo a un jugador que había quedado "no incluido". */
-async function playerInclude(j, teamId, team) {
-    try {
-        await crud("POST", `/api/coach/players/${j.id}/teams/${teamId}`);
-        crudStatus("pl-status", `${j.name} quedó incluido en ${team}.`);
-        await load();
-    } catch (err) {
-        crudStatus("pl-status", offline(err), true);
-    }
-}
-
-async function playerDeactivate(j) {
-    if (!confirm(`¿Dar de baja a ${j.name}? Sale de sus equipos; sus acciones quedan en los partidos y los informes.`)) return;
-    try {
-        await crud("DELETE", `/api/coach/players/${j.id}`);
-        if (playerEditing === j.id) playerForm(null);
-        crudStatus("pl-status", `${j.name} salió del plantel.`);
-        await load();
-    } catch (err) {
+        box.checked = !box.checked;
+        box.disabled = false;
         crudStatus("pl-status", offline(err), true);
     }
 }
 
 export function start() {
     $("eq-categoria").addEventListener("change", onCategoryChosen);
-    $("pl-form").addEventListener("submit", playerSave);
     $("eq-form").addEventListener("submit", teamSave);
     $("eq-cancelar").addEventListener("click", () => teamForm(null));
     $("pl-filtro").addEventListener("change", paintPlayers);
-    $("pl-cancelar").addEventListener("click", () => playerForm(null));
 }

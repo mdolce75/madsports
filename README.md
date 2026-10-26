@@ -302,7 +302,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   usuario.
 - **DT** (RinkMetrics, en vivo): elige su club y su plan; sus equipos y sus jugadores los arma después, en la
   sección Equipo (el registro ya no los pide). Entra a `/coach.html`, la pantalla de RinkMetrics (sin equipos, empieza
-  por Equipo). Empieza con el plan free (`COACH_FREE`: 1 equipo y 5 partidos por mes, sin costo hasta el 31/12/2026);
+  por Equipo). Empieza con el plan free (`COACH_FREE`: hasta 3 equipos y 5 partidos por mes, sin costo hasta el 31/12/2026);
   el mensual (`COACH_MONTHLY`: hasta 3 equipos y 25 partidos por mes) figura como "Próximamente" y no se puede elegir
   mientras `SIGNUP_COACH_PAID` (`madsports.signup.coach-paid`) sea `false`, el valor por defecto (`max_teams` y `matches_per_month` en
   `subscription_plan`, V17).
@@ -395,7 +395,7 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   |---|---|---|
   | Club (`CLUB_MONTHLY`) | U$S 20 | 8 informes por mes |
   | Jugador (`PLAYER_MONTHLY`) | U$S 7 | 4 informes por mes |
-  | DT free (`COACH_FREE`) | Gratis hasta el 31/12/2026 | 1 equipo y 5 partidos por mes |
+  | DT free (`COACH_FREE`) | Gratis hasta el 31/12/2026 | Hasta 3 equipos y 5 partidos por mes |
   | DT (`COACH_MONTHLY`) | U$S 12 | Hasta 3 equipos y 25 partidos por mes |
 
 - **Suscripciones:** la tabla `subscription_plan` (con `price_usd`, `reports_per_month`, `max_teams` y
