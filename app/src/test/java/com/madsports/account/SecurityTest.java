@@ -601,6 +601,13 @@ class SecurityTest {
         // La sesión dice de qué producto es la cuenta.
         mvc.perform(get("/api/session").with(user("club.uno").authorities(() -> "CLUBFPP")))
                 .andExpect(jsonPath("$.product").value("REPORTS"));
+        // Y cada producto mira solo la suya: la de RinkReports, desde RinkMetrics, es como no tener sesión.
+        mvc.perform(get("/api/session").param("product", "REPORTS").with(user("club.uno").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.authenticated").value(true));
+        mvc.perform(get("/api/session").param("product", "METRICS").with(user("club.uno").authorities(() -> "CLUBFPP")))
+                .andExpect(jsonPath("$.authenticated").value(false));
+        mvc.perform(get("/api/session").param("product", "REPORTS").with(user("dt.uno").authorities(() -> "COACHFPP")))
+                .andExpect(jsonPath("$.authenticated").value(false));
     }
 
     @Test

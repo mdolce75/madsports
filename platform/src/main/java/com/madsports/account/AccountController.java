@@ -199,12 +199,21 @@ public class AccountController {
         return signup.options();
     }
 
+    /**
+     * La sesión, vista desde un producto: la de RinkReports es de RinkReports y la de RinkMetrics, de RinkMetrics. Con
+     * {@code product}, una cuenta del otro producto se ve como sin sesión (cada pantalla mira solo la de su producto;
+     * con un dominio por producto, además, cada uno tiene su cookie).
+     *
+     * @param product REPORTS o METRICS: el de la pantalla que pregunta; sin él, la cuenta sea del producto que sea
+     */
     @GetMapping("/session")
-    public SessionView session(Authentication auth) {
+    public SessionView session(Authentication auth, @RequestParam(required = false) String product) {
         if (auth == null || auth instanceof AnonymousAuthenticationToken || !auth.isAuthenticated()) {
             return SessionView.ANONYMOUS;
         }
+        Product asked = Product.parse(product);
         return users.findByPrincipal(auth.getName())
+                .filter(u -> asked == null || u.getProduct() == asked)
                 .map(u -> new SessionView(true, u.getUsername(), u.getName(), u.getLastName(), u.getEmail(),
                         u.getProfiles().stream().map(Enum::name).sorted().toList(),
                         Map.of("id", u.getClubId(), "name", u.getClubName(), "code", u.getClubCode()),
