@@ -83,6 +83,10 @@ madsports:
     # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federation (de Infantil para arriba)
     # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa
     years: [2026, 2027]
+    # Precarga de madrugada (SidgadWarmup, hora argentina; "-" la apaga): las actas nuevas del año y las fichas de
+    # temporada de los jugadores, para que el primer informe del día ya encuentre todo leído.
+    warmup-cron: ${SIDGAD_WARMUP_CRON:0 0 5 * * *}
+    warmup-federations: ${SIDGAD_WARMUP_FEDERATIONS:FPP}
   # Análisis con Google Gemini (plan gratuito de Google AI Studio). Sin API key: análisis por reglas.
   ai:
     enabled: ${AI_ENABLED:${FPP_AI_ENABLED:true}}

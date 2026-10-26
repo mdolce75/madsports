@@ -6,12 +6,15 @@ import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
 
@@ -29,6 +32,10 @@ public class SidgadClient {
     private final Cache<String, String> dataCache;
     private final Cache<String, String> catalogCache;
     private final Cache<Integer, String> sheetCache;
+    /** Fichas de temporada de jugadores, con la hora en que se bajaron (ver {@link #playerSeason(int, int, Instant)}). */
+    private final Cache<String, Fetched> profileCache;
+    /** Las actas guardadas de forma permanente (null en los tests sin base). */
+    private volatile SheetStore sheetStore;
     private final Cache<String, byte[]> logoCache;
     private final Object throttle = new Object();
     /** Pedidos simultáneos a SIDGAD como máximo ({@code madsports.sidgad.max-concurrency}). */
@@ -46,7 +53,9 @@ public class SidgadClient {
         this.props = props;
         this.dataCache = Caffeine.newBuilder().expireAfterWrite(this.props.dataTtl()).maximumSize(500).build();
         this.catalogCache = Caffeine.newBuilder().expireAfterWrite(this.props.catalogTtl()).maximumSize(4).build();
-        this.sheetCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(3000).build();
+        // Las actas pesan unos 130 KB: en memoria, las últimas usadas; el resto está en la base (SheetStore).
+        this.sheetCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(800).build();
+        this.profileCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(48)).maximumSize(10_000).build();
         this.logoCache = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(24)).maximumSize(100).build();
         this.concurrency = new Semaphore(Math.max(1, this.props.maxConcurrency()), true);
         this.clubConcurrency = new Semaphore(Math.max(1, this.props.maxConcurrency() * clubFactor()), true);
@@ -117,10 +126,47 @@ public class SidgadClient {
                 Map.of("idc", String.valueOf(idc), "tipo_stats", "goles", "site_lang", "es"));
     }
 
-    /** Acta de un partido. Solo se piden actas de partidos ya jugados, que no cambian: cache de 24 h. */
+    /** Las actas se guardan de forma permanente en este almacén (lo registra la app; sin él, solo en memoria). */
+    @Autowired(required = false)
+    public void setSheetStore(SheetStore store) {
+        this.sheetStore = store;
+    }
+
+    /**
+     * Acta de un partido. Solo se piden actas de partidos ya jugados, que no cambian: primero la memoria (24 h), después
+     * las guardadas ({@link SheetStore}) y, si no está, SIDGAD (y se guarda).
+     */
     public String gameSheet(int idc, int idp) {
-        return cachedIn(sheetCache, idp, "cap_gr_" + idp + "_1.php", Map.of(
+        String hit = sheetCache.getIfPresent(idp);
+        if (hit != null) {
+            return hit;
+        }
+        SheetStore store = sheetStore;
+        Optional<String> saved = Optional.empty();
+        if (store != null) {
+            try {
+                saved = store.get(idp);
+            } catch (RuntimeException e) {
+                log.warn("No se pudo leer el acta guardada {}: {}", idp, e.getMessage());
+            }
+        }
+        if (saved.isPresent()) {
+            sheetCache.put(idp, saved.get());
+            return saved.get();
+        }
+        String body = post("cap_gr_" + idp + "_1.php", Map.of(
                 "idm", "1", "idc", String.valueOf(idc), "idp", String.valueOf(idp), "tab", "tab_ficha_resumen"));
+        if (!body.equals(NOT_PUBLISHED)) {
+            sheetCache.put(idp, body);
+            if (store != null) {
+                try {
+                    store.put(idp, body);
+                } catch (RuntimeException e) {
+                    log.warn("No se pudo guardar el acta {}: {}", idp, e.getMessage());
+                }
+            }
+        }
+        return body;
     }
 
     /**
@@ -128,8 +174,30 @@ public class SidgadClient {
      * que no tienen acta publicada, con goles, libres, penales, azules y rojas.
      */
     public String playerSeason(int playerId, int seasonId) {
-        return cached("profiles/cap_profileseason_" + playerId + "_1_" + seasonId + ".php",
-                Map.of("idm", "1", "id_player", String.valueOf(playerId)));
+        return playerSeason(playerId, seasonId, Instant.now().minus(props.dataTtl()));
+    }
+
+    /**
+     * La ficha de temporada, si la guardada se bajó desde {@code notBefore}; si no, de nuevo de SIDGAD. Cambia con cada
+     * partido: el informe del club la acepta si se bajó después del día de su último partido (la precarga de la
+     * madrugada las deja al día).
+     */
+    public String playerSeason(int playerId, int seasonId, Instant notBefore) {
+        String file = "profiles/cap_profileseason_" + playerId + "_1_" + seasonId + ".php";
+        Fetched hit = profileCache.getIfPresent(file);
+        if (hit != null && !hit.at().isBefore(notBefore)) {
+            return hit.body();
+        }
+        Instant at = Instant.now();
+        String body = post(file, Map.of("idm", "1", "id_player", String.valueOf(playerId)));
+        if (!body.equals(NOT_PUBLISHED)) {
+            profileCache.put(file, new Fetched(body, at));
+        }
+        return body;
+    }
+
+    /** Lo bajado de SIDGAD y cuándo. */
+    private record Fetched(String body, Instant at) {
     }
 
     /** Carpeta pública de escudos de SIDGAD (la misma que usan las tablas y el calendario del sitio). */
