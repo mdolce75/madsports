@@ -234,7 +234,7 @@ public class CoachController {
     }
 
     private UserAccount currentUser(Authentication auth) {
-        return users.findByUsername(auth.getName()).filter(UserAccount::isCoach)
+        return users.findByPrincipal(auth.getName()).filter(UserAccount::isCoach)
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no es DT."));
     }
 

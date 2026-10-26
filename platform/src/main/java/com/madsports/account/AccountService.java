@@ -83,7 +83,8 @@ public class AccountService {
     public void resendVerification(String email, String username, Product product) {
         Optional<UserAccount> u = findByEmail(email, product);
         if (u.isEmpty() && username != null && !username.isBlank()) {
-            u = users.findByUsername(username.trim().toLowerCase(java.util.Locale.ROOT));
+            String name = username.trim().toLowerCase(java.util.Locale.ROOT);
+            u = product != null ? users.findByUsernameAndProduct(name, product) : users.findByUsername(name);
         }
         u.filter(x -> !x.isEmailVerified()).ifPresent(this::sendVerification);
     }
@@ -137,7 +138,7 @@ public class AccountService {
         t.use();
         t.getUser().changePassword(encoder.encode(password));
         t.getUser().verifyEmail();
-        remembered.removeUserTokens(t.getUser().getUsername());
+        remembered.removeUserTokens(t.getUser().principal());
     }
 
     /** La cuenta con ese email en el producto; sin producto, la primera que haya (la más antigua). */

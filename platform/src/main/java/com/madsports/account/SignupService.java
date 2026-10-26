@@ -96,10 +96,10 @@ public class SignupService {
         }
         String username = r.username().trim().toLowerCase(Locale.ROOT);
         String email = r.email().trim();
-        if (users.existsByUsername(username)) {
-            throw new ConflictException("El usuario " + username + " ya existe.");
-        }
         Product product = Product.de(r.profile());
+        if (users.existsByUsernameAndProduct(username, product)) {
+            throw new ConflictException("El usuario " + username + " ya existe en " + product.displayName() + ".");
+        }
         if (users.existsByEmailIgnoreCaseAndProduct(email, product)) {
             throw new ConflictException("Ya hay una cuenta de " + product.displayName() + " con ese email.");
         }

@@ -47,7 +47,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Locale;
 import java.util.UUID;
 import java.util.Map;
 
@@ -111,7 +110,7 @@ public class SecurityConfig {
                             }
                             // Clave correcta pero email sin confirmar, o cuenta de otro producto: no se ingresa. Se
                             // chequea después de la clave para no revelar a quien no la sabe si la cuenta existe.
-                            UserAccount u = users.findByUsername(auth.getName()).orElse(null);
+                            UserAccount u = users.findByPrincipal(auth.getName()).orElse(null);
                             if (u != null && !u.isEmailVerified()) {
                                 reject(req, res, auth, rememberMe);   // sin confirmar, tampoco queda recordado
                                 write(res, json, HttpStatus.UNAUTHORIZED, Map.of("code", "EMAIL_NOT_VERIFIED",
@@ -167,7 +166,8 @@ public class SecurityConfig {
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
-                .addFilterBefore(new AttemptLimitFilter(limiter, json), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new AttemptLimitFilter(limiter, json), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new LoginProductFilter(), AttemptLimitFilter.class);
         return http.build();
     }
 
@@ -207,12 +207,13 @@ public class SecurityConfig {
 
     @Bean
     UserDetailsService userDetailsService(UserAccountRepository users) {
-        return username -> users.findByUsername(username == null ? "" : username.trim().toLowerCase(Locale.ROOT))
-                .map(u -> User.withUsername(u.getUsername())
+        // Llega "REPORTS:juan": del ingreso (LoginProductFilter) o el nombre que guardó "Recordarme".
+        return principal -> users.findByPrincipal(principal)
+                .map(u -> User.withUsername(u.principal())
                         .password(u.getPassword())
                         .authorities(u.getProfiles().stream().map(p -> new SimpleGrantedAuthority(p.name())).toList())
                         .build())
-                .orElseThrow(() -> new UsernameNotFoundException(username));
+                .orElseThrow(() -> new UsernameNotFoundException(principal));
     }
 
     /** Dispositivos recordados, en la tabla {@code persistent_logins} (V13). */

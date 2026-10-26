@@ -106,6 +106,8 @@ public class UserAccount {
     public String getBranch() { return branch; }
     public Instant getCreatedAt() { return createdAt; }
     public Product getProduct() { return product; }
+    /** Nombre en la sesión y en "Recordarme": producto y usuario ("REPORTS:juan"). */
+    public String principal() { return product.principal(username); }
     public boolean isEmailVerified() { return emailVerified; }
     public SubscriptionPlan getSubscriptionPlan() { return subscriptionPlan; }
     public LocalDate getSubscriptionFrom() { return subscriptionFrom; }
