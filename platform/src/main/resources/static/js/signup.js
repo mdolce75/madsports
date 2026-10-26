@@ -1,6 +1,7 @@
 // Registro de cada producto (va después de /js/app.js).
-// Cada producto tiene su registro: RinkReports (/rinkreports/signup.html) ofrece Jugador y Club; RinkMetrics
-// (/rinkmetrics/signup.html), solo el DT. Las cuentas de un producto no ingresan al otro.
+// Cada registro es de un solo perfil: RinkReports tiene el de Jugador (/rinkreports/signup.html?option=player) y el de
+// Club (?option=club), y RinkMetrics (/rinkmetrics/signup.html), el del DT. No se elige el perfil: lo dice el enlace.
+// Las cuentas de un producto no ingresan al otro.
 const SECTION = product() === "REPORTS" ? "informes" : "dt";
 $("brand").outerHTML = brand();
 // Qué se puede registrar hoy: las cuentas de club, la AMP y sus jugadores se habilitan por configuración.
@@ -12,10 +13,20 @@ if (SECTION === "dt") {
     $("perfil-field").hidden = true;
     document.querySelector("input[name=federacion]").closest(".field").hidden = true;
 } else {
-    // RinkReports: Jugador o Club (?opcion=club elige el club). La FPP queda elegida.
-    document.querySelector("input[name=rol][value=COACH]").closest("label").remove();
+    // RinkReports: el registro del Jugador o el del Club (?option=club; sin opción, el del jugador). La FPP queda elegida.
     const chosenOption = new URLSearchParams(location.search).get("option") === "club" ? "CLUB" : "PLAYER";
-    document.querySelector(`input[name=rol][value=${chosenOption}]`).checked = true;
+    document.querySelectorAll("input[name=rol]").forEach(r => {
+        if (r.value === chosenOption) r.checked = true; else r.closest("label").remove();
+    });
+    $("perfil-field").hidden = true;
+    const club = chosenOption === "CLUB";
+    $("reg-tag").textContent = club ? "RinkReports · Cuenta de club" : "RinkReports · Cuenta de jugador";
+    $("reg-lead").innerHTML = club
+        ? "Tu club, para el informe de todas sus categorías: por rama, por torneo o de la temporada completa. "
+            + '<a href="/rinkreports/sample.html?kind=club">Mirá un ejemplo</a> (datos ficticios).'
+        : "Tu club, la categoría en que jugás y tu nombre en la planilla, para tu informe de rendimiento. "
+            + '<a href="/rinkreports/sample.html?kind=player">Mirá un ejemplo</a> (datos ficticios).';
+    document.title = (club ? "Cuenta de club" : "Cuenta de jugador") + " · RinkReports";
     document.querySelector("input[name=federacion][value=FPP]").checked = true;
     document.querySelectorAll(".profiles small").forEach(s => { s.dataset.text = s.textContent; });
 }
@@ -29,6 +40,13 @@ function enable(input, si, other) {
     if (!si && input.checked && other) other.checked = true;
 }
 
+/** El registro de club, si las cuentas de club todavía no se habilitaron: avisa y no deja enviarlo. */
+function clubAvailable() {
+    if (role() !== "CLUB" || signupOpts.club) return;
+    $("go").disabled = true;
+    status("Las cuentas de club estarán disponibles próximamente.", true);
+}
+
 /** RinkReports: las cuentas de club, y los jugadores de la AMP, solo si están habilitados. */
 function rules() {
     if (SECTION === "dt") return;
@@ -36,11 +54,9 @@ function rules() {
     if (!signupOpts.amp) {
         document.querySelector("input[name=federacion][value=AMP]")?.closest("label").remove();
         document.querySelector("input[name=federacion]").closest(".field").hidden = true;
-        return enable(document.querySelector("input[name=rol][value=CLUB]"), signupOpts.club,
-            document.querySelector("input[name=rol][value=PLAYER]"));
+        return clubAvailable();
     }
-    enable(document.querySelector("input[name=rol][value=CLUB]"), signupOpts.club,
-        document.querySelector("input[name=rol][value=PLAYER]"));
+    clubAvailable();
     enable(document.querySelector("input[name=federacion][value=AMP]"),
         role() !== "PLAYER" || signupOpts.playerAmp, document.querySelector("input[name=federacion][value=FPP]"));
 }
@@ -82,7 +98,7 @@ async function loadClubs() {
         sel.add(new Option("Elegí tu club", ""));
         catalog.clubs.forEach(c => sel.add(new Option(`${c.name} (${c.code})`, c.id)));
         sel.disabled = false;
-        $("go").disabled = false;
+        $("go").disabled = role() === "CLUB" && !signupOpts.club;
     } catch (e) {
         status("No se pudo cargar la lista de clubes: " + e.message, true);
     } finally {
