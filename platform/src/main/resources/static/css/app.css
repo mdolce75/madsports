@@ -737,6 +737,14 @@ body.coach-vivo .coach-menu { display: none; }
 .eq-dato { display: grid; justify-items: center; min-width: 36px; padding: 4px 6px; border-radius: 6px; background: var(--panel-2); }
 .eq-dato b { font: 700 .95rem/1 var(--display); color: var(--ink); }
 .eq-dato small { margin-top: 2px; font: 700 .6rem/1 var(--display); letter-spacing: .1em; color: var(--muted); }
+/* Informe de club: ramas y categorías a incluir (todas marcadas; la casilla de la rama marca o desmarca las suyas) */
+.cats { border: 0; padding: 0; margin: 16px 0 0; min-width: 0; }
+.cats legend { display: flex; align-items: center; gap: 10px; padding: 0; margin-bottom: 7px;
+               font: 600 .8rem/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.cat-branch { margin-top: 10px; }
+.cat-branch label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: .9rem; color: var(--ink); }
+.cat-list { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 0 0 24px; }
+.cats input { width: 18px; height: 18px; accent-color: var(--accent); }
 .pl-equipos { border: 0; padding: 0; margin: 16px 0 0; }
 .pl-equipos legend { padding: 0; margin-bottom: 7px; font: 700 .72rem/1 var(--display); letter-spacing: .14em;
                      text-transform: uppercase; color: var(--muted); }
