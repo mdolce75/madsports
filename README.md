@@ -289,8 +289,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
 - **Cuentas por producto:** cada cuenta es de un producto. Las de **RinkReports** (Club y Jugador) se crean en
   `/rinkreports/signup.html` e ingresan por `/rinkreports/login.html`. Las de **RinkMetrics** (DT) se crean en
   `/rinkmetrics/signup.html` e ingresan por `/rinkmetrics/login.html`. Una cuenta no ingresa por el otro producto: el login responde 401
-  `OTHER_PRODUCT` con el ingreso que le corresponde. El mismo email puede tener una cuenta en cada producto (único
-  dentro del producto, V22); el usuario sigue siendo único en toda la web. Los mails (confirmación y clave nueva) llevan
+  `OTHER_PRODUCT` con el ingreso que le corresponde. El mismo email y el mismo usuario pueden tener una cuenta en cada
+  producto (únicos dentro del producto: el email desde V22 y el usuario desde V25). Cada cuenta queda asociada a su
+  producto: el ingreso busca el usuario en el producto de la pantalla (`LoginProductFilter`) y la sesión y
+  "Recordarme" la nombran con los dos (`REPORTS:juan`). Los mails (confirmación y clave nueva) llevan
   el nombre, el logo y el color del producto de la cuenta, y sus enlaces llevan a su ingreso.
 - **Registro** (`/rinkreports/signup.html` o `/rinkmetrics/signup.html`): usuario, clave (mínimo 8, se guarda con BCrypt),
   email y club, obligatorios.

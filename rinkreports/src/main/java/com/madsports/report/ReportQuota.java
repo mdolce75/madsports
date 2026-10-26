@@ -96,7 +96,7 @@ public class ReportQuota implements MonthlyReports {
             }
             T outcome = request.get();
             requests.save(new RequestedReport(u.getId(), clock.instant()));
-            users.countReport(u.getUsername());
+            users.countReport(u.getId());
             return outcome;
         }
     }

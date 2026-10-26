@@ -4,8 +4,8 @@ import java.util.Locale;
 
 /**
  * Producto de Mad Sports al que pertenece una cuenta. Cada uno tiene su registro y su ingreso: una cuenta de
- * RinkReports (perfiles Club y Jugador) no ingresa a RinkMetrics (perfil DT) y al revés. El mismo email puede tener
- * una cuenta en cada producto.
+ * RinkReports (perfiles Club y Jugador) no ingresa a RinkMetrics (perfil DT) y al revés. El mismo email y el mismo
+ * usuario pueden tener una cuenta en cada producto.
  *
  * @param nombre    "RinkReports"
  * @param bajada    lo que va debajo del nombre en los mails
@@ -40,6 +40,14 @@ public enum Product {
     /** El producto de un perfil: el DT es de RinkMetrics; Club y Jugador, de RinkReports. */
     public static Product de(Profile profile) {
         return profile.coach() ? METRICS : REPORTS;
+    }
+
+    /**
+     * Nombre de la cuenta en la sesión ("REPORTS:juan"): el usuario solo no alcanza, porque el mismo puede tener una
+     * cuenta en cada producto.
+     */
+    public String principal(String username) {
+        return name() + ":" + username;
     }
 
     /** "reports", "REPORTS" o "rinkreports"; null si viene vacío. */

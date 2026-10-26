@@ -72,7 +72,7 @@ public class ApiController {
     /** Un usuario de club (CLUBFPP o CLUBAMP) pide informes solo de su club, en su federación. */
     @PostMapping("/reports")
     public ResponseEntity<JobView> create(@Valid @RequestBody ReportRequest req, Authentication auth) {
-        UserAccount u = users.findByUsername(auth.getName())
+        UserAccount u = users.findByPrincipal(auth.getName())
                 .orElseThrow(() -> new AccessDeniedException("Sesión inválida."));
         if (u.getClubId() != req.clubId()) {
             throw new AccessDeniedException("Solo podés pedir informes de tu club (" + u.getClubName() + ").");
@@ -84,9 +84,9 @@ public class ApiController {
             throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
         }
         ReportService.Job job = quota.consume(u, () -> req.wholeClub()
-                ? reports.submitClub(req.clubId(), scope, year, u.federation(), u.getUsername())
+                ? reports.submitClub(req.clubId(), scope, year, u.federation(), u.principal())
                 : reports.submit(new ReportService.Request(req.clubId(), req.category(), req.branch(), scope, year,
-                        u.federation()), u.getUsername()));
+                        u.federation()), u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 

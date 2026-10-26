@@ -204,7 +204,7 @@ public class AccountController {
         if (auth == null || auth instanceof AnonymousAuthenticationToken || !auth.isAuthenticated()) {
             return SessionView.ANONYMOUS;
         }
-        return users.findByUsername(auth.getName())
+        return users.findByPrincipal(auth.getName())
                 .map(u -> new SessionView(true, u.getUsername(), u.getName(), u.getLastName(), u.getEmail(),
                         u.getProfiles().stream().map(Enum::name).sorted().toList(),
                         Map.of("id", u.getClubId(), "name", u.getClubName(), "code", u.getClubCode()),

@@ -58,7 +58,7 @@ public class PlayerController {
 
     @PostMapping("/reports")
     public ResponseEntity<JobView> create(@RequestBody PlayerReportRequest req, Authentication auth) {
-        UserAccount u = users.findByUsername(auth.getName())
+        UserAccount u = users.findByPrincipal(auth.getName())
                 .filter(x -> x.isPlayer() && x.getPlayerId() != null)
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no tiene un jugador vinculado."));
         Federation fed = u.federation();
@@ -66,7 +66,7 @@ public class PlayerController {
         PlayerReportService.Job job = quota.consume(u, () -> reports.submit(new PlayerReportService.Query(u.getPlayerId(),
                 u.getPlayerName(), u.getName() == null ? u.getPlayerName() : u.getName() + " " + u.getLastName(),
                 u.getClubId(), catalog.checkYear(req.year()), Scope.parse(req.period()),
-                Eligibility.searchLevels(fed, u.getCategory()), u.getBranch(), fed), u.getUsername()));
+                Eligibility.searchLevels(fed, u.getCategory()), u.getBranch(), fed), u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 
