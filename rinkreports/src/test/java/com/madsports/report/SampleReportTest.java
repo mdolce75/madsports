@@ -117,6 +117,25 @@ class SampleReportTest {
         assertThat(r.notes()).anyMatch(n -> n.startsWith("Categorías revisadas: Juniors, Reserva y Primera Masculino"))
                 .anyMatch(n -> n.contains("no tiene acta publicada"));
 
+        // Por torneo: Apertura y Clausura de cada categoría, en orden, que suman el total.
+        assertThat(r.tournaments()).extracting(PlayerReport.TournamentLine::label).containsExactly(
+                "Juniors Masculino · Apertura", "Juniors Masculino · Clausura",
+                "Primera Masculino · Apertura", "Primera Masculino · Clausura");
+        assertThat(r.tournaments().stream().mapToInt(x -> x.line().played()).sum()).isEqualTo(t.played());
+        assertThat(r.tournaments().stream().mapToInt(x -> x.line().goals()).sum()).isEqualTo(t.goals());
+        assertThat(r.tournaments().stream().mapToInt(x -> x.line().cards()).sum()).isEqualTo(t.cards());
+        assertThat(r.tournaments().stream().mapToInt(x -> x.line().penaltiesTaken()).sum()).isEqualTo(t.penaltiesTaken());
+        // La progresión de goles de cada torneo: un punto por partido, que termina en sus goles.
+        List<PlayerReport.GoalProgression> gp = r.goalProgression();
+        assertThat(gp).hasSize(4);
+        for (int i = 0; i < gp.size(); i++) {
+            assertThat(gp.get(i).label()).isEqualTo(r.tournaments().get(i).label());
+            assertThat(gp.get(i).cumulative()).hasSize(r.tournaments().get(i).line().played()).isSorted();
+            assertThat(gp.get(i).total()).isEqualTo(r.tournaments().get(i).line().goals());
+        }
+        assertThat(new Charts().goalProgression(gp)).startsWith("data:image/png;base64,");
+        assertThat(new Charts().goalProgression(List.of())).isNull();
+
         // Un bloque por categoría con sus propias estadísticas, que suman el total.
         assertThat(r.blocks()).extracting(b -> b.line().category()).containsExactly("Juniors Masculino", "Primera Masculino");
         assertThat(r.blocks().stream().mapToInt(b -> b.matches().size()).sum()).isEqualTo(r.matches().size());
