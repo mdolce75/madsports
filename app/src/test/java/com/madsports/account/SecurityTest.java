@@ -170,7 +170,9 @@ class SecurityTest {
     }
 
     int remembered(String username) {
-        return jdbc.queryForObject("select count(*) from persistent_logins where username = ?", Integer.class, username);
+        // "Recordarme" guarda el nombre de la sesión: producto y usuario ("REPORTS:ana").
+        return jdbc.queryForObject("select count(*) from persistent_logins where username like ?", Integer.class,
+                "%:" + username);
     }
 
     @Test
@@ -609,13 +611,10 @@ class SecurityTest {
         otherCoach.put("username", "profe2");
         register(otherCoach).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("Ya hay una cuenta de RinkMetrics con ese email."));
-        // Un jugador de RinkReports con el mismo email: sí. El usuario sigue siendo único en toda la web.
+        // Un jugador de RinkReports con el mismo email: sí.
         Map<String, Object> player = player("profe.jugador");
         player.put("email", "profe@example.com");
         register(player).andExpect(status().isCreated());
-        Map<String, Object> sameUser = player("profe");
-        sameUser.put("email", "otro@example.com");
-        register(sameUser).andExpect(status().isConflict());
 
         // Cada mail, con la marca de su producto.
         ArgumentCaptor<MailContent> mails = ArgumentCaptor.forClass(MailContent.class);
@@ -634,6 +633,44 @@ class SecurityTest {
         assertThat(reset.product()).isEqualTo(Product.REPORTS);
         assertThat(reset.url()).contains("/reset-password.html?product=reports&token=");
         assertThat(realMailer.html(reset)).contains("RinkReports").doesNotContain(">RinkMetrics<");
+    }
+
+    @Test
+    void theSameUsernameCanHaveAnAccountInEachProduct() throws Exception {
+        register(club("mismo")).andExpect(status().isCreated());
+        Map<String, Object> coach = coach("mismo");
+        coach.put("password", "clave-del-dt");
+        register(coach).andExpect(status().isCreated());
+        // Otro "mismo" en RinkReports: no (el usuario es único dentro de cada producto).
+        Map<String, Object> again = club("mismo");
+        again.put("email", "otro.mismo@example.com");
+        register(again).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("El usuario mismo ya existe en RinkReports."));
+        for (Product p : Product.values()) {
+            UserAccount u = users.findByUsernameAndProduct("mismo", p).orElseThrow();
+            u.verifyEmail();
+            users.save(u);
+        }
+        // Sin el producto no se sabe cuál de las dos es.
+        assertThat(users.findByUsername("mismo")).isEmpty();
+        // Cada uno entra a su producto con su clave, y la sesión es la de esa cuenta.
+        MvcResult reports = loginTo("mismo", "REPORTS").andExpect(status().isOk())
+                .andExpect(jsonPath("$.home").value("/rinkreports/club.html")).andReturn();
+        mvc.perform(get("/api/session").session((MockHttpSession) reports.getRequest().getSession()))
+                .andExpect(jsonPath("$.product").value("REPORTS")).andExpect(jsonPath("$.username").value("mismo"));
+        mvc.perform(post("/api/login").with(csrf()).param("username", "Mismo").param("password", "clave-del-dt")
+                        .param("product", "METRICS"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.home").value("/coach.html"));
+        // Con la clave de la otra cuenta, no.
+        loginTo("mismo", "METRICS").andExpect(status().isUnauthorized());
+        // "Recordarme" queda a nombre de la cuenta de su producto.
+        MvcResult remembered = mvc.perform(post("/api/login").with(csrf()).param("username", "mismo")
+                .param("password", "clave-del-dt").param("product", "METRICS").param("rememberMe", "true"))
+                .andExpect(status().isOk()).andReturn();
+        mvc.perform(get("/api/session").cookie(remembered.getResponse().getCookie("REMEMBER_ME")))
+                .andExpect(jsonPath("$.product").value("METRICS"));
+        assertThat(jdbc.queryForObject("select count(*) from persistent_logins where username = 'METRICS:mismo'",
+                Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -718,7 +755,7 @@ class SecurityTest {
         ReportService.Job job = mock(ReportService.Job.class);
         when(job.id()).thenReturn(UUID.randomUUID());
         when(job.status()).thenReturn(ReportService.Status.PENDING);
-        when(reports.submit(any(), eq("club"))).thenReturn(job);
+        when(reports.submit(any(), eq("REPORTS:club"))).thenReturn(job);
         String request = "{\"clubId\":%d,\"category\":\"PRIMERA\",\"branch\":\"MASCULINO\"}";
 
         mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
@@ -743,7 +780,7 @@ class SecurityTest {
         com.madsports.player.PlayerReportService.Job job = mock(com.madsports.player.PlayerReportService.Job.class);
         when(job.id()).thenReturn(UUID.randomUUID());
         when(job.status()).thenReturn(ReportService.Status.PENDING);
-        when(playerReports.submit(any(), eq("jug"))).thenReturn(job);
+        when(playerReports.submit(any(), eq("REPORTS:jug"))).thenReturn(job);
 
         mvc.perform(post("/api/player/reports").with(user("jug").authorities(() -> "PLAYERFPP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"year\":2026,\"period\":\"SEASON\"}"))
@@ -764,7 +801,7 @@ class SecurityTest {
         com.madsports.player.PlayerReportService.Job job = mock(com.madsports.player.PlayerReportService.Job.class);
         when(job.id()).thenReturn(UUID.randomUUID());
         when(job.status()).thenReturn(ReportService.Status.PENDING);
-        when(playerReports.submit(any(), eq("cupo"))).thenReturn(job);
+        when(playerReports.submit(any(), eq("REPORTS:cupo"))).thenReturn(job);
 
         for (int i = 1; i <= 5; i++) {
             requestReport("cupo").andExpect(status().isAccepted());
@@ -773,7 +810,7 @@ class SecurityTest {
         requestReport("cupo").andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.startsWith(
                         "Ya pediste los 5 informes de este mes. El cupo se renueva el 1/")));
-        verify(playerReports, times(5)).submit(any(), eq("cupo"));
+        verify(playerReports, times(5)).submit(any(), eq("REPORTS:cupo"));
         assertThat(users.findByUsername("cupo").orElseThrow().getReportsRequested()).isEqualTo(5);
         mvc.perform(get("/api/session").with(user("cupo").authorities(() -> "PLAYERFPP")))
                 .andExpect(jsonPath("$.monthlyReports.used").value(5))
@@ -786,7 +823,7 @@ class SecurityTest {
         u.linkPlayer(3851, "Ignacio J Graiño", "PRIMERA", "MASCULINO");
         u.subscribe(subscriptions.findByCode("PLAYER_FREE").orElseThrow(), java.time.LocalDate.now());
         users.save(u);
-        when(playerReports.submit(any(), eq("cupo2"))).thenThrow(new IllegalArgumentException("Período inválido."));
+        when(playerReports.submit(any(), eq("REPORTS:cupo2"))).thenThrow(new IllegalArgumentException("Período inválido."));
         requestReport("cupo2").andExpect(status().isBadRequest());
         mvc.perform(get("/api/session").with(user("cupo2").authorities(() -> "PLAYERFPP")))
                 .andExpect(jsonPath("$.monthlyReports.used").value(0));

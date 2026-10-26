@@ -101,7 +101,9 @@ public class SecurityConfig {
                         .usernameParameter("username")
                         .passwordParameter("password")
                         .successHandler((req, res, auth) -> {
-                            limiter.clear(AttemptLimiter.Kind.LOGIN_USER, auth.getName());
+                            // El mismo nombre con que se cuentan los fallidos: el del pedido ("REPORTS:ana" con el
+                            // producto, LoginProductFilter; sin él, como vino).
+                            limiter.clear(AttemptLimiter.Kind.LOGIN_USER, req.getParameter("username"));
                             // Al ingresar, Spring cambia el token CSRF: se genera ya para que la cookie nueva
                             // viaje en esta respuesta (también si se rechaza por email sin confirmar).
                             CsrfToken token = (CsrfToken) req.getAttribute(CsrfToken.class.getName());
