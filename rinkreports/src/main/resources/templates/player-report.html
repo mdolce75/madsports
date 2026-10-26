@@ -182,6 +182,48 @@
         las del equipo). Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es el
         promedio por partido jugado. El detalle de cada categoría sigue a continuación.</p>
 
+    <!--/* Por torneo: lo mismo que por categoría, para cada torneo de cada categoría, y la progresión de sus goles. */-->
+    <th:block th:if="${!r.tournaments.isEmpty()}">
+        <h2>Por torneo</h2>
+        <table>
+            <tr><th class="l" rowspan="2">Categoría</th><th class="l" rowspan="2">Torneo</th><th colspan="4">Partidos</th>
+                <th colspan="3">Goles</th><th colspan="5">Tarjetas</th><th colspan="2">Pelota parada</th></tr>
+            <tr><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Total</th><th>Por PJ</th><th>Incid.</th>
+                <th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th>
+                <th>Por PJ</th><th>Incid.</th><th>Penales</th><th>Libres</th></tr>
+            <tr th:each="t : ${r.tournaments}" th:with="l=${t.line}">
+                <td class="l" th:text="${t.category}"></td><td class="l" th:text="${t.tournamentName()}"></td>
+                <td th:text="${l.played}"></td><td th:text="${l.won}"></td><td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
+                <td th:text="${l.goals}"></td><td th:text="${f.dec(l.goalsPerGame())}"></td>
+                <td th:text="${f.pct(l.goalShare())}"></td>
+                <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
+                <td th:text="${f.dec(l.cardsPerGame())}"></td>
+                <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
+                <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+                <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
+            </tr>
+            <tr class="total" th:with="l=${r.total}">
+                <td class="l" colspan="2">Total</td>
+                <td th:text="${l.played}"></td><td th:text="${l.won}"></td><td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
+                <td th:text="${l.goals}"></td><td th:text="${f.dec(l.goalsPerGame())}"></td>
+                <td th:text="${f.pct(l.goalShare())}"></td>
+                <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
+                <td th:text="${f.dec(l.cardsPerGame())}"></td>
+                <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
+                <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+                <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
+            </tr>
+        </table>
+        <th:block th:with="gp=${c.goalProgression(r.goalProgression())}">
+            <div class="nobreak" th:if="${gp != null}">
+                <h3 class="apartado">Progresión de goles por torneo</h3>
+                <img class="chart wide" th:src="${gp}" alt="Goles acumulados partido a partido en cada torneo"/>
+                <p class="muted">Goles acumulados después de cada partido que jugó en el torneo, en orden de fecha; al
+                    final de cada línea, sus goles en ese torneo.</p>
+            </div>
+        </th:block>
+    </th:block>
+
     <!--/* Un bloque por categoría: partidos, goles y tarjetas, cada uno en su apartado. */-->
     <div class="category" th:each="b : ${r.blocks}" th:with="l=${b.line}, mn=${b.minutes}">
         <h2 th:text="${l.category}">Categoría</h2>

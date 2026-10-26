@@ -206,7 +206,18 @@ public class ExcelExporter {
                 line(summaryOf, l);
             }
             line(summaryOf, r.total());
-            summaryOf.widths(18, 6, 6, 6, 6, 8, 16, 18, 10, 9, 8, 18, 20, 13, 12, 12, 11, 9);
+            if (!r.tournaments().isEmpty()) {
+                summaryOf.blank();
+                summaryOf.section("Por torneo");
+                summaryOf.header("Torneo", "PJ", "G", "E", "P", "Goles", "Goles por partido", "Incidencia de goles",
+                        "Amarillas", "Azules", "Rojas", "Tarjetas por partido", "Incidencia de tarjetas", "Penales conv.",
+                        "Penales tir.", "Libres conv.", "Libres tir.", "Sin acta");
+                for (PlayerReport.TournamentLine t : r.tournaments()) {
+                    line(summaryOf, t.labeled());
+                }
+                line(summaryOf, r.total());
+            }
+            summaryOf.widths(26, 6, 6, 6, 6, 8, 16, 18, 10, 9, 8, 18, 20, 13, 12, 12, 11, 9);
             if (!r.notes().isEmpty()) {
                 summaryOf.blank();
                 summaryOf.section("Notas");
