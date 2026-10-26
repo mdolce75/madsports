@@ -195,6 +195,14 @@
                 return;
             }
             sel.add(new Option(`${mine.name} (${mine.code})`, mine.id));
+            // Solo las categorías con jugadores en SIDGAD (sin jugadores no hay informe que hacer).
+            $("cats-hint").textContent = "Cargando las categorías…";
+            try {
+                const res = await fetch(`/api/catalog/club?clubId=${mine.id}&year=${catalog.year}&federation=${me.federation}`);
+                if (res.ok) mine.categories = (await res.json()).categories;
+            } catch (e) {
+                // Sin respuesta: las del catálogo.
+            }
             showCategories();
         } catch (e) {
             status("No se pudo cargar el catálogo: " + e.message, true);

@@ -123,7 +123,9 @@ public class SquadService {
 
     /** Las categorías del club del DT en SIDGAD (cada equipo del club en cada rama), primero las masculinas. */
     public List<ClubCategoryView> clubCategories(UserAccount u) {
-        ClubView club = catalog.club(u.federation(), u.getClubId(), catalog.defaultYear());
+        int year = catalog.defaultYear();
+        // Solo las que tienen jugadores en SIDGAD: el equipo sale de su plantel.
+        ClubView club = roster.withPlayers(u.federation(), catalog.club(u.federation(), u.getClubId(), year), year);
         List<ClubCategoryView> out = new ArrayList<>();
         for (String branch : List.of("MASCULINO", "FEMENINO")) {
             for (LevelView lv : club.categories()) {

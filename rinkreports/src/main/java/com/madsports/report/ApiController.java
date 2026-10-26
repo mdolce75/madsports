@@ -3,6 +3,7 @@ package com.madsports.report;
 import com.madsports.account.UserAccount;
 import com.madsports.account.UserAccountRepository;
 import com.madsports.catalog.CatalogService;
+import com.madsports.catalog.RosterService;
 import com.madsports.catalog.CatalogService.CatalogView;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.SidgadClient.SidgadException;
@@ -56,9 +57,11 @@ public class ApiController {
     private final SampleReport sample;
     private final UserAccountRepository users;
     private final ReportQuota quota;
+    private final RosterService roster;
 
     public ApiController(CatalogService catalog, ReportService reports, SampleReport sample, UserAccountRepository users,
-                         ReportQuota quota) {
+                         ReportQuota quota, RosterService roster) {
+        this.roster = roster;
         this.catalog = catalog;
         this.reports = reports;
         this.sample = sample;
@@ -74,6 +77,18 @@ public class ApiController {
     public CatalogView catalog(@RequestParam(required = false) Integer year,
                                 @RequestParam(required = false) String federation) {
         return catalog.view(Federation.parse(federation), catalog.checkYear(year));
+    }
+
+    /**
+     * Un club con solo las categorías que tienen jugadores en SIDGAD (las que se ofrecen en el registro del jugador y en
+     * el informe del club).
+     */
+    @GetMapping("/catalog/club")
+    public CatalogService.ClubView club(@RequestParam int clubId, @RequestParam(required = false) Integer year,
+                                        @RequestParam(required = false) String federation) {
+        Federation fed = Federation.parse(federation);
+        int y = catalog.checkYear(year);
+        return roster.withPlayers(fed, catalog.club(fed, clubId, y), y);
     }
 
     /** Un usuario de club (CLUBFPP o CLUBAMP) pide informes solo de su club, en su federación. */

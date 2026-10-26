@@ -82,7 +82,7 @@ public class SecurityConfig {
                                 "/rinkmetrics/why.html", "/rinkmetrics/login.html", "/rinkmetrics/signup.html", "/coach-demo.html",
                                 "/forgot-password.html", "/reset-password.html", "/css/**", "/js/**", "/img/**", "/coach-sw.js",
                                 "/dt-sw.js", "/error",
-                                "/api/signup", "/api/signup/**", "/api/session", "/api/catalog", "/api/sample.pdf",
+                                "/api/signup", "/api/signup/**", "/api/session", "/api/catalog", "/api/catalog/club", "/api/sample.pdf",
                                 "/api/sample.html", "/api/sample.xlsx", "/api/sample-player.html", "/api/sample-player.xlsx",
                                 "/api/sample-player.pdf", "/api/verify", "/api/verificar", "/api/verification/**", "/api/password/**", "/api/plans",
                                 "/actuator/health", "/actuator/health/**")

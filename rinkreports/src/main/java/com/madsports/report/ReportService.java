@@ -176,13 +176,16 @@ public class ReportService {
     private final PdfRenderer renderer;
     private final ExcelExporter excel;
     private final Clock clock;
+    private final com.madsports.catalog.RosterService roster;
     private final Cache<UUID, Job> jobs = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build();
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
     /** Análisis de Gemini a la vez en el informe del club (el plan gratuito limita los pedidos por minuto). */
     static final int CLUB_ANALYSES = 3;
 
     public ReportService(CatalogService catalog, SidgadClient sidgad, GeminiAnalyst gemini,
-                         RuleBasedAnalyst rules, PdfRenderer renderer, ExcelExporter excel, Clock clock) {
+                         RuleBasedAnalyst rules, PdfRenderer renderer, ExcelExporter excel, Clock clock,
+                         com.madsports.catalog.RosterService roster) {
+        this.roster = roster;
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.gemini = gemini;
@@ -276,11 +279,14 @@ public class ReportService {
         return categories.stream().filter(c -> chosen.contains(c.selectionKey())).toList();
     }
 
-    /** Las categorías del club que juegan en el período: Masculino y después Femenino, cada una de Infantil a Primera. */
+    /**
+     * Las categorías del club que juegan en el período y tienen jugadores en SIDGAD (una sin jugadores no se ofrece ni
+     * entra en el informe): Masculino y después Femenino, cada una de Infantil a Primera. */
     List<ClubCategory> clubCategories(ClubView club, Federation fed, Scope scope, int year) {
         List<ClubCategory> out = new ArrayList<>();
+        ClubView offered = roster.withPlayers(fed, club, year);
         for (String branch : List.of("MASCULINO", "FEMENINO")) {
-            for (CatalogService.LevelView l : club.categories()) {
+            for (CatalogService.LevelView l : offered.categories()) {
                 if (!l.branches().contains(branch)) {
                     continue;
                 }
