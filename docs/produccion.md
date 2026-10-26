@@ -115,6 +115,15 @@ www.rinkmetrics.com.ar {
 }
 ```
 
+## Actas de SIDGAD guardadas y precarga
+
+Las actas de los partidos jugados se bajan de SIDGAD una sola vez y quedan en la base (tabla `sidgad_game_sheet`,
+comprimidas: unos 20 KB cada una, ~25 MB por año); en su primera semana se vuelven a revisar una vez por día por si
+SIDGAD las corrige. Todos los días a las 5:00 (`SIDGAD_WARMUP_CRON`) una precarga baja las actas nuevas y la ficha de
+temporada de cada jugador. Medido con VELEZ (13 categorías, temporada completa): el informe del club pasó de ~70 s a
+~10 s; la primera precarga (base vacía) tardó 3,5 min (1.172 actas, 748 fichas), las siguientes solo bajan lo nuevo
+y las fichas.
+
 ## Informes guardados
 
 Cada informe que pide un club o un jugador se guarda (PDF, Excel y la versión para pantalla) para verlo y bajarlo

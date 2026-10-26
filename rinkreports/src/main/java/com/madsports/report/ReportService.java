@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -567,6 +568,26 @@ public class ReportService {
         }
     }
 
+    /**
+     * Desde cuándo sirve una ficha de temporada guardada: bajada después del día del último partido del club (su ficha
+     * ya lo incluye) o, si el club jugó hoy, en las últimas 2 horas. Sin partidos jugados, de las últimas 24 horas.
+     */
+    static Instant profilesNotBefore(ClubView club, List<CompetitionData> data, Instant now) {
+        LocalDate last = data.stream().flatMap(cd -> {
+                    Set<Integer> own = cd.competition().teams().stream().filter(t -> t.clubId() == club.id())
+                            .map(TeamRef::teamId).collect(Collectors.toSet());
+                    return cd.matches().stream().filter(m -> m.played() && m.date() != null
+                            && (own.contains(m.homeTeamId()) || own.contains(m.awayTeamId())));
+                })
+                .map(Match::date).max(Comparator.naturalOrder()).orElse(null);
+        if (last == null) {
+            return now.minus(Duration.ofHours(24));
+        }
+        Instant dayAfter = last.plusDays(1).atStartOfDay(java.time.ZoneId.of("America/Argentina/Buenos_Aires")).toInstant();
+        Instant twoHoursAgo = now.minus(Duration.ofHours(2));
+        return dayAfter.isBefore(twoHoursAgo) ? dayAfter : twoHoursAgo;
+    }
+
     /** Lo que se usa de un acta: sus eventos y, en los partidos del club, las planillas. */
     private record SheetRead(List<MatchEvent> events, List<LineupPlayer> lineups) {
     }
@@ -587,12 +608,13 @@ public class ReportService {
             return;
         }
         progress.accept("Leyendo las fichas de temporada de los jugadores del club");
+        Instant notBefore = profilesNotBefore(club, data, clock.instant());
         Map<Integer, Future<List<SeasonMatch>>> pending = new LinkedHashMap<>();
         seasonsOf.forEach((id, seasons) -> pending.put(id, io.submit(() -> {
             List<SeasonMatch> rows = new ArrayList<>();
             for (int season : seasons) {
                 try {
-                    rows.addAll(SidgadParser.seasonMatches(sidgad.playerSeason(id, season)));
+                    rows.addAll(SidgadParser.seasonMatches(sidgad.playerSeason(id, season, notBefore)));
                 } catch (SidgadClient.SidgadException e) {
                     log.info("Sin ficha de temporada del jugador {}: {}", id, e.getMessage());
                 }
