@@ -95,6 +95,13 @@ public class TeamPlayer {
         teams.add(teamId);
     }
 
+    /** Lo saca del equipo: queda "no incluido" ahí, para volver a sumarlo (destildado en la lista del equipo). */
+    void excludeFrom(Long teamId) {
+        if (teams.remove(teamId)) {
+            pending.add(teamId);
+        }
+    }
+
     /** Figura en el plantel de SIDGAD del equipo, pero el DT no lo incluyó. */
     void leavePendingIn(Long teamId) {
         if (!teams.contains(teamId)) {

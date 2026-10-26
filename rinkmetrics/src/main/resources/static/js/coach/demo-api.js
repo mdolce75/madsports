@@ -147,6 +147,16 @@ export function createApi({session, teams = [], players = [], matches = [], club
         return json(200, playerView(j));
     }
 
+    function exclude(playerId, teamId) {
+        const j = ownPlayer(playerId);
+        const e = team(teamId);
+        if (j.teams.includes(e.id)) {
+            j.teams = j.teams.filter(x => x !== e.id);
+            if (!j.pending.includes(e.id)) j.pending.push(e.id);
+        }
+        return json(200, playerView(j));
+    }
+
     function deleteTeam(id) {
         const e = team(id);
         const n = matches.filter(p => p.teamId === e.id).length;
@@ -423,6 +433,7 @@ export function createApi({session, teams = [], players = [], matches = [], club
         }
         const inc = r.match(/^\/api\/coach\/players\/(\d+)\/teams\/(\d+)$/);
         if (inc && method === "POST") return include(Number(inc[1]), Number(inc[2]));
+        if (inc && method === "DELETE") return exclude(Number(inc[1]), Number(inc[2]));
         let m = r.match(/^\/api\/coach\/teams\/(\d+)$/);
         if (m && method === "PUT") { const e = team(Number(m[1])); e.name = teamName((body || {}).name, e); return json(200, teamView(e)); }
         if (m && method === "DELETE") return deleteTeam(Number(m[1]));

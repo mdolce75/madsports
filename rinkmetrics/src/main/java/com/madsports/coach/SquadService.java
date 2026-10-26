@@ -215,6 +215,15 @@ public class SquadService {
         return SquadPlayer.of(j);
     }
 
+    /** Lo saca del equipo (lo destilda): queda como "no incluido" ahí y se puede volver a incluir. */
+    @Transactional
+    public SquadPlayer exclude(UserAccount u, int playerId, Long teamId) {
+        TeamPlayer j = own(u, playerId);
+        Team e = teams.team(u, teamId);
+        j.excludeFrom(e.getId());
+        return SquadPlayer.of(j);
+    }
+
     /** Número de las actas ("07") como lo guarda el DT ("7"); vacío si no es un número de camiseta. */
     private static String sidgadNumber(String n) {
         String t = n == null ? "" : n.trim();

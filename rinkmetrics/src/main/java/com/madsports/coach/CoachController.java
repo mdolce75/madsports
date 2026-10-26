@@ -130,6 +130,12 @@ public class CoachController {
         return squads.include(currentUser(auth), playerId, teamId);
     }
 
+    /** Lo destilda del equipo: queda "no incluido" ahí (se vuelve a sumar con el POST). */
+    @DeleteMapping("/players/{playerId}/teams/{teamId}")
+    public SquadPlayer excludePlayer(@PathVariable int playerId, @PathVariable Long teamId, Authentication auth) {
+        return squads.exclude(currentUser(auth), playerId, teamId);
+    }
+
     @DeleteMapping("/players/{playerId}")
     public ResponseEntity<Void> deactivatePlayer(@PathVariable int playerId, Authentication auth) {
         squads.deactivate(currentUser(auth), playerId);

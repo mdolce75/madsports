@@ -58,7 +58,8 @@ test("Informes: el de un partido y el de un período, del equipo y de un jugador
     await expect(page.locator("#i-informe h3")).toHaveText("Campeonato Apertura");
     await expect(page.locator("#i-informe")).toContainText("3 jugados");
     // Al tocar un jugador de la tabla, el informe queda solo de él.
-    await page.locator("#i-informe .inf-tabla tbody tr", {hasText: "Santiago Herrera"}).click();
+    // La primera tabla es la de los jugadores (después vienen los rankings, donde también figura).
+    await page.locator("#i-informe .inf-tabla tbody tr", {hasText: "Santiago Herrera"}).first().click();
     await expect(page.locator("#i-informe")).toContainText("Estadísticas de Santiago Herrera");
     await expect(page.getByLabel("Jugador del informe")).toHaveValue("j108");
 
@@ -67,46 +68,36 @@ test("Informes: el de un partido y el de un período, del equipo y de un jugador
     await expect(page.locator("#toast")).toContainText("La demo no genera PDF");
 });
 
-test("Equipo: ABM de equipos y de jugadores, con el límite del plan", async ({page}) => {
+test("Equipo: los equipos salen de SIDGAD y sus jugadores se tildan o destildan, con el límite del plan", async ({page}) => {
     await page.goto("/coach-demo.html#team");
     await expect(page.locator("#eq-n")).toHaveText("1 de 3 equipos");
-    await page.locator("#eq-categoria").selectOption("otro");
-    await page.locator("#eq-nombre").fill("Reserva");
+    // Sin carga de jugadores a mano ni equipos fuera de SIDGAD.
+    await expect(page.locator("#pl-form")).toHaveCount(0);
+    await expect(page.locator("#eq-categoria option", {hasText: "Otro"})).toHaveCount(0);
+
+    // Juvenil desde SIDGAD, sin Iván Luna.
+    await page.locator("#eq-categoria").selectOption("JUVENIL|MASCULINO");
+    await expect(page.locator("#eq-sidgad-n")).toHaveText("8 de 8 incluidos");
+    await page.locator("#eq-jugadores label", {hasText: "Iván Luna"}).locator("input").uncheck();
     await page.locator("#eq-guardar").click();
-    await expect(page.locator("#eq-status")).toHaveText("Equipo creado: Reserva. Ahora cargá sus jugadores.");
+    await expect(page.locator("#eq-status")).toContainText("Equipo creado: Juvenil Masculino, con 7 de los 8 jugadores de SIDGAD");
     await expect(page.locator("#eq-lista .eq-fila")).toHaveCount(2);
-    await page.locator("#eq-categoria").selectOption("otro");
-    await page.locator("#eq-nombre").fill("Reserva");
-    await page.locator("#eq-guardar").click();
-    await expect(page.locator("#eq-status")).toHaveText("Ya tenés un equipo llamado Reserva.");
 
-    // Jugador nuevo en la Reserva, con un número que ya usa otro de ese equipo.
-    await page.locator("#pl-nombre").fill("Juan");
-    await page.locator("#pl-apellido").fill("Gómez");
-    await page.locator("#pl-numero").fill("4");
-    await page.locator("#pl-equipos label", {hasText: "Reserva"}).locator("input").check();
-    await page.locator("#pl-guardar").click();
-    await expect(page.locator("#pl-status")).toHaveText("Agregado: Juan Gómez.");
-    await page.locator("#pl-nombre").fill("Pedro");
-    await page.locator("#pl-apellido").fill("Luna");
-    await page.locator("#pl-numero").fill("4");
-    await page.locator("#pl-equipos label", {hasText: "Reserva"}).locator("input").check();
-    await page.locator("#pl-guardar").click();
-    await expect(page.locator("#pl-status")).toHaveText("El número 4 ya es de Juan Gómez en ese equipo.");
+    // Sus jugadores, elegido el equipo nuevo: Iván destildado; se lo tilda y a Ramiro se lo destilda.
+    await expect(page.locator("#pl-n")).toHaveText("7 de 8 juegan");
+    const ivan = page.locator("#pl-lista li", {hasText: "Iván Luna"}).locator("input");
+    await expect(ivan).not.toBeChecked();
+    await ivan.check();
+    await expect(page.locator("#pl-status")).toHaveText("Iván Luna juega en Juvenil Masculino.");
+    await expect(page.locator("#pl-n")).toHaveText("8 de 8 juegan");
+    await page.locator("#pl-lista li", {hasText: "Ramiro Ortiz"}).locator("input").uncheck();
+    await expect(page.locator("#pl-status")).toHaveText("Ramiro Ortiz quedó afuera de Juvenil Masculino.");
+    await expect(page.locator("#pl-n")).toHaveText("7 de 8 juegan");
+    await expect(page.locator("#pl-lista li", {hasText: "Ramiro Ortiz"})).toHaveClass(/pendiente/);
 
-    await page.getByRole("button", {name: "Editar a Juan Gómez"}).click();
-    await page.locator("#pl-numero").fill("44");
-    await page.locator("#pl-guardar").click();
-    await expect(page.locator("#pl-status")).toHaveText("Guardado: Juan Gómez.");
-    await expect(page.locator("#pl-lista li", {hasText: "Juan Gómez"})).toContainText("#44");
-
-    await page.getByRole("button", {name: "Dar de baja a Juan Gómez"}).click();
-    await expect(page.locator("#pl-status")).toHaveText("Juan Gómez salió del plantel.");
-    await expect(page.locator("#pl-lista")).not.toContainText("Juan Gómez");
-
-    // Tercer equipo: el plan mensual llega al máximo.
-    await page.locator("#eq-categoria").selectOption("otro");
-    await page.locator("#eq-nombre").fill("Infantil");
+    // Tercer equipo: el plan llega al máximo.
+    await page.locator("#eq-categoria").selectOption("INFANTIL|FEMENINO");
+    await expect(page.locator("#eq-sidgad-n")).toHaveText("5 de 5 incluidos");
     await page.locator("#eq-guardar").click();
     await expect(page.locator("#eq-n")).toHaveText("3 de 3 equipos");
     await expect(page.locator("#eq-nombre")).toBeDisabled();
@@ -127,7 +118,7 @@ test("al volver a la pestaña se ven los equipos creados en otro dispositivo", a
 test("Equipo desde una categoría del club: su plantel de SIDGAD, sin los destildados, que se suman después", async ({page}) => {
     await page.goto("/coach-demo.html#team");
     await expect(page.locator("#eq-categoria option")).toHaveText(["Elegí la categoría", "Primera Masculino",
-        "Juvenil Masculino", "Infantil Femenino", "Otro: nombre libre, sin jugadores de SIDGAD"]);
+        "Juvenil Masculino", "Infantil Femenino"]);
     // Sin categoría, no se crea.
     await page.locator("#eq-guardar").click();
     await expect(page.locator("#eq-status")).toContainText("Elegí la categoría de tu club");
@@ -143,15 +134,20 @@ test("Equipo desde una categoría del club: su plantel de SIDGAD, sin los destil
         + "SIDGAD (1 no incluido: está en la lista para sumarlo después).");
     await expect(page.locator("#eq-lista .eq-fila", {hasText: "Juvenil Masculino"})).toContainText("SIDGAD: Juvenil Masculino");
 
-    // La lista queda en el equipo nuevo: Iván figura como no incluido, con "Incluir".
+    // La lista queda en el equipo nuevo: Iván, destildado.
     await expect(page.locator("#pl-filtro option:checked")).toHaveText("Juvenil Masculino");
     const ivan = page.locator("#pl-lista li", {hasText: "Iván Luna"});
-    await expect(ivan).toContainText("No incluido");
-    // Santiago Herrera ya estaba en Primera: no se duplica, suma el equipo.
-    await expect(page.locator("#pl-lista li", {hasText: "Santiago Herrera"})).toContainText("Primera Masculino · Juvenil Masculino");
+    await expect(ivan.locator("input")).not.toBeChecked();
+    await expect(ivan).toHaveClass(/pendiente/);
+    // Santiago Herrera ya estaba en Primera: no se duplica, juega en los dos equipos.
+    await expect(page.locator("#pl-lista li", {hasText: "Santiago Herrera"}).locator("input")).toBeChecked();
+    await page.locator("#pl-filtro").selectOption({label: "Primera Masculino"});
+    await expect(page.locator("#pl-lista li", {hasText: "Santiago Herrera"})).toHaveCount(1);
+    await expect(page.locator("#pl-lista li", {hasText: "Santiago Herrera"}).locator("input")).toBeChecked();
 
-    // No aparece para cargar un partido del equipo hasta incluirlo.
-    await page.getByRole("button", {name: "Incluir a Iván Luna en Juvenil Masculino"}).click();
-    await expect(page.locator("#pl-status")).toHaveText("Iván Luna quedó incluido en Juvenil Masculino.");
-    await expect(ivan).not.toContainText("No incluido");
+    // Tildarlo lo suma al equipo (y ya aparece para cargar sus partidos).
+    await page.locator("#pl-filtro").selectOption({label: "Juvenil Masculino"});
+    await ivan.locator("input").check();
+    await expect(page.locator("#pl-status")).toHaveText("Iván Luna juega en Juvenil Masculino.");
+    await expect(ivan).not.toHaveClass(/pendiente/);
 });

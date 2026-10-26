@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 /**
  * Plan de suscripción mensual (tabla {@code suscripcion_type}): PLAYER_MENSUAL, CLUB_MENSUAL, y para el DT,
- * DT_FREE (sin costo, 1 equipo y partidos sin límite, hasta el 31/12/2026) o DT_MENSUAL.
+ * COACH_FREE (sin costo, hasta 3 equipos y 5 partidos por mes, hasta el 31/12/2026) o COACH_MONTHLY.
  */
 @Entity
 @Table(name = "subscription_plan")
