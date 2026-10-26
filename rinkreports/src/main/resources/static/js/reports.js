@@ -1,14 +1,21 @@
 // RinkReports: marca, barra del usuario y visor del informe (en pantalla, con exportación a PDF y a Excel).
-// Va después de /js/app.js (usa $, session, renderUserBar y la marca). Las páginas llevan body data-producto="reports".
+// Va después de /js/app.js (usa $, session, renderUserBar y la marca). Las páginas llevan body data-product="reports".
 
 $("brand").outerHTML = brand();
 // Al salir, a la portada de RinkReports.
 document.body.dataset.exit = "/rinkreports";
 
-/** En las páginas públicas: con sesión, el usuario, su acceso directo ("Mi informe") y salir. */
+/**
+ * En las páginas públicas (portada, ejemplos, "Por qué RinkReports"): son para quien todavía no tiene cuenta. Con
+ * sesión de RinkReports, directo a su informe; con otra (RinkMetrics), el usuario, su acceso directo y salir.
+ */
 async function rrSessionBar() {
     const s = await session().catch(() => null);
     if (!s || !s.authenticated || s.home.startsWith("/rinkmetrics/login.html")) return null;
+    if (s.home.startsWith("/rinkreports/")) {
+        location.replace(s.home);
+        return null;
+    }
     renderUserBar(s);
     const go = document.createElement("a");
     go.className = "btn primary";
@@ -27,6 +34,45 @@ function rrQuota(m) {
     if (!m || !m.limit) return "";
     const [, month, day] = m.renews.split("-").map(Number);
     return `${Math.min(m.used, m.limit)} de ${m.limit} informes este mes · se renueva el ${day}/${month}`;
+}
+
+/** Fecha y hora de un pedido, en la hora argentina: "26/10/2026 14:35". */
+function rrWhen(iso) {
+    const d = new Date(iso);
+    const p = Object.fromEntries(new Intl.DateTimeFormat("es-AR", {timeZone: "America/Argentina/Buenos_Aires",
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false})
+        .formatToParts(d).map(x => [x.type, x.value]));
+    return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+/** Los informes que generó el usuario (los últimos 50): fecha y hora, y cuál fue. */
+async function rrHistory() {
+    const box = $("historial-lista");
+    if (!box) return;
+    try {
+        const res = await fetch("/api/history", {credentials: "same-origin"});
+        if (!res.ok) throw new Error(res.statusText);
+        const items = await res.json();
+        if (!items.length) {
+            box.innerHTML = '<p class="hint">Todavía no generaste informes.</p>';
+            return;
+        }
+        const table = document.createElement("table");
+        table.className = "rr-history-table";
+        table.innerHTML = '<thead><tr><th scope="col">Fecha y hora</th><th scope="col">Informe</th></tr></thead><tbody></tbody>';
+        for (const it of items) {
+            const tr = document.createElement("tr");
+            const when = document.createElement("td");
+            when.textContent = rrWhen(it.createdAt);
+            const what = document.createElement("td");
+            what.textContent = it.detail || "Informe";
+            tr.append(when, what);
+            table.tBodies[0].append(tr);
+        }
+        box.replaceChildren(table);
+    } catch (e) {
+        box.innerHTML = '<p class="hint">No se pudo cargar el historial.</p>';
+    }
 }
 
 /** Ancho mínimo de la hoja del informe en pantalla (px); debajo, se achica entera. */

@@ -2,9 +2,9 @@
  * RinkReports: el mismo look and feel que RinkMetrics (app.css: tipografías, tableros, planillas, botones) con su propia
  * paleta: fondo verde noche, paneles verde pizarra, esmeralda como color principal y ámbar para lo que se destaca.
  * Va después de /css/app.css y solo cambia sus variables, más el visor del informe. La paleta se aplica a las páginas
- * con body data-producto="reports" (las compartidas, como "Olvidé mi clave", la toman según el producto).
+ * con body data-product="reports" (las compartidas, como "Olvidé mi clave", la toman según el producto).
  */
-:root:has(> body[data-producto="reports"]) {
+:root:has(> body[data-product="reports"]) {
     --bg: #08130f;
     --panel: #10231c;
     --panel-2: #163126;
@@ -21,13 +21,13 @@
     --dark: #050e0a;
     --accent-on-dark: #2fd3a0;
 }
-body[data-producto="reports"] {
+body[data-product="reports"] {
     background:
         radial-gradient(1200px 500px at 85% -10%, rgba(47, 211, 160, .16), transparent 60%),
         radial-gradient(900px 500px at -10% 110%, rgba(255, 193, 69, .08), transparent 60%),
         var(--bg);
 }
-body[data-producto="reports"] .cintillo { background: var(--lime); color: #1d1300; }
+body[data-product="reports"] .cintillo { background: var(--lime); color: #1d1300; }
 
 /* Las opciones de la portada (Jugador / Club) */
 .example footer { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0; border: 0; font-size: inherit; }
@@ -52,3 +52,11 @@ body[data-producto="reports"] .cintillo { background: var(--lime); color: #1d130
 .rr-frame { display: block; width: 100%; min-width: 640px; max-width: 900px; margin: 0 auto; border: 0; background: #fff;
             min-height: 400px; border-radius: 4px; box-shadow: 0 4px 18px rgba(0, 0, 0, .35); }
 .rr-viewer .loading { margin: 0; padding: 24px 16px; color: var(--muted); }
+
+/* Informes generados por el usuario (club o jugador): fecha y hora, y cuál fue */
+.rr-history { margin-top: 28px; }
+.rr-history-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.rr-history-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted);
+                       font: 600 .75rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
+.rr-history-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--ink); }
+.rr-history-table td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }

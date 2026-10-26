@@ -88,6 +88,15 @@ public class ReportQuota implements MonthlyReports {
      * @throws QuotaExceededException si ya usó los informes del mes
      */
     public <T> T consume(UserAccount u, Supplier<T> request) {
+        return consume(u, null, request);
+    }
+
+    /**
+     * Lo mismo, y el pedido queda en el historial del usuario con qué informe fue.
+     *
+     * @param detail "Club completo · Apertura + Clausura 2026", "Jugador · Apertura 2026"
+     */
+    public <T> T consume(UserAccount u, String detail, Supplier<T> request) {
         synchronized (locks.computeIfAbsent(u.getId(), k -> new Object())) {
             Quota c = quota(u);
             if (c.exceeded()) {
@@ -95,7 +104,7 @@ public class ReportQuota implements MonthlyReports {
                         + c.renews().format(DAY) + ".");
             }
             T outcome = request.get();
-            requests.save(new RequestedReport(u.getId(), clock.instant()));
+            requests.save(new RequestedReport(u.getId(), clock.instant(), detail));
             users.countReport(u.getId());
             return outcome;
         }
