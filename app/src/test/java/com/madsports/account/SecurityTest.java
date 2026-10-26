@@ -841,6 +841,14 @@ class SecurityTest {
         mvc.perform(get("/api/session").with(user("cupo").authorities(() -> "PLAYERFPP")))
                 .andExpect(jsonPath("$.monthlyReports.used").value(5))
                 .andExpect(jsonPath("$.monthlyReports.limit").value(5));
+        // Cada pedido queda en su historial, con la fecha y la hora y cuál fue (el rechazado, no).
+        mvc.perform(get("/api/history").with(user("cupo").authorities(() -> "PLAYERFPP")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5))
+                .andExpect(jsonPath("$[0].detail").value("Jugador · Apertura + Clausura 2026"))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty());
+        // Sin sesión, nada.
+        mvc.perform(get("/api/history")).andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -82,6 +82,11 @@
 
     <div id="visor" hidden></div>
 
+    <section class="rr-history" id="historial" aria-labelledby="historial-titulo">
+        <h2 class="section-title" id="historial-titulo">Informes generados</h2>
+        <div id="historial-lista"><p class="hint">Cargando…</p></div>
+    </section>
+
     <footer>© 2026 RinkReports · Un producto de <a href="/madsports">Mad Sports</a>.</footer>
 </div>
 
@@ -214,6 +219,7 @@
             });
             const job = await poll(`/api/reports/${body.id}`);
             status("Informe listo.");
+            rrHistory();
             rrShowReport($("visor"), job, `${me.club.name} · ${PERIOD[$("periodo").value]} ${$("anio").value}`);
         } catch (e) {
             status(e.message, true);
@@ -225,6 +231,7 @@
         if (!s) return;
         me = s;
         loadCatalog();
+        rrHistory();
     });
 </script>
 </body>

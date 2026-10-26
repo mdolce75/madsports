@@ -171,7 +171,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
-    for (const [id, text, href] of product.items) {
+    // Con sesión, en la pantalla del club o del jugador: solo lo suyo (su informe y los que generó); los ejemplos y
+    // "Por qué RinkReports" son para quien todavía no tiene cuenta.
+    const own = ["club", "player"].includes(document.body.dataset.section)
+        ? [[document.body.dataset.section, "Mi informe", location.pathname], ["history", "Informes generados", "#historial"]]
+        : product.items;
+    for (const [id, text, href] of own) {
         const a = document.createElement("a");
         a.href = href;
         a.textContent = text;

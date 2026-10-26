@@ -63,9 +63,12 @@ public class PlayerController {
                 .orElseThrow(() -> new AccessDeniedException("Tu usuario no tiene un jugador vinculado."));
         Federation fed = u.federation();
         // Dentro del cupo del mes (5 informes en el Jugador free): cada pedido cuenta.
-        PlayerReportService.Job job = quota.consume(u, () -> reports.submit(new PlayerReportService.Query(u.getPlayerId(),
+        Scope scope = Scope.parse(req.period());
+        int year = catalog.checkYear(req.year());
+        PlayerReportService.Job job = quota.consume(u, "Jugador · " + scope.label() + " " + year,
+                () -> reports.submit(new PlayerReportService.Query(u.getPlayerId(),
                 u.getPlayerName(), u.getName() == null ? u.getPlayerName() : u.getName() + " " + u.getLastName(),
-                u.getClubId(), catalog.checkYear(req.year()), Scope.parse(req.period()),
+                u.getClubId(), year, scope,
                 Eligibility.searchLevels(fed, u.getCategory()), u.getBranch(), fed), u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }

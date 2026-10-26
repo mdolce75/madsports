@@ -56,6 +56,8 @@
                 <a class="btn primary" href="/rinkreports/signup.html?option=player">Crear cuenta de jugador</a>
                 <a class="btn ghost" href="/rinkreports/sample.html?kind=player">Ver ejemplo</a>
             </footer>
+            <p class="alt">¿Ya tenés cuenta de jugador? <a href="/rinkreports/login.html?returnTo=%2Frinkreports%2Fplayer.html">Ingresá</a>
+                y vas directo a tu informe.</p>
         </article>
         <article class="example" id="opcion-club">
             <span class="tag">Club</span>
@@ -71,10 +73,11 @@
                 <a class="btn primary" href="/rinkreports/signup.html?option=club">Crear cuenta de club</a>
                 <a class="btn ghost" href="/rinkreports/sample.html?kind=club">Ver ejemplo</a>
             </footer>
+            <p class="alt">¿Ya tenés cuenta de club? <a href="/rinkreports/login.html?returnTo=%2Frinkreports%2Fclub.html">Ingresá</a>
+                y vas directo a tu informe.</p>
         </article>
     </div>
 
-    <p class="alt">¿Ya tenés una cuenta? <a href="/rinkreports/login.html?returnTo=%2Frinkreports">Ingresá</a> y vas directo a tu informe.</p>
     </div>
     </div>
 
@@ -84,21 +87,8 @@
 <script src="/js/app.js"></script>
 <script src="/js/reports.js"></script>
 <script>
-    // Con sesión: en lugar de crear cuenta, el acceso directo a su informe.
-    rrSessionBar().then(s => {
-        if (!s) return;
-        for (const cta of document.querySelectorAll("[data-cta]")) {
-            const ownPlayer = (cta.dataset.cta === "club" && s.home === "/rinkreports/club.html")
-                || (cta.dataset.cta === "player" && s.home === "/rinkreports/player.html");
-            const create = cta.querySelector(".btn.primary");
-            if (ownPlayer) {
-                create.href = s.home;
-                create.textContent = "Ir a mi informe";
-            } else {
-                create.remove();
-            }
-        }
-    });
+    // La portada es para quien todavía no tiene cuenta: con sesión de RinkReports, directo a su informe.
+    rrSessionBar();
 </script>
 </body>
 </html>

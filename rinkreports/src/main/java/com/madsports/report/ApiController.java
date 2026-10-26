@@ -90,7 +90,7 @@ public class ApiController {
                 || req.branch() == null || req.branch().isBlank())) {
             throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
         }
-        ReportService.Job job = quota.consume(u, () -> req.wholeClub()
+        ReportService.Job job = quota.consume(u, detail(req, scope, year), () -> req.wholeClub()
                 ? reports.submitClub(req.clubId(), scope, year, u.federation(), u.principal(), req.categories())
                 : reports.submit(new ReportService.Request(req.clubId(), req.category(), req.branch(), scope, year,
                         u.federation()), u.principal()));
@@ -165,4 +165,33 @@ public class ApiController {
     ProblemDetail upstream(SidgadException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer el sitio de la FPP: " + e.getMessage());
     }
+
+    /** Qué informe es, para el historial: "Club completo · Apertura + Clausura 2026", "Juvenil Masculino · ...". */
+    static String detail(ReportRequest req, ReportService.Scope scope, int year) {
+        String what;
+        if (!req.wholeClub()) {
+            what = label(req.category()) + " " + label(req.branch());
+        } else if (req.categories() == null || req.categories().isEmpty()) {
+            what = "Club completo";
+        } else {
+            java.util.List<String> names = req.categories().stream().filter(java.util.Objects::nonNull).map(k -> {
+                String[] p = k.split("\\|");
+                return label(p[0]) + (p.length > 1 ? " " + label(p[1]) : "");
+            }).toList();
+            what = names.size() <= 3 ? String.join(", ", names) : names.size() + " categorías: "
+                    + String.join(", ", names.subList(0, 3)) + "…";
+        }
+        String text = what + " · " + scope.label() + " " + year;
+        return text.length() <= 200 ? text : text.substring(0, 199) + "…";
+    }
+
+    /** "INFANTIL:B" → "Infantil B", "MASCULINO" → "Masculino". */
+    private static String label(String key) {
+        String k = key == null ? "" : key.trim().replace(':', ' ').toLowerCase(java.util.Locale.ROOT);
+        return java.util.Arrays.stream(k.split(" ")).filter(w -> !w.isEmpty())
+                .map(w -> w.length() == 1 ? w.toUpperCase(java.util.Locale.ROOT)
+                        : Character.toUpperCase(w.charAt(0)) + w.substring(1))
+                .collect(java.util.stream.Collectors.joining(" "));
+    }
+
 }
