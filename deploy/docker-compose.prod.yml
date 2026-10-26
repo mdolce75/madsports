@@ -1,0 +1,63 @@
+# Producción en un servidor (DonWeb u otro VPS con Docker): la app, PostgreSQL y Caddy (HTTPS automático para los
+# tres dominios). Las variables van en deploy/.env (copia de deploy/.env.example, fuera de git).
+#
+#   cd deploy && docker compose -f docker-compose.prod.yml up -d --build
+#
+# Ver docs/despliegue-donweb.md.
+name: madsports
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: madsports
+      POSTGRES_USER: madsports
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en deploy/.env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U madsports -d madsports"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MADSPORTS_DB_URL: jdbc:postgresql://db:5432/madsports
+      MADSPORTS_DB_USER: madsports
+      MADSPORTS_DB_PASSWORD: ${DB_PASSWORD}
+      # Los informes generados (PDF, Excel y HTML de cada pedido), en un volumen que entra en los respaldos.
+      REPORTS_DIR: /data/informes
+      # Detrás de Caddy: la IP real del visitante y el https (el límite de intentos usa la IP).
+      FORWARD_HEADERS_STRATEGY: native
+    volumes:
+      - informes:/data/informes
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  db-data:
+  informes:
+  caddy-data:
+  caddy-config:
