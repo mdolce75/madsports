@@ -100,8 +100,13 @@ public class SignupService {
         if (users.existsByUsernameAndProduct(username, product)) {
             throw new ConflictException("El usuario " + username + " ya existe en " + product.displayName() + ".");
         }
-        if (users.existsByEmailIgnoreCaseAndProduct(email, product)) {
-            throw new ConflictException("Ya hay una cuenta de " + product.displayName() + " con ese email.");
+        String type = r.profile().userType();
+        if (users.existsByEmailIgnoreCaseAndUserType(email, type)) {
+            throw new ConflictException("Ya hay una cuenta de " + switch (type) {
+                case "PLAYER" -> "jugador";
+                case "COACH" -> "DT";
+                default -> "club";
+            } + " en " + product.displayName() + " con ese email.");
         }
         SubscriptionPlan plan = plan(r);
         int year = catalog.defaultYear();
