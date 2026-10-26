@@ -485,8 +485,9 @@ Abrir http://localhost:8080.
 | `MADSPORTS_DB_URL` | `jdbc:h2:file:./data/madsports` | Base de usuarios |
 | `MADSPORTS_DB_USER` / `MADSPORTS_DB_PASSWORD` | `sa` / vacío | Credenciales de la base |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
-| `MAIL_FROM` | `RinkMetrics <info@madsportsapp.com>` | Remitente (tiene que ser un dominio verificado en el proveedor) |
+| `MAIL_FROM` | `MadSports <info@madsports.com.ar>` | Remitente (tiene que ser un dominio verificado en el proveedor). El nombre lo pone cada mail: el del producto de la cuenta |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
+| `APP_URL_MADSPORTS`, `APP_URL_RINKREPORTS`, `APP_URL_RINKMETRICS` | vacío (`APP_BASE_URL`) | Un dominio por sitio (`https://madsports.com.ar`, `https://rinkreports.com.ar`, `https://rinkmetrics.com.ar`): la raíz de cada producto es su portada, sus páginas pedidas en otro dominio llevan al suyo y los mails enlazan al del producto de la cuenta. Ver `docs/produccion.md` |
 | `DOLLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
 | `DOLLAR_FALLBACK` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |

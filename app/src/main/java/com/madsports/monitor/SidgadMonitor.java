@@ -2,7 +2,9 @@ package com.madsports.monitor;
 
 import com.madsports.account.MailContent;
 import com.madsports.account.Mailer;
+import com.madsports.account.Product;
 import com.madsports.catalog.CatalogService;
+import com.madsports.config.SiteUrls;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
@@ -46,18 +48,18 @@ public class SidgadMonitor implements HealthIndicator {
     private final Mailer mailer;
     private final Clock clock;
     private final String alerts;
-    private final String baseUrl;
+    private final SiteUrls urls;
     private volatile Outcome last;
 
     public SidgadMonitor(SidgadClient client, CatalogService catalog, Mailer mailer, Clock clock,
                          @Value("${madsports.alerts.email:}") String alerts,
-                         @Value("${madsports.mail.base-url}") String baseUrl) {
+                         SiteUrls urls) {
         this.client = client;
         this.catalog = catalog;
         this.mailer = mailer;
         this.clock = clock;
         this.alerts = alerts == null ? "" : alerts.trim();
-        this.baseUrl = baseUrl;
+        this.urls = urls;
     }
 
     @Scheduled(cron = "${madsports.monitor.cron:0 0 8 * * *}", zone = "America/Argentina/Buenos_Aires")
@@ -136,7 +138,7 @@ public class SidgadMonitor implements HealthIndicator {
             return;
         }
         mailer.send(new MailContent(alerts, "RinkMetrics: " + subject, summaryOf, "Monitoreo", subject, "team",
-                List.of(summaryOf, "Detalle: " + r.detail()), "Abrir RinkMetrics", baseUrl,
+                List.of(summaryOf, "Detalle: " + r.detail()), "Abrir RinkMetrics", urls.url(Product.METRICS),
                 "Aviso automático del chequeo diario de SIDGAD (" + r.when() + ")."));
     }
 

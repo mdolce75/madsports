@@ -53,9 +53,16 @@ server:
 # Configuración de la app. Las variables de entorno de antes (en castellano) siguen valiendo como respaldo.
 madsports:
   mail:
-    from: ${MAIL_FROM:RinkMetrics <info@madsportsapp.com>}
+    # Remitente: el nombre lo pone cada mail (el del producto de la cuenta); vale la dirección.
+    from: ${MAIL_FROM:MadSports <info@madsports.com.ar>}
     # Dirección pública de la web, para armar los enlaces de los mails
     base-url: ${APP_BASE_URL:http://localhost:8080}
+  # Un dominio por sitio (SiteUrls, DomainFilter): https://madsports.com.ar, https://rinkreports.com.ar y
+  # https://rinkmetrics.com.ar. El que queda vacío usa APP_BASE_URL; vacíos los tres, todo en una sola dirección.
+  urls:
+    home: ${APP_URL_MADSPORTS:}
+    reports: ${APP_URL_RINKREPORTS:}
+    metrics: ${APP_URL_RINKMETRICS:}
   sidgad:
     base-url: https://www.server2.sidgad.es/cap/
     origin: https://www.buenosaires.sidgad.com

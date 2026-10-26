@@ -159,9 +159,10 @@ document.addEventListener("DOMContentLoaded", () => {
         brand.append(link);
     }
     // Volver a Mad Sports, la home de la compañía: antes de la barra del usuario o, sin ella, después del menú.
+    // /madsports y no "/": con un dominio por sitio, la raíz de rinkreports.com.ar es la portada de RinkReports.
     const home = document.createElement("a");
     home.className = "to-madsports";
-    home.href = "/";
+    home.href = "/madsports";
     home.textContent = "← Mad Sports";
     if (document.body.classList.contains("coach-page")) {
         $("userbar").before(home);

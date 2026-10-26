@@ -1,6 +1,7 @@
 package com.madsports.account;
 
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,9 @@ public class Mailer {
         try {
             MimeMessage msg = smtp.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
-            helper.setFrom(from);
+            // El remitente lleva el nombre del producto de la cuenta ("RinkReports <info@madsports.com.ar>").
+            helper.setFrom(new InternetAddress(new InternetAddress(from).getAddress(), m.product().displayName(),
+                    "UTF-8"));
             helper.setTo(m.to());
             helper.setSubject(m.subject());
             helper.setText(m.text(), html(m));
@@ -76,7 +79,7 @@ public class Mailer {
             smtp.send(msg);
             log.info("Mail enviado a {}: {}", m.to(), m.subject());
             return true;
-        } catch (MessagingException | MailException e) {
+        } catch (MessagingException | MailException | java.io.UnsupportedEncodingException e) {
             log.error("No se pudo enviar el mail a {}: {}", m.to(), e.getMessage());
             return false;
         }

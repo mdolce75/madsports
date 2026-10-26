@@ -1,6 +1,6 @@
 # Producción
 
-Guía para poner RinkMetrics en un servidor: base PostgreSQL gestionada, variables de entorno, health check, chequeo
+Guía para poner Mad Sports en un servidor: base PostgreSQL gestionada, variables de entorno, dominios, health check, chequeo
 diario de SIDGAD y respaldos. Localmente la app sigue andando con H2 en archivo, sin configurar nada.
 
 ## Base de datos: PostgreSQL
@@ -53,6 +53,67 @@ Además de las de la base y las del README (`SMTP_*`, `MAIL_FROM`, `APP_BASE_URL
 
 Los contadores del límite de intentos viven en memoria: con una sola instancia alcanza. Con varias, cada una cuenta lo
 suyo (el límite real se multiplica por la cantidad de instancias).
+
+## Dominios
+
+Una sola app sirve los tres sitios, cada uno con su dominio:
+
+| Dominio | Muestra |
+|---|---|
+| `madsports.com.ar` | La home de Mad Sports |
+| `rinkreports.com.ar` | RinkReports: la raíz es su portada; ingreso, registro, informes de club y de jugador |
+| `rinkmetrics.com.ar` | RinkMetrics: la raíz es su portada; ingreso, registro, la planilla del DT y la demo |
+
+Variables de la app:
+
+```
+APP_BASE_URL=https://madsports.com.ar
+APP_URL_MADSPORTS=https://madsports.com.ar
+APP_URL_RINKREPORTS=https://rinkreports.com.ar
+APP_URL_RINKMETRICS=https://rinkmetrics.com.ar
+MAIL_FROM=MadSports <info@madsports.com.ar>
+FORWARD_HEADERS_STRATEGY=native
+```
+
+Con eso (`DomainFilter`):
+
+- La raíz de cada producto es su portada.
+- Las páginas de un producto pedidas en otro dominio llevan al suyo.
+- El enlace "Mad Sports" de los productos lleva a la home.
+- Los mails enlazan al dominio del producto de la cuenta y salen con su nombre ("RinkReports <info@madsports.com.ar>").
+
+Las sesiones son de cada dominio, como las cuentas: una de RinkReports y otra de RinkMetrics.
+
+### DNS (en el proveedor de DNS de cada dominio)
+
+| Dominio | Registro | Valor |
+|---|---|---|
+| `madsports.com.ar`, `rinkreports.com.ar`, `rinkmetrics.com.ar` | `A` en `@` | La IP del servidor |
+| Los tres | `CNAME` en `www` | El mismo dominio sin `www` (`madsports.com.ar`...) |
+| `madsports.com.ar` | Los que pide Resend al agregar el dominio (`MX` y `TXT` de `send`, `TXT` de `resend._domainkey`) | Los que muestra Resend |
+
+Resend, en el plan gratuito, verifica un dominio: los mails de los dos productos salen de `madsports.com.ar`. Para
+recibir lo que escriben a `info@madsports.com.ar` (la dirección de contacto de la home) hace falta un reenvío a un correo
+propio: Email Routing de Cloudflare (gratis) o el del proveedor del dominio.
+
+### HTTPS: Caddy delante de la app
+
+Caddy saca y renueva solo los certificados de los seis nombres (`www` incluidos) cuando el DNS ya apunta al servidor:
+
+```
+madsports.com.ar, rinkreports.com.ar, rinkmetrics.com.ar {
+    reverse_proxy app:8080
+}
+www.madsports.com.ar {
+    redir https://madsports.com.ar{uri} permanent
+}
+www.rinkreports.com.ar {
+    redir https://rinkreports.com.ar{uri} permanent
+}
+www.rinkmetrics.com.ar {
+    redir https://rinkmetrics.com.ar{uri} permanent
+}
+```
 
 ## Health check
 

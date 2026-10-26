@@ -1,7 +1,7 @@
 package com.madsports.account;
 
 import com.madsports.account.UserToken.Kind;
-import org.springframework.beans.factory.annotation.Value;
+import com.madsports.config.SiteUrls;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.stereotype.Service;
@@ -40,19 +40,19 @@ public class AccountService {
     private final Mailer mailer;
     private final Clock clock;
     private final PersistentTokenRepository remembered;
-    private final String baseUrl;
+    private final SiteUrls urls;
     private final SecureRandom random = new SecureRandom();
 
     public AccountService(UserAccountRepository users, UserTokenRepository tokens, PasswordEncoder encoder,
                          Mailer mailer, Clock clock, PersistentTokenRepository remembered,
-                         @Value("${madsports.mail.base-url}") String baseUrl) {
+                         SiteUrls urls) {
         this.users = users;
         this.tokens = tokens;
         this.encoder = encoder;
         this.mailer = mailer;
         this.clock = clock;
         this.remembered = remembered;
-        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.urls = urls;
     }
 
     /** Manda el enlace para confirmar el email (después del registro, o si lo pide de nuevo). */
@@ -70,7 +70,7 @@ public class AccountService {
                         + "), confirmá tu email con el botón de abajo.",
                         p == Product.METRICS ? "Después ya podés ingresar y registrar las estadísticas de tus partidos."
                                 : "Después ya podés ingresar y ver tus informes de hockey sobre patines."),
-                "Confirmar mi email", baseUrl + "/api/verify?token=" + token,
+                "Confirmar mi email", urls.url(p) + "/api/verify?token=" + token,
                 "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.", p));
     }
 
@@ -114,7 +114,7 @@ public class AccountService {
                     "Tu cuenta", "Elegí una clave nueva", greetingOf(u),
                     List.of("Pediste cambiar la clave de tu usuario " + u.getUsername()
                             + ". Elegí una nueva con el botón de abajo."),
-                    "Elegir clave nueva", baseUrl + "/reset-password.html?product=" + p.name().toLowerCase(Locale.ROOT)
+                    "Elegir clave nueva", urls.url(p) + "/reset-password.html?product=" + p.name().toLowerCase(Locale.ROOT)
                             + "&token=" + token,
                     "El enlace vale 1 hora y se puede usar una sola vez. Si no lo pediste, ignorá este mail: "
                             + "tu clave sigue siendo la misma.", p));
