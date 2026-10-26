@@ -36,8 +36,15 @@ public class ApiController {
      * @param rama      MASCULINO o FEMENINO
      * @param periodo   APERTURA, CLAUSURA, TEMPORADA (Apertura + Clausura, por defecto) o ULTIMOS_5
      * @param anio      año (p. ej. 2026); si falta, el más reciente con datos
+     * @param categories informe del club con solo esas categorías, de una o de las dos ramas ("JUVENIL|MASCULINO",
+     *                   "INFANTIL:B|FEMENINO"); vacío, todas
      */
-    public record ReportRequest(@Positive int clubId, String category, String branch, String period, Integer year) {
+    public record ReportRequest(@Positive int clubId, String category, String branch, String period, Integer year,
+                                java.util.List<String> categories) {
+
+        public ReportRequest(int clubId, String category, String branch, String period, Integer year) {
+            this(clubId, category, branch, period, year, null);
+        }
 
         boolean wholeClub() {
             return (category == null || category.isBlank()) && (branch == null || branch.isBlank());
@@ -84,7 +91,7 @@ public class ApiController {
             throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
         }
         ReportService.Job job = quota.consume(u, () -> req.wholeClub()
-                ? reports.submitClub(req.clubId(), scope, year, u.federation(), u.principal())
+                ? reports.submitClub(req.clubId(), scope, year, u.federation(), u.principal(), req.categories())
                 : reports.submit(new ReportService.Request(req.clubId(), req.category(), req.branch(), scope, year,
                         u.federation()), u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));

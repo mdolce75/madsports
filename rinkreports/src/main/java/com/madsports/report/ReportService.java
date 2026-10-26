@@ -202,6 +202,11 @@ public class ReportService {
 
     /** Una categoría del club (un equipo) en una rama, para el informe del club completo. */
     record ClubCategory(Category category, CategoryOption option, String levelLabel) {
+
+        /** Cómo se elige en la web: "JUVENIL|MASCULINO", "INFANTIL:B|FEMENINO". */
+        String selectionKey() {
+            return option.key() + "|" + category.branch();
+        }
     }
 
     /**
@@ -209,19 +214,42 @@ public class ReportService {
      * Valida (falla rápido) y encola; cada categoría se arma como su informe y lleva su análisis.
      */
     public Job submitClub(int clubId, Scope scope, int year, Federation fed, String owner) {
+        return submitClub(clubId, scope, year, fed, owner, null);
+    }
+
+    /**
+     * El informe del club con solo las categorías elegidas, de una o de las dos ramas.
+     *
+     * @param selection "JUVENIL|MASCULINO", "INFANTIL:B|FEMENINO"... (categoría como en el catálogo y rama); vacío o
+     *                  null, todas las del club
+     */
+    public Job submitClub(int clubId, Scope scope, int year, Federation fed, String owner, List<String> selection) {
         if (!catalog.available(fed, year)) {
             throw new IllegalArgumentException(CatalogService.unavailableMessage(fed, year));
         }
         ClubView club = catalog.club(fed, clubId, year);
-        List<ClubCategory> categories = clubCategories(club, fed, scope, year);
-        if (categories.isEmpty()) {
+        List<ClubCategory> all = clubCategories(club, fed, scope, year);
+        if (all.isEmpty()) {
             throw new IllegalArgumentException(club.name() + " no tiene equipos"
                     + (scope.tournament() == null ? "" : " en el " + scope.tournament().label()) + " en " + year + ".");
+        }
+        List<ClubCategory> categories = selection == null || selection.isEmpty() ? all : select(all, selection);
+        if (categories.isEmpty()) {
+            throw new IllegalArgumentException("Ninguna de las categorías elegidas tiene partidos"
+                    + (scope.tournament() == null ? "" : " en el " + scope.tournament().label()) + " en " + year
+                    + ". Elegí otras.");
         }
         Job job = new Job(new Request(clubId, null, null, scope, year, fed), owner);
         jobs.put(job.id(), job);
         executor.submit(() -> sidgad.forClubReport(() -> runClub(job, club, categories)));
         return job;
+    }
+
+    /** De las categorías del club, las elegidas ("JUVENIL|MASCULINO", sin distinguir mayúsculas), en el mismo orden. */
+    static List<ClubCategory> select(List<ClubCategory> categories, List<String> selection) {
+        java.util.Set<String> chosen = selection.stream().filter(java.util.Objects::nonNull)
+                .map(k -> k.trim().toUpperCase(java.util.Locale.ROOT)).collect(java.util.stream.Collectors.toSet());
+        return categories.stream().filter(c -> chosen.contains(c.selectionKey())).toList();
     }
 
     /** Las categorías del club que juegan en el período: Masculino y después Femenino, cada una de Infantil a Primera. */

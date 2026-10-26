@@ -62,6 +62,12 @@
         <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos de cada categoría: récord, goles, faltas y tarjetas de
             esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
 
+        <fieldset class="cats" id="cats-field" hidden>
+            <legend><span class="num"><i>4</i></span>Ramas y categorías</legend>
+            <div id="cats"></div>
+            <p class="hint" id="cats-hint"></p>
+        </fieldset>
+
         <button class="go" id="go" type="submit" disabled>Ver informe</button>
 
         <ul class="steps" id="steps" hidden>
@@ -92,16 +98,63 @@
         return catalog.clubs.find(c => String(c.id) === $("club").value);
     }
 
-    // Qué incluye el informe: las categorías del club en cada rama.
+    // Qué incluye el informe: las categorías del club en cada rama, todas marcadas. Se puede dejar una rama entera,
+    // una sola categoría o varias; la casilla de cada rama marca o desmarca todas sus categorías.
     function showCategories() {
         const club = selectedClub();
-        const parts = club ? ["MASCULINO", "FEMENINO"].map(b => {
-            const cats = club.categories.filter(c => c.branches.includes(b)).map(c => c.label);
-            return cats.length ? `${BRANCH_LABEL[b]}: ${cats.join(", ")}` : null;
-        }).filter(Boolean) : [];
-        $("categorias").textContent = parts.length ? "Incluye " + parts.join(" · ") + ". Tarda unos minutos: lee las actas "
-            + "de todas las categorías." : "";
-        $("go").disabled = parts.length === 0;
+        const box = $("cats");
+        box.innerHTML = "";
+        let any = false;
+        for (const b of ["MASCULINO", "FEMENINO"]) {
+            const cats = club ? club.categories.filter(c => c.branches.includes(b)) : [];
+            if (!cats.length) continue;
+            any = true;
+            const group = document.createElement("div");
+            group.className = "cat-branch";
+            const all = document.createElement("label");
+            all.className = "cat-all";
+            all.innerHTML = `<input type="checkbox" checked data-branch="${b}"> <b>${BRANCH_LABEL[b]}</b>`;
+            group.append(all);
+            const list = document.createElement("div");
+            list.className = "cat-list";
+            for (const c of cats) {
+                const l = document.createElement("label");
+                l.innerHTML = `<input type="checkbox" checked name="cat" value="${c.key}|${b}"> ${c.label}`;
+                list.append(l);
+            }
+            group.append(list);
+            box.append(group);
+            all.querySelector("input").addEventListener("change", ev => {
+                list.querySelectorAll("input").forEach(i => { i.checked = ev.target.checked; });
+                updateCategories();
+            });
+            list.addEventListener("change", () => {
+                const boxes = [...list.querySelectorAll("input")];
+                const head = all.querySelector("input");
+                head.checked = boxes.every(i => i.checked);
+                head.indeterminate = !head.checked && boxes.some(i => i.checked);
+                updateCategories();
+            });
+        }
+        $("cats-field").hidden = !any;
+        $("categorias").textContent = "";
+        updateCategories();
+    }
+
+    /** Las categorías marcadas ("JUVENIL|MASCULINO"); null si están todas (el club completo). */
+    function chosenCategories() {
+        const boxes = [...document.querySelectorAll("#cats input[name=cat]")];
+        const on = boxes.filter(i => i.checked).map(i => i.value);
+        return on.length === boxes.length ? null : on;
+    }
+
+    function updateCategories() {
+        const total = document.querySelectorAll("#cats input[name=cat]").length;
+        const on = document.querySelectorAll("#cats input[name=cat]:checked").length;
+        $("cats-hint").textContent = !total ? "" : on === 0 ? "Elegí al menos una categoría."
+            : (on === total ? "El club completo" : `${on} de ${total} categorías`)
+            + ". Tarda unos minutos: lee las actas de cada categoría elegida.";
+        $("go").disabled = on === 0;
     }
 
     // Carga el catálogo del año (sin año: el más reciente con datos) de la federación del usuario.
@@ -156,7 +209,8 @@
             const body = await postJson("/api/reports", {
                 clubId: Number($("club").value),
                 period: $("periodo").value,
-                year: Number($("anio").value)
+                year: Number($("anio").value),
+                categories: chosenCategories()
             });
             const job = await poll(`/api/reports/${body.id}`);
             status("Informe listo.");
@@ -164,7 +218,7 @@
         } catch (e) {
             status(e.message, true);
         } finally {
-            $("go").disabled = false;
+            updateCategories();
         }
     });
     requireProfile(["CLUBFPP", "CLUBAMP"]).then(s => {

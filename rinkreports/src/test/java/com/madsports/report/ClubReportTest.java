@@ -128,5 +128,14 @@ class ClubReportTest {
                 ReportService.Scope.SEASON, 2026);
         assertThat(all).extracting(c -> c.levelLabel() + " " + c.category().branchLabel())
                 .containsExactly("Infantil A Masculino", "Infantil B Masculino", "Primera Masculino", "Infantil A Femenino");
+
+        // Solo las elegidas, de una o de las dos ramas, en el mismo orden (Masculino primero).
+        assertThat(ReportService.select(all, List.of("infantil:a|femenino", "PRIMERA|MASCULINO")))
+                .extracting(c -> c.levelLabel() + " " + c.category().branchLabel())
+                .containsExactly("Primera Masculino", "Infantil A Femenino");
+        assertThat(ReportService.select(all, List.of("INFANTIL:A|MASCULINO", "INFANTIL:B|MASCULINO", "PRIMERA|MASCULINO")))
+                .allMatch(c -> c.category().branch().equals("MASCULINO")).hasSize(3);
+        // Una que el club no juega en el período no suma nada.
+        assertThat(ReportService.select(all, List.of("PRIMERA|FEMENINO"))).isEmpty();
     }
 }
