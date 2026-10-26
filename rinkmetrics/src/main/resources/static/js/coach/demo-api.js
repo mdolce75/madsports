@@ -58,7 +58,7 @@ export function createApi({session, teams = [], players = [], matches = [], club
     /** El equipo pedido; sin id, el primero. */
     function team(id) {
         if (id == null) {
-            if (!teams.length) throw badRequest("Primero creá un equipo en la sección Equipo.");
+            if (!teams.length) throw badRequest("Primero creá un equipo en la sección Equipos.");
             return teams[0];
         }
         const e = teams.find(x => x.id === id);

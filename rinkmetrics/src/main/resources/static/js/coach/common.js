@@ -82,7 +82,7 @@ export const keyList = squad => squad.map(j => ({key: "j" + j.id, number: j.numb
 export function withoutTeams(box) {
     const p = el("p", "coach-aviso-equipo");
     p.append("Todavía no tenés equipos. Crealos en ");
-    const a = el("a", null, "Equipo");
+    const a = el("a", null, "Equipos");
     a.href = "#team";
     p.append(a, ", con sus jugadores.");
     box.replaceChildren(p);

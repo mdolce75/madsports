@@ -410,7 +410,7 @@ class CoachControllerTest {
                 .andExpect(jsonPath("$.detail").value("Cada tiempo dura entre 10 y 40 minutos."));
         // Sin equipos no hay partidos.
         send(post("/api/coach/matches"), "otro", Map.of("opponent", "HURACAN")).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("Primero creá un equipo en la sección Equipo."));
+                .andExpect(jsonPath("$.detail").value("Primero creá un equipo en la sección Equipos."));
     }
 
     @Test

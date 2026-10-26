@@ -95,7 +95,7 @@ if (s) {
     await Queue.start(async ev => {
         if (!(await Match.onQueueChange(ev)) && view === "matches" && ev.match) Matches.load();
     });
-    // Un DT sin equipos empieza por la sección Equipo: sin equipo ni jugadores no hay partido que cargar.
+    // Un DT sin equipos empieza por la sección Equipos: sin equipo ni jugadores no hay partido que cargar.
     try {
         if (!location.hash && !(await fetchTeams()).length) history.replaceState(null, "", location.pathname + location.search + "#team");
     } catch (e) { /* sin señal: el panel avisa */ }

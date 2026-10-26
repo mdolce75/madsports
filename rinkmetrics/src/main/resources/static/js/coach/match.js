@@ -253,9 +253,9 @@ function renderPlayers() {
         box.replaceChildren();
         if (!list.length) {
             const p = el("p", "coach-note");
-            const a = el("a", null, "Equipo");
+            const a = el("a", null, "Equipos");
             a.href = "#team";
-            p.append("Este equipo no tiene jugadores: cargalos en ", a, ", o agregá uno solo para este partido.");
+            p.append("Este equipo no tiene jugadores: tildalos en ", a, ", o agregá uno solo para este partido.");
             box.append(p);
         }
         for (const j of list) {

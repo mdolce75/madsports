@@ -57,7 +57,7 @@ public class TeamService {
     public Team team(UserAccount u, Long id) {
         if (id == null) {
             return teams.findByUserIdOrderByIdAsc(u.getId()).stream().findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Primero creá un equipo en la sección Equipo."));
+                    .orElseThrow(() -> new IllegalArgumentException("Primero creá un equipo en la sección Equipos."));
         }
         return teams.findByIdAndUserId(id, u.getId())
                 .orElseThrow(() -> new CoachService.NotFoundException("No existe ese equipo."));

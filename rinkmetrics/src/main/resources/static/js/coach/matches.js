@@ -5,7 +5,7 @@ const chosenOpponent = () => $("rival").value.trim();
 
 async function create() {
     const e = teamOf($("equipo"));
-    if (!e) { status("Primero creá un equipo en Equipo.", true); return; }
+    if (!e) { status("Primero creá un equipo en Equipos.", true); return; }
     const body = {team: e.id, opponent: chosenOpponent(), date: $("fecha").value || null,
         home: $("local").value === "true", tournament: $("torneo").value.trim() || null, minutes: Number($("minutos").value)};
     if (!body.opponent) { status("Escribí el rival.", true); return; }
