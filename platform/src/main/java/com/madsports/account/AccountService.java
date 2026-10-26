@@ -75,18 +75,20 @@ public class AccountService {
     }
 
     /**
-     * Vuelve a mandar la confirmación, si hay una cuenta sin confirmar con ese email (o ese usuario).
+     * Vuelve a mandar la confirmación a las cuentas sin confirmar con ese email (o ese usuario).
      *
-     * @param producto el de la pantalla desde donde se pide (el email puede tener una cuenta en cada producto)
+     * @param producto el de la pantalla desde donde se pide (el email puede tener una cuenta en cada producto, y en
+     *                 RinkReports una de club y otra de jugador)
      */
     @Transactional
     public void resendVerification(String email, String username, Product product) {
-        Optional<UserAccount> u = findByEmail(email, product);
-        if (u.isEmpty() && username != null && !username.isBlank()) {
+        List<UserAccount> accounts = findByEmail(email, product);
+        if (accounts.isEmpty() && username != null && !username.isBlank()) {
             String name = username.trim().toLowerCase(java.util.Locale.ROOT);
-            u = product != null ? users.findByUsernameAndProduct(name, product) : users.findByUsername(name);
+            accounts = (product != null ? users.findByUsernameAndProduct(name, product) : users.findByUsername(name))
+                    .stream().toList();
         }
-        u.filter(x -> !x.isEmailVerified()).ifPresent(this::sendVerification);
+        accounts.stream().filter(x -> !x.isEmailVerified()).forEach(this::sendVerification);
     }
 
     /** @return el producto de la cuenta si el enlace era válido y el email quedó confirmado; vacío si no */
@@ -101,13 +103,14 @@ public class AccountService {
     }
 
     /**
-     * "Olvidé mi clave": manda el enlace para elegir una nueva, si existe una cuenta con ese email.
+     * "Olvidé mi clave": manda el enlace para elegir una nueva a cada cuenta con ese email (en RinkReports puede tener
+     * una de club y otra de jugador: un mail por cuenta, cada uno con su usuario).
      *
      * @param producto el de la pantalla desde donde se pide (el email puede tener una cuenta en cada producto)
      */
     @Transactional
     public void forgotPassword(String email, Product product) {
-        findByEmail(email, product).filter(u -> !recentlySent(u, Kind.PASSWORD_RESET)).ifPresent(u -> {
+        findByEmail(email, product).stream().filter(u -> !recentlySent(u, Kind.PASSWORD_RESET)).forEach(u -> {
             String token = newToken(u, Kind.PASSWORD_RESET, RESET_VALIDITY);
             Product p = u.getProduct();
             mailer.send(new MailContent(u.getEmail(), "Elegí una clave nueva para " + p.displayName(),
@@ -141,13 +144,13 @@ public class AccountService {
         remembered.removeUserTokens(t.getUser().principal());
     }
 
-    /** La cuenta con ese email en el producto; sin producto, la primera que haya (la más antigua). */
-    private Optional<UserAccount> findByEmail(String email, Product product) {
+    /** Las cuentas con ese email en el producto; sin producto, la primera que haya (la más antigua). */
+    private List<UserAccount> findByEmail(String email, Product product) {
         if (email == null || email.isBlank()) {
-            return Optional.empty();
+            return List.of();
         }
-        return product != null ? users.findByEmailIgnoreCaseAndProduct(email.trim(), product)
-                : users.findByEmailIgnoreCaseOrderByIdAsc(email.trim()).stream().findFirst();
+        return product != null ? users.findByEmailIgnoreCaseAndProductOrderByIdAsc(email.trim(), product)
+                : users.findByEmailIgnoreCaseOrderByIdAsc(email.trim()).stream().limit(1).toList();
     }
 
     private boolean recentlySent(UserAccount u, Kind kind) {

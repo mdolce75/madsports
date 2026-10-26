@@ -48,10 +48,14 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
         return u.isPresent() ? u : findByUsername(username);
     }
 
-    /** El email es único dentro de cada producto (el mismo puede tener una cuenta en RinkReports y otra en RinkMetrics). */
-    boolean existsByEmailIgnoreCaseAndProduct(String email, Product product);
+    /**
+     * El email es único por tipo de cuenta (CLUB, PLAYER, COACH): el mismo puede tener una de club y otra de jugador en
+     * RinkReports, y una de DT en RinkMetrics.
+     */
+    boolean existsByEmailIgnoreCaseAndUserType(String email, String userType);
 
-    Optional<UserAccount> findByEmailIgnoreCaseAndProduct(String email, Product product);
+    /** Las cuentas con ese email en el producto: en RinkReports puede haber una de club y otra de jugador. */
+    List<UserAccount> findByEmailIgnoreCaseAndProductOrderByIdAsc(String email, Product product);
 
     /** Las cuentas con ese email, una por producto como mucho. */
     List<UserAccount> findByEmailIgnoreCaseOrderByIdAsc(String email);

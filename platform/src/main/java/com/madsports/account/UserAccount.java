@@ -48,6 +48,11 @@ public class UserAccount {
     /** Producto de la cuenta (sale del perfil): RinkReports para Club y Jugador, RinkMetrics para el DT. */
     @Enumerated(EnumType.STRING)
     private Product product;
+    /**
+     * Tipo de cuenta (sale del perfil): CLUB, PLAYER o COACH. El email es único por tipo: el mismo puede tener una
+     * cuenta de club y otra de jugador en RinkReports, y una de DT en RinkMetrics.
+     */
+    private String userType;
 
     /** Suscripción comprada (null si todavía no tiene) y su vigencia. */
     @ManyToOne
@@ -81,6 +86,7 @@ public class UserAccount {
         this.profiles = EnumSet.copyOf(profiles);
         this.createdAt = createdAt;
         this.product = Product.de(profiles.iterator().next());
+        this.userType = profiles.iterator().next().userType();
     }
 
     /** Datos del jugador de SIDGAD vinculado (perfiles de jugador). */
@@ -106,6 +112,7 @@ public class UserAccount {
     public String getBranch() { return branch; }
     public Instant getCreatedAt() { return createdAt; }
     public Product getProduct() { return product; }
+    public String getUserType() { return userType; }
     /** Nombre en la sesión y en "Recordarme": producto y usuario ("REPORTS:juan"). */
     public String principal() { return product.principal(username); }
     public boolean isEmailVerified() { return emailVerified; }

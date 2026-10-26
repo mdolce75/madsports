@@ -610,7 +610,7 @@ class SecurityTest {
         Map<String, Object> otherCoach = new HashMap<>(coach);
         otherCoach.put("username", "profe2");
         register(otherCoach).andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Ya hay una cuenta de RinkMetrics con ese email."));
+                .andExpect(jsonPath("$.detail").value("Ya hay una cuenta de DT en RinkMetrics con ese email."));
         // Un jugador de RinkReports con el mismo email: sí.
         Map<String, Object> player = player("profe.jugador");
         player.put("email", "profe@example.com");
@@ -633,6 +633,32 @@ class SecurityTest {
         assertThat(reset.product()).isEqualTo(Product.REPORTS);
         assertThat(reset.url()).contains("/reset-password.html?product=reports&token=");
         assertThat(realMailer.html(reset)).contains("RinkReports").doesNotContain(">RinkMetrics<");
+    }
+
+    @Test
+    void inReportsTheSameEmailCanHaveAClubAndAPlayerAccount() throws Exception {
+        Map<String, Object> clubAccount = club("mail.club");
+        clubAccount.put("email", "familia@example.com");
+        register(clubAccount).andExpect(status().isCreated());
+        Map<String, Object> playerAccount = player("mail.jugador");
+        playerAccount.put("email", "familia@example.com");
+        register(playerAccount).andExpect(status().isCreated());
+        assertThat(users.findByEmailIgnoreCaseAndProductOrderByIdAsc("familia@example.com", Product.REPORTS))
+                .extracting(UserAccount::getUserType).containsExactly("CLUB", "PLAYER");
+        // Otra cuenta de club con ese email: no (es único por tipo de cuenta).
+        Map<String, Object> otherClub = club("mail.club2");
+        otherClub.put("email", "Familia@example.com");
+        register(otherClub).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya hay una cuenta de club en RinkReports con ese email."));
+        // "Olvidé mi clave" desde RinkReports: un mail por cuenta, cada uno con su usuario.
+        mvc.perform(post("/api/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"familia@example.com\",\"product\":\"REPORTS\"}")).andExpect(status().isOk());
+        ArgumentCaptor<MailContent> mails = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer, atLeastOnce()).send(mails.capture());
+        assertThat(mails.getAllValues().stream().filter(m -> m.subject().startsWith("Elegí una clave"))
+                .map(m -> m.paragraphs().get(0)))
+                .anySatisfy(t -> assertThat(t).contains("mail.club"))
+                .anySatisfy(t -> assertThat(t).contains("mail.jugador"));
     }
 
     @Test
