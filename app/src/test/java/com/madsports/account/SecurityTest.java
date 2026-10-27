@@ -536,6 +536,25 @@ class SecurityTest {
     }
 
     @Test
+    void eachSignupIsNotifiedToInfoWithTheEmail() throws Exception {
+        register(club("ana")).andExpect(status().isCreated());
+        ArgumentCaptor<MailContent> mails = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer, atLeastOnce()).send(mails.capture());
+        MailContent notice = mails.getAllValues().stream().filter(m -> m.to().equals("info@madsports.com.ar"))
+                .reduce((a, b) -> b).orElseThrow();
+        assertThat(notice.subject()).contains("ana@example.com");
+        assertThat(notice.paragraphs()).contains("Email: ana@example.com", "Usuario: ana", "Perfil: Club FPP",
+                "Club: VELEZ");
+        // El de un jugador suma el jugador que eligió.
+        register(player("beto")).andExpect(status().isCreated());
+        verify(mailer, atLeastOnce()).send(mails.capture());
+        MailContent player = mails.getAllValues().stream().filter(m -> m.to().equals("info@madsports.com.ar"))
+                .reduce((x, y) -> y).orElseThrow();
+        assertThat(player.paragraphs()).contains("Email: beto@example.com", "Perfil: Jugador FPP",
+                "Jugador: Ignacio J Graiño");
+    }
+
+    @Test
     void resendConfirmationByUserOrEmail() throws Exception {
         register(club("ana")).andExpect(status().isCreated());
         // Un mail por minuto como mucho: el reenvío inmediato no manda otro.

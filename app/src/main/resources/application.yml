@@ -104,6 +104,8 @@ madsports:
     player-paid: ${SIGNUP_PLAYER_PAID:${REGISTRO_JUGADOR_PAGO:false}}
     # La AMP (Mendoza), oculta hasta nuevo aviso: el registro no la ofrece y no se crean cuentas nuevas de la AMP.
     amp: ${SIGNUP_AMP:false}
+    # A quién se avisa por mail de cada registro nuevo (con su email, usuario, perfil y club). Vacío = a nadie.
+    notify: ${SIGNUP_NOTIFY_EMAIL:info@madsports.com.ar}
     # Jugadores de la AMP: próximamente (por ahora, solo de la FPP).
     player-amp: ${SIGNUP_PLAYER_AMP:${REGISTRO_JUGADOR_AMP:false}}
   # Límite de intentos (AttemptLimiter): ingresos fallidos por usuario y por IP en 15 minutos; altas de cuenta y pedidos
