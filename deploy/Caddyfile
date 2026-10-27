@@ -1,0 +1,20 @@
+# HTTPS para los tres sitios: Caddy saca y renueva solo los certificados (Let's Encrypt) cuando el DNS de cada dominio
+# ya apunta a este servidor. Todo va a la misma app, que reparte cada dominio a su sitio (DomainFilter).
+
+madsports.com.ar, rinkreports.com.ar, rinkmetrics.com.ar {
+	encode gzip
+	reverse_proxy app:8080
+}
+
+# Con www: al dominio sin www.
+www.madsports.com.ar {
+	redir https://madsports.com.ar{uri} permanent
+}
+
+www.rinkreports.com.ar {
+	redir https://rinkreports.com.ar{uri} permanent
+}
+
+www.rinkmetrics.com.ar {
+	redir https://rinkmetrics.com.ar{uri} permanent
+}

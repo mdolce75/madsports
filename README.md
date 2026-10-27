@@ -460,6 +460,8 @@ mails (confirmación, recuperar la clave) por IP por hora. Al llegar al máximo 
 
 ## Correr
 
+**En producción:** un servidor con Docker (la app, PostgreSQL y Caddy con HTTPS para los tres dominios): `Dockerfile`, carpeta `deploy/` y la guía paso a paso [docs/despliegue-donweb.md](docs/despliegue-donweb.md).
+
 Requiere JDK 21. Los secretos locales (SMTP de Resend, Gemini) van en un `.env` junto al proyecto, fuera de git;
 ver `.env.example`. En producción se cargan como variables de entorno.
 
