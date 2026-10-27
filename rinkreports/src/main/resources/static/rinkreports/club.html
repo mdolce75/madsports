@@ -69,6 +69,7 @@
         </fieldset>
 
         <button class="go" id="go" type="submit" disabled>Ver informe</button>
+        <p class="hint" id="cupo"></p>
 
         <ul class="steps" id="steps" hidden>
             <li data-s="EXTRACTING">Datos de SIDGAD</li>
@@ -228,6 +229,7 @@
             const job = await poll(`/api/reports/${body.id}`);
             status("Informe listo.");
             rrHistory();
+            showQuota();
             rrShowReport($("visor"), job, `${me.club.name} · ${PERIOD[$("periodo").value]} ${$("anio").value}`);
         } catch (e) {
             status(e.message, true);
@@ -235,9 +237,16 @@
             updateCategories();
         }
     });
+    // Informes disponibles (en el lanzamiento, 5 hasta el 31/12).
+    async function showQuota(s) {
+        s = s || await session();
+        $("cupo").textContent = rrQuota(s.monthlyReports);
+    }
+
     requireProfile(["CLUBFPP", "CLUBAMP"]).then(s => {
         if (!s) return;
         me = s;
+        showQuota(s);
         loadCatalog();
         rrHistory();
     });

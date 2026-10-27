@@ -58,7 +58,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Registro, login y acceso por perfil, con la base H2 en memoria y SIDGAD simulado. */
-@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:seguridad;DB_CLOSE_DELAY=-1")
+// Sin el lanzamiento (cupo de 5 hasta el 31/12, ver ReportQuotaTest): el cupo del mes no depende de la fecha del test.
+@SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:seguridad;DB_CLOSE_DELAY=-1",
+        "madsports.reports.promo-until="})
 @AutoConfigureMockMvc
 class SecurityTest {
 
