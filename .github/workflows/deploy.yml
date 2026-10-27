@@ -1,8 +1,8 @@
 # Despliegue en el servidor de DonWeb cada vez que entra algo a main, solo si el CI de ese push pasó.
 # Entra por SSH con una llave que en el servidor solo puede correr deploy/actualizar.sh (ver docs/despliegue-donweb.md,
 # paso 11) y después confirma que los sitios respondan.
-# Secretos del repositorio: DEPLOY_HOST (IP del servidor), DEPLOY_SSH_KEY (llave privada) y DEPLOY_KNOWN_HOSTS (la
-# huella del servidor, para no conectarse a uno falso).
+# Secretos del repositorio: DEPLOY_HOST (IP del servidor), DEPLOY_SSH_KEY (llave privada), DEPLOY_KNOWN_HOSTS (la
+# huella del servidor, para no conectarse a uno falso) y, si SSH no está en el 22, DEPLOY_PORT.
 name: Deploy
 
 on:
@@ -43,8 +43,9 @@ jobs:
       - name: Actualizar el servidor
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
         # La llave tiene un comando fijo en el servidor (actualizar.sh): no hace falta ni se puede pedir otro.
-        run: ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "root@$HOST"
+        run: ssh -i ~/.ssh/deploy -p "${PORT:-22}" -o ConnectTimeout=30 -o BatchMode=yes -o StrictHostKeyChecking=yes "root@$HOST"
 
       - name: Verificar los sitios
         # La app tarda unos segundos en arrancar después de reiniciarse.

@@ -149,7 +149,10 @@ echo "command=\"/opt/madsports/deploy/actualizar.sh\",no-port-forwarding,no-X11-
 |---|---|---|
 | `DEPLOY_HOST` | la IP del servidor | `hostname -I \| awk '{print $1}'` |
 | `DEPLOY_SSH_KEY` | la llave privada completa (desde `-----BEGIN` hasta `-----END ...-----`) | `cat ~/.ssh/deploy_github` |
-| `DEPLOY_KNOWN_HOSTS` | la huella del servidor | `ssh-keyscan -t ed25519 $(hostname -I \| awk '{print $1}')` |
+| `DEPLOY_KNOWN_HOSTS` | la huella del servidor | `ssh-keyscan -t ed25519 -p PUERTO $(hostname -I \| awk '{print $1}')` |
+| `DEPLOY_PORT` | el puerto de SSH (solo si no es el 22; DonWeb suele asignar otro) | `ss -tlnp \| grep sshd` |
+
+Si el puerto no es el 22, la huella sale con la forma `[IP]:PUERTO ssh-ed25519 ...`: se pega así, con los corchetes.
 
 Una vez cargada en GitHub, borrar la copia privada del servidor (ya no hace falta ahí):
 
