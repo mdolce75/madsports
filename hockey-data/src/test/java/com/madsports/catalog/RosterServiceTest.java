@@ -7,6 +7,7 @@ import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.model.Federation;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.time.Duration;
 import java.util.List;
@@ -22,7 +23,12 @@ class RosterServiceTest {
 
     /** SIDGAD con las páginas guardadas; {@code sheet} decide qué trae el acta de cada partido. */
     static RosterService roster(IntFunction<String> sheet, boolean calendarFails) {
-        SidgadClient client = new SidgadClient(PROPS) {
+        SidgadClient client = client(sheet, calendarFails);
+        return new RosterService(new CatalogService(client, PROPS), client);
+    }
+
+    static SidgadClient client(IntFunction<String> sheet, boolean calendarFails) {
+        return new SidgadClient(PROPS) {
             @Override
             public String portal() {
                 return Fixtures.read("portal.html");
@@ -46,7 +52,6 @@ class RosterServiceTest {
                 return sheet.apply(idp);
             }
         };
-        return new RosterService(new CatalogService(client, PROPS), client);
     }
 
     static final ClubView VELEZ = new ClubView(74, "CAVS", "VELEZ",
@@ -67,6 +72,22 @@ class RosterServiceTest {
         assertThat(r.withPlayers(Federation.FPP, VELEZ, 2026).categories()).isEmpty();
         // Una categoría en la que el club no tiene equipo, tampoco.
         assertThat(r.hasPlayers(Federation.FPP, 74, 2026, "INFANTIL:C", "MASCULINO")).isFalse();
+    }
+
+    /**
+     * Con todas sus categorías a la vez y solo 2 núcleos para los hilos virtuales (como el servidor; ver surefire en el
+     * pom) no se traba: antes cada chequeo leía SIDGAD dentro del lock de la caché y los hilos quedaban fijos a los
+     * núcleos esperando lecturas que no tenían dónde correr.
+     */
+    @Test
+    @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void allCategoriesAtOnceDoNotHangWithFewCores() {
+        SidgadClient client = client(idp -> Fixtures.read("gr_26389.html"), false);
+        CatalogService catalog = new CatalogService(client, PROPS);
+        RosterService r = new RosterService(catalog, client);
+        ClubView club = catalog.club(Federation.FPP, 74, 2026);
+        assertThat(club.categories()).hasSizeGreaterThan(2);
+        assertThat(r.withPlayers(Federation.FPP, club, 2026).categories()).isNotEmpty();
     }
 
     @Test

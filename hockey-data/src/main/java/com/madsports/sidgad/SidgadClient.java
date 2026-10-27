@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Pide fragmentos HTML a server2.sidgad.es. Es un sitio de terceros sin API pública:
@@ -37,7 +38,8 @@ public class SidgadClient {
     /** Las actas guardadas de forma permanente (null en los tests sin base). */
     private volatile SheetStore sheetStore;
     private final Cache<String, byte[]> logoCache;
-    private final Object throttle = new Object();
+    /** Un lock (no synchronized): el turno duerme adentro y, en Java 21, dormir en un synchronized fija el hilo virtual. */
+    private final ReentrantLock throttle = new ReentrantLock();
     /** Pedidos simultáneos a SIDGAD como máximo ({@code madsports.sidgad.max-concurrency}). */
     private final Semaphore concurrency;
     /** Los del informe del club completo: {@code club-factor} veces más, en su propio cupo. */
@@ -321,7 +323,8 @@ public class SidgadClient {
     }
 
     private void waitTurn() {
-        synchronized (throttle) {
+        throttle.lock();
+        try {
             long interval = props.minInterval().toNanos() / (clubReport() ? clubFactor() : 1);
             long wait = interval - (System.nanoTime() - lastRequestNanos);
             if (wait > 0) {
@@ -333,6 +336,8 @@ public class SidgadClient {
                 }
             }
             lastRequestNanos = System.nanoTime();
+        } finally {
+            throttle.unlock();
         }
     }
 

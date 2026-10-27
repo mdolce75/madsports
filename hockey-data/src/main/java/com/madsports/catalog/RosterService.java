@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -85,7 +86,7 @@ public class RosterService {
      */
     public List<RosterPlayer> players(Federation fed, int clubId, int year, String category, String branch) {
         String key = cacheKey(fed, clubId, year, category, branch);
-        return cache.get(key, k -> {
+        return cached(cache, key, () -> {
             Team e = team(fed, clubId, year, category, branch);
             return roster(lineups(e), e.label());
         });
@@ -97,7 +98,7 @@ public class RosterService {
      */
     public List<SquadMember> squad(Federation fed, int clubId, int year, String category, String branch) {
         String key = cacheKey(fed, clubId, year, category, branch);
-        return squadCache.get(key, k -> squad(lineups(team(fed, clubId, year, category, branch))));
+        return cached(squadCache, key, () -> squad(lineups(team(fed, clubId, year, category, branch))));
     }
 
     /**
@@ -106,29 +107,32 @@ public class RosterService {
      * del jugador, informe del club, equipos del DT). Si SIDGAD no responde, se ofrece igual: no se esconde por error.
      */
     public boolean hasPlayers(Federation fed, int clubId, int year, String category, String branch) {
-        return playersCache.get(cacheKey(fed, clubId, year, category, branch), k -> {
-            Team e;
-            try {
-                e = team(fed, clubId, year, category, branch);
-            } catch (IllegalArgumentException noTeam) {
-                return false;
-            }
-            try {
-                for (Map.Entry<Competition, List<Match>> c : calendars(e).entrySet()) {
-                    for (Match m : c.getValue()) {
-                        if (m.played() && m.idp() > 0
-                                && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId()))
-                                && !ownSide(SidgadParser.lineups(sidgad.gameSheet(c.getKey().id(), m.idp())), m,
-                                e.teamIds()).isEmpty()) {
-                            return true;
-                        }
+        return cached(playersCache, cacheKey(fed, clubId, year, category, branch),
+                () -> checkPlayers(fed, clubId, year, category, branch));
+    }
+
+    private boolean checkPlayers(Federation fed, int clubId, int year, String category, String branch) {
+        Team e;
+        try {
+            e = team(fed, clubId, year, category, branch);
+        } catch (IllegalArgumentException noTeam) {
+            return false;
+        }
+        try {
+            for (Map.Entry<Competition, List<Match>> c : calendars(e).entrySet()) {
+                for (Match m : c.getValue()) {
+                    if (m.played() && m.idp() > 0
+                            && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId()))
+                            && !ownSide(SidgadParser.lineups(sidgad.gameSheet(c.getKey().id(), m.idp())), m,
+                            e.teamIds()).isEmpty()) {
+                        return true;
                     }
                 }
-                return false;
-            } catch (RuntimeException sidgadDown) {
-                return true;
             }
-        });
+            return false;
+        } catch (RuntimeException sidgadDown) {
+            return true;
+        }
     }
 
     /** El club con solo las categorías (y ramas) que tienen jugadores en SIDGAD ({@link #hasPlayers}). */
@@ -150,6 +154,22 @@ public class RosterService {
             }
         }
         return new ClubView(club.id(), club.code(), club.name(), levels);
+    }
+
+    /**
+     * Como {@code cache.get(key, load)}, pero calcula fuera del lock de la caché. El cálculo lee SIDGAD con hilos
+     * virtuales y espera sus resultados; en Java 21 un hilo virtual que se bloquea dentro de ese lock queda fijo a su
+     * núcleo, y con pocos núcleos (2 en el servidor) los pedidos que espera no tienen dónde correr: la app se traba.
+     * Si dos piden lo mismo a la vez se calcula dos veces, que es inofensivo.
+     */
+    private static <V> V cached(Cache<String, V> cache, String key, Supplier<V> load) {
+        V hit = cache.getIfPresent(key);
+        if (hit != null) {
+            return hit;
+        }
+        V value = load.get();
+        cache.put(key, value);
+        return value;
     }
 
     private String cacheKey(Federation fed, int clubId, int year, String category, String branch) {
