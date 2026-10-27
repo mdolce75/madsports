@@ -134,15 +134,15 @@ más viejos.
 
 ## Health check
 
-`GET /actuator/health` es público y devuelve el estado general y el de cada componente, sin detalles:
+`GET /actuator/health` es público y devuelve solo el estado general, sin componentes ni detalles (no se muestra
+hacia afuera cómo está armada la app):
 
 ```json
-{"status":"UP","components":{"db":{"status":"UP"},"diskSpace":{"status":"UP"},"sidgad":{"status":"UP"}, ...}}
+{"status":"UP","groups":["liveness","readiness"]}
 ```
 
-- `db`: la base responde.
-- `sidgad`: resultado del último chequeo diario (UNKNOWN hasta el primero, que corre a la hora del cron). Si falló,
-  queda DOWN y el estado general pasa a DOWN (HTTP 503).
+Pasa a DOWN (HTTP 503) si la base no responde o si falló el último chequeo diario de SIDGAD (antes del primero, que
+corre a la hora del cron, SIDGAD no cuenta). Qué componente falló se ve en el log de la app y en el mail de alerta.
 - `GET /actuator/health/liveness`: solo dice si la app está viva. **Es el que hay que configurar como sonda del
   proveedor** (health check path), para que una falla de SIDGAD no haga reiniciar la app.
 - `GET /actuator/health/readiness`: lista para recibir tráfico.

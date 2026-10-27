@@ -124,15 +124,16 @@ madsports:
     url: ${DOLLAR_URL:${DOLAR_URL:https://dolarapi.com/v1/dolares/oficial}}
     fallback: ${DOLLAR_FALLBACK:${DOLAR_RESPALDO:1500}}
   # Chequeo diario de SIDGAD (SidgadMonitor): recorre portal, catálogo, calendario y acta; el resultado queda en
-  # /actuator/health (componente "sidgad") y, si falla o se recupera, se avisa por mail a ALERTS_EMAIL (vacío = solo log).
+  # /actuator/health (pasa a DOWN si falla) y, si falla o se recupera, se avisa por mail a ALERTS_EMAIL (vacío = solo log).
   # El cron se evalúa en hora argentina; "-" lo apaga.
   monitor:
     cron: ${SIDGAD_MONITOR_CRON:${MONITOR_SIDGAD_CRON:0 0 8 * * *}}
   alerts:
     email: ${ALERTS_EMAIL:${ALERTAS_EMAIL:}}
 
-# Health check público en /actuator/health: solo el estado general y el de cada componente (db, sidgad...), sin
-# detalles. Para la sonda de vida de la plataforma usar /actuator/health/liveness, que no depende de SIDGAD ni de la base.
+# Health check público en /actuator/health: solo el estado general (UP o DOWN), sin componentes ni detalles, para no
+# mostrar hacia afuera cómo está armada la app. Si la base o el último chequeo de SIDGAD fallan, el estado pasa a DOWN
+# (HTTP 503); qué falló se ve en el log y en el mail de alerta. Para la sonda de vida de la plataforma usar /actuator/health/liveness, que no depende de SIDGAD ni de la base.
 # El SMTP no se chequea: abriría una conexión al proveedor de mails en cada consulta del health.
 management:
   health:
@@ -144,7 +145,7 @@ management:
         include: health
   endpoint:
     health:
-      show-components: always
+      show-components: never
       show-details: never
       probes:
         enabled: true
