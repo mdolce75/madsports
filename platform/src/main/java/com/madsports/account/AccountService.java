@@ -2,6 +2,7 @@ package com.madsports.account;
 
 import com.madsports.account.UserToken.Kind;
 import com.madsports.config.SiteUrls;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -41,11 +43,14 @@ public class AccountService {
     private final Clock clock;
     private final PersistentTokenRepository remembered;
     private final SiteUrls urls;
+    /** A quién se avisa de cada registro nuevo ({@code madsports.signup.notify}); vacío = a nadie. */
+    private final String signupNotify;
     private final SecureRandom random = new SecureRandom();
 
     public AccountService(UserAccountRepository users, UserTokenRepository tokens, PasswordEncoder encoder,
                          Mailer mailer, Clock clock, PersistentTokenRepository remembered,
-                         SiteUrls urls) {
+                         SiteUrls urls, @Value("${madsports.signup.notify:}") String signupNotify) {
+        this.signupNotify = signupNotify == null ? "" : signupNotify.trim();
         this.users = users;
         this.tokens = tokens;
         this.encoder = encoder;
@@ -72,6 +77,27 @@ public class AccountService {
                                 : "Después ya podés ingresar y ver tus informes de hockey sobre patines."),
                 "Confirmar mi email", urls.url(p) + "/api/verify?token=" + token,
                 "El enlace vale 48 horas. Si no creaste esta cuenta, ignorá este mail.", p));
+    }
+
+    /** Avisa a {@code madsports.signup.notify} que alguien se registró, con su email. Si el mail falla, el alta sigue. */
+    public void notifySignup(UserAccount u) {
+        if (signupNotify.isEmpty()) {
+            return;
+        }
+        Product p = u.getProduct();
+        String profile = u.getProfiles().stream().map(Profile::label).sorted().reduce((a, b) -> a + ", " + b).orElse("");
+        List<String> data = new ArrayList<>(List.of("Email: " + u.getEmail(), "Usuario: " + u.getUsername(),
+                "Perfil: " + profile, "Club: " + u.getClubName()));
+        if (u.getPlayerName() != null) {
+            data.add("Jugador: " + u.getPlayerName());
+        }
+        if (u.getSubscriptionPlan() != null) {
+            data.add("Plan: " + u.getSubscriptionPlan().getName());
+        }
+        mailer.send(new MailContent(signupNotify, "Nuevo registro en " + p.displayName() + ": " + u.getEmail(),
+                u.getEmail() + " se registró en " + p.displayName() + ".", "Registros", "Nuevo registro", "equipo",
+                data, "Abrir " + p.displayName(), urls.url(p),
+                "Aviso automático de cada registro nuevo. Todavía falta que confirme su email.", p));
     }
 
     /**

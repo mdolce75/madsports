@@ -139,6 +139,7 @@ public class AccountController {
         UserAccount u = signup.register(new Signup(req.profile(), req.username(), req.password(), req.email(),
                 req.clubId(), req.category(), req.branch(), req.playerId(), req.subscription()));
         account.sendVerification(u);
+        account.notifySignup(u);
         return Map.of("username", u.getUsername(), "email", u.getEmail());
     }
 
