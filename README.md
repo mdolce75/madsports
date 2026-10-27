@@ -514,8 +514,8 @@ Abrir http://localhost:8080.
 Las variables de antes (`FPP_DB_URL`, `REGISTRO_*`, `LIMITE_*`, `RECORDARME_*`, `DOLAR_*`, `ALERTAS_EMAIL`,
 `MONITOR_SIDGAD_CRON`, `FPP_AI_*`) siguen valiendo como respaldo de las nuevas.
 
-**Health check:** `GET /actuator/health` (público, sin detalles) con el estado de la base y del último chequeo diario
-de SIDGAD; `GET /actuator/health/liveness` para la sonda del proveedor.
+**Health check:** `GET /actuator/health` (público, solo UP o DOWN) que tiene en cuenta la base y el último chequeo
+diario de SIDGAD; `GET /actuator/health/liveness` para la sonda del proveedor.
 
 La configuración propia va bajo `rinkmetrics:` en `application.yml` (clase `RinkMetricsProperties`).
 

@@ -179,13 +179,11 @@ class SecurityTest {
 
     @Test
     void publicHealthCheckWithoutDetails() throws Exception {
-        // Sin sesión: estado general y de cada componente; SIDGAD queda UNKNOWN hasta el primer chequeo diario.
+        // Sin sesión: solo el estado general, sin componentes (db, sidgad...) ni detalles.
         mvc.perform(get("/actuator/health")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
-                .andExpect(jsonPath("$.components.db.status").value("UP"))
-                .andExpect(jsonPath("$.components.sidgad.status").value("UNKNOWN"))
-                .andExpect(jsonPath("$.components.db.details").doesNotExist())
-                .andExpect(jsonPath("$.components.sidgad.details").doesNotExist());
+                .andExpect(jsonPath("$.components").doesNotExist())
+                .andExpect(jsonPath("$.details").doesNotExist());
         mvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
         // El resto de los endpoints no se expone: ni con sesión existe.
