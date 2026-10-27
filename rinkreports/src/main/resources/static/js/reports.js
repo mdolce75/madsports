@@ -26,14 +26,20 @@ async function rrSessionBar() {
 }
 
 /**
- * El cupo de informes del mes ("3 de 5 informes este mes · se renueva el 1/11"); vacío si no tiene límite.
+ * El cupo de informes ("3 de 5 informes este mes · se renueva el 1/11", o en el lanzamiento "3 de 5 informes hasta
+ * el 31/12"); vacío si no tiene límite.
  *
- * @param m informesMes de la sesión: {usados, limite, renueva}
+ * @param m monthlyReports de la sesión: {used, limit, renews, until (solo en el lanzamiento)}
  */
 function rrQuota(m) {
     if (!m || !m.limit) return "";
+    const used = `${Math.min(m.used, m.limit)} de ${m.limit} informes`;
+    if (m.until) {
+        const [, month, day] = m.until.split("-").map(Number);
+        return `${used} hasta el ${day}/${month}`;
+    }
     const [, month, day] = m.renews.split("-").map(Number);
-    return `${Math.min(m.used, m.limit)} de ${m.limit} informes este mes · se renueva el ${day}/${month}`;
+    return `${used} este mes · se renueva el ${day}/${month}`;
 }
 
 /** Fecha y hora de un pedido, en la hora argentina: "26/10/2026 14:35". */

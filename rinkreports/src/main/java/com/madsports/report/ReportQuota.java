@@ -5,6 +5,7 @@ import com.madsports.account.Profile;
 import com.madsports.account.SubscriptionPlan;
 import com.madsports.account.UserAccount;
 import com.madsports.account.UserAccountRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -22,6 +24,10 @@ import java.util.function.Supplier;
  * Informes pedidos y cupo del mes. Cada pedido suma uno al contador del usuario y queda registrado con su fecha. El
  * jugador tiene un cupo por mes calendario (el de su plan: 5 en el Jugador free); al llegar al cupo, el pedido se
  * rechaza (429) hasta el día 1 del mes siguiente. El club no tiene límite.
+ * <p>
+ * Lanzamiento ({@code madsports.reports.promo-*}): entre {@code promo-from} y {@code promo-until} todos, club y
+ * jugador, tienen un cupo único para todo ese período ({@code promo-limit}, 5) en lugar del del mes; el día siguiente
+ * al fin vuelve el cupo de siempre. Sin {@code promo-until}, no hay lanzamiento.
  */
 @Service
 public class ReportQuota implements MonthlyReports {
@@ -34,9 +40,18 @@ public class ReportQuota implements MonthlyReports {
     private final ReportArchive archive;
     /** Un pedido a la vez por usuario: dos pedidos simultáneos no pasan los dos el último lugar del cupo. */
     private final ConcurrentHashMap<Long, Object> locks = new ConcurrentHashMap<>();
+    /** Lanzamiento: primer día (sin él, cuenta todo lo pedido), último día (null = sin lanzamiento) y su cupo. */
+    private final LocalDate promoFrom;
+    private final LocalDate promoUntil;
+    private final int promoLimit;
 
     public ReportQuota(RequestedReportRepository requests, UserAccountRepository users, Clock clock,
-                       ReportArchive archive) {
+                       ReportArchive archive, @Value("${madsports.reports.promo-from:}") String promoFrom,
+                       @Value("${madsports.reports.promo-until:}") String promoUntil,
+                       @Value("${madsports.reports.promo-limit:5}") int promoLimit) {
+        this.promoUntil = promoUntil == null || promoUntil.isBlank() ? null : LocalDate.parse(promoUntil.trim());
+        this.promoFrom = promoFrom == null || promoFrom.isBlank() ? LocalDate.EPOCH : LocalDate.parse(promoFrom.trim());
+        this.promoLimit = promoLimit;
         this.requests = requests;
         this.users = users;
         this.clock = clock;
@@ -44,12 +59,13 @@ public class ReportQuota implements MonthlyReports {
     }
 
     /**
-     * El cupo del mes del usuario.
+     * El cupo del usuario: el del mes o, durante el lanzamiento, el de todo el período.
      *
-     * @param limite  informes por mes (0 = sin límite)
-     * @param renueva día en que vuelve a empezar (el 1 del mes siguiente)
+     * @param limit  informes del período (0 = sin límite)
+     * @param renews día en que vuelve a empezar (el 1 del mes siguiente, o el día después del lanzamiento)
+     * @param until  último día del lanzamiento; null fuera de él (cupo del mes)
      */
-    public record Quota(long used, int limit, LocalDate renews) {
+    public record Quota(long used, int limit, LocalDate renews, LocalDate until) {
 
         public boolean exceeded() {
             return limit > 0 && used >= limit;
@@ -66,15 +82,22 @@ public class ReportQuota implements MonthlyReports {
     @Override
     public Map<String, Object> de(UserAccount u) {
         Quota c = quota(u);
-        return Map.of("used", c.used(), "limit", c.limit(), "renews", c.renews().toString());
+        Map<String, Object> out = new HashMap<>(Map.of("used", c.used(), "limit", c.limit(),
+                "renews", c.renews().toString()));
+        if (c.until() != null) {
+            out.put("until", c.until().toString());
+        }
+        return out;
     }
 
     public Quota quota(UserAccount u) {
         LocalDate today = LocalDate.now(clock);
-        LocalDate from = today.withDayOfMonth(1);
+        boolean promo = promoUntil != null && !today.isBefore(promoFrom) && !today.isAfter(promoUntil);
+        LocalDate from = promo ? promoFrom : today.withDayOfMonth(1);
         long used = requests.countByUserIdAndCreatedAtGreaterThanEqual(u.getId(),
                 from.atStartOfDay(clock.getZone()).toInstant());
-        return new Quota(used, limit(u), from.plusMonths(1));
+        return promo ? new Quota(used, promoLimit, promoUntil.plusDays(1), promoUntil)
+                : new Quota(used, limit(u), today.withDayOfMonth(1).plusMonths(1), null);
     }
 
     /** Informes por mes del usuario: el de su plan para el jugador; el club, sin límite. */
@@ -103,7 +126,10 @@ public class ReportQuota implements MonthlyReports {
         synchronized (locks.computeIfAbsent(u.getId(), k -> new Object())) {
             Quota c = quota(u);
             if (c.exceeded()) {
-                throw new QuotaExceededException("Ya pediste los " + c.limit() + " informes de este mes. El cupo se renueva el "
+                throw new QuotaExceededException(c.until() != null
+                        ? "Ya pediste los " + c.limit() + " informes disponibles hasta el " + c.until().format(DAY)
+                        + ". El cupo se renueva el " + c.renews().format(DAY) + "."
+                        : "Ya pediste los " + c.limit() + " informes de este mes. El cupo se renueva el "
                         + c.renews().format(DAY) + ".");
             }
             T outcome = request.get();
