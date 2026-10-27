@@ -127,6 +127,41 @@ scp root@IP_DEL_SERVIDOR:/var/backups/madsports/base-*.sql.gz .
 ```
 
 Baja lo último, reconstruye y reinicia la app (la base y los informes no se tocan; las migraciones corren solas).
+Con el paso 11 esto pasa solo en cada merge a main.
+
+## 11. Desplegar solo en cada merge a main
+
+El workflow `.github/workflows/deploy.yml` corre cuando el CI de un push a main termina bien: entra al servidor por
+SSH, corre `actualizar.sh` y confirma que los tres sitios respondan. Si el CI falla, no despliega. Se configura una
+sola vez:
+
+**a) En el servidor**, crear una llave solo para GitHub que únicamente pueda correr `actualizar.sh` (aunque alguien
+la robara, no podría abrir una consola):
+
+```bash
+ssh-keygen -t ed25519 -N "" -C deploy-github -f ~/.ssh/deploy_github
+echo "command=\"/opt/madsports/deploy/actualizar.sh\",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty $(cat ~/.ssh/deploy_github.pub)" >> ~/.ssh/authorized_keys
+```
+
+**b) En GitHub**, en el repositorio: *Settings → Secrets and variables → Actions → New repository secret*, crear tres:
+
+| Nombre | Valor | Cómo obtenerlo en el servidor |
+|---|---|---|
+| `DEPLOY_HOST` | la IP del servidor | `hostname -I \| awk '{print $1}'` |
+| `DEPLOY_SSH_KEY` | la llave privada completa (desde `-----BEGIN` hasta `-----END ...-----`) | `cat ~/.ssh/deploy_github` |
+| `DEPLOY_KNOWN_HOSTS` | la huella del servidor | `ssh-keyscan -t ed25519 $(hostname -I \| awk '{print $1}')` |
+
+Una vez cargada en GitHub, borrar la copia privada del servidor (ya no hace falta ahí):
+
+```bash
+rm ~/.ssh/deploy_github
+```
+
+**c) Probar:** en GitHub, *Actions → Deploy → Run workflow*. Tiene que terminar en verde. Desde ahí, cada merge a
+main se despliega solo (unos minutos después de que pase el CI).
+
+Si un despliegue falla, el sitio sigue con la versión anterior (la imagen nueva se arma antes de reemplazar la que
+corre). El detalle queda en *Actions → Deploy*.
 
 ## Comandos útiles
 
