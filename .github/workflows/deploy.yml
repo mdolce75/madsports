@@ -1,0 +1,55 @@
+# Despliegue en el servidor de DonWeb cada vez que entra algo a main, solo si el CI de ese push pasó.
+# Entra por SSH con una llave que en el servidor solo puede correr deploy/actualizar.sh (ver docs/despliegue-donweb.md,
+# paso 11) y después confirma que los sitios respondan.
+# Secretos del repositorio: DEPLOY_HOST (IP del servidor), DEPLOY_SSH_KEY (llave privada) y DEPLOY_KNOWN_HOSTS (la
+# huella del servidor, para no conectarse a uno falso).
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Para desplegar a mano desde la pestaña Actions (por ejemplo, para repetir uno que falló).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un despliegue a la vez; uno nuevo espera a que termine el anterior en lugar de cortarlo a la mitad.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Desplegar en DonWeb
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Llave y huella del servidor
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Actualizar el servidor
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        # La llave tiene un comando fijo en el servidor (actualizar.sh): no hace falta ni se puede pedir otro.
+        run: ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "root@$HOST"
+
+      - name: Verificar los sitios
+        # La app tarda unos segundos en arrancar después de reiniciarse.
+        run: |
+          for site in madsports.com.ar rinkreports.com.ar rinkmetrics.com.ar; do
+            curl -fsS --retry 18 --retry-delay 10 --retry-all-errors "https://$site/actuator/health"
+            echo " $site"
+          done
