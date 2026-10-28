@@ -43,7 +43,7 @@ class SidgadWarmupTest {
             }
         };
         SidgadWarmup warmup = new SidgadWarmup(new CatalogService(site, SidgadMonitorTest.PROPS), site,
-                Clock.fixed(start, ZoneOffset.UTC), List.of("FPP"));
+                Clock.fixed(start, ZoneOffset.UTC), List.of("FPP"), false);
 
         SidgadWarmup.Result r = warmup.warm(Federation.FPP, 2026);
 

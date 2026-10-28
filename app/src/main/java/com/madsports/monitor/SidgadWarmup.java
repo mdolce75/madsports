@@ -31,7 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Precarga de madrugada: lee de SIDGAD las actas de los partidos jugados en el año (las nuevas: las ya guardadas no se
  * vuelven a bajar) y la ficha de temporada de cada jugador, así el primer informe del día ya encuentra todo leído (el
  * del club completo pasa de ~70 s a unos pocos). Usa el cupo normal de pedidos a SIDGAD (6 a la vez), sin apuro.
- * {@code madsports.sidgad.warmup-cron} ("-" la apaga) y {@code madsports.sidgad.warmup-federations} (FPP).
+ * {@code madsports.sidgad.warmup-cron} ("-" la apaga) y {@code madsports.sidgad.warmup-federations} (FPP); la AMP se
+ * suma sola cuando está habilitada ({@code madsports.signup.amp}).
  */
 @Component
 public class SidgadWarmup {
@@ -48,11 +49,12 @@ public class SidgadWarmup {
     private final List<Federation> federations;
 
     public SidgadWarmup(CatalogService catalog, SidgadClient sidgad, Clock clock,
-                        @Value("${madsports.sidgad.warmup-federations:FPP}") List<String> federations) {
+                        @Value("${madsports.sidgad.warmup-federations:FPP}") List<String> federations,
+                        @Value("${madsports.signup.amp:false}") boolean amp) {
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.clock = clock;
-        this.federations = federations.stream().map(Federation::parse).toList();
+        this.federations = Monitored.federations(federations.stream().map(Federation::parse).toList(), amp);
     }
 
     @Scheduled(cron = "${madsports.sidgad.warmup-cron:0 0 5 * * *}", zone = "America/Argentina/Buenos_Aires")

@@ -7,6 +7,7 @@ import com.madsports.catalog.CatalogService;
 import com.madsports.config.SiteUrls;
 import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.model.Federation;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.boot.actuate.health.Status;
@@ -64,9 +65,32 @@ class SidgadMonitorTest {
     }
 
     SidgadMonitor monitor(FakeSite site, String alerts) {
+        return monitor(site, alerts, false);
+    }
+
+    SidgadMonitor monitor(FakeSite site, String alerts, boolean amp) {
         return new SidgadMonitor(site, new CatalogService(site, PROPS), mailer,
                 Clock.fixed(Instant.parse("2026-10-19T11:00:00Z"), ZoneOffset.UTC), alerts,
-                new SiteUrls("https://rinkmetrics.test", "", "", ""));
+                new SiteUrls("https://rinkmetrics.test", "", "", ""), amp);
+    }
+
+    @Test
+    void withTheAmpEnabledItAlsoChecksTheAmp() {
+        SidgadMonitor.Outcome r = monitor(new FakeSite(), "", true).check();
+        assertThat(r.ok()).isTrue();
+        assertThat(r.detail()).startsWith("2026: 24 competiciones FPP;").contains(" · 2026: ")
+                .contains("competiciones AMP");
+        // Sin la AMP habilitada, solo la FPP.
+        assertThat(monitor(new FakeSite(), "").check().detail()).doesNotContain("AMP");
+    }
+
+    @Test
+    void theDailyFederationsAreTheConfiguredOnesPlusTheAmpWhenEnabled() {
+        assertThat(Monitored.federations(List.of(Federation.FPP), false)).containsExactly(Federation.FPP);
+        assertThat(Monitored.federations(List.of(Federation.FPP), true)).containsExactly(Federation.FPP, Federation.AMP);
+        // Si ya está configurada, no se repite.
+        assertThat(Monitored.federations(List.of(Federation.FPP, Federation.AMP), true))
+                .containsExactly(Federation.FPP, Federation.AMP);
     }
 
     @Test
