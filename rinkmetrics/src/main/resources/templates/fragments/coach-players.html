@@ -41,32 +41,34 @@
         </tr>
     </table>
 </div>
-<!--/* Un ranking del informe de un período (CoachReport.RankingRow). */-->
+<!--/* Un ranking del informe (CoachReport.RankingRow); en el de un partido, sin PJ ni promedio por partido. */-->
 <div th:fragment="ranking(title, rows)" class="nobreak">
     <h3 th:text="${title}">Ranking</h3>
-    <p class="muted" th:if="${rows.isEmpty()}">Sin datos en el período.</p>
+    <p class="muted" th:if="${rows.isEmpty()}" th:text="|Sin datos en ${r.scope()}.|">Sin datos en el período.</p>
     <table th:if="${!rows.isEmpty()}">
-        <tr><th>#</th><th class="l">Jugador</th><th>PJ</th><th>Total</th><th>Por partido</th><th>% del equipo</th></tr>
+        <tr><th>#</th><th class="l">Jugador</th><th th:if="${!r.singleMatch}">PJ</th><th>Total</th>
+            <th th:if="${!r.singleMatch}">Por partido</th><th>% del equipo</th></tr>
         <tr th:each="x : ${rows}">
             <td th:text="${x.position}"></td>
             <td class="l" th:text="|${x.number.isEmpty() ? '' : x.number + ' '}${x.name}|"></td>
-            <td th:text="${x.matches}"></td><td th:text="${x.total}"></td>
-            <td th:text="${f.dec(x.perGame)}"></td><td th:text="${x.share == null ? '-' : x.share + '%'}"></td>
+            <td th:if="${!r.singleMatch}" th:text="${x.matches}"></td><td th:text="${x.total}"></td>
+            <td th:if="${!r.singleMatch}" th:text="${f.dec(x.perGame)}"></td><td th:text="${x.share == null ? '-' : x.share + '%'}"></td>
         </tr>
     </table>
 </div>
 <!--/* Top de tarjetas (CoachReport.CardRow). */-->
 <div th:fragment="cards(rows)" class="nobreak">
     <h3>Top 5 · Tarjetas</h3>
-    <p class="muted" th:if="${rows.isEmpty()}">Sin tarjetas en el período.</p>
+    <p class="muted" th:if="${rows.isEmpty()}" th:text="|Sin tarjetas en ${r.scope()}.|">Sin tarjetas en el período.</p>
     <table th:if="${!rows.isEmpty()}">
-        <tr><th>#</th><th class="l">Jugador</th><th>PJ</th><th><span class="card b"></span> Azul</th>
-            <th><span class="card y"></span> Amarilla</th><th><span class="card r"></span> Roja</th><th>Total</th><th>Por partido</th></tr>
+        <tr><th>#</th><th class="l">Jugador</th><th th:if="${!r.singleMatch}">PJ</th><th><span class="card b"></span> Azul</th>
+            <th><span class="card y"></span> Amarilla</th><th><span class="card r"></span> Roja</th><th>Total</th>
+            <th th:if="${!r.singleMatch}">Por partido</th></tr>
         <tr th:each="x : ${rows}">
             <td th:text="${x.position}"></td>
             <td class="l" th:text="|${x.number.isEmpty() ? '' : x.number + ' '}${x.name}|"></td>
-            <td th:text="${x.matches}"></td><td th:text="${x.blues}"></td><td th:text="${x.yellows}"></td>
-            <td th:text="${x.reds}"></td><td th:text="${x.total}"></td><td th:text="${f.dec(x.perGame)}"></td>
+            <td th:if="${!r.singleMatch}" th:text="${x.matches}"></td><td th:text="${x.blues}"></td><td th:text="${x.yellows}"></td>
+            <td th:text="${x.reds}"></td><td th:text="${x.total}"></td><td th:if="${!r.singleMatch}" th:text="${f.dec(x.perGame)}"></td>
         </tr>
     </table>
 </div>
@@ -74,7 +76,7 @@
 <!--/* Top de pelota parada (CoachReport.SetPieceRow). */-->
 <div th:fragment="setPieces(title, rows)" class="nobreak">
     <h3 th:text="${title}">Pelota parada</h3>
-    <p class="muted" th:if="${rows.isEmpty()}">Sin pateados en el período.</p>
+    <p class="muted" th:if="${rows.isEmpty()}" th:text="|Sin pateados en ${r.scope()}.|">Sin pateados en el período.</p>
     <table th:if="${!rows.isEmpty()}">
         <tr><th>#</th><th class="l">Jugador</th><th>Convertidos</th><th>Pateados</th><th>Efectividad</th></tr>
         <tr th:each="x : ${rows}">
@@ -89,11 +91,11 @@
 <div th:fragment="playerCards(title, rows)" th:if="${!rows.isEmpty()}" class="nobreak">
     <h3 th:text="${title}">Fichas</h3>
     <table>
-        <tr><th class="l">Jugador</th><th>PJ</th><th>Índice</th>
+        <tr><th class="l">Jugador</th><th th:if="${!r.singleMatch}">PJ</th><th>Índice</th>
             <th th:each="a : ${rows[0].axes}" th:text="${a.name}">Eje</th></tr>
         <tr th:each="x : ${rows}">
             <td class="l" th:text="|${x.number.isEmpty() ? '' : x.number + ' '}${x.name}|"></td>
-            <td th:text="${x.matches}"></td>
+            <td th:if="${!r.singleMatch}" th:text="${x.matches}"></td>
             <td><b th:text="${x.index == null ? '-' : x.index}"></b></td>
             <td th:each="a : ${x.axes}"><b th:text="${x.index == null ? '-' : a.score}"></b><br/>
                 <small class="muted" th:text="${a.text}"></small></td>
