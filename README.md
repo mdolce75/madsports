@@ -1,14 +1,15 @@
 <div align="center">
 
-<img src="docs/img/logo.svg" width="96" alt="RinkMetrics">
+<img src="docs/img/logo.svg" width="96" alt="Mad Sports">
 
-# RinkMetrics
+# Mad Sports
 
-**Estadísticas de hockey sobre patines, convertidas en informes PDF.**
+**Estadísticas de hockey sobre patines: informes y métricas en vivo.**
 
-Informes de equipo, de club y de jugador a partir de los datos de la Federación Porteña de Patín (FPP) y de la
-Asociación Mendocina de Patín (AMP), con gráficos, análisis minuto a minuto y texto redactado por IA. Los productos de
-Mad Sports: **RinkReports** (informes en pantalla, PDF y Excel) y **RinkMetrics** (métricas en vivo para el DT).
+Con los datos de la Federación Porteña de Patín (FPP) y de la Asociación Mendocina de Patín (AMP),
+[Mad Sports](https://madsports.com.ar) tiene dos productos: **[RinkReports](https://rinkreports.com.ar)** (informes de
+club y de jugador en pantalla, PDF y Excel, con gráficos, análisis minuto a minuto y texto redactado por IA) y
+**[RinkMetrics](https://rinkmetrics.com.ar)** (métricas en vivo para el DT, cargadas desde el celular).
 
 <img src="https://img.shields.io/badge/Java%2021-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21">
 <img src="https://img.shields.io/badge/Spring%20Boot%203.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot 3.5">
