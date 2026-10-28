@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -28,8 +29,9 @@ import java.util.Optional;
 /**
  * Chequeo diario de SIDGAD: los informes dependen de leer su HTML, y si el sitio cambia de formato los parsers devuelven
  * listas vacías sin dar error. Una vez por día ({@code madsports.monitor.cron}) se recorre el camino de un informe con
- * datos reales (temporada del portal, catálogo de la FPP, calendario con partidos jugados, acta con sus planteles) y el
- * resultado queda en el health check ({@code sidgad}). Si falla, o si se recupera, avisa por mail a
+ * datos reales (temporada del portal, catálogo de la federación, calendario con partidos jugados, acta con sus
+ * planteles) de la FPP y, si está habilitada ({@code madsports.signup.amp}), de la AMP; el resultado queda en el health
+ * check ({@code sidgad}): si falla una federación, falla el chequeo. Si falla, o si se recupera, avisa por mail a
  * {@code ALERTAS_EMAIL}.
  */
 @Component("sidgad")
@@ -49,11 +51,13 @@ public class SidgadMonitor implements HealthIndicator {
     private final Clock clock;
     private final String alerts;
     private final SiteUrls urls;
+    private final List<Federation> federations;
     private volatile Outcome last;
 
     public SidgadMonitor(SidgadClient client, CatalogService catalog, Mailer mailer, Clock clock,
                          @Value("${madsports.alerts.email:}") String alerts,
-                         SiteUrls urls) {
+                         SiteUrls urls, @Value("${madsports.signup.amp:false}") boolean amp) {
+        this.federations = Monitored.federations(List.of(Federation.FPP), amp);
         this.client = client;
         this.catalog = catalog;
         this.mailer = mailer;
@@ -100,9 +104,18 @@ public class SidgadMonitor implements HealthIndicator {
         int year = catalog.years().stream().filter(seasons::containsKey).max(Comparator.naturalOrder())
                 .orElseThrow(() -> new IllegalStateException("El portal no trae temporadas de los años ofrecidos "
                         + catalog.years() + " (leídas: " + seasons.keySet() + ")."));
-        List<Competition> competitions = catalog.competitions(Federation.FPP, year);
+        List<String> reviewed = new ArrayList<>();
+        for (Federation f : federations) {
+            reviewed.add(review(f, year));
+        }
+        return String.join(" · ", reviewed);
+    }
+
+    /** El camino de un informe de una federación en ese año. */
+    private String review(Federation f, int year) {
+        List<Competition> competitions = catalog.competitions(f, year);
         if (competitions.isEmpty()) {
-            throw new IllegalStateException("El catálogo no trae competiciones de la FPP para " + year + ".");
+            throw new IllegalStateException("El catálogo no trae competiciones de la " + f + " para " + year + ".");
         }
         int withCalendar = 0;
         for (Competition c : competitions.subList(0, Math.min(COMPETITIONS_TO_TRY, competitions.size()))) {
@@ -122,15 +135,15 @@ public class SidgadMonitor implements HealthIndicator {
                 throw new IllegalStateException("El acta del partido " + idp + " (" + c.name() + ") no trae "
                         + "planteles.");
             }
-            return year + ": " + competitions.size() + " competiciones FPP; " + c.name() + " con " + matches.size()
+            return year + ": " + competitions.size() + " competiciones " + f + "; " + c.name() + " con " + matches.size()
                     + " partidos; acta " + idp + " con " + players + " jugadores.";
         }
         if (withCalendar == 0) {
             throw new IllegalStateException("Ningún calendario de las primeras " + COMPETITIONS_TO_TRY
-                    + " competiciones FPP " + year + " trae partidos.");
+                    + " competiciones " + f + " " + year + " trae partidos.");
         }
         // Calendarios con fechas pero sin partidos jugados: temporada que recién empieza, no es una falla.
-        return year + ": " + competitions.size() + " competiciones FPP; calendarios sin partidos jugados todavía.";
+        return year + ": " + competitions.size() + " competiciones " + f + "; calendarios sin partidos jugados todavía.";
     }
 
     private void notify(Outcome r, String subject, String summaryOf) {
