@@ -13,7 +13,8 @@ if (SECTION === "dt") {
     $("perfil-field").hidden = true;
     document.querySelector("input[name=federacion]").closest(".field").hidden = true;
 } else {
-    // RinkReports: el registro del Jugador o el del Club (?option=club; sin opción, el del jugador). La FPP queda elegida.
+    // RinkReports: el registro del Jugador o el del Club (?option=club; sin opción, el del jugador). La federación la
+    // elige la persona (sin la AMP, la FPP sin preguntar: ver rules).
     const chosenOption = new URLSearchParams(location.search).get("option") === "club" ? "CLUB" : "PLAYER";
     document.querySelectorAll("input[name=rol]").forEach(r => {
         if (r.value === chosenOption) r.checked = true; else r.closest("label").remove();
@@ -27,7 +28,7 @@ if (SECTION === "dt") {
         : "Tu club, la categoría en que jugás y tu nombre en la planilla, para tu informe de rendimiento. "
             + '<a href="/rinkreports/sample.html?kind=player">Mirá un ejemplo</a> (datos ficticios).';
     document.title = (club ? "Cuenta de club" : "Cuenta de jugador") + " · RinkReports";
-    document.querySelector("input[name=federacion][value=FPP]").checked = true;
+    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes y los planes.";
     document.querySelectorAll(".profiles small").forEach(s => { s.dataset.text = s.textContent; });
 }
 
@@ -47,18 +48,25 @@ function clubAvailable() {
     status("Las cuentas de club estarán disponibles próximamente.", true);
 }
 
-/** RinkReports: las cuentas de club, y los jugadores de la AMP, solo si están habilitados. */
+/**
+ * RinkReports: las cuentas de club, y los jugadores de la AMP, solo si están habilitados. Con las dos federaciones no
+ * se elige ninguna de antemano (que nadie de Mendoza quede en la FPP sin darse cuenta); si la AMP no está disponible
+ * para este registro, es la FPP sin preguntar.
+ */
 function rules() {
     if (SECTION === "dt") return;
+    const fpp = document.querySelector("input[name=federacion][value=FPP]");
     // Sin la AMP (oculta hasta nuevo aviso) la federación es la FPP y no hay nada que elegir.
     if (!signupOpts.amp) {
         document.querySelector("input[name=federacion][value=AMP]")?.closest("label").remove();
-        document.querySelector("input[name=federacion]").closest(".field").hidden = true;
+        fpp.closest(".field").hidden = true;
+        fpp.checked = true;
         return clubAvailable();
     }
     clubAvailable();
-    enable(document.querySelector("input[name=federacion][value=AMP]"),
-        role() !== "PLAYER" || signupOpts.playerAmp, document.querySelector("input[name=federacion][value=FPP]"));
+    const ampForThis = role() !== "PLAYER" || signupOpts.playerAmp;
+    enable(document.querySelector("input[name=federacion][value=AMP]"), ampForThis, fpp);
+    if (!ampForThis) fpp.checked = true;
 }
 
 // Primero la federación y después el perfil: Club, Jugador o DT de esa federación (CLUBAMP, PLAYERFPP, COACHAMP...).
@@ -305,7 +313,7 @@ if (SECTION === "dt") {
     fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
         .then(o => { signupOpts = o; coachFederation(); });
 } else {
-    // La FPP ya está elegida: clubes, categorías y planes, con lo que hoy se puede registrar.
+    // Con lo que hoy se puede registrar: sin la AMP, la FPP con sus clubes y planes; con ella, a elegir.
     fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
         .then(o => { signupOpts = o; toggleProfile(); });
 }
