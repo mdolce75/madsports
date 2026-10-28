@@ -1,7 +1,8 @@
 // Registro de cada producto (va después de /js/app.js).
 // Cada registro es de un solo perfil: RinkReports tiene el de Jugador (/rinkreports/signup.html?option=player) y el de
 // Club (?option=club), y RinkMetrics (/rinkmetrics/signup.html), el del DT. No se elige el perfil: lo dice el enlace.
-// Las cuentas de un producto no ingresan al otro.
+// Las cuentas de un producto no ingresan al otro. El DT puede ser de otra federación ("Otra", OTR), sin datos en
+// SIDGAD: escribe el nombre de su club y después carga a mano sus equipos y jugadores.
 const SECTION = product() === "REPORTS" ? "informes" : "dt";
 $("brand").outerHTML = brand();
 // Qué se puede registrar hoy: las cuentas de club, la AMP y sus jugadores se habilitan por configuración.
@@ -11,7 +12,6 @@ if (SECTION === "dt") {
         if (r.value === "COACH") r.checked = true; else r.closest("label").remove();
     });
     $("perfil-field").hidden = true;
-    document.querySelector("input[name=federacion]").closest(".field").hidden = true;
 } else {
     // RinkReports: el registro del Jugador o el del Club (?option=club; sin opción, el del jugador). La federación la
     // elige la persona (sin la AMP, la FPP sin preguntar: ver rules).
@@ -75,6 +75,8 @@ const fed = () => (document.querySelector("input[name=federacion]:checked") || {
 const role = () => document.querySelector("input[name=rol]:checked").value;
 const isPlayer = () => role() === "PLAYER";
 const isDt = () => role() === "COACH";
+/** DT de otra federación: sin club de SIDGAD, lo escribe. */
+const isOther = () => fed() === "OTR";
 const profile = () => role() + fed();
 const ROLE_NAME = {CLUB: "Club ", PLAYER: "Jugador ", COACH: "DT "};
 const rosters = {};
@@ -270,7 +272,18 @@ function toggleProfile() {
     });
     $("player-fields").hidden = !isPlayer();
     $("coach-fields").hidden = !isDt();
+    // Solo el registro del DT tiene "Otra" (el club se escribe).
+    if ($("club-name-field")) {
+        $("club-field").hidden = isOther();
+        $("club-name-field").hidden = !isOther();
+    }
     loadPlans();
+    if (isOther()) {
+        // Sin clubes que cargar: el botón se habilita ya.
+        lastFed = fed();
+        $("go").disabled = false;
+        return;
+    }
     if (fed() !== lastFed) {
         lastFed = fed();
         loadClubs();
@@ -280,19 +293,16 @@ function toggleProfile() {
 }
 
 /**
- * DT: con la AMP habilitada, elige la federación y el combo trae solo sus clubes (como en RinkReports); sin ella, la
- * federación es la FPP y no hay nada que elegir.
+ * DT: elige la federación y el combo trae solo sus clubes (como en RinkReports): la FPP, la AMP si está habilitada, u
+ * Otra, sin club de SIDGAD (lo escribe).
  */
 function coachFederation() {
-    const field = document.querySelector("input[name=federacion]").closest(".field");
     if (!signupOpts.amp) {
-        document.querySelector("input[name=federacion][value=FPP]").checked = true;
-        field.hidden = true;
-        toggleProfile();
-        return;
+        document.querySelector("input[name=federacion][value=AMP]").closest("label").remove();
+        document.querySelector("input[name=federacion]").closest(".profiles").classList.remove("three");
     }
-    field.hidden = false;
-    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes.";
+    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes. Si no es "
+        + (signupOpts.amp ? "la FPP ni la AMP" : "la FPP") + ", elegí Otra y cargás tus equipos a mano.";
     $("fed-hint").hidden = false;
     const sel = $("club");
     sel.innerHTML = "";
@@ -326,15 +336,20 @@ $("form").addEventListener("submit", async ev => {
         username: $("usuario").value.trim(),
         password: $("clave").value,
         email: $("email").value.trim(),
-        clubId: Number($("club").value) || 0,
+        clubId: isOther() ? 0 : Number($("club").value) || 0,
+        clubName: isOther() ? $("club-name").value.trim() : null,
         subscription: (document.querySelector("input[name=plan]:checked") || {}).value
     };
+    if (!fed()) {
+        status("Elegí tu federación.", true);
+        return;
+    }
     if (!data.subscription) {
         status("Elegí un plan de suscripción.", true);
         return;
     }
     const missing = ["username", "password", "email"].filter(k => !data[k]);
-    if (missing.length || !data.clubId) {
+    if (missing.length || !(data.clubId || data.clubName)) {
         status("Completá todos los campos obligatorios.", true);
         return;
     }

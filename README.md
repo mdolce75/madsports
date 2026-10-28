@@ -306,6 +306,10 @@ perfil decide de dónde salen los clubes, las categorías, los jugadores y los i
   el mensual (`COACH_MONTHLY`: hasta 3 equipos y 25 partidos por mes) figura como "Próximamente" y no se puede elegir
   mientras `SIGNUP_COACH_PAID` (`madsports.signup.coach-paid`) sea `false`, el valor por defecto (`max_teams` y `matches_per_month` en
   `subscription_plan`, V17).
+- **DT de otra federación** (`COACHOTR`, "Otra" en el registro de RinkMetrics): para quien no es de la FPP ni de la
+  AMP. Como no hay datos en SIDGAD, escribe el nombre de su club en lugar de elegirlo, y en la sección Equipos crea
+  sus equipos con un nombre y carga a mano sus jugadores (nombre, apellido, número y si es arquero), que también
+  corrige o da de baja. Sus partidos quedan con la federación `OTR`.
 - **RinkMetrics (servidor):** cada partido es de un equipo del DT; el rival se escribe (con los ya usados para
   elegir), con la fecha, si es local o visitante, los minutos de cada tiempo (25 si no se eligen) y el campeonato. El
   mismo rival en la misma fecha retoma el partido en vez de crear otro. Un partido se puede eliminar con todas sus
@@ -556,7 +560,7 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
 - `POST /api/password/forgot` `{"email","product"}` (`product`: `REPORTS` o `METRICS`, el de la pantalla);
   `GET /api/signup/options` → `{club, amp, playerAmp}` (qué perfiles se pueden registrar hoy); `POST /api/password/reset` `{"token","password"}`
 - `POST /api/player/reports` `{"year":2026,"period":"SEASON"}` → `202 {id, status}`; `GET /api/player/reports/{id}` y `/html`, `/pdf` y `/xlsx` (PLAYERFPP o PLAYERAMP)
-- RinkMetrics (COACHFPP o COACHAMP; sin `team`, el primer equipo del DT; lo de otro DT da 404):
+- RinkMetrics (COACHFPP, COACHAMP o COACHOTR; sin `team`, el primer equipo del DT; lo de otro DT da 404):
   - `GET /api/coach/teams`: los equipos con `played`, `won`, `drawn` y `lost` (partidos finalizados);
     `POST /api/coach/teams` `{"name"}` → `201` (`409` si ya tiene los equipos del plan); `PUT /api/coach/teams/{id}`; `DELETE /api/coach/teams/{id}` → `204`
     (`409` si tiene partidos)

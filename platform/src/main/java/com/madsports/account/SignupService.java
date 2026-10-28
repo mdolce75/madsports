@@ -19,7 +19,7 @@ import java.util.Locale;
  * Alta de usuarios: club, jugador o DT, de la FPP o de la AMP (excluyentes). Para el jugador es obligatorio el
  * jugador de SIDGAD, elegido de la planilla de un equipo del club (categoría y rama en que juega; solo sirve para
  * encontrarlo: el informe busca al jugador en todas las categorías del club). El DT elige uno o más equipos de su
- * club, hasta los que permite su plan.
+ * club, hasta los que permite su plan. El DT de otra federación (COACHOTR) no tiene club en SIDGAD: escribe su nombre.
  */
 @Service
 public class SignupService {
@@ -33,9 +33,11 @@ public class SignupService {
 
     /**
      * @param suscripcion código del plan elegido (CLUB_*, PLAYER_* o DT_*, según el perfil)
+     * @param clubName    solo el DT de otra federación (COACHOTR): el nombre de su club; los demás lo eligen de SIDGAD
      */
     public record Signup(Profile profile, String username, String password, String email,
-                           int clubId, String category, String branch, Integer playerId, String subscription) {
+                           int clubId, String category, String branch, Integer playerId, String subscription,
+                           String clubName) {
     }
 
     private final UserAccountRepository users;
@@ -109,24 +111,41 @@ public class SignupService {
             } + " en " + product.displayName() + " con ese email.");
         }
         SubscriptionPlan plan = plan(r);
-        int year = catalog.defaultYear();
-        Federation fed = r.profile().federation();
-        ClubView club = catalog.club(fed, r.clubId(), year);
-
         UserAccount u;
-        if (r.profile().player()) {
-            u = registerPlayer(r, username, email, club, year, fed);
-        } else if (r.profile().coach()) {
-            // DT: sin nombre ni apellido; sus equipos y jugadores los carga después, en la sección Equipo.
+        if (!r.profile().sidgad()) {
+            // DT de otra federación: sin club de SIDGAD (id 0, sin sigla); sus equipos y jugadores, a mano.
             u = new UserAccount(username, encoder.encode(r.password()), email, null, null,
-                    club.id(), club.name(), club.code(), EnumSet.of(r.profile()), clock.instant());
+                    0, ownClubName(r.clubName()), "", EnumSet.of(r.profile()), clock.instant());
         } else {
-            // Club: sin nombre ni apellido (el registro no los pide).
-            u = new UserAccount(username, encoder.encode(r.password()), email, null, null,
-                    club.id(), club.name(), club.code(), EnumSet.of(r.profile()), clock.instant());
+            if (r.clubId() <= 0) {
+                throw new IllegalArgumentException("Elegí el club.");
+            }
+            int year = catalog.defaultYear();
+            Federation fed = r.profile().federation();
+            ClubView club = catalog.club(fed, r.clubId(), year);
+            if (r.profile().player()) {
+                u = registerPlayer(r, username, email, club, year, fed);
+            } else {
+                // Club o DT: sin nombre ni apellido (el registro no los pide); el DT carga después sus equipos y
+                // jugadores, en la sección Equipo.
+                u = new UserAccount(username, encoder.encode(r.password()), email, null, null,
+                        club.id(), club.name(), club.code(), EnumSet.of(r.profile()), clock.instant());
+            }
         }
         u.subscribe(plan, LocalDate.now(clock));
         return users.save(u);
+    }
+
+    /** El club que escribe el DT de otra federación: obligatorio, con los espacios normalizados. */
+    private static String ownClubName(String name) {
+        String n = name == null ? "" : name.trim().replaceAll("\\s+", " ");
+        if (n.isEmpty()) {
+            throw new IllegalArgumentException("Escribí el nombre de tu club.");
+        }
+        if (n.length() > 80) {
+            throw new IllegalArgumentException("El nombre del club es muy largo (hasta 80 letras).");
+        }
+        return n;
     }
 
     /** Plan elegido: obligatorio y del perfil (CLUB_* para clubes, PLAYER_* para jugadores, DT_* para DT). */

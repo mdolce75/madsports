@@ -157,6 +157,16 @@ public class UserAccount {
                 .orElse(Federation.FPP);
     }
 
+    /** ¿Sus datos salen de SIDGAD? No, si es el DT de otra federación (COACHOTR): sus equipos y jugadores son a mano. */
+    public boolean sidgad() {
+        return profiles.stream().allMatch(Profile::sidgad);
+    }
+
+    /** "FPP", "AMP" u "OTR" (otra federación): la de la sesión y la de sus partidos. */
+    public String federationCode() {
+        return sidgad() ? federation().name() : Profile.COACHOTR.federationCode();
+    }
+
     /** ¿Tiene un perfil de jugador (PLAYERFPP, PLAYERAMP...)? */
     public boolean isPlayer() {
         return profiles.stream().anyMatch(Profile::player);

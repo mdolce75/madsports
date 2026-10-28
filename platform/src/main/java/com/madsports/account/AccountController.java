@@ -12,7 +12,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.ObjectProvider;
@@ -54,11 +54,12 @@ public class AccountController {
             String password,
             @NotBlank(message = "El email es obligatorio.") @Email(message = "El email no es válido.")
             @Size(max = 120) String email,
-            @Positive(message = "Elegí el club.") int clubId,
+            @PositiveOrZero int clubId,
             String category,
             String branch,
             Integer playerId,
-            @NotBlank(message = "Elegí un plan de suscripción.") String subscription) {
+            @NotBlank(message = "Elegí un plan de suscripción.") String subscription,
+            @Size(max = 80, message = "El nombre del club es muy largo (hasta 80 letras).") String clubName) {
     }
 
     /**
@@ -137,7 +138,7 @@ public class AccountController {
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, String> register(@Valid @RequestBody SignupRequest req) {
         UserAccount u = signup.register(new Signup(req.profile(), req.username(), req.password(), req.email(),
-                req.clubId(), req.category(), req.branch(), req.playerId(), req.subscription()));
+                req.clubId(), req.category(), req.branch(), req.playerId(), req.subscription(), req.clubName()));
         account.sendVerification(u);
         account.notifySignup(u);
         return Map.of("username", u.getUsername(), "email", u.getEmail());
@@ -229,7 +230,7 @@ public class AccountController {
                                 "to", u.getSubscriptionTo().toString(),
                                 "maxTeams", u.getSubscriptionPlan().getMaxTeams(),
                                 "matchesPerMonth", u.getSubscriptionPlan().getMatchesPerMonth()),
-                        u.getReportsRequested(), u.federation().name(), u.getProduct().name(), monthlyReports(u)))
+                        u.getReportsRequested(), u.federationCode(), u.getProduct().name(), monthlyReports(u)))
                 .orElse(SessionView.ANONYMOUS);
     }
 

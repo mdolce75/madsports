@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
  * juega (uno o más). El plantel de un equipo son sus jugadores activos; no sale de SIDGAD. Las acciones nombran al
  * jugador por su id. Un equipo se puede armar desde una categoría del club en SIDGAD: su plantel (los jugadores de las
  * actas del equipo) entra entero, salvo los que el DT deja afuera, que quedan como "no incluidos" para sumarlos después.
+ * El DT de otra federación (sin SIDGAD) arma sus equipos con un nombre y carga a mano sus jugadores.
  */
 @Service
 public class SquadService {
@@ -121,8 +122,14 @@ public class SquadService {
 
     // ---------- Equipos desde SIDGAD ----------
 
-    /** Las categorías del club del DT en SIDGAD (cada equipo del club en cada rama), primero las masculinas. */
+    /**
+     * Las categorías del club del DT en SIDGAD (cada equipo del club en cada rama), primero las masculinas. Ninguna si
+     * es de otra federación: sus equipos y jugadores los carga a mano.
+     */
     public List<ClubCategoryView> clubCategories(UserAccount u) {
+        if (!u.sidgad()) {
+            return List.of();
+        }
         int year = catalog.defaultYear();
         // Solo las que tienen jugadores en SIDGAD: el equipo sale de su plantel.
         ClubView club = roster.withPlayers(u.federation(), catalog.club(u.federation(), u.getClubId(), year), year);

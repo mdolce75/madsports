@@ -297,6 +297,46 @@ class CoachControllerTest {
         verifyNoInteractions(roster);
     }
 
+    @Test
+    void theCoachOfAnotherFederationLoadsTeamsAndPlayersByHand() throws Exception {
+        UserAccount u = new UserAccount("tandil", "x", "tandil@example.com", null, null, 0, "Club Atlético Tandil", "",
+                EnumSet.of(Profile.COACHOTR), Instant.now());
+        u.subscribe(subscriptions.findByCode("COACH_FREE").orElseThrow(), LocalDate.of(2026, 10, 1));
+        users.save(u);
+        RequestPostProcessor tandil = user("tandil").authorities(() -> "COACHOTR");
+
+        // Sin SIDGAD: no hay categorías del club de donde armar un equipo, ni se le pregunta a SIDGAD.
+        mvc.perform(get("/api/coach/club/categories").with(tandil)).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(post("/api/coach/teams").with(tandil).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("name", "Primera", "category", "PRIMERA",
+                                "branch", "MASCULINO"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Esa categoría no es de tu club."));
+
+        // El equipo, con un nombre; los jugadores, a mano.
+        long team = team("tandil", "Primera");
+        int id = player("tandil", "Juan", "Pérez", "10", false, team);
+        mvc.perform(get("/api/coach/squad").param("team", String.valueOf(team)).with(tandil))
+                .andExpect(jsonPath("$[*].name").value(contains("Juan Pérez")));
+
+        // Sus partidos quedan como de otra federación, con su club.
+        String body = mvc.perform(post("/api/coach/matches").with(tandil).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("team", team,
+                                "opponent", "AYACUCHO", "date", "2026-10-18", "home", true))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long match = json.readTree(body).get("id").asLong();
+        assertThat(matches.findById(match).orElseThrow().getFederation()).isEqualTo("OTR");
+        mvc.perform(post("/api/coach/matches/" + match + "/actions").with(tandil).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(List.of(action(id, "SHOT", "GOAL", 1, 30)))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/coach/matches/" + match + "/report").with(tandil))
+                .andExpect(jsonPath("$.title").value(containsString("Club Atlético Tandil")))
+                .andExpect(jsonPath("$.totals.goals").value(1));
+        verifyNoInteractions(roster, catalog);
+    }
+
     /** Vélez en SIDGAD: Primera Masculino e Infantil B en las dos ramas; el plantel de Infantil B Femenino y Primera. */
     void clubInSidgad() {
         when(catalog.defaultYear()).thenReturn(2026);

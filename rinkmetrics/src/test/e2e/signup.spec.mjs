@@ -55,12 +55,39 @@ test("DT con la AMP habilitada: elige la federación y ve solo los clubes de esa
     expect(asked).toEqual(["AMP", "FPP"]);
 });
 
-test("DT sin la AMP: no elige federación y ve solo los clubes de la FPP", async ({page}) => {
+test("DT sin la AMP: elige entre la FPP y Otra, y con la FPP ve solo sus clubes", async ({page}) => {
     const asked = await api(page, false);
     await page.goto("/rinkmetrics/signup.html");
+    await expect(page.locator("input[name=federacion][value=AMP]")).toHaveCount(0);
+    await expect(page.locator("input[name=federacion]:checked")).toHaveCount(0);
+    await page.locator("input[name=federacion][value=FPP]").check();
     await expect(clubs(page)).toHaveText(["VELEZ (CAVS)", "ARGENTINOS JUNIORS (AAAJ)"]);
-    await expect(page.locator("input[name=federacion][value=AMP]")).toBeHidden();
     expect(asked).toEqual(["FPP"]);
+});
+
+test("DT de otra federación: escribe el nombre de su club, sin catálogo de SIDGAD", async ({page}) => {
+    const asked = await api(page, true);
+    let sent;
+    await page.route("**/api/signup", route => {
+        sent = route.request().postDataJSON();
+        return route.fulfill({status: 201, json: {username: sent.username, email: sent.email}});
+    });
+    await page.route("**/api/plans*", route => route.fulfill({json: [{code: "COACH_FREE", name: "DT free", price: 0,
+        maxTeams: 3, matchesPerMonth: 5, dollar: 1000, dollarDate: "2026-10-28"}]}));
+    await page.goto("/rinkmetrics/signup.html");
+    await page.locator("input[name=federacion][value=OTR]").check();
+    await expect(page.locator("#club")).toBeHidden();
+    await expect(page.locator("#club-name")).toBeVisible();
+    await page.fill("#usuario", "profe.otra");
+    await page.fill("#clave", "clave-segura");
+    await page.fill("#email", "profe@example.com");
+    await page.locator("#go").click();
+    await expect(page.locator("#status")).toHaveText("Completá todos los campos obligatorios.");
+    await page.fill("#club-name", "Club Atlético Tandil");
+    await page.locator("#go").click();
+    await expect(page.locator(".notice.ok")).toBeVisible();
+    expect(sent).toMatchObject({profile: "COACHOTR", clubId: 0, clubName: "Club Atlético Tandil", subscription: "COACH_FREE"});
+    expect(asked).toEqual([]);
 });
 
 // RinkReports (club y jugador): con la AMP no hay federación elegida de antemano, para que nadie de Mendoza quede en la
