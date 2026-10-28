@@ -54,10 +54,11 @@
     </section>
 
 
-    <!-- Equipo: los equipos (desde SIDGAD) y sus jugadores, que se tildan o destildan -->
+    <!-- Equipo: los equipos (desde SIDGAD) y sus jugadores, que se tildan o destildan. El DT de otra federación (sin
+         SIDGAD) crea sus equipos con un nombre y carga a mano sus jugadores (pl-form). -->
     <section id="v-plantel" class="coach-vista" hidden>
         <h2 class="section-title">Equipos</h2>
-        <p class="hint">Creá tus equipos desde las categorías de tu club: el plantel sale de las actas de SIDGAD y
+        <p class="hint" id="eq-ayuda">Creá tus equipos desde las categorías de tu club: el plantel sale de las actas de SIDGAD y
             destildás a los que no van (quedan en la lista para sumarlos después).</p>
 
         <h3 class="inf-sub">Equipos</h3>
@@ -85,10 +86,27 @@
         </div>
 
         <h3 class="inf-sub">Jugadores</h3>
+        <form class="sheet pl-hoja" id="pl-form" novalidate hidden>
+            <div class="sheet-head"><span id="pl-titulo">Nuevo jugador</span><span id="pl-form-equipo"></span></div>
+            <div class="grid2">
+                <div class="field"><label for="pl-nombre">Nombre</label>
+                    <input type="text" id="pl-nombre" maxlength="40" autocomplete="off"></div>
+                <div class="field"><label for="pl-apellido">Apellido</label>
+                    <input type="text" id="pl-apellido" maxlength="40" autocomplete="off"></div>
+            </div>
+            <div class="grid2">
+                <div class="field"><label for="pl-numero">Número</label>
+                    <input type="text" id="pl-numero" maxlength="3" inputmode="numeric" autocomplete="off" placeholder="Sin número"></div>
+                <div class="field pl-check"><label for="pl-arquero"><input type="checkbox" id="pl-arquero"> Arquero</label></div>
+            </div>
+            <button type="submit" class="go" id="pl-guardar">Agregar jugador</button>
+            <button type="button" class="coach-link pl-cancelar" id="pl-cancelar" hidden>Cancelar</button>
+            <div id="pl-form-status" class="abm-status" role="status"></div>
+        </form>
         <div class="sheet pl-hoja">
             <div class="sheet-head"><span>Jugadores del equipo</span><span id="pl-n"></span></div>
             <div class="pl-filtro"><select id="pl-filtro" aria-label="Equipo"></select></div>
-            <p class="hint">Salen del plantel de SIDGAD del equipo. Tildá a los que juegan y destildá a los que no: quedan
+            <p class="hint" id="pl-ayuda">Salen del plantel de SIDGAD del equipo. Tildá a los que juegan y destildá a los que no: quedan
                 en la lista para volver a sumarlos.</p>
             <ul class="pl-lista" id="pl-lista"><li class="coach-vacio">Cargando…</li></ul>
             <div id="pl-status" class="abm-status" role="status"></div>

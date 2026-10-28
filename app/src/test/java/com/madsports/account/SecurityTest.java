@@ -457,6 +457,35 @@ class SecurityTest {
     }
 
     @Test
+    void theCoachOfAnotherFederationWritesTheNameOfTheirClub() throws Exception {
+        // Otra federación (sin SIDGAD): no elige el club de un catálogo, escribe su nombre.
+        Map<String, Object> other = coach("profe.otra");
+        other.putAll(Map.of("profile", "COACHOTR", "clubId", 0));
+        register(other).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Escribí el nombre de tu club."));
+        other.put("clubName", "  Club   Atlético Tandil ");
+        register(other).andExpect(status().isCreated());
+        UserAccount u = users.findByUsername("profe.otra").orElseThrow();
+        assertThat(u.getProfiles()).containsExactly(Profile.COACHOTR);
+        assertThat(u.getClubId()).isZero();
+        assertThat(u.getClubName()).isEqualTo("Club Atlético Tandil");
+        assertThat(u.sidgad()).isFalse();
+        assertThat(u.federationCode()).isEqualTo("OTR");
+
+        confirm("profe.otra@example.com");
+        login("profe.otra", "clave-segura").andExpect(jsonPath("$.home").value("/coach.html"));
+        mvc.perform(get("/api/session").with(user("profe.otra").authorities(() -> "COACHOTR")))
+                .andExpect(jsonPath("$.federation").value("OTR"))
+                .andExpect(jsonPath("$.club.name").value("Club Atlético Tandil"));
+        mvc.perform(get("/coach.html").with(user("profe.otra").authorities(() -> "COACHOTR"))).andExpect(status().isOk());
+
+        // Los de la FPP y la AMP siguen eligiendo su club de SIDGAD.
+        Map<String, Object> noClub = coach("profe.sin.club");
+        noClub.put("clubId", 0);
+        register(noClub).andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("Elegí el club."));
+    }
+
+    @Test
     void theCoachScreenIsOnlyForCoaches() throws Exception {
         mvc.perform(get("/coach.html").with(user("a").authorities(() -> "COACHAMP"))).andExpect(status().isOk());
         mvc.perform(get("/coach.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());

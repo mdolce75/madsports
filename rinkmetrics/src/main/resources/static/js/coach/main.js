@@ -88,7 +88,7 @@ if (location.pathname === "/coach-demo.html") {
     navigator.serviceWorker.register("/coach-sw.js", {scope: "/coach.html"}).catch(() => { /* sin carga sin señal */ });
 }
 
-const s = await requireProfile(["COACHFPP", "COACHAMP"]);
+const s = await requireProfile(["COACHFPP", "COACHAMP", "COACHOTR"]);
 if (s) {
     coach.session = s;
     if (s.subscription && s.subscription.matchesPerMonth) $("cupo").textContent = `${s.subscription.matchesPerMonth} partidos por mes`;

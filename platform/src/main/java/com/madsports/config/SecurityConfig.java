@@ -52,7 +52,7 @@ import java.util.Map;
 
 /**
  * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/rinkreports/club.html) CLUBFPP o CLUBAMP
- * y la de jugador (/rinkreports/player.html) PLAYERFPP o PLAYERAMP, y la del DT (/coach.html) COACHFPP o COACHAMP; la federación sale del perfil
+ * y la de jugador (/rinkreports/player.html) PLAYERFPP o PLAYERAMP, y la del DT (/coach.html) COACHFPP, COACHAMP o COACHOTR; la federación sale del perfil
  * del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
  * <p>
@@ -93,7 +93,7 @@ public class SecurityConfig {
                         .requestMatchers("/rinkreports/player.html", "/api/player/**")
                         .hasAnyAuthority(Profile.PLAYERFPP.name(), Profile.PLAYERAMP.name())
                         .requestMatchers("/coach.html", "/api/coach/**")
-                        .hasAnyAuthority(Profile.COACHFPP.name(), Profile.COACHAMP.name())
+                        .hasAnyAuthority(Profile.COACHFPP.name(), Profile.COACHAMP.name(), Profile.COACHOTR.name())
                         .anyRequest().authenticated())
                 .formLogin(f -> f
                         .loginPage(Product.METRICS.login())
@@ -197,7 +197,7 @@ public class SecurityConfig {
         if (has(authorities, Profile.PLAYERFPP) || has(authorities, Profile.PLAYERAMP)) {
             return "/rinkreports/player.html";
         }
-        if (has(authorities, Profile.COACHFPP) || has(authorities, Profile.COACHAMP)) {
+        if (has(authorities, Profile.COACHFPP) || has(authorities, Profile.COACHAMP) || has(authorities, Profile.COACHOTR)) {
             return "/coach.html";
         }
         return Product.METRICS.login() + "?noProfile";

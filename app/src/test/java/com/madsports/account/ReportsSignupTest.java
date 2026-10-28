@@ -48,14 +48,14 @@ class ReportsSignupTest {
 
     static SignupService.Signup player(String plan) {
         return new SignupService.Signup(Profile.PLAYERFPP, "juan", "clave-segura", "juan@example.com", 74,
-                "JUVENIL", "MASCULINO", 3851, plan);
+                "JUVENIL", "MASCULINO", 3851, plan, null);
     }
 
     @Test
     void clubAccountsAreNotCreated() {
         for (Profile p : new Profile[] {Profile.CLUBFPP, Profile.CLUBAMP}) {
             assertThatThrownBy(() -> signup.register(new SignupService.Signup(p, "ana", "clave-segura",
-                    "ana@example.com", 74, null, null, null, "CLUB_MONTHLY")))
+                    "ana@example.com", 74, null, null, null, "CLUB_MONTHLY", null)))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("Las cuentas de club estarán disponibles próximamente. Por ahora podés crear tu cuenta "
                             + "de jugador.");
@@ -75,7 +75,7 @@ class ReportsSignupTest {
     @Test
     void ampPlayerAccountsAreNotCreatedYet() {
         assertThatThrownBy(() -> signup.register(new SignupService.Signup(Profile.PLAYERAMP, "juan", "clave-segura",
-                "juan@example.com", 3, "JUVENIL", "MASCULINO", 6188, "PLAYER_FREE")))
+                "juan@example.com", 3, "JUVENIL", "MASCULINO", 6188, "PLAYER_FREE", null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Las cuentas de jugador de la AMP estarán disponibles próximamente. Por ahora, las de la FPP.");
     }

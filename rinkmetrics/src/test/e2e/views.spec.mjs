@@ -71,8 +71,8 @@ test("Informes: el de un partido y el de un período, del equipo y de un jugador
 test("Equipo: los equipos salen de SIDGAD y sus jugadores se tildan o destildan, con el límite del plan", async ({page}) => {
     await page.goto("/coach-demo.html#team");
     await expect(page.locator("#eq-n")).toHaveText("1 de 3 equipos");
-    // Sin carga de jugadores a mano ni equipos fuera de SIDGAD.
-    await expect(page.locator("#pl-form")).toHaveCount(0);
+    // Sin carga de jugadores a mano ni equipos fuera de SIDGAD (eso es solo para otra federación).
+    await expect(page.locator("#pl-form")).toBeHidden();
     await expect(page.locator("#eq-categoria option", {hasText: "Otro"})).toHaveCount(0);
 
     // Juvenil desde SIDGAD, sin Iván Luna.
@@ -150,4 +150,41 @@ test("Equipo desde una categoría del club: su plantel de SIDGAD, sin los destil
     await ivan.locator("input").check();
     await expect(page.locator("#pl-status")).toHaveText("Iván Luna juega en Juvenil Masculino.");
     await expect(ivan).not.toHaveClass(/pendiente/);
+});
+
+// El DT de otra federación (sin SIDGAD): la demo con su sesión. Arma el equipo con un nombre y carga los jugadores a mano.
+test("Equipo a mano: otra federación crea el equipo con un nombre y carga, corrige y da de baja a sus jugadores", async ({page}) => {
+    await page.route("**/js/coach/demo.js", async route => {
+        const body = (await (await route.fetch()).text())
+            .replace('profiles: ["COACHFPP"]', 'profiles: ["COACHOTR"]').replace('federation: "FPP"', 'federation: "OTR"');
+        await route.fulfill({body, contentType: "text/javascript"});
+    });
+    await page.goto("/coach-demo.html#team");
+    await expect(page.locator("#eq-n")).toHaveText("1 de 3 equipos");
+    await expect(page.locator("#eq-categoria-campo")).toBeHidden();
+    await expect(page.locator("#pl-form")).toBeVisible();
+
+    await page.locator("#eq-nombre").fill("Cuarta");
+    await page.locator("#eq-guardar").click();
+    await expect(page.locator("#eq-status")).toHaveText("Equipo creado: Cuarta.");
+    await expect(page.locator("#pl-filtro option:checked")).toHaveText("Cuarta");
+    await expect(page.locator("#pl-lista")).toContainText("Este equipo todavía no tiene jugadores");
+
+    await page.locator("#pl-nombre").fill("Ana");
+    await page.locator("#pl-apellido").fill("Gómez");
+    await page.locator("#pl-numero").fill("5");
+    await page.locator("#pl-guardar").click();
+    await expect(page.locator("#pl-form-status")).toHaveText("Agregado: Ana Gómez en Cuarta.");
+    await expect(page.locator("#pl-lista li")).toHaveCount(1);
+    await expect(page.locator("#pl-lista li")).toContainText("#5");
+
+    await page.getByRole("button", {name: "Editar a Ana Gómez"}).click();
+    await expect(page.locator("#pl-nombre")).toHaveValue("Ana");
+    await page.locator("#pl-nombre").fill("Ana María");
+    await page.locator("#pl-guardar").click();
+    await expect(page.locator("#pl-form-status")).toHaveText("Guardado: Ana María Gómez.");
+
+    await page.getByRole("button", {name: "Dar de baja a Ana María Gómez"}).click();
+    await expect(page.locator("#pl-status")).toHaveText("Ana María Gómez salió del plantel.");
+    await expect(page.locator("#pl-lista")).toContainText("Este equipo todavía no tiene jugadores");
 });

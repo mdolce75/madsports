@@ -133,7 +133,7 @@ public class CoachService {
             return view(existing.get(), true);
         }
         checkQuota(u);
-        LiveMatch p = new LiveMatch(u.getId(), u.federation().name(), u.getClubId(), e.getId(), null, null,
+        LiveMatch p = new LiveMatch(u.getId(), u.federationCode(), u.getClubId(), e.getId(), null, null,
                 tournament.isEmpty() ? null : tournament, opponent, date, n.home() == null || n.home(), minutes, clock.instant());
         started.save(new StartedMatch(u.getId(), p.getCreatedAt()));
         return view(matches.save(p), true, e.getName());

@@ -1,6 +1,7 @@
 // Equipo: los equipos del DT (con su balance) y sus jugadores. Un equipo se arma desde una categoría del club en
 // SIDGAD: su plantel viene tildado y el DT destilda a los que no van. Los jugadores no se cargan a mano: salen de
 // SIDGAD, y en la lista de cada equipo se tildan (juegan) o destildan (quedan afuera, para sumarlos después).
+// El DT de otra federación (OTR) no tiene SIDGAD: crea sus equipos con un nombre y carga a mano sus jugadores.
 import {crud, coach, el, getJson, fetchTeams} from "./common.js";
 
 let teamEditing = null;   // id del equipo que se está renombrando (null: alta)
@@ -8,9 +9,26 @@ let coachPlayers = [];
 let categoryList = null;   // categorías del club en SIDGAD ([{clave, rama, nombre}]); null: todavía no se pidieron
 let sidgadSquad = null;   // el plantel de SIDGAD de la categoría elegida (null: no hay o se está leyendo)
 let autoName = "";   // el nombre que se completó solo con la categoría (si el DT no lo cambió, se reemplaza)
+let playerEditing = null;   // id del jugador que se está editando (null: alta), solo a mano
+
+/** ¿Equipos y jugadores a mano? El DT de otra federación: no hay de dónde sacarlos. */
+const manual = () => coach.session && coach.session.federation === "OTR";
+
+/** A mano: sin categorías de SIDGAD, con el formulario de jugadores. */
+function manualMode() {
+    categoryList = [];
+    $("eq-categoria-campo").hidden = true;
+    $("pl-form").hidden = false;
+    $("eq-ayuda").textContent = "Creá tus equipos con un nombre y cargá sus jugadores: en cada equipo tildás a los "
+        + "que juegan y destildás a los que no (quedan en la lista para sumarlos después).";
+    $("pl-ayuda").textContent = "Los que cargás quedan en el equipo elegido. Tildá a los que juegan y destildá a los "
+        + "que no: quedan en la lista para volver a sumarlos.";
+}
 
 export async function load() {
-    if (categoryList === null) loadCategories();
+    if (categoryList === null) {
+        if (manual()) manualMode(); else loadCategories();
+    }
     try {
         const [, js] = await Promise.all([fetchTeams(true), getJson("/api/coach/players").then(r => r.data)]);
         coachPlayers = js;
@@ -146,15 +164,20 @@ function paintPlayers() {
     ul.replaceChildren();
     if (!coach.teams.length) {
         $("pl-n").textContent = "";
-        ul.append(el("li", "coach-vacio", "Creá un equipo desde una categoría de tu club: sus jugadores salen de SIDGAD."));
+        ul.append(el("li", "coach-vacio", manual() ? "Creá un equipo para cargar sus jugadores."
+            : "Creá un equipo desde una categoría de tu club: sus jugadores salen de SIDGAD."));
         return;
     }
+    // A mano, el alta es en el equipo elegido en la lista: el formulario lo nombra.
+    $("pl-form-equipo").textContent = playerEditing ? "" : (coach.teams.find(e => e.id === teamId) || {}).name || "";
     const list = coachPlayers.filter(j => j.teams.includes(teamId) || (j.pending || []).includes(teamId));
     const playing = list.filter(j => j.teams.includes(teamId)).length;
     $("pl-n").textContent = list.length ? `${playing} de ${list.length} juegan` : "";
-    if (!list.length) ul.append(el("li", "coach-vacio", "Este equipo no tiene jugadores de SIDGAD."));
+    if (!list.length) ul.append(el("li", "coach-vacio", manual() ? "Este equipo todavía no tiene jugadores: agregá el primero."
+        : "Este equipo no tiene jugadores de SIDGAD."));
     for (const j of list) {
         const li = el("li", "pl-tilde");
+        li.classList.toggle("editando", j.id === playerEditing);
         const label = el("label");
         const box = el("input");
         box.type = "checkbox";
@@ -167,6 +190,21 @@ function paintPlayers() {
         label.append(box, el("span", "pl-num", j.number ? "#" + j.number : "s/n"), whoName);
         li.classList.toggle("pendiente", !box.checked);
         li.append(label);
+        if (manual()) {
+            // A mano también se corrigen y se dan de baja.
+            li.classList.add("pl-manual");
+            const edit = el("button", "coach-link", "Editar");
+            edit.type = "button";
+            edit.setAttribute("aria-label", "Editar a " + j.name);
+            edit.addEventListener("click", () => playerForm(j));
+            const deactivate = el("button", "coach-link pl-baja", "Dar de baja");
+            deactivate.type = "button";
+            deactivate.setAttribute("aria-label", "Dar de baja a " + j.name);
+            deactivate.addEventListener("click", () => playerDeactivate(j));
+            const acc = el("div", "acc");
+            acc.append(edit, deactivate);
+            li.append(acc);
+        }
         ul.append(li);
     }
 }
@@ -181,7 +219,7 @@ const offline = err => err instanceof TypeError ? "Sin señal: para editar los e
 function teamForm(e) {
     teamEditing = e ? e.id : null;
     // Renombrar no cambia el plantel: la categoría y los jugadores de SIDGAD son solo para el alta.
-    $("eq-categoria-campo").hidden = !!e;
+    $("eq-categoria-campo").hidden = !!e || manual();
     $("eq-sidgad").hidden = !!e || !chosenCategory();
     $("eq-titulo").textContent = e ? "Cambiar nombre" : "Nuevo equipo";
     $("eq-guardar").textContent = e ? "Guardar cambios" : "Agregar equipo";
@@ -197,7 +235,7 @@ async function teamSave(ev) {
     const name = $("eq-nombre").value.trim();
     const id = teamEditing;
     const cat = id ? null : chosenCategory();
-    if (!id && !cat) {
+    if (!id && !cat && !manual()) {
         crudStatus("eq-status", "Elegí la categoría de tu club: el equipo sale de SIDGAD, con su plantel.", true);
         $("eq-categoria").focus();
         return;
@@ -257,7 +295,62 @@ async function playerToggle(j, teamId, box) {
     }
 }
 
+/** El formulario de jugadores (a mano) en modo alta (j null) o para editar a j. */
+function playerForm(j) {
+    playerEditing = j ? j.id : null;
+    $("pl-titulo").textContent = j ? "Editar jugador" : "Nuevo jugador";
+    $("pl-guardar").textContent = j ? "Guardar cambios" : "Agregar jugador";
+    $("pl-cancelar").hidden = !j;
+    $("pl-nombre").value = j ? j.names : "";
+    $("pl-apellido").value = j ? j.lastName : "";
+    $("pl-numero").value = j ? j.number : "";
+    $("pl-arquero").checked = j ? j.goalkeeper : false;
+    crudStatus("pl-form-status", "");
+    paintPlayers();
+    if (j) $("pl-nombre").focus();
+}
+
+/** Alta en el equipo elegido en la lista, o cambio de sus datos (sigue en los mismos equipos). */
+async function playerSave(ev) {
+    ev.preventDefault();
+    const id = playerEditing;
+    const editingPlayer = id && coachPlayers.find(j => j.id === id);
+    const teamId = Number($("pl-filtro").value);
+    const body = {name: $("pl-nombre").value, lastName: $("pl-apellido").value, number: $("pl-numero").value,
+        goalkeeper: $("pl-arquero").checked, teams: editingPlayer ? editingPlayer.teams : [teamId]};
+    if (!editingPlayer && !teamId) { crudStatus("pl-form-status", "Creá un equipo antes de cargar jugadores.", true); return; }
+    if (!body.name.trim()) { crudStatus("pl-form-status", "Escribí el nombre del jugador.", true); $("pl-nombre").focus(); return; }
+    if (!body.lastName.trim()) { crudStatus("pl-form-status", "Escribí el apellido del jugador.", true); $("pl-apellido").focus(); return; }
+    $("pl-guardar").disabled = true;
+    try {
+        const data = await crud(id ? "PUT" : "POST", id ? `/api/coach/players/${id}` : "/api/coach/players", body);
+        playerForm(null);
+        const team = (coach.teams.find(e => e.id === teamId) || {}).name;
+        crudStatus("pl-form-status", id ? `Guardado: ${data.name}.` : `Agregado: ${data.name}` + (team ? ` en ${team}.` : "."));
+        $("pl-nombre").focus();
+        await load();
+    } catch (err) {
+        crudStatus("pl-form-status", offline(err), true);
+    } finally {
+        $("pl-guardar").disabled = false;
+    }
+}
+
+async function playerDeactivate(j) {
+    if (!confirm(`¿Dar de baja a ${j.name}? Sale de sus equipos; sus acciones quedan en los partidos y los informes.`)) return;
+    try {
+        await crud("DELETE", `/api/coach/players/${j.id}`);
+        if (playerEditing === j.id) playerForm(null);
+        crudStatus("pl-status", `${j.name} salió del plantel.`);
+        await load();
+    } catch (err) {
+        crudStatus("pl-status", offline(err), true);
+    }
+}
+
 export function start() {
+    $("pl-form").addEventListener("submit", playerSave);
+    $("pl-cancelar").addEventListener("click", () => playerForm(null));
     $("eq-categoria").addEventListener("change", onCategoryChosen);
     $("eq-form").addEventListener("submit", teamSave);
     $("eq-cancelar").addEventListener("click", () => teamForm(null));

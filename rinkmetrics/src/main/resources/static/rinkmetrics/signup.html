@@ -34,11 +34,13 @@
 
         <div class="field">
             <label>Federación <span class="req">*</span></label>
-            <div class="profiles" role="radiogroup" aria-label="Federación">
+            <div class="profiles three" role="radiogroup" aria-label="Federación">
                 <label><input type="radio" name="federacion" value="FPP">FPP
                     <small>Federación Porteña de Patín (Buenos Aires).</small></label>
                 <label><input type="radio" name="federacion" value="AMP">AMP
                     <small>Asociación Mendocina de Patín (Mendoza).</small></label>
+                <label><input type="radio" name="federacion" value="OTR">Otra
+                    <small>Otra federación o liga: cargás a mano tus equipos y jugadores.</small></label>
             </div>
             <p class="hint" id="fed-hint">Elegí tu federación para ver los perfiles y los planes.</p>
         </div>
@@ -79,9 +81,15 @@
             <label for="email">Email <span class="req">*</span></label>
             <input type="email" id="email" autocomplete="email" required maxlength="120">
         </div>
-        <div class="field">
+        <div class="field" id="club-field">
             <label for="club">Club <span class="req">*</span></label>
             <select id="club" required disabled><option value="">Cargando clubes…</option></select>
+        </div>
+        <!-- Otra federación: el club no está en SIDGAD, se escribe. -->
+        <div class="field" id="club-name-field" hidden>
+            <label for="club-name">Club <span class="req">*</span></label>
+            <input type="text" id="club-name" maxlength="80" autocomplete="organization" placeholder="El nombre de tu club">
+            <p class="hint">Tu federación no está en SIDGAD: escribí el nombre de tu club.</p>
         </div>
 
         <div id="player-fields" hidden>
