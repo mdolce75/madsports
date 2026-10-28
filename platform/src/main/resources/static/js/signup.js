@@ -61,10 +61,9 @@ function rules() {
         role() !== "PLAYER" || signupOpts.playerAmp, document.querySelector("input[name=federacion][value=FPP]"));
 }
 
-// Primero la federación y después el perfil: Club o Jugador de esa federación (CLUBAMP, PLAYERFPP...).
-// Los clubes, las categorías y los jugadores son los de la federación elegida.
-let clubFed = null;   // DT: la federación del club elegido
-const fed = () => SECTION === "dt" ? clubFed : (document.querySelector("input[name=federacion]:checked") || {}).value;
+// Primero la federación y después el perfil: Club, Jugador o DT de esa federación (CLUBAMP, PLAYERFPP, COACHAMP...).
+// Los clubes, las categorías y los jugadores son solo los de la federación elegida: nunca se mezclan en un combo.
+const fed = () => (document.querySelector("input[name=federacion]:checked") || {}).value;
 const role = () => document.querySelector("input[name=rol]:checked").value;
 const isPlayer = () => role() === "PLAYER";
 const isDt = () => role() === "COACH";
@@ -273,52 +272,30 @@ function toggleProfile() {
 }
 
 /**
- * DT: un solo combo con los clubes de las federaciones ofrecidas (sin decir de cuál es cada uno; la AMP, oculta hasta
- * nuevo aviso). Al elegir el club se toma su federación, que define el perfil (COACHFPP o COACHAMP).
+ * DT: con la AMP habilitada, elige la federación y el combo trae solo sus clubes (como en RinkReports); sin ella, la
+ * federación es la FPP y no hay nada que elegir.
  */
-async function loadCoachClubs() {
+function coachFederation() {
+    const field = document.querySelector("input[name=federacion]").closest(".field");
+    if (!signupOpts.amp) {
+        document.querySelector("input[name=federacion][value=FPP]").checked = true;
+        field.hidden = true;
+        toggleProfile();
+        return;
+    }
+    field.hidden = false;
+    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes.";
+    $("fed-hint").hidden = false;
     const sel = $("club");
     sel.innerHTML = "";
-    sel.add(new Option("Cargando clubes…", ""));
+    sel.add(new Option("Elegí primero tu federación", ""));
     sel.disabled = true;
-    try {
-        const clubList = [];
-        for (const f of signupOpts.amp ? ["FPP", "AMP"] : ["FPP"]) {
-            if (!catalogs[f]) {
-                const res = await fetch("/api/catalog?federation=" + f);
-                const body = await res.json();
-                if (!res.ok) throw new Error(body.detail || res.statusText);
-                catalogs[f] = body;
-            }
-            if (catalogs[f].available) catalogs[f].clubs.forEach(c => clubList.push({c, f}));
-        }
-        clubList.sort((a, b) => a.c.name.localeCompare(b.c.name, "es"));
-        sel.innerHTML = "";
-        sel.add(new Option(clubList.length ? "Elegí tu club" : "No hay clubes disponibles", ""));
-        for (const {c, f} of clubList) {
-            const o = new Option(`${c.name} (${c.code})`, c.id);
-            o.dataset.fed = f;
-            sel.add(o);
-        }
-        sel.disabled = !clubList.length;
-        $("go").disabled = !clubList.length;
-    } catch (e) {
-        status("No se pudo cargar la lista de clubes: " + e.message, true);
-    } finally {
-        loadTeams();
-    }
+    loadTeams();
 }
 
 document.querySelectorAll("input[name=federacion], input[name=rol]")
     .forEach(r => r.addEventListener("change", toggleProfile));
-$("club").addEventListener("change", () => {
-    if (SECTION === "dt") {
-        const o = $("club").selectedOptions[0];
-        clubFed = o && o.dataset.fed ? o.dataset.fed : null;
-        catalog = clubFed ? catalogs[clubFed] : null;
-    }
-    loadTeams();
-});
+$("club").addEventListener("change", loadTeams);
 if (SECTION === "dt") {
     $("after-fed").hidden = false;
     $("fed-hint").hidden = true;
@@ -326,7 +303,7 @@ if (SECTION === "dt") {
     $("coach-fields").hidden = false;
     loadPlans();
     fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
-        .then(o => { signupOpts = o; loadCoachClubs(); });
+        .then(o => { signupOpts = o; coachFederation(); });
 } else {
     // La FPP ya está elegida: clubes, categorías y planes, con lo que hoy se puede registrar.
     fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
