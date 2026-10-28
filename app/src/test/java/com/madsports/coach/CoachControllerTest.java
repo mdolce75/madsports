@@ -109,6 +109,7 @@ class CoachControllerTest {
     @Autowired MatchActionRepository actions;
     @Autowired TestClock clock;
     @Autowired SquadService squads;
+    @Autowired CoachReportService reports;
 
     /** El plantel ya no sale de SIDGAD: si alguien lo pidiera, el test lo detecta. */
     @MockitoBean RosterService roster;
@@ -638,7 +639,9 @@ class CoachControllerTest {
                 .andExpect(jsonPath("$.events", hasSize(12)))
                 .andExpect(jsonPath("$.events[0].minute").value("1T 00:30"))
                 .andExpect(jsonPath("$.events[0].action").value("Tiro al arco: Gol"))
-                .andExpect(jsonPath("$.events[11].player").value("Refuerzo"));
+                .andExpect(jsonPath("$.events[11].player").value("Refuerzo"))
+                // Las mismas métricas que el informe de un período: también las fichas del plantel.
+                .andExpect(jsonPath("$.playerCards[?(@.name == 'Pedro Delantero')].index").isNotEmpty());
         // Solo un jugador: sus métricas y sus eventos.
         mvc.perform(get(base + "/report").param("player", "j" + forward).with(como("profe")))
                 .andExpect(jsonPath("$.player.name").value("Pedro Delantero"))
@@ -654,6 +657,11 @@ class CoachControllerTest {
                 .andExpect(header().string("Content-Disposition", containsString("informe-huracan-2026-10-18.pdf")))
                 .andReturn().getResponse().getContentAsByteArray();
         assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+        // El PDF del partido lleva lo mismo que el de un período (rankings y fichas), y además los eventos.
+        String html = reports.html(reports.match(users.findByUsername("profe").orElseThrow(), id, null));
+        assertThat(html).contains("Ranking", "Top 5 · Goles", "Situaciones de gol (tiros)", "Top 5 · Tarjetas",
+                "Top 3 · Penales", "Fichas de los jugadores", "comparado con el plantel en el partido",
+                "Eventos del partido").doesNotContain("Por partido");
 
         // Los informes por período solo cuentan los partidos finalizados.
         String eq = String.valueOf(primera);

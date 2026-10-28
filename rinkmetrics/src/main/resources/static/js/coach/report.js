@@ -139,6 +139,9 @@ function cards(m) {
     ];
 }
 
+/** De qué es el informe, para los textos (igual que CoachReport.scope). */
+const scope = inf => inf.singleMatch ? "el partido" : "el período";
+
 /** Una tabla simple: título, encabezados y filas (o el texto de vacío). */
 function simpleTable(title, headers, rows, empty) {
     const frag = el("div");
@@ -167,16 +170,19 @@ function simpleTable(title, headers, rows, empty) {
 const who = j => `${j.number ? j.number + " " : ""}${j.name}`;
 const dec2 = v => v.toLocaleString("es-AR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-/** Top 5 de tarjetas, por color (igual que CoachReport.topCards). */
+/** Top 5 de tarjetas, por color (igual que CoachReport.topCards); en el de un partido, sin PJ ni promedio. */
 function cardsTable(inf) {
     const cards = m => m.blues + m.yellows + m.reds;
     const rows = inf.players.filter(j => cards(j.metrics) > 0)
         .map(j => ({j, total: cards(j.metrics), perGame: j.matches ? cards(j.metrics) / j.matches : 0}))
         .sort((a, b) => b.total - a.total || b.perGame - a.perGame).slice(0, 5)
-        .map((x, i) => [i + 1, who(x.j), x.j.matches, x.j.metrics.blues, x.j.metrics.yellows, x.j.metrics.reds, x.total,
-            dec2(x.perGame)]);
-    return simpleTable("Top 5 · Tarjetas", ["#", "Jugador", "PJ", "Azul", "Amarilla", "Roja", "Total", "Por partido"],
-        rows, "Sin tarjetas en el período.");
+        .map((x, i) => inf.singleMatch
+            ? [i + 1, who(x.j), x.j.metrics.blues, x.j.metrics.yellows, x.j.metrics.reds, x.total]
+            : [i + 1, who(x.j), x.j.matches, x.j.metrics.blues, x.j.metrics.yellows, x.j.metrics.reds, x.total,
+                dec2(x.perGame)]);
+    const headers = inf.singleMatch ? ["#", "Jugador", "Azul", "Amarilla", "Roja", "Total"]
+        : ["#", "Jugador", "PJ", "Azul", "Amarilla", "Roja", "Total", "Por partido"];
+    return simpleTable("Top 5 · Tarjetas", headers, rows, `Sin tarjetas en ${scope(inf)}.`);
 }
 
 /** Top 3 de penales o libres a favor, por efectividad (igual que CoachReport.topPenalties y topFreeHits). */
@@ -186,7 +192,7 @@ function setPiecesTable(inf, title, scored, taken) {
         .sort((x, y) => y.pct - x.pct || y.b - x.b || x.j.name.localeCompare(y.j.name, "es")).slice(0, 3)
         .map((x, i) => [i + 1, who(x.j), x.a, x.b, x.pct + "%"]);
     return simpleTable(title, ["#", "Jugador", "Convertidos", "Pateados", "Efectividad"], rows,
-        "Sin pateados en el período.");
+        `Sin pateados en ${scope(inf)}.`);
 }
 
 /**
@@ -242,7 +248,7 @@ function playersTable(inf, opts, title, field) {
     return frag;
 }
 
-/** Un ranking del informe de un período: los jugadores con algo de esa métrica, de más a menos, con su promedio y su
+/** Un ranking del informe: los jugadores con algo de esa métrica, de más a menos, con su promedio y su
  * parte del total del equipo (igual que CoachReport.ranking). */
 function ranking(inf, key) {
     const team = inf.totals[key];
@@ -258,12 +264,15 @@ function rankingTable(inf, title, key, limit = Infinity) {
     frag.append(el("h5", "inf-sub2", title));
     const rows = ranking(inf, key).slice(0, limit);
     if (!rows.length) {
-        frag.append(el("p", "hint", "Sin datos en el período."));
+        frag.append(el("p", "hint", `Sin datos en ${scope(inf)}.`));
         return frag;
     }
     const wrap = el("div", "coach-tablewrap"), tb = el("table", "coach-table inf-tabla");
     const hr = el("tr");
-    ["#", "Jugador", "PJ", "Total", "Por partido", "% del equipo"].forEach(h => {
+    // En el de un partido, sin PJ ni promedio por partido (siempre 1 y el total).
+    const headers = inf.singleMatch ? ["#", "Jugador", "Total", "% del equipo"]
+        : ["#", "Jugador", "PJ", "Total", "Por partido", "% del equipo"];
+    headers.forEach(h => {
         const th = el("th", null, h); th.scope = "col"; hr.append(th);
     });
     const thead = el("thead");
@@ -271,9 +280,10 @@ function rankingTable(inf, title, key, limit = Infinity) {
     const body = el("tbody");
     for (const x of rows) {
         const tr = el("tr");
-        [x.position, `${x.number ? x.number + " " : ""}${x.name}`, x.matches, x.total,
-            x.perGame.toLocaleString("es-AR", {minimumFractionDigits: 2, maximumFractionDigits: 2}),
-            x.share == null ? "–" : x.share + "%"].forEach(v => tr.append(el("td", null, String(v))));
+        const share = x.share == null ? "–" : x.share + "%";
+        (inf.singleMatch ? [x.position, who(x), x.total, share]
+            : [x.position, who(x), x.matches, x.total, dec2(x.perGame), share])
+            .forEach(v => tr.append(el("td", null, String(v))));
         body.append(tr);
     }
     tb.append(thead, body);
@@ -353,7 +363,7 @@ function render(box, inf, opts = {}) {
         for (const [title, field] of tables) box.append(playersTable(inf, opts, title, field));
     }
 
-    if (!inf.singleMatch && !inf.player && inf.players.length) {
+    if (!inf.player && inf.players.length) {
         box.append(el("h4", "inf-sub", "Ranking"));
         box.append(rankingTable(inf, "Top 5 · Goles", "goals", 5));
         for (const [title, key] of [["Situaciones de gol (tiros)", "shots"], ["Pérdidas", "turnovers"],

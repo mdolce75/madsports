@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Fichas de los jugadores de un informe de período, con el mismo cálculo que la pantalla (player-cards.js): cada eje
+ * Fichas de los jugadores de un informe (de un partido o de un período), con el mismo cálculo que la pantalla (player-cards.js): cada eje
  * va de 0 a 100 comparado con el resto del plantel (100 = el mejor del equipo en ese eje), los jugadores de campo entre
  * sí y los arqueros entre sí. El índice es el promedio de los cinco ejes.
  */

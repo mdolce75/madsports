@@ -116,7 +116,7 @@
     </th:block>
 </th:block>
 
-<th:block th:if="${!r.singleMatch and r.player == null and !r.players.isEmpty()}">
+<th:block th:if="${r.player == null and !r.players.isEmpty()}">
     <h2>Ranking</h2>
     <div th:replace="~{fragments/coach-players :: ranking('Top 5 · Goles', ${r.topGoals()})}"></div>
     <div th:replace="~{fragments/coach-players :: ranking('Situaciones de gol (tiros)', ${r.rankingShots()})}"></div>
@@ -126,16 +126,14 @@
     <div th:replace="~{fragments/coach-players :: cards(${r.topCards()})}"></div>
     <div th:replace="~{fragments/coach-players :: setPieces('Top 3 · Penales', ${r.topPenalties()})}"></div>
     <div th:replace="~{fragments/coach-players :: setPieces('Top 3 · Libres directos', ${r.topFreeHits()})}"></div>
-    <p class="muted">PJ: partidos con acciones del jugador. % del equipo: qué parte del total del equipo en el período es
-        suya.</p>
+    <p class="muted" th:text="|${r.singleMatch ? '' : 'PJ: partidos con acciones del jugador. '}% del equipo: qué parte del total del equipo en ${r.scope()} es suya.|"></p>
 </th:block>
 
 <th:block th:if="${r.playerCards != null and !r.playerCards.isEmpty()}">
     <h2 th:text="${r.player == null ? 'Fichas de los jugadores' : 'Ficha de ' + r.player.name}">Fichas</h2>
     <div th:replace="~{fragments/coach-players :: playerCards('Jugadores de campo', ${r.playerCards.?[!goalkeeper]})}"></div>
     <div th:replace="~{fragments/coach-players :: playerCards('Arqueros', ${r.playerCards.?[goalkeeper]})}"></div>
-    <p class="muted">Cada eje va de 0 a 100 comparado con el plantel en el período (100 = el mejor del equipo en ese
-        eje); los arqueros, entre sí. El índice es el promedio de los cinco ejes.</p>
+    <p class="muted" th:text="|Cada eje va de 0 a 100 comparado con el plantel en ${r.scope()} (100 = el mejor del equipo en ese eje); los arqueros, entre sí. El índice es el promedio de los cinco ejes.|"></p>
 </th:block>
 
 <th:block th:if="${r.singleMatch}">

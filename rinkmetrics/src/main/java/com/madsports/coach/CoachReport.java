@@ -15,8 +15,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Informe del DT: de un partido o de varios (un mes, un bimestre, un semestre o un campeonato). Lleva las métricas del
- * equipo, las de cada jugador y, en el de un partido, la lista de eventos. Con un jugador elegido, todo es de ese
+ * Informe del DT: de un partido o de varios (un mes, un bimestre, un semestre o un campeonato). Los dos llevan las
+ * mismas métricas: las del equipo, las de cada jugador, los rankings y las fichas; el de un partido, además, los
+ * eventos. Con un jugador elegido, todo es de ese
  * jugador. La pantalla arma lo mismo en {@code js/coach/report.js} (para mostrarlo en vivo y sin señal); este es el del
  * PDF.
  *
@@ -143,6 +144,11 @@ public record CoachReport(String title, String detail, String club, String team,
      */
     public record RankingRow(int position, String number, String name, int matches, int total, double perGame,
                              Integer share) {
+    }
+
+    /** De qué es el informe, para los textos: "el partido" o "el período". */
+    public String scope() {
+        return singleMatch ? "el partido" : "el período";
     }
 
     /** Ranking de situaciones de gol (tiros al arco). */
@@ -310,18 +316,15 @@ public record CoachReport(String title, String detail, String club, String team,
         return new CoachReport(title, detail, club, team, generatedAt, singleMatch, rows, Balance.de(rows),
                 Metrics.de(thoseOf), players, chosen, events, Metrics.de(inPeriod(thoseOf, 1)),
                 Metrics.de(inPeriod(thoseOf, 2)),
-                cards(squad, actions, singleMatch, chosen));
+                cards(squad, actions, chosen));
     }
 
     /**
-     * Fichas del informe: las de todo el plantel en el de un período; con un jugador elegido, solo la suya (comparado
-     * con el plantel en los mismos partidos). El informe de un partido del equipo no las lleva.
+     * Fichas del informe: las de todo el plantel; con un jugador elegido, solo la suya (comparado con el plantel en los
+     * mismos partidos).
      */
     private static List<PlayerCards.Card> cards(Map<Integer, SquadPlayer> squad, List<MatchAction> actions,
-                                                boolean singleMatch, PlayerRow chosen) {
-        if (chosen == null && singleMatch) {
-            return List.of();
-        }
+                                                PlayerRow chosen) {
         List<PlayerCards.Card> all = PlayerCards.compute(squad.values(), actions);
         return chosen == null ? all : all.stream().filter(c -> c.key().equals(chosen.key())).toList();
     }

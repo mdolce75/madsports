@@ -52,6 +52,11 @@ test("Informes: el de un partido y el de un período, del equipo y de un jugador
     await expect(page).toHaveURL(/#report=\d+$/);
     await expect(page.locator("#i-informe h3")).toContainText("CLUB DEMO");
     await expect(page.locator("#i-informe .inf-eventos li")).toHaveCount(30);
+    // Las mismas métricas que el de un período: también los rankings (sin PJ ni promedio, que en un partido sobran).
+    for (const t of ["Top 5 · Goles", "Situaciones de gol (tiros)", "Top 5 · Tarjetas", "Top 3 · Penales"]) {
+        await expect(page.locator("#i-informe")).toContainText(t);
+    }
+    await expect(page.locator("#i-informe .inf-tabla th", {hasText: "Por partido"})).toHaveCount(0);
 
     await page.locator("#i-tipo [data-kind='CHAMPIONSHIP']").click();
     await page.locator("#i-valor").selectOption("Apertura");
