@@ -16,8 +16,8 @@ import java.util.stream.Collectors;
 
 /**
  * Informe del DT: de un partido o de varios (un mes, un bimestre, un semestre o un campeonato). Los dos llevan las
- * mismas métricas: las del equipo, las de cada jugador, los rankings y las fichas; el de un partido, además, los
- * eventos. Con un jugador elegido, todo es de ese
+ * mismas métricas: las del equipo, su reparto entre los jugadores (en tortas), los rankings y las fichas; el de un
+ * partido, además, los eventos. Con un jugador elegido, todo es de ese
  * jugador. La pantalla arma lo mismo en {@code js/coach/report.js} (para mostrarlo en vivo y sin señal); este es el del
  * PDF.
  *
@@ -149,6 +149,63 @@ public record CoachReport(String title, String detail, String club, String team,
     /** De qué es el informe, para los textos: "el partido" o "el período". */
     public String scope() {
         return singleMatch ? "el partido" : "el período";
+    }
+
+    /** Una porción de una torta: un jugador (key "j..." o "m...") o el resto ("Otros", key null). */
+    public record Slice(String key, String name, int value) {
+    }
+
+    /** El reparto de una métrica del equipo entre sus jugadores: los 5 con más y el resto en "Otros". */
+    public record Share(String title, String unit, int total, List<Slice> slices) {
+    }
+
+    private record Item(String title, String unit, java.util.function.ToIntFunction<Metrics> metric) {
+    }
+
+    /** Las métricas que se reparten en tortas (las mismas que report.js). */
+    private static final List<Item> SHARE_ITEMS = List.of(
+            new Item("Goles", "goles", Metrics::goals),
+            new Item("Goles recibidos", "goles", Metrics::goalsConceded),
+            new Item("Tiros al arco", "tiros", Metrics::shots),
+            new Item("Atajadas", "atajadas", Metrics::saves),
+            new Item("Pérdidas", "pérdidas", Metrics::turnovers),
+            new Item("Recuperaciones", "recup.", Metrics::recoveries),
+            new Item("Faltas recibidas", "faltas", Metrics::foulsReceived),
+            new Item("Faltas cometidas", "faltas", Metrics::foulsCommitted),
+            new Item("Tarjetas", "tarjetas", CoachReport::cards),
+            new Item("Penales a favor", "pateados", Metrics::penalties),
+            new Item("Libres a favor", "pateados", Metrics::freeHits));
+
+    /** Cuántos jugadores tiene cada torta antes de juntar el resto en "Otros". */
+    static final int SHARE_SLICES = 5;
+
+    /** El reparto de cada métrica entre los jugadores (total 0: nadie tuvo). */
+    public List<Share> shares() {
+        List<Share> out = new ArrayList<>();
+        for (Item it : SHARE_ITEMS) {
+            List<PlayerRow> ordered = players.stream().filter(j -> it.metric().applyAsInt(j.metrics()) > 0)
+                    .sorted(Comparator.comparingInt((PlayerRow j) -> it.metric().applyAsInt(j.metrics())).reversed()
+                            .thenComparing(PlayerRow::name, SquadService.ALPHABETICAL))
+                    .toList();
+            // Hasta 6 jugadores, todos; con más, los 5 primeros y el resto en "Otros".
+            int shown = ordered.size() <= SHARE_SLICES + 1 ? ordered.size() : SHARE_SLICES;
+            List<Slice> slices = new ArrayList<>();
+            for (PlayerRow j : ordered.stream().limit(shown).toList()) {
+                slices.add(new Slice(j.key(), (j.number().isEmpty() ? "" : j.number() + " ") + j.name(),
+                        it.metric().applyAsInt(j.metrics())));
+            }
+            int others = ordered.stream().skip(shown).mapToInt(j -> it.metric().applyAsInt(j.metrics())).sum();
+            if (others > 0) {
+                slices.add(new Slice(null, "Otros (" + (ordered.size() - shown) + ")", others));
+            }
+            out.add(new Share(it.title(), it.unit(), slices.stream().mapToInt(Slice::value).sum(), slices));
+        }
+        return out;
+    }
+
+    /** Las métricas que nadie tuvo, para nombrarlas en vez de dibujar tortas vacías ("Penales a favor, Libres..."). */
+    public String emptyShares() {
+        return shares().stream().filter(s -> s.total() == 0).map(Share::title).collect(Collectors.joining(", "));
     }
 
     /** Ranking de situaciones de gol (tiros al arco). */

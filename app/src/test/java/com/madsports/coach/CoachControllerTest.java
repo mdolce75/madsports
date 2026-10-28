@@ -661,7 +661,9 @@ class CoachControllerTest {
         String html = reports.html(reports.match(users.findByUsername("profe").orElseThrow(), id, null));
         assertThat(html).contains("Ranking", "Top 5 · Goles", "Situaciones de gol (tiros)", "Top 5 · Tarjetas",
                 "Top 3 · Penales", "Fichas de los jugadores", "comparado con el plantel en el partido",
-                "Eventos del partido").doesNotContain("Por partido");
+                "Eventos del partido", "Cada torta reparte el total del equipo en el partido", "data:image/png",
+                "Primer tiempo", "Segundo tiempo", "Total del partido", "1 (1 def. · 0 ataq.)")
+                .doesNotContain("Por partido");
 
         // Los informes por período solo cuentan los partidos finalizados.
         String eq = String.valueOf(primera);

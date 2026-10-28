@@ -24,6 +24,8 @@
         td.l, th.l { text-align: left; }
         tr { page-break-inside: avoid; }
         .nobreak { page-break-inside: avoid; }
+        table.pies td { width: 33.3%; border: 0; text-align: left; vertical-align: top; padding: 0 6px 4px 0; }
+        table.pies h3 { font-size: 9pt; margin: 4px 0 0 0; color: #12303a; }
         h3 { page-break-after: avoid; }
         tr.total td { border-top: 2px solid #12303a; background: #edf2f7; font-weight: bold; }
         table.paginar { -fs-table-paginate: paginate; }
@@ -102,17 +104,25 @@
     <h2>Estadísticas por jugador</h2>
     <p class="muted" th:if="${r.players.isEmpty()}">No hay acciones cargadas.</p>
     <th:block th:if="${!r.players.isEmpty()}">
-        <!-- En el informe de un partido, discriminado por tiempo y en total; en el de un período, en total. -->
+        <!-- Una torta por métrica: el total del equipo repartido entre los jugadores. -->
+        <table class="pies">
+            <tr th:each="row : ${pies}">
+                <td th:each="p : ${row}">
+                    <h3 th:text="${p.title}">Goles</h3>
+                    <img th:src="${p.image}" alt="" style="width: 100%"/>
+                </td>
+            </tr>
+        </table>
+        <p class="muted" th:if="${!r.emptyShares().isEmpty()}" th:text="|Sin datos en ${r.scope()}: ${r.emptyShares()}.|"></p>
+        <p class="muted" th:text="|Cada torta reparte el total del equipo en ${r.scope()} entre los jugadores: los 5 con más y el resto en Otros.|"></p>
+        <!-- En el informe de un partido, además, las tablas por tiempo. -->
         <th:block th:if="${r.singleMatch}">
             <div th:replace="~{fragments/coach-players :: players('Primer tiempo', 1)}"></div>
             <div th:replace="~{fragments/coach-players :: players('Segundo tiempo', 2)}"></div>
-            <div th:replace="~{fragments/coach-players :: players('Total del partido', 0)}"></div>
+            <div th:replace="~{fragments/coach-players :: teamTotals('Total del partido')}"></div>
+            <p class="muted">% Pérd. y % Rec.: qué parte de las pérdidas y de las recuperaciones del equipo en ese tiempo
+                son de cada jugador.</p>
         </th:block>
-        <th:block th:if="${!r.singleMatch}">
-            <div th:replace="~{fragments/coach-players :: players(null, 0)}"></div>
-        </th:block>
-        <p class="muted">% Pérd. y % Rec.: qué parte de las pérdidas y de las recuperaciones del equipo (en ese tiempo o
-            en total) son de cada jugador.</p>
     </th:block>
 </th:block>
 
