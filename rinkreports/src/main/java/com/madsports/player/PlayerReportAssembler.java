@@ -155,18 +155,9 @@ final class PlayerReportAssembler {
                 .toList();
     }
 
-    /**
-     * El nombre del torneo para el informe: "Apertura", "Clausura" o, si la categoría tiene más de uno ("TORNEO APERTURA
-     * JUNIORS FEMENINO" y "... FEMENINO 2"), con su número: "Apertura 1" y "Apertura 2". Vacío si la competición no lo
-     * dice.
-     */
+    /** El nombre del torneo para el informe ("Apertura 1", "Clausura"; ver Competition); vacío si no lo dice. */
     static String tournamentName(Competition c, List<Competition> all) {
-        if (c.tournament() == null) {
-            return "";
-        }
-        boolean numbered = c.division() > 1 || all.stream().anyMatch(o -> o.id() != c.id()
-                && o.tournament() == c.tournament() && Objects.equals(o.category(), c.category()));
-        return numbered ? c.tournament().label() + " " + c.division() : c.tournament().label();
+        return c.tournament() == null ? "" : c.tournamentLabel(all);
     }
 
     /** Arma el informe con lo leído (sin I/O: se prueba con fixtures). */
