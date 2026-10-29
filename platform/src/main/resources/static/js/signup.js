@@ -329,6 +329,22 @@ if (SECTION === "dt") {
 }
 $("equipo").addEventListener("change", loadPlayers);
 
+// El ojito de la clave: la muestra u oculta.
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+    + 'stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>'
+    + '<circle cx="12" cy="12" r="3"/>';
+const EYE_OFF = EYE + '<path d="M3 3l18 18"/></svg>';
+function showPassword(show) {
+    const btn = $("clave-toggle");
+    $("clave").type = show ? "text" : "password";
+    btn.setAttribute("aria-pressed", String(show));
+    btn.setAttribute("aria-label", show ? "Ocultar clave" : "Mostrar clave");
+    btn.title = btn.getAttribute("aria-label");
+    btn.innerHTML = show ? EYE_OFF : EYE + "</svg>";
+}
+showPassword(false);
+$("clave-toggle").addEventListener("click", () => showPassword($("clave").type === "password"));
+
 $("form").addEventListener("submit", async ev => {
     ev.preventDefault();
     const data = {

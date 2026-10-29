@@ -73,7 +73,11 @@
             </div>
             <div class="field">
                 <label for="clave">Clave <span class="req">*</span></label>
-                <input type="password" id="clave" autocomplete="new-password" required minlength="8" maxlength="72">
+                <div class="pw-wrap">
+                    <input type="password" id="clave" autocomplete="new-password" required minlength="8" maxlength="72">
+                    <button type="button" class="pw-toggle" id="clave-toggle" aria-controls="clave" aria-pressed="false"
+                            aria-label="Mostrar clave" title="Mostrar clave"></button>
+                </div>
             </div>
         </div>
         <div class="field">
