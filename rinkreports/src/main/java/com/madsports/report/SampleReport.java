@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 /** Informe modelo con datos ficticios, para mostrar el formato sin consultar SIDGAD ni la API de Gemini. */
 @Component
@@ -23,6 +24,11 @@ public class SampleReport {
     private final Clock clock;
     private volatile Outputs club;
     private volatile Outputs player;
+    /**
+     * Se arma uno a la vez. Un lock (no synchronized): armarlo puede bajar escudos y, en Java 21, esperar en un
+     * synchronized fija el hilo virtual a su núcleo.
+     */
+    private final ReentrantLock building = new ReentrantLock();
 
     /** El informe en sus tres formatos: en pantalla (HTML), PDF y Excel; armado el día {@code on}. */
     public record Outputs(LocalDate on, String html, byte[] pdf, byte[] xlsx) {
@@ -43,13 +49,16 @@ public class SampleReport {
         LocalDate today = LocalDate.now(clock);
         Outputs o = club;
         if (o == null || !today.equals(o.on())) {
-            synchronized (this) {
+            building.lock();
+            try {
                 o = club;
                 if (o == null || !today.equals(o.on())) {
                     ClubReport r = clubReport(today);
                     o = new Outputs(today, renderer.clubHtml(r, true), renderer.clubPdf(r, true), excel.club(r));
                     club = o;
                 }
+            } finally {
+                building.unlock();
             }
         }
         return o;
@@ -83,13 +92,16 @@ public class SampleReport {
         LocalDate today = LocalDate.now(clock);
         Outputs o = player;
         if (o == null || !today.equals(o.on())) {
-            synchronized (this) {
+            building.lock();
+            try {
                 o = player;
                 if (o == null || !today.equals(o.on())) {
                     PlayerReport r = SamplePlayerData.build(today, Crests.sample("CE"));
                     o = new Outputs(today, renderer.playerHtml(r, true), renderer.playerPdf(r, true), excel.player(r));
                     player = o;
                 }
+            } finally {
+                building.unlock();
             }
         }
         return o;

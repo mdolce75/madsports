@@ -44,6 +44,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Informe de un jugador (perfil PLAYERFPP): en qué categorías de su club jugó en el año y período, y por categoría
@@ -136,25 +137,36 @@ public class PlayerReportService {
 
         /** Lo que corre al quedar listo (guardarlo en el historial), antes de que se vea como listo. */
         private final java.util.List<Runnable> onReady = new java.util.ArrayList<>();
+        /**
+         * Cuida onReady. Un lock (no synchronized): lo que corre guarda en la base y, en Java 21, esperar en un
+         * synchronized fija el hilo virtual a su núcleo.
+         */
+        private final ReentrantLock readyLock = new ReentrantLock();
 
         @Override
         public void whenReady(Runnable action) {
-            synchronized (onReady) {
+            readyLock.lock();
+            try {
                 if (status != Status.READY) {
                     onReady.add(action);
                     return;
                 }
+            } finally {
+                readyLock.unlock();
             }
             action.run();
         }
 
         void update(Status status, String message) {
             if (status == Status.READY) {
-                synchronized (onReady) {
+                readyLock.lock();
+                try {
                     onReady.forEach(com.madsports.report.ReadyReport::runQuietly);
                     onReady.clear();
                     this.message = message;
                     this.status = status;
+                } finally {
+                    readyLock.unlock();
                 }
                 return;
             }

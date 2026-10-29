@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Tipo de cambio del día para mostrar los precios en pesos. Los planes tienen su precio base en dólares; se pasan a
@@ -52,6 +53,11 @@ public class ExchangeRate {
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private volatile Quote last;
     private volatile Instant fetchedAt = Instant.EPOCH;
+    /**
+     * Una sola consulta a la vez. Un lock (no synchronized): la consulta espera la red y, en Java 21, esperar en un
+     * synchronized fija el hilo virtual a su núcleo.
+     */
+    private final ReentrantLock fetching = new ReentrantLock();
 
     public ExchangeRate(@Value("${madsports.dollar.url:https://dolarapi.com/v1/dollars/oficial}") String url,
                       @Value("${madsports.dollar.fallback:1500}") BigDecimal fallback, Clock clock) {
@@ -66,7 +72,15 @@ public class ExchangeRate {
         if (last != null && Duration.between(fetchedAt, now).compareTo(VALIDITY) < 0) {
             return last;
         }
-        synchronized (this) {
+        // Si otro ya la está consultando y hay una conocida, no se espera a DolarAPI: sigue la anterior.
+        Quote known = last;
+        if (known != null && !fetching.tryLock()) {
+            return known;
+        }
+        if (known == null) {
+            fetching.lock();
+        }
+        try {
             if (last == null || Duration.between(fetchedAt, now).compareTo(VALIDITY) >= 0) {
                 fetchedAt = now;
                 Quote fresh = url == null || url.isBlank() ? null : fetch();
@@ -77,6 +91,8 @@ public class ExchangeRate {
                 }
             }
             return last;
+        } finally {
+            fetching.unlock();
         }
     }
 

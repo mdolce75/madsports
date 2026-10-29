@@ -4,12 +4,21 @@ import com.madsports.account.Profile;
 import com.madsports.account.UserAccount;
 import com.madsports.account.UserAccountRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,8 +45,12 @@ class ReportQuotaTest {
     }
 
     static UserAccount user(Profile profile) {
+        return user(1L, profile);
+    }
+
+    static UserAccount user(long id, Profile profile) {
         UserAccount u = mock(UserAccount.class);
-        when(u.getId()).thenReturn(1L);
+        when(u.getId()).thenReturn(id);
         when(u.getProfiles()).thenReturn(Set.of(profile));
         return u;
     }
@@ -76,5 +89,74 @@ class ReportQuotaTest {
         assertThat(q.until()).isNull();
         assertThat(q.renews()).isEqualTo(LocalDate.of(2027, 2, 1));
         assertThat(quotaOn(LocalDate.of(2027, 1, 2)).de(user(Profile.CLUBFPP))).doesNotContainKey("until");
+    }
+
+    /**
+     * Pedidos de 8 usuarios a la vez, en hilos virtuales con 2 núcleos (ver surefire en el pom), cada uno esperando
+     * a los demás dentro del pedido: entran todos. Con synchronized, los 2 primeros quedaban fijos a los núcleos
+     * esperando y el resto no tenía dónde correr. Al terminar no queda ningún lock guardado.
+     */
+    @Test
+    @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void requestsOfManyUsersAtOnceDoNotHangWithFewCores() throws Exception {
+        ReportQuota quota = quotaOn(LocalDate.of(2027, 1, 2));
+        int n = 8;
+        CountDownLatch inside = new CountDownLatch(n);
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<String>> done = new ArrayList<>();
+            for (long id = 1; id <= n; id++) {
+                UserAccount u = user(id, Profile.CLUBFPP);
+                done.add(pool.submit(() -> quota.consume(u, () -> {
+                    inside.countDown();
+                    await(inside);
+                    return "ok";
+                })));
+            }
+            for (Future<String> f : done) {
+                assertThat(f.get()).isEqualTo("ok");
+            }
+        }
+        assertThat(quota.lockedUsers()).isZero();
+    }
+
+    /** Dos pedidos del mismo usuario a la vez van de a uno: el segundo espera que termine el primero. */
+    @Test
+    @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void requestsOfTheSameUserGoOneAtATime() throws Exception {
+        ReportQuota quota = quotaOn(LocalDate.of(2027, 1, 2));
+        AtomicInteger running = new AtomicInteger();
+        AtomicInteger most = new AtomicInteger();
+        try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<String>> done = new ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                done.add(pool.submit(() -> quota.consume(user(7L, Profile.CLUBFPP), () -> {
+                    most.accumulateAndGet(running.incrementAndGet(), Math::max);
+                    sleep(20);
+                    running.decrementAndGet();
+                    return "ok";
+                })));
+            }
+            for (Future<String> f : done) {
+                f.get();
+            }
+        }
+        assertThat(most.get()).isEqualTo(1);
+        assertThat(quota.lockedUsers()).isZero();
+    }
+
+    static void await(CountDownLatch latch) {
+        try {
+            assertThat(latch.await(20, TimeUnit.SECONDS)).isTrue();
+        } catch (InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

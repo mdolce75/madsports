@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 /**
@@ -38,8 +39,12 @@ public class ReportQuota implements MonthlyReports {
     private final UserAccountRepository users;
     private final Clock clock;
     private final ReportArchive archive;
-    /** Un pedido a la vez por usuario: dos pedidos simultáneos no pasan los dos el último lugar del cupo. */
-    private final ConcurrentHashMap<Long, Object> locks = new ConcurrentHashMap<>();
+    /**
+     * Un pedido a la vez por usuario: dos pedidos simultáneos no pasan los dos el último lugar del cupo. Un lock (no
+     * synchronized): el pedido consulta la base y, en Java 21, esperar en un synchronized fija el hilo virtual a su
+     * núcleo. Cada lock sale del mapa cuando nadie lo usa: no queda uno por usuario para siempre.
+     */
+    private final ConcurrentHashMap<Long, UserLock> locks = new ConcurrentHashMap<>();
     /** Lanzamiento: primer día (sin él, cuenta todo lo pedido), último día (null = sin lanzamiento) y su cupo. */
     private final LocalDate promoFrom;
     private final LocalDate promoUntil;
@@ -123,7 +128,9 @@ public class ReportQuota implements MonthlyReports {
      * @param detail "Club completo · Apertura + Clausura 2026", "Jugador · Apertura 2026"
      */
     public <T> T consume(UserAccount u, String detail, Supplier<T> request) {
-        synchronized (locks.computeIfAbsent(u.getId(), k -> new Object())) {
+        UserLock lock = locks.compute(u.getId(), (id, l) -> (l == null ? new UserLock() : l).take());
+        lock.lock.lock();
+        try {
             Quota c = quota(u);
             if (c.exceeded()) {
                 throw new QuotaExceededException(c.until() != null
@@ -140,6 +147,30 @@ public class ReportQuota implements MonthlyReports {
             }
             users.countReport(u.getId());
             return outcome;
+        } finally {
+            lock.lock.unlock();
+            locks.compute(u.getId(), (id, l) -> l.release() ? null : l);
+        }
+    }
+
+    /** Usuarios con un pedido en curso o esperando: los locks que hay en el mapa. */
+    int lockedUsers() {
+        return locks.size();
+    }
+
+    /** El lock de un usuario y cuántos pedidos lo usan (el que corre y los que esperan), contados en compute. */
+    private static final class UserLock {
+        final ReentrantLock lock = new ReentrantLock();
+        int holders;
+
+        UserLock take() {
+            holders++;
+            return this;
+        }
+
+        /** @return si ya nadie lo usa */
+        boolean release() {
+            return --holders == 0;
         }
     }
 
