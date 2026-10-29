@@ -1,12 +1,18 @@
 package com.madsports.account;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,5 +51,68 @@ class ExchangeRateTest {
         assertThat(c.current().pesosPerDollar()).isEqualByComparingTo("1500");
         assertThat(c.current().fallback()).isTrue();
         assertThat(c.inPesos(new BigDecimal("30"))).isEqualByComparingTo("45000");
+    }
+
+    /**
+     * Mientras se consulta DolarAPI (que tarda), los demás no esperan: siguen con la cotización anterior. Antes la
+     * consulta corría dentro de un synchronized y trababa a todos los que miraban los planes.
+     */
+    @Test
+    @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+    void whileDolarApiIsSlowTheLastQuoteIsUsed() throws Exception {
+        MovableClock clock = new MovableClock(TODAY.instant());
+        CountDownLatch asking = new CountDownLatch(1);
+        CountDownLatch answer = new CountDownLatch(1);
+        ExchangeRate rate = new ExchangeRate("https://dolarapi.test", new BigDecimal("1500"), clock) {
+            int calls;
+
+            @Override
+            Quote fetch() {
+                if (++calls == 1) {
+                    return new Quote(new BigDecimal("1530"), "Oficial", LocalDate.of(2026, 10, 15), false);
+                }
+                asking.countDown();
+                try {
+                    answer.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return new Quote(new BigDecimal("1550"), "Oficial", LocalDate.of(2026, 10, 15), false);
+            }
+        };
+        assertThat(rate.current().pesosPerDollar()).isEqualByComparingTo("1530");
+
+        clock.now = clock.now.plus(Duration.ofHours(2));
+        CompletableFuture<ExchangeRate.Quote> slow = CompletableFuture.supplyAsync(rate::current,
+                r -> Thread.ofVirtual().start(r));
+        assertThat(asking.await(20, TimeUnit.SECONDS)).isTrue();
+        assertThat(rate.current().pesosPerDollar()).isEqualByComparingTo("1530");
+
+        answer.countDown();
+        assertThat(slow.get().pesosPerDollar()).isEqualByComparingTo("1550");
+        assertThat(rate.current().pesosPerDollar()).isEqualByComparingTo("1550");
+    }
+
+    static final class MovableClock extends Clock {
+        volatile Instant now;
+
+        MovableClock(Instant now) {
+            this.now = now;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return Clock.fixed(now, zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
     }
 }
