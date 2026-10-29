@@ -289,7 +289,7 @@ class PlayerReportAssemblerTest {
         // Con 2 partidos la muestra es chica: no se califica.
         assertThat(r.indicators()).allMatch(i -> i.verdict() == ReportData.Verdict.SMALL_SAMPLE);
         assertThat(byMetric).containsKeys("Tarjetas por partido", "Azules y rojas por partido", "Penales convertidos",
-                "Libres directos convertidos", "Efectividad del equipo con él");
+                "Libres directos convertidos", "Efectividad del equipo cuando juega");
     }
 
     @Test
@@ -385,5 +385,24 @@ class PlayerReportAssemblerTest {
     @Test
     void fileName() {
         assertThat(PlayerReportService.slug("Ignacio J Graiño")).isEqualTo("ignacio-j-graino");
+    }
+
+    /** Con dos Aperturas en la categoría (el 2 al final del nombre), cada una con su número; si no, sin número. */
+    @Test
+    void tournamentsWithTheirNumberWhenThereAreTwo() {
+        Competition a1 = Competition.of(696, "TORNEO APERTURA JUNIORS FEMENINO (FPP)", 1, 1, List.of(), 25);
+        Competition a2 = Competition.of(738, "TORNEO APERTURA JUNIORS FEMENINO 2 (FPP)", 1, 1, List.of(), 25);
+        Competition cl = Competition.of(769, "TORNEO CLAUSURA JUNIORS FEMENINO (FPP)", 1, 1, List.of(), 25);
+        Competition otra = Competition.of(697, "TORNEO APERTURA PRIMERA FEMENINO (FPP)", 1, 1, List.of(), 25);
+        List<Competition> all = List.of(a1, a2, cl, otra);
+
+        assertThat(PlayerReportAssembler.tournamentName(a1, all)).isEqualTo("Apertura 1");
+        assertThat(PlayerReportAssembler.tournamentName(a2, all)).isEqualTo("Apertura 2");
+        assertThat(PlayerReportAssembler.tournamentName(cl, all)).isEqualTo("Clausura");
+        assertThat(PlayerReportAssembler.tournamentName(otra, all)).isEqualTo("Apertura");
+        // Si en el período solo está la segunda, igual lleva su número.
+        assertThat(PlayerReportAssembler.tournamentName(a2, List.of(a2))).isEqualTo("Apertura 2");
+        assertThat(PlayerReportAssembler.tournamentName(Competition.of(1, "AMISTOSO", 1, 1, List.of(), 25), all))
+                .isEmpty();
     }
 }

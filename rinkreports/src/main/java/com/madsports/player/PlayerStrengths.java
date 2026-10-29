@@ -60,7 +60,7 @@ final class PlayerStrengths {
     static List<Indicator> evaluate(int playerId, List<TeamInput> inputs, ReportData.ShortHanded shortHanded) {
         Tally me = new Tally();
         Tally mates = new Tally();
-        int[] with = new int[3];      // ganados, empatados, perdidos con él
+        int[] with = new int[3];      // ganados, empatados, perdidos cuando juega
         int[] without = new int[3];   // ... en los partidos con acta en que no jugó
         for (TeamInput in : inputs) {
             for (Match m : in.matches()) {
@@ -103,8 +103,8 @@ final class PlayerStrengths {
                 Tally.pct(me.fdScored, me.fdTaken), MATES, Tally.pct(mates.fdScored, mates.fdTaken), Unit.PERCENT, true,
                 me.fdTaken, "intentos"));
         int withoutPlayed = without[0] + without[1] + without[2];
-        out.add(StrengthsAnalysis.relative("Resultados", "Efectividad del equipo con él", effectiveness(with), "Sin él",
-                effectiveness(without), Unit.PERCENT, true, withoutPlayed, "partidos sin él"));
+        out.add(StrengthsAnalysis.relative("Resultados", "Efectividad del equipo cuando juega", effectiveness(with), "Sin jugar",
+                effectiveness(without), Unit.PERCENT, true, withoutPlayed, "partidos que no jugó"));
         if (shortHanded.hasData()) {
             out.add(StrengthsAnalysis.relative("Inferioridad", "Goles recibidos cada 10' en sus sanciones",
                     shortHanded.againstPer10Short(), "Resto del tiempo", shortHanded.againstPer10Rest(),
