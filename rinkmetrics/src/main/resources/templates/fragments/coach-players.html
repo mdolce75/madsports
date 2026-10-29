@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <body>
-<!--/* Tabla por jugador del informe de RinkMetrics. period: 1 o 2 (un tiempo) o 0 (total); title: el título de la tabla
-     (null para no ponerle). Los porcentajes son sobre las pérdidas y recuperaciones del equipo en lo mismo. */-->
+<!--/* Tabla por jugador de un tiempo del informe de un partido. period: 1 o 2 (un tiempo) o 0 (total); title: el título
+     de la tabla (null para no ponerle). Los porcentajes son sobre las pérdidas y recuperaciones del equipo en lo mismo. */-->
 <div th:fragment="players(title, period)" class="nobreak"
      th:with="tm=${period == 1 ? r.firstHalf : period == 2 ? r.secondHalf : r.totals}">
     <h3 th:if="${title != null}" th:text="${title}">Tiempo</h3>
@@ -35,6 +35,25 @@
             <td th:text="${m.saves}"></td>
             <td th:text="${m.turnovers()}"></td><td th:text="${m.turnovers() == 0 ? '-' : '100%'}"></td>
             <td th:text="${m.recoveries()}"></td><td th:text="${m.recoveries() == 0 ? '-' : '100%'}"></td>
+            <td th:text="${m.foulsReceived}"></td><td th:text="${m.foulsCommitted}"></td>
+            <td th:text="${m.blues}"></td><td th:text="${m.yellows}"></td><td th:text="${m.reds}"></td>
+            <td th:text="${f.fraction(m.penaltyGoals, m.penalties)}"></td><td th:text="${f.fraction(m.freeHitGoals, m.freeHits)}"></td>
+        </tr>
+    </table>
+</div>
+<!--/* Los totales del equipo en el partido, sin discriminar jugadores (debajo de las tablas por tiempo). */-->
+<div th:fragment="teamTotals(title)" class="nobreak" th:with="m=${r.totals}">
+    <h3 th:text="${title}">Total del partido</h3>
+    <table>
+        <tr><th>G</th><th>GR</th><th>Tiros</th><th>Ef.</th><th>Ataj.</th><th>Pérd.</th><th>Rec.</th><th>FR</th><th>FC</th>
+            <th><span class="card b"></span></th><th><span class="card y"></span></th><th><span class="card r"></span></th>
+            <th>Penales</th><th>Libres</th></tr>
+        <tr>
+            <td th:text="${m.goals}"></td><td th:text="${m.goalsConceded}"></td><td th:text="${m.shots}"></td>
+            <td th:text="${m.shotEffectiveness() == null ? '-' : m.shotEffectiveness() + '%'}"></td>
+            <td th:text="${m.saves}"></td>
+            <td th:text="|${m.turnovers()} (${m.turnoversDefense} def. · ${m.turnoversAttack} ataq.)|"></td>
+            <td th:text="|${m.recoveries()} (${m.recoveriesDefense} def. · ${m.recoveriesAttack} ataq.)|"></td>
             <td th:text="${m.foulsReceived}"></td><td th:text="${m.foulsCommitted}"></td>
             <td th:text="${m.blues}"></td><td th:text="${m.yellows}"></td><td th:text="${m.reds}"></td>
             <td th:text="${f.fraction(m.penaltyGoals, m.penalties)}"></td><td th:text="${f.fraction(m.freeHitGoals, m.freeHits)}"></td>

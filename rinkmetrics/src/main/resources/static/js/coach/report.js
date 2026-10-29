@@ -195,6 +195,102 @@ function setPiecesTable(inf, title, scored, taken) {
         `Sin pateados en ${scope(inf)}.`);
 }
 
+// Las métricas que se reparten en tortas (las mismas que CoachReport.shares), y sus colores en orden fijo
+// (validados para daltonismo entre porciones vecinas sobre el fondo oscuro); "Otros", gris.
+const SHARE_ITEMS = [
+    ["Goles", "goles", m => m.goals], ["Goles recibidos", "goles", m => m.goalsConceded],
+    ["Tiros al arco", "tiros", m => m.shots], ["Atajadas", "atajadas", m => m.saves],
+    ["Pérdidas", "pérdidas", m => m.turnovers], ["Recuperaciones", "recup.", m => m.recoveries],
+    ["Faltas recibidas", "faltas", m => m.foulsReceived], ["Faltas cometidas", "faltas", m => m.foulsCommitted],
+    ["Tarjetas", "tarjetas", m => m.blues + m.yellows + m.reds], ["Penales a favor", "pateados", m => m.penalties],
+    ["Libres a favor", "pateados", m => m.freeHits],
+];
+const SHARE_SLICES = 5;
+const PIE_COLORS = ["#4a94f0", "#f07d4a", "#2ec48c", "#f2b42a", "#b197fc", "#f472b6"];
+const PIE_OTHER = "#64748b";
+
+/** El reparto de cada métrica entre los jugadores: los 5 con más y el resto en "Otros" (igual que CoachReport). */
+function shares(inf) {
+    return SHARE_ITEMS.map(([title, unit, f]) => {
+        const ordered = inf.players.filter(j => f(j.metrics) > 0)
+            .sort((a, b) => f(b.metrics) - f(a.metrics) || a.name.localeCompare(b.name, "es", {sensitivity: "base"}));
+        // Hasta 6 jugadores, todos; con más, los 5 primeros y el resto en "Otros".
+        const shown = ordered.length <= SHARE_SLICES + 1 ? ordered.length : SHARE_SLICES;
+        const slices = ordered.slice(0, shown).map(j => ({key: j.key, name: who(j), value: f(j.metrics)}));
+        const others = ordered.slice(shown).reduce((t, j) => t + f(j.metrics), 0);
+        if (others) slices.push({key: null, name: `Otros (${ordered.length - shown})`, value: others});
+        return {title, unit, total: slices.reduce((t, x) => t + x.value, 0), slices};
+    });
+}
+
+const SVG = "http://www.w3.org/2000/svg";
+const svgEl = (tag, attrs) => { const e = document.createElementNS(SVG, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+/**
+ * Una torta (dona) con el total en el centro y la leyenda con el nombre, la cifra y el porcentaje de cada porción;
+ * tocar un jugador de la leyenda deja el informe solo de él.
+ */
+function pie(share, opts) {
+    const card = el("div", "inf-torta");
+    card.append(el("h5", "inf-sub2", share.title));
+    const R = 42, W = 18, C = 2 * Math.PI * R, gap = share.slices.length > 1 ? 2 : 0;
+    const svg = svgEl("svg", {viewBox: "0 0 110 110", class: "inf-dona", role: "img",
+        "aria-label": `${share.title}: ${share.total} ${share.unit}`});
+    let at = 0;
+    share.slices.forEach((x, i) => {
+        const len = C * x.value / share.total;
+        const c = svgEl("circle", {cx: 55, cy: 55, r: R, fill: "none", "stroke-width": W,
+            stroke: x.key ? PIE_COLORS[i % PIE_COLORS.length] : PIE_OTHER,
+            "stroke-dasharray": `${Math.max(0, len - gap)} ${C}`, "stroke-dashoffset": -at,
+            transform: "rotate(-90 55 55)"});
+        const t = svgEl("title", {});
+        t.textContent = `${x.name}: ${x.value} (${Math.round(100 * x.value / share.total)}%)`;
+        c.append(t);
+        svg.append(c);
+        at += len;
+    });
+    const big = svgEl("text", {x: 55, y: 57, "text-anchor": "middle", class: "v"});
+    big.textContent = share.total;
+    const small = svgEl("text", {x: 55, y: 71, "text-anchor": "middle", class: "u"});
+    small.textContent = share.unit;
+    svg.append(big, small);
+    const ul = el("ul", "inf-leyenda");
+    share.slices.forEach((x, i) => {
+        const li = el("li"), b = el(x.key ? "button" : "span", "it");
+        if (x.key) {
+            b.type = "button";
+            b.title = "Ver solo a " + x.name;
+            b.addEventListener("click", () => opts.onPlayer && opts.onPlayer(x.key));
+        }
+        const sw = el("i", "sw");
+        sw.style.background = x.key ? PIE_COLORS[i % PIE_COLORS.length] : PIE_OTHER;
+        b.append(sw, el("span", "n", x.name), el("b", null, `${x.value} · ${Math.round(100 * x.value / share.total)}%`));
+        li.append(b);
+        ul.append(li);
+    });
+    const body = el("div", "inf-torta-cuerpo");
+    body.append(svg, ul);
+    card.append(body);
+    return card;
+}
+
+/** Una torta por métrica (las que nadie tuvo, nombradas abajo). */
+function piesSection(inf, opts) {
+    const frag = el("div");
+    if (!inf.players.length) {
+        frag.append(el("p", "hint", opts.empty || "Sin acciones cargadas."));
+        return frag;
+    }
+    const all = shares(inf), grid = el("div", "inf-tortas");
+    for (const x of all.filter(x => x.total > 0)) grid.append(pie(x, opts));
+    frag.append(grid);
+    const empty = all.filter(x => !x.total).map(x => x.title);
+    if (empty.length) frag.append(el("p", "hint", `Sin datos en ${scope(inf)}: ${empty.join(", ")}.`));
+    frag.append(el("p", "hint", `Cada torta reparte el total del equipo en ${scope(inf)} entre los jugadores: los 5 con`
+        + " más y el resto en Otros. Tocá un jugador para ver solo lo suyo."));
+    return frag;
+}
+
 /**
  * La tabla por jugador de un tiempo ("firstHalf", "secondHalf") o del total ("metrics"), con qué parte de las pérdidas y
  * de las recuperaciones del equipo en eso es de cada jugador.
@@ -246,6 +342,17 @@ function playersTable(inf, opts, title, field) {
     wrap.append(tb);
     frag.append(wrap);
     return frag;
+}
+
+/** Los totales del equipo en el partido, sin discriminar jugadores (debajo de las tablas por tiempo). */
+function totalsTable(inf, title) {
+    const m = inf.totals;
+    return simpleTable(title, ["G", "GR", "Tiros", "Ef.", "Ataj.", "Pérd.", "Rec.", "FR", "FC", "Az", "Am", "Rj", "Pen.", "Lib."],
+        [[m.goals, m.goalsConceded, m.shots, m.shotEffectiveness == null ? "–" : m.shotEffectiveness + "%", m.saves,
+            `${m.turnovers} (${m.turnoversDefense} def. · ${m.turnoversAttack} ataq.)`,
+            `${m.recoveries} (${m.recoveriesDefense} def. · ${m.recoveriesAttack} ataq.)`,
+            m.foulsReceived, m.foulsCommitted, m.blues, m.yellows, m.reds,
+            m.penalties ? `${m.penaltyGoals}/${m.penalties}` : "–", m.freeHits ? `${m.freeHitGoals}/${m.freeHits}` : "–"]], "");
 }
 
 /** Un ranking del informe: los jugadores con algo de esa métrica, de más a menos, con su promedio y su
@@ -355,12 +462,14 @@ function render(box, inf, opts = {}) {
     }
 
     if (!inf.player) {
-        box.append(el("h4", "inf-sub", "Estadísticas por jugador"));
-        // En el informe de un partido, discriminado por tiempo y en total; en el de un período, en total.
-        const tables = inf.singleMatch
-            ? [["Primer tiempo", "firstHalf"], ["Segundo tiempo", "secondHalf"], ["Total del partido", "metrics"]]
-            : [[null, "metrics"]];
-        for (const [title, field] of tables) box.append(playersTable(inf, opts, title, field));
+        box.append(el("h4", "inf-sub", "Estadísticas por jugador"), piesSection(inf, opts));
+        // En el informe de un partido, además, las tablas por tiempo.
+        if (inf.singleMatch && inf.players.length) {
+            box.append(playersTable(inf, opts, "Primer tiempo", "firstHalf"),
+                playersTable(inf, opts, "Segundo tiempo", "secondHalf"), totalsTable(inf, "Total del partido"),
+                el("p", "hint", "% Pérd. y % Rec.: qué parte de las pérdidas y de las recuperaciones del equipo en ese"
+                    + " tiempo son de cada jugador."));
+        }
     }
 
     if (!inf.player && inf.players.length) {
@@ -393,8 +502,7 @@ function render(box, inf, opts = {}) {
     }
     box.append(el("p", "coach-note", "G: goles (tiros, libres y penales convertidos) · GR: goles recibidos por el arquero"
         + " · Ef.: efectividad de los tiros al arco · Ataj.: atajadas, con libres y penales atajados · Pérd. y Rec.:"
-        + " en defensa (campo propio) y en ataque (campo rival) · % Pérd. y % Rec.: qué parte de las pérdidas y"
-        + " recuperaciones del equipo son de cada jugador · FR y FC: faltas recibidas y cometidas."
+        + " en defensa (campo propio) y en ataque (campo rival) · FR y FC: faltas recibidas y cometidas."
         + (inf.singleMatch ? " Minuto: tiempo jugado del período." : " PJ: partidos con acciones del jugador.")));
 }
 

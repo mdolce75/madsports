@@ -36,12 +36,15 @@ test("Informes del período: estadísticas del equipo, rankings y la ficha de ca
     await page.locator("#i-tipo [data-kind='YEAR']").click();
     const inf = page.locator("#i-informe");
     await expect(inf.locator(".inf-kpis .coach-kpi")).toHaveCount(14);
+    // El reparto entre los jugadores, en tortas (una por métrica), en vez de la tabla.
+    await expect(inf.locator(".inf-torta").first()).toContainText("Goles");
+    await expect(inf.locator(".inf-tabla th", {hasText: "% Pérd."})).toHaveCount(0);
     for (const t of ["Top 5 · Goles", "Top 5 · Faltas cometidas", "Top 5 · Tarjetas", "Top 3 · Penales", "Top 3 · Libres directos"]) {
         await expect(inf).toContainText(t);
     }
     // Sin jugador elegido no hay fichas; al tocar un jugador aparece la suya.
     await expect(inf.locator(".ficha")).toHaveCount(0);
-    await inf.locator(".inf-tabla tbody tr.clic").first().click();
+    await inf.locator(".inf-leyenda button.it").first().click();
     await expect(inf.locator(".ficha")).toHaveCount(1);
 });
 
@@ -57,6 +60,10 @@ test("Informes: el de un partido y el de un período, del equipo y de un jugador
         await expect(page.locator("#i-informe")).toContainText(t);
     }
     await expect(page.locator("#i-informe .inf-tabla th", {hasText: "Por partido"})).toHaveCount(0);
+    // Debajo de las tortas, las tablas por tiempo (solo en el de un partido).
+    await expect(page.locator("#i-informe .inf-sub2", {hasText: "Primer tiempo"})).toHaveCount(1);
+    await expect(page.locator("#i-informe .inf-sub2", {hasText: "Segundo tiempo"})).toHaveCount(1);
+    await expect(page.locator("#i-informe .inf-sub2", {hasText: "Total del partido"})).toHaveCount(1);
 
     await page.locator("#i-tipo [data-kind='CHAMPIONSHIP']").click();
     await page.locator("#i-valor").selectOption("Apertura");
@@ -64,7 +71,7 @@ test("Informes: el de un partido y el de un período, del equipo y de un jugador
     await expect(page.locator("#i-informe")).toContainText("3 jugados");
     // Al tocar un jugador de la tabla, el informe queda solo de él.
     // La primera tabla es la de los jugadores (después vienen los rankings, donde también figura).
-    await page.locator("#i-informe .inf-tabla tbody tr", {hasText: "Santiago Herrera"}).first().click();
+    await page.locator("#i-informe .inf-leyenda button.it", {hasText: "Santiago Herrera"}).first().click();
     await expect(page.locator("#i-informe")).toContainText("Estadísticas de Santiago Herrera");
     await expect(page.getByLabel("Jugador del informe")).toHaveValue("j108");
 

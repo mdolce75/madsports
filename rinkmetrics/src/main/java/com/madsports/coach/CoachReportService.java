@@ -89,11 +89,16 @@ public class CoachReportService {
         if (report.player() != null) {
             name += "-" + slug(report.player().name());
         }
-        return new Pdf(name + ".pdf", pdf.pdf("coach-report", Map.of("r", report)));
+        return new Pdf(name + ".pdf", pdf.pdf("coach-report", model(report)));
     }
 
     public String html(CoachReport report) {
-        return pdf.html("coach-report", Map.of("r", report));
+        return pdf.html("coach-report", model(report));
+    }
+
+    /** El informe y sus tortas (el reparto de cada métrica entre los jugadores; sin jugador elegido). */
+    private static Map<String, Object> model(CoachReport report) {
+        return Map.of("r", report, "pies", report.player() == null ? CoachCharts.pies(report) : List.of());
     }
 
     private CoachReport build(UserAccount u, String title, String detail, boolean singleMatch, List<LiveMatch> ps,
