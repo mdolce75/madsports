@@ -45,14 +45,14 @@ public final class SamplePlayerData {
         Random rnd = new Random(2026);
         Category juniors = new Category("JUNIORS", "MASCULINO");
         Category primera = new Category("PRIMERA", "MASCULINO");
-        List<PlayerReportService.TeamInput> inputs = List.of(
+        List<TeamInput> inputs = List.of(
                 team(9101, Tournament.OPENING, juniors, today.minusWeeks(30), 9, 1.0, false, today, rnd),
                 team(9102, Tournament.CLOSING, juniors, today.minusWeeks(5), 5, 1.0, false, today, rnd),
                 team(9201, Tournament.OPENING, primera, today.minusWeeks(30).plusDays(1), 9, 0.55, true, today, rnd),
                 team(9202, Tournament.CLOSING, primera, today.minusWeeks(5).plusDays(1), 5, 0.6, false, today, rnd));
         PlayerReportService.Query q = new PlayerReportService.Query(PLAYER_ID, "Tomás Ejemplo", "Tomás Ejemplo",
                 CLUB_ID, today.getYear(), Scope.SEASON, Eligibility.levels("JUNIORS"), "MASCULINO");
-        return PlayerReportService.assemble(q, new ReportData.ClubInfo(CLUB_ID, "CEJ", "CLUB EJEMPLO", logo), today,
+        return PlayerReportAssembler.assemble(q, new ReportData.ClubInfo(CLUB_ID, "CEJ", "CLUB EJEMPLO", logo), today,
                         LEVELS, inputs)
                 .withLeagueRanks(java.util.Map.of(
                         juniors.levelLabel() + " " + juniors.branchLabel(), new PlayerReport.LeagueRank(4, 96, 0, 21),
@@ -63,7 +63,7 @@ public final class SamplePlayerData {
      * Un equipo del club en un torneo: {@code rounds} fechas jugadas, el jugador citado con probabilidad
      * {@code presence}; con {@code missingSheet}, a la última fecha le falta el acta (como pasa en SIDGAD).
      */
-    private static PlayerReportService.TeamInput team(int id, Tournament tournament, Category category, LocalDate first,
+    private static TeamInput team(int id, Tournament tournament, Category category, LocalDate first,
                                                       int rounds, double presence, boolean missingSheet,
                                                       LocalDate today, Random rnd) {
         int base = id * 100;
@@ -153,7 +153,7 @@ public final class SamplePlayerData {
             sheets.put(idp, lineup);
             events.put(idp, ev);
         }
-        return new PlayerReportService.TeamInput(comp, label, base, matches, sheets, events);
+        return new TeamInput(comp, label, base, matches, sheets, events);
     }
 
     private static MatchEvent event(Random rnd, EventType type, int teamId) {

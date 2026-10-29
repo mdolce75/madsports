@@ -1,6 +1,5 @@
 package com.madsports.player;
 
-import com.madsports.player.PlayerReportService.TeamInput;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.stats.ReportData;
