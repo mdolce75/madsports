@@ -23,12 +23,13 @@ final class StandingsCalc {
     }
 
     /** La fila publicada por la FPP; se marca desactualizada si tiene menos PJ que el calendario. */
-    static Optional<StandingSnapshot> snapshot(StatsEngine.CompetitionData cd, TeamRef team, int playedInCalendar) {
+    static Optional<StandingSnapshot> snapshot(StatsEngine.CompetitionData cd, String tournament, TeamRef team,
+                                               int playedInCalendar) {
         List<StandingRow> rows = cd.standings();
         return rows.stream()
                 .filter(r -> r.code().equalsIgnoreCase(team.code()) || r.name().equalsIgnoreCase(team.name()))
                 .findFirst()
-                .map(r -> new StandingSnapshot(cd.competition().tournamentLabel(), r.group(), r.position(),
+                .map(r -> new StandingSnapshot(tournament, r.group(), r.position(),
                         (int) rows.stream().filter(o -> o.group().equals(r.group())).count(),
                         r.points(), r.played(), r.goalsFor(), r.goalsAgainst(), r.goalDiff(),
                         cd.standingsDate(), r.played() < playedInCalendar, evolution(cd, team, r.group())));

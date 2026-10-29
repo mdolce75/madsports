@@ -155,6 +155,11 @@ final class PlayerReportAssembler {
                 .toList();
     }
 
+    /** El nombre del torneo para el informe ("Apertura 1", "Clausura"; ver Competition); vacío si no lo dice. */
+    static String tournamentName(Competition c, List<Competition> all) {
+        return c.tournament() == null ? "" : c.tournamentLabel(all);
+    }
+
     /** Arma el informe con lo leído (sin I/O: se prueba con fixtures). */
     static PlayerReport assemble(Query q, ReportData.ClubInfo club, LocalDate today, List<String> levels,
                                  List<TeamInput> inputs) {
@@ -179,8 +184,10 @@ final class PlayerReportAssembler {
                     (a, b) -> a.periodMinutes() >= b.periodMinutes() ? a : b);
             shortHandedByCategory.putIfAbsent(in.category(), new ShortHandedCalc());
         }
+        List<Competition> competitions = inputs.stream().map(TeamInput::competition).toList();
         Map<String, Integer> fromSummary = new LinkedHashMap<>();
         for (TeamInput in : inputs) {
+            String tournament = tournamentName(in.competition(), competitions);
             int won = 0, drawn = 0, lost = 0, goals = 0, yellow = 0, blue = 0, red = 0, played = 0, withoutSheet = 0;
             int teamGoals = 0;   // goles de su equipo en los partidos que jugó
             int teamCards = 0, sheetCards = 0;   // tarjetas de su equipo y suyas, en los partidos con acta
@@ -232,8 +239,7 @@ final class PlayerReportAssembler {
                 minutesByCategory.get(in.category()).add(p, mine);
                 addShortHanded(shortHanded, q, in, m, home, matchEvents, gf, ga);
                 addShortHanded(shortHandedByCategory.get(in.category()), q, in, m, home, matchEvents, gf, ga);
-                rows.add(new MatchRow(m.date(), in.category(),
-                        in.competition().tournament() == null ? "" : in.competition().tournament().label(),
+                rows.add(new MatchRow(m.date(), in.category(), tournament,
                         home ? m.awayName() : m.homeName(), home, gf, ga, result,
                         p.starter(), p.goals(), p.yellowCards(), p.blueCards(), p.redCards(), summary != null));
             }
@@ -243,7 +249,6 @@ final class PlayerReportAssembler {
             Line line = new Line(in.category(), played, won, drawn, lost, goals, yellow, blue, red,
                     penScored, penTaken, fdScored, fdTaken, withoutSheet, teamGoals, teamCards, sheetCards);
             lines.merge(in.category(), line, (a, b) -> a.plus(b, a.category()));
-            String tournament = in.competition().tournament() == null ? "" : in.competition().tournament().label();
             tournamentLines.merge(in.category() + "|" + tournament,
                     new PlayerReport.TournamentLine(in.category(), tournament, line), PlayerReport.TournamentLine::plus);
             order.putIfAbsent(in.category(), levels.indexOf(in.competition().category().level()));

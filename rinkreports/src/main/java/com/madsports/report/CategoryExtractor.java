@@ -83,7 +83,7 @@ public final class CategoryExtractor {
                         io.submit(() -> sidgad.playerStats(c.id()))));
             }
             for (Competition c : comps) {
-                String tournament = c.tournamentLabel();
+                String tournament = c.tournamentLabel(comps);
                 List<Future<String>> f = pages.get(c);
                 String standings = published(await(f.get(0)), "Tabla de posiciones (" + tournament + ")", notPublished);
                 String calendar = published(await(f.get(1)), "Calendario y resultados (" + tournament + ")", notPublished);
@@ -173,7 +173,7 @@ public final class CategoryExtractor {
         if (missingSheets > 0) {
             notPublished.add("Actas de partido: " + missingSheets + " de " + clubSheets);
         }
-        String tournaments = comps.stream().map(Competition::tournamentLabel).distinct().collect(Collectors.joining(" + "));
+        String tournaments = comps.stream().map(c -> c.tournamentLabel(comps)).distinct().collect(Collectors.joining(" + "));
         String label = scope == Scope.LAST_5
                 ? "Últimos 5 partidos (" + tournaments + ")"
                 : "Temporada " + year + " · " + tournaments;
@@ -284,7 +284,8 @@ public final class CategoryExtractor {
             data.set(i, new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), cd.matches(),
                     players, cd.sheets(), cd.goalkeepers(), cd.startingKeepers()));
             // Con las fichas de temporada ya no falta: la tabla de SIDGAD de esa competición no hace falta.
-            notPublished.remove("Estadísticas por jugador (" + cd.competition().tournamentLabel() + ")");
+            notPublished.remove("Estadísticas por jugador ("
+                    + cd.competition().tournamentLabel(data.stream().map(CompetitionData::competition).toList()) + ")");
         }
     }
 

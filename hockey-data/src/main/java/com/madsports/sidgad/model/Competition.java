@@ -1,6 +1,8 @@
 package com.madsports.sidgad.model;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -98,9 +100,20 @@ public record Competition(int id, String name, int federationId, int seasonId,
         return Federation.of(federationId);
     }
 
+    /** "Apertura", "Clausura" o, si es la segunda del año ("... FEMENINO 2"), con su número: "Apertura 2". */
     public String tournamentLabel() {
         String base = tournament == null ? name : tournament.label();
-        return division > 1 ? base + " (Div. " + division + ")" : base;
+        return division > 1 ? base + " " + division : base;
+    }
+
+    /**
+     * El nombre del torneo entre las competiciones del informe: si la categoría tiene dos del mismo torneo ("TORNEO
+     * APERTURA JUNIORS FEMENINO" y "... FEMENINO 2"), cada una con su número: "Apertura 1" y "Apertura 2".
+     */
+    public String tournamentLabel(Collection<Competition> all) {
+        boolean twice = tournament != null && all.stream().anyMatch(o -> o.id() != id
+                && o.tournament() == tournament && Objects.equals(o.category(), category));
+        return twice && division == 1 ? tournament.label() + " 1" : tournamentLabel();
     }
 
     public String url() {

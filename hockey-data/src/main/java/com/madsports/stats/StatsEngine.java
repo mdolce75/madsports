@@ -112,9 +112,10 @@ public final class StatsEngine {
             }
         }
         LeagueContext league = league(data);
+        List<Competition> all = data.stream().map(CompetitionData::competition).toList();
         List<TeamReport> teams = byTeam.entrySet().stream()
                 .map(e -> team(e.getKey(), TeamKeys.displayName(club.name(), club.code(), e.getKey()),
-                        e.getValue(), today, lastMatches, league))
+                        e.getValue(), today, lastMatches, league, all))
                 .toList();
         List<Source> sources = data.stream()
                 .map(cd -> new Source(cd.competition().name(), cd.competition().url())).toList();
@@ -135,7 +136,7 @@ public final class StatsEngine {
     }
 
     private static TeamReport team(String key, String name, List<TeamEntry> entries, LocalDate today, int lastMatches,
-                                   LeagueContext league) {
+                                   LeagueContext league, List<Competition> all) {
         List<Match> allPlayed = entries.stream()
                 .flatMap(e -> e.data().matches().stream().filter(m -> m.played() && m.involves(e.team().teamId())))
                 .sorted(CHRONO).toList();
@@ -151,11 +152,12 @@ public final class StatsEngine {
 
         for (TeamEntry e : entries) {
             Competition comp = e.data().competition();
+            String tournament = comp.tournamentLabel(all);
             int teamId = e.team().teamId();
             TeamRecord compRecord = TeamRecord.EMPTY;
             int playedInCalendar = 0;
             for (Match m : e.data().matches().stream().filter(m -> m.involves(teamId)).sorted(CHRONO).toList()) {
-                MatchLine line = line(comp, m, teamId);
+                MatchLine line = line(tournament, m, teamId);
                 if (m.played()) {
                     playedInCalendar++;
                     if (!included.contains(m)) {
@@ -174,9 +176,9 @@ public final class StatsEngine {
                 }
             }
             if (compRecord.played() > 0 || lastMatches == 0) {
-                byTournament.add(new TournamentLine(comp.tournamentLabel(), compRecord));
+                byTournament.add(new TournamentLine(tournament, compRecord));
             }
-            StandingsCalc.snapshot(e.data(), e.team(), playedInCalendar).ifPresent(standings::add);
+            StandingsCalc.snapshot(e.data(), tournament, e.team(), playedInCalendar).ifPresent(standings::add);
             e.data().players().stream().filter(p -> p.teamId() == teamId)
                     .forEach(p -> playersById.computeIfAbsent(p.playerId(), k -> new ArrayList<>()).add(p));
         }
@@ -293,12 +295,12 @@ public final class StatsEngine {
     }
 
 
-    private static MatchLine line(Competition comp, Match m, int teamId) {
+    private static MatchLine line(String tournament, Match m, int teamId) {
         boolean home = m.homeTeamId() == teamId;
         Integer gf = home ? m.homeGoals() : m.awayGoals();
         Integer ga = home ? m.awayGoals() : m.homeGoals();
         String outcome = gf == null ? null : gf > ga ? "G" : gf.equals(ga) ? "E" : "P";
-        return new MatchLine(comp.tournamentLabel(), m.round(), m.date(), m.time() == null ? "" : m.time().toString(),
+        return new MatchLine(tournament, m.round(), m.date(), m.time() == null ? "" : m.time().toString(),
                 home, home ? m.awayName() : m.homeName(), gf, ga, outcome, m.venue());
     }
 

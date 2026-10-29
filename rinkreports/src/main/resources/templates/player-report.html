@@ -177,9 +177,9 @@
             <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
         </tr>
     </table>
-    <p class="muted">Incid.: incidencia, la parte de los goles de su equipo en los partidos que jugó que hizo él, y la
-        de las tarjetas de su equipo que recibió él (las tarjetas, en los partidos con acta: de los sin acta no se conocen
-        las del equipo). Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es el
+    <p class="muted">Incid.: incidencia, la parte de los goles de su equipo en los partidos que jugó que fueron suyos, y
+        la de las tarjetas de su equipo que fueron suyas (las tarjetas, en los partidos con acta: de los sin acta no se
+        conocen las del equipo). Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es el
         promedio por partido jugado. El detalle de cada categoría sigue a continuación.</p>
 
     <!--/* Por torneo: lo mismo que por categoría, para cada torneo de cada categoría, y la progresión de sus goles. */-->
@@ -475,7 +475,7 @@
 <p class="muted" th:if="${!r.categories.isEmpty()}">* Goles o tarjetas que figuran en la planilla sin evento con
     minuto en el acta, o tarjetas fuera del juego. El descanso cuenta como inicio del 2do tiempo.</p>
 <p class="muted"><span th:text="|Partidos, resultados, goles y tarjetas según las actas de partido publicadas por la ${r.federation.fullName()} (${r.federation.name()}) en SIDGAD:|">Partidos, resultados, goles y tarjetas según las actas de partido publicadas en SIDGAD:</span>
-    cuenta cada partido en que el jugador figura en la planilla de su equipo.</p>
+    cuenta cada partido en que figura en la planilla de su equipo.</p>
 
 </body>
 </html>
