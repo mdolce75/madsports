@@ -43,14 +43,14 @@ class ProfilesFreshnessTest {
                 match(3, "2026-10-19", 20, 30, 3),     // de otros equipos: no cuenta
                 match(4, "2026-10-24", 10, 30, null))); // todavía no se jugó
         // Sirve la ficha bajada desde el domingo 18 a las 0 (hora argentina).
-        assertThat(ReportService.profilesNotBefore(CLUB, data, now)).isEqualTo(Instant.parse("2026-10-18T03:00:00Z"));
+        assertThat(CategoryExtractor.profilesNotBefore(CLUB, data, now)).isEqualTo(Instant.parse("2026-10-18T03:00:00Z"));
     }
 
     @Test
     void ifTheClubPlayedTodayTheLastTwoHoursAndWithoutMatchesTheLastDay() {
         Instant now = Instant.parse("2026-10-20T15:00:00Z");
-        assertThat(ReportService.profilesNotBefore(CLUB, List.of(data(match(1, "2026-10-20", 10, 20, 1))), now))
+        assertThat(CategoryExtractor.profilesNotBefore(CLUB, List.of(data(match(1, "2026-10-20", 10, 20, 1))), now))
                 .isEqualTo(now.minus(Duration.ofHours(2)));
-        assertThat(ReportService.profilesNotBefore(CLUB, List.of(data()), now)).isEqualTo(now.minus(Duration.ofHours(24)));
+        assertThat(CategoryExtractor.profilesNotBefore(CLUB, List.of(data()), now)).isEqualTo(now.minus(Duration.ofHours(24)));
     }
 }

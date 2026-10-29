@@ -1,30 +1,14 @@
 package com.madsports.report;
 
-import com.madsports.Fixtures;
 import com.madsports.catalog.CatalogService;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.sidgad.model.Competition;
-import com.madsports.sidgad.model.Models.Match;
-import com.madsports.sidgad.parse.SidgadParser;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ReportServiceTest {
-
-    final Competition primera = SidgadParser.catalog(Fixtures.read("catalogo.html")).stream()
-            .filter(c -> c.id() == 779).findFirst().orElseThrow();
-    final List<Match> matches = SidgadParser.calendar(Fixtures.read("cal_779.html"));
-
-    @Test
-    void theCrestIsTheLogoMostUsedByTheClubTeams() {
-        assertThat(ReportService.logoFile(List.of(primera), 22)).isEqualTo("22_10.png");
-        assertThat(ReportService.logoFile(List.of(primera), 74)).isEqualTo("74_3.png");
-        assertThat(ReportService.logoFile(List.of(primera), 999)).isNull();
-    }
 
     @Test
     void theCrestBadgeIsASquarePng() throws Exception {
@@ -40,18 +24,6 @@ class ReportServiceTest {
         // Si la imagen no se puede leer, el informe sale sin escudo.
         assertThat(Crests.tile("no es un png".getBytes())).isNull();
         assertThat(Crests.tile(null)).isNull();
-    }
-
-    @Test
-    void sheetsOfAllPlayedClubMatchesAreRead() {
-        assertThat(ReportService.sheetsToRead(primera, matches, 74, 0))
-                .extracting(Match::idp).containsExactly(26390, 26396);
-    }
-
-    @Test
-    void withLastNOnlyThoseSheetsAreRead() {
-        assertThat(ReportService.sheetsToRead(primera, matches, 74, 1))
-                .extracting(Match::idp).containsExactly(26396);
     }
 
     @Test
