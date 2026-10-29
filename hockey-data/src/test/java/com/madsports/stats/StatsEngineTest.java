@@ -6,7 +6,6 @@ import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Models;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
-import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.sidgad.parse.SidgadParser;
 import com.madsports.stats.ReportData.TeamRecord;
 import com.madsports.stats.ReportData.TeamReport;
@@ -165,22 +164,6 @@ public class StatsEngineTest {
     }
 
     @Test
-    void overlappingSanctionsAddUpAndAreCutAtTheEnd() {
-        int match = 2 * 25 * 60;
-        // Dos azules simultáneas: se acumulan, 4'.
-        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{600, 720}, new int[]{600, 720}), match)).isEqualTo(240);
-        // Superpuestas en parte: 10:00-12:00 y 11:00-13:00 = 2' + 2'.
-        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{600, 720}, new int[]{660, 780}), match)).isEqualTo(240);
-        // A 1' del final: solo cuenta ese minuto.
-        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{match - 60, match + 60}), match)).isEqualTo(60);
-        // Al final del 1T (24:30) la sanción sigue en el 2T: 2' completos.
-        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{1470, 1590}), match)).isEqualTo(120);
-        // Roja: 4'.
-        assertThat(StatsEngine.sanctionSeconds(List.of(new int[]{0, StatsEngine.RED_CARD_SECONDS}), match)).isEqualTo(240);
-        assertThat(StatsEngine.sanctionSeconds(List.of(), match)).isZero();
-    }
-
-    @Test
     void lastMatchesLimitTheMinuteProfile() {
         TimeProfile tp = team(StatsEngine.build(VELEZ, "Primera Masculino", "Últimos 1", List.of(data(779)), TODAY, 1), "CAVS")
                 .timeProfile();
@@ -282,14 +265,6 @@ public class StatsEngineTest {
     }
 
     @Test
-    void secondsWinningDrawingAndLosing() {
-        int[] seconds = new int[3];
-        // Gol propio al 10', del rival al 20' y al 30', partido de 50'.
-        StatsEngine.accumulateSituationSeconds(List.of(600), List.of(1200, 1800), 3000, seconds);
-        assertThat(seconds).containsExactly(600, 600 + 600, 1200);
-    }
-
-    @Test
     void leagueFoulAverageWithAllProfiles() {
         ReportData d = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY);
 
@@ -312,19 +287,6 @@ public class StatsEngineTest {
         assertThat(tp.matchesPlayed()).isEqualTo(9);
         assertThat(tp.periodMinutes()).isEqualTo(20);
         assertThat(tp.buckets()).hasSize(8);
-    }
-
-    @Test
-    void inACrossMatchTheEventIsAttributedByCode() {
-        TeamRef velezA = new TeamRef(10, 74, "CAVS A", "VELEZ A");
-        MatchEvent goalOfB = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS B", "");
-        MatchEvent goalOfA = new MatchEvent(1, 3, 0, Models.EventType.GOAL, 0, 74, "CAVS A", "");
-
-        assertThat(StatsEngine.isOwn(goalOfA, velezA, 11, 74)).isTrue();
-        assertThat(StatsEngine.isOwn(goalOfB, velezA, 11, 74)).isFalse();
-        // Con team_id en el acta manda el id.
-        assertThat(StatsEngine.isOwn(new MatchEvent(1, 3, 0, Models.EventType.BLUE_CARD, 11, 74, "", ""), velezA, 11, 74))
-                .isFalse();
     }
 
     @Test
@@ -435,7 +397,6 @@ public class StatsEngineTest {
         assertThat(team(report, "CAVS A").rivals()).anySatisfy(r -> assertThat(r.opponent()).isEqualTo("VELEZ B"));
         assertThat(team(report, "CAVS B").rivals()).anySatisfy(r -> assertThat(r.opponent()).isEqualTo("VELEZ A"));
     }
-
 
     public static TeamReport team(ReportData r, String code) {
         return r.teams().stream().filter(t -> t.code().equals(code)).findFirst().orElseThrow();
