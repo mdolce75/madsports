@@ -4,10 +4,10 @@ import com.madsports.catalog.ClubTeams;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.ClubView;
+import com.madsports.report.CategoryExtractor;
 import com.madsports.report.Crests;
 import com.madsports.report.ExcelExporter;
 import com.madsports.report.PdfRenderer;
-import com.madsports.report.ReportService;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.report.ReportService.Status;
 import com.madsports.sidgad.SidgadClient;
@@ -271,7 +271,7 @@ public class PlayerReportService {
         }
         inputs = withSummaries(q, comps, inputs, job);
         ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(),
-                Crests.tile(sidgad.clubLogo(ReportService.logoFile(all, club.id()))));
+                Crests.tile(sidgad.clubLogo(CategoryExtractor.logoFile(all, club.id()))));
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
         Query resolved = PlayerReportAssembler.baseLevel(q.federation(), q.playerId(), inputs).map(q::withBase).orElse(q);
         List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
