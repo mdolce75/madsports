@@ -34,7 +34,7 @@ public final class ShortHandedCalc {
         otherGoalsAgainst += rivalGoals.size() - against;
         if (shortSeconds > 0) {
             matches.add(new ShortHandedMatch(date, opponent, home, describe(blues, reds),
-                    StatsEngine.sanctionSeconds(sanctions, matchSeconds), against, countIn(ownGoals, union),
+                    TimeProfileCalc.sanctionSeconds(sanctions, matchSeconds), against, countIn(ownGoals, union),
                     finalFor, finalAgainst));
         }
     }
