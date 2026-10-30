@@ -130,7 +130,7 @@
     <p th:text="${a.nextOpponentPreview}"></p>
 </div>
 
-<div th:each="t : ${d.teams}" class="team">
+<div th:each="t : ${d.teams}" class="team" th:with="k=${blocks[t.code]}">
     <h2><img class="team-crest" th:if="${d.club.logo != null}" th:src="${d.club.logo}" alt=""/><span th:text="${(#strings.equalsIgnoreCase(t.name, t.code) ? t.name : t.name + ' (' + t.code + ')')}">Equipo</span></h2>
 
     <table class="kpis">
@@ -387,6 +387,89 @@
             </tr>
         </table>
     </div>
+
+    <!-- Como en el informe del club: goles, faltas y tarjetas con promedios, y los top 3 de la categoría. -->
+    <th:block th:if="${k != null}" th:with="r=${k.record()}">
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <h3>Goles</h3>
+                <table>
+                    <tr><th class="l"></th><th>Total</th><th>Por partido</th></tr>
+                    <tr><td class="l">A favor</td><td th:text="${r.goalsFor}"></td><td th:text="${f.dec(r.goalsForPerGame())}"></td></tr>
+                    <tr><td class="l">En contra</td><td th:text="${r.goalsAgainst}"></td><td th:text="${f.dec(r.goalsAgainstPerGame())}"></td></tr>
+                    <tr class="total"><td class="l">Diferencia</td><td th:text="${r.goalDiff()}"></td>
+                        <td th:text="${f.dec(r.played == 0 ? 0 : 1.0 * r.goalDiff() / r.played)}"></td></tr>
+                </table>
+            </td>
+            <td>
+                <h3>Faltas</h3>
+                <table>
+                    <tr><th class="l"></th><th>Total</th><th>Por partido</th></tr>
+                    <tr><td class="l">Cometidas</td><td th:text="${k.foulsOwn()}"></td><td th:text="${f.dec(k.foulsOwnPerGame())}"></td></tr>
+                    <tr><td class="l">Recibidas</td><td th:text="${k.foulsRival()}"></td><td th:text="${f.dec(k.foulsRivalPerGame())}"></td></tr>
+                </table>
+                <p class="muted" th:text="|De las actas de ${k.sheetMatches()} de los ${r.played} partidos.|">actas</p>
+            </td>
+        </tr>
+    </table>
+
+    <table class="two nobreak">
+        <tr>
+            <td>
+                <h3>Top 3 · Promedio de gol</h3>
+                <table th:if="${!k.topScorers().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th>Goles</th><th>PJ</th><th>Promedio</th></tr>
+                    <tr th:each="x, i : ${k.topScorers()}">
+                        <td th:text="${i.count}">1</td><td class="l" th:text="${x.player.name}"></td>
+                        <td th:text="${x.count}"></td><td th:text="${x.of}"></td><td th:text="${f.dec(x.value)}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topScorers().isEmpty()}">Sin goles de jugadores en esta categoría.</p>
+            </td>
+            <td>
+                <h3>Top 3 · Disciplina</h3>
+                <table th:if="${!k.topDiscipline().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th><span class="card y"></span></th><th><span class="card b"></span></th>
+                        <th><span class="card r"></span></th><th>Total</th></tr>
+                    <tr th:each="p, i : ${k.topDiscipline()}">
+                        <td th:text="${i.count}">1</td><td class="l" th:text="${p.name}"></td>
+                        <td th:text="${p.yellowCards}"></td><td th:text="${p.blueCards}"></td><td th:text="${p.redCards}"></td>
+                        <td th:text="${p.cards()}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topDiscipline().isEmpty()}">Sin tarjetas en esta categoría.</p>
+            </td>
+        </tr>
+    </table>
+
+    <table class="two nobreak" th:if="${d.hasSetPieces()}">
+        <tr>
+            <td>
+                <h3>Top 3 · Libres directos</h3>
+                <table th:if="${!k.topDirectFree().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th>Convertidos</th><th>Efectividad</th></tr>
+                    <tr th:each="x, i : ${k.topDirectFree()}">
+                        <td th:text="${i.count}">1</td><td class="l" th:text="${x.player.name}"></td>
+                        <td th:text="|${x.count} de ${x.of}|"></td><td th:text="${f.pct(x.value)}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topDirectFree().isEmpty()}">Sin libres directos a favor.</p>
+            </td>
+            <td>
+                <h3>Top 3 · Penales</h3>
+                <table th:if="${!k.topPenalties().isEmpty()}">
+                    <tr><th></th><th class="l">Jugador</th><th>Convertidos</th><th>Efectividad</th></tr>
+                    <tr th:each="x, i : ${k.topPenalties()}">
+                        <td th:text="${i.count}">1</td><td class="l" th:text="${x.player.name}"></td>
+                        <td th:text="|${x.count} de ${x.of}|"></td><td th:text="${f.pct(x.value)}"></td>
+                    </tr>
+                </table>
+                <p class="muted" th:if="${k.topPenalties().isEmpty()}">Sin penales a favor.</p>
+            </td>
+        </tr>
+    </table>
+    </th:block>
 
     <p class="muted" th:if="${d.partial() and d.hasSetPieces()}">Pelota parada: acumulado del torneo completo.</p>
     <table class="two nobreak">

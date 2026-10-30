@@ -62,11 +62,12 @@ madsports:
   reports:
     dir: ${REPORTS_DIR:./data/informes}
     retention-months: ${REPORTS_RETENTION_MONTHS:12}
-    # Lanzamiento: del 27/10 al 31/12/2026, club y jugador tienen 5 informes para todo el período (en lugar del cupo del
-    # mes). Desde el 1/1 vuelve el cupo de siempre. REPORTS_PROMO_UNTIL vacío = sin lanzamiento.
+    # Lanzamiento: del 27/10 al 31/12/2026 los informes son libres para todos (club, jugador y RinkReports): sin
+    # límite (promo-limit 0), en lugar del cupo del mes. Desde el 1/1 vuelve el cupo de siempre (los precios se definen
+    # antes). REPORTS_PROMO_UNTIL vacío = sin lanzamiento; un promo-limit mayor que 0 vuelve a poner un cupo.
     promo-from: ${REPORTS_PROMO_FROM:2026-10-27}
     promo-until: ${REPORTS_PROMO_UNTIL:2026-12-31}
-    promo-limit: ${REPORTS_PROMO_LIMIT:5}
+    promo-limit: ${REPORTS_PROMO_LIMIT:0}
   # Un dominio por sitio (SiteUrls, DomainFilter): https://madsports.com.ar, https://rinkreports.com.ar y
   # https://rinkmetrics.com.ar. El que queda vacío usa APP_BASE_URL; vacíos los tres, todo en una sola dirección.
   urls:
