@@ -4,6 +4,7 @@ import com.madsports.psj.PsjParser.Phase;
 import com.madsports.psj.PsjParser.Sheet;
 import com.madsports.psj.PsjParser.Tournament;
 import com.madsports.sidgad.model.Competition;
+import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.PlayerStats;
@@ -22,9 +23,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -56,29 +55,43 @@ public class PsjSource implements HockeySource {
         return DataSource.PSJ;
     }
 
-    /** Los torneos de la federación ({@code federation_id} = {@link Federation#id()}) en el año, con sus clubes. */
+    /** El comité de la Copa Nacional de Clubes (CNTHsP). */
+    static final int CUP_COMMITTEE = 1;
+
+    /**
+     * Los torneos de la federación ({@code federation_id} = {@link Federation#id()}) en el año, con sus clubes, y la
+     * Copa Nacional de Clubes (del comité CNTHsP) en la categoría que diga la federación ({@link Federation#cupCategory()}).
+     */
     @Override
     public List<Competition> competitions(Federation f, int year) {
-        return competitions(f.id(), year);
+        return competitions(f.id(), f.cupCategory(), year);
     }
 
-    List<Competition> competitions(int federationId, int year) {
-        List<Tournament> all = PsjParser.tournaments(client.tournaments(federationId));
+    List<Competition> competitions(int federationId, Category cupCategory, int year) {
+        List<Tournament> own = PsjParser.tournaments(client.tournaments(federationId));
+        List<Tournament> cups = cupCategory == null ? List.of()
+                : PsjParser.tournaments(client.committeeTournaments(CUP_COMMITTEE)).stream()
+                .filter(t -> PsjParser.norm(t.name()).startsWith("COPA NACIONAL")).toList();
         List<Competition> out = new ArrayList<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
-            Map<Tournament, Future<Competition>> pending = new LinkedHashMap<>();
-            all.forEach(t -> pending.put(t, io.submit(() -> competition(t, federationId))));
-            pending.values().forEach(c -> out.add(await(c)));
+            List<Future<Competition>> pending = new ArrayList<>();
+            own.forEach(t -> pending.add(io.submit(() -> competition(t, federationId, null))));
+            cups.forEach(t -> pending.add(io.submit(() -> competition(t, federationId, cupCategory))));
+            pending.forEach(c -> out.add(await(c)));
         }
         return out.stream().filter(Objects::nonNull).filter(c -> c.seasonId() == year)
                 .sorted(Comparator.comparingInt(Competition::id)).toList();
     }
 
-    /** El torneo como competición; null si no tiene año (ni en el nombre ni en sus partidos). */
-    private Competition competition(Tournament t, int federationId) {
+    /** El torneo como competición (una copa, con {@code cup}); null si no tiene año (ni en el nombre ni en sus partidos). */
+    private Competition competition(Tournament t, int federationId, Category cup) {
         List<TeamRef> teams = PsjParser.teams(client.standings(t.id()));
         Integer year = PsjParser.year(t.name()).stream().boxed().findFirst().orElseGet(() -> firstYear(t.id(), teams));
-        return year == null ? null : Competition.of(t.id(), t.name(), federationId, year, teams, PERIOD_MINUTES);
+        if (year == null) {
+            return null;
+        }
+        return cup == null ? Competition.of(t.id(), t.name(), federationId, year, teams, PERIOD_MINUTES)
+                : Competition.cup(t.id(), t.name(), federationId, year, cup, teams, PERIOD_MINUTES);
     }
 
     /** El año del primer partido con fecha del torneo. */

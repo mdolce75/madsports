@@ -8,6 +8,9 @@ const CATALOGS = {
         {id: 94, code: "AAAJ", name: "ARGENTINOS JUNIORS", categories: []}]},
     AMP: {available: true, year: 2026, years: [2026], clubs: [
         {id: 15, code: "GC", name: "GODOY CRUZ", categories: []}]},
+    FSP: {available: true, year: 2026, years: [2026], clubs: [
+        {id: 15, code: "ABERASTAIN", name: "Aberastain", categories: []},
+        {id: 10, code: "UVT", name: "UVT", categories: []}]},
 };
 const CATEGORIES = {
     74: [{key: "PRIMERA", label: "Primera", branches: ["MASCULINO", "FEMENINO"]},
@@ -25,7 +28,7 @@ async function api(page) {
             case "/api/session": return json({authenticated: true, username: "lucia", profiles: ["REPORTS"],
                 club: {id: 0, name: "", code: ""}, home: "/rinkreports/reports.html", monthlyReports: null});
             case "/api/federations": return json([{code: "FPP", name: "Federación Porteña de Patín"},
-                {code: "AMP", name: "Asociación Mendocina de Patín"}]);
+                {code: "AMP", name: "Asociación Mendocina de Patín"}, {code: "FSP", name: "Federación Sanjuanina de Patín"}]);
             case "/api/catalog": return json(CATALOGS[url.searchParams.get("federation")]);
             case "/api/catalog/club": {
                 const id = Number(url.searchParams.get("clubId"));
@@ -45,13 +48,20 @@ async function api(page) {
 
 const options = (page, id) => page.locator(`#${id} option`);
 
+test("gestiondepsj no tiene siglas: el club va con su nombre, sin repetirlo", async ({page}) => {
+    await api(page);
+    await page.goto("/rinkreports/reports.html");
+    await page.locator("#federacion").selectOption("FSP");
+    await expect(options(page, "club")).toHaveText(["Elegí el club", "Aberastain", "UVT"]);
+});
+
 test("cascada: federación, club, categoría y jugador; se genera con la categoría elegida", async ({page}) => {
     const sent = await api(page);
     await page.goto("/rinkreports/reports.html");
     await expect(page.locator("#go")).toBeDisabled();
     await expect(page.locator("#club")).toBeDisabled();
     await expect(options(page, "federacion")).toHaveText(["Elegí la federación",
-        "FPP · Federación Porteña de Patín", "AMP · Asociación Mendocina de Patín"]);
+        "FPP · Federación Porteña de Patín", "AMP · Asociación Mendocina de Patín", "FSP · Federación Sanjuanina de Patín"]);
 
     // Los clubes de la federación elegida (ordenados), y solo esos.
     await page.locator("#federacion").selectOption("AMP");

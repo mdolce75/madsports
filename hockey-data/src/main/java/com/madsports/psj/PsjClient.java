@@ -65,6 +65,11 @@ public class PsjClient {
         return cached(catalogCache, "tournaments?federation_id=" + federationId);
     }
 
+    /** Torneos de un comité ({@code committee_id}: CNTHsP = 1, el de la Copa Nacional de Clubes). */
+    public String committeeTournaments(int committeeId) {
+        return cached(catalogCache, "tournaments?committee_id=" + committeeId);
+    }
+
     public String standings(int tournamentId) {
         return cached(dataCache, "tournaments/" + tournamentId + "/standings");
     }

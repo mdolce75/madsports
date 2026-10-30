@@ -52,6 +52,14 @@ class ExcelExporterTest {
         assertThat(number(own, 1)).isEqualTo(scorer.count());
     }
 
+    /** gestiondepsj no tiene siglas: si la sigla es el nombre, no se repite. */
+    @Test
+    void clubNameWithoutARepeatedCode() {
+        assertThat(ExcelExporter.nameAndCode("VELEZ", "CAVS")).isEqualTo("VELEZ (CAVS)");
+        assertThat(ExcelExporter.nameAndCode("Aberastain", "ABERASTAIN")).isEqualTo("Aberastain");
+        assertThat(ExcelExporter.nameAndCode("Aberastain", "")).isEqualTo("Aberastain");
+    }
+
     @Test
     void playerWorkbookHasCategoriesMatchesAndMinutes() throws IOException {
         PlayerReport r = SamplePlayerData.build(TODAY, null);

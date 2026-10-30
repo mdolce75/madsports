@@ -94,7 +94,7 @@ public class CatalogService {
     /** El año más reciente de los ofrecidos que ya tiene datos (de alguna federación); si ninguno tiene, el primero. */
     public int defaultYear() {
         return years.stream().sorted(Comparator.reverseOrder())
-                .filter(y -> Arrays.stream(Federation.values()).anyMatch(f -> available(f, y)))
+                .filter(y -> Arrays.stream(Federation.values()).filter(sources::serves).anyMatch(f -> available(f, y)))
                 .findFirst().orElse(years.getFirst());
     }
 
@@ -110,7 +110,7 @@ public class CatalogService {
     }
 
     public boolean available(Federation f, int year) {
-        return !competitions(f, year).isEmpty();
+        return sources.serves(f) && !competitions(f, year).isEmpty();
     }
 
     public static String unavailableMessage(Federation f, int year) {
@@ -145,7 +145,8 @@ public class CatalogService {
 
     static CatalogView view(List<Competition> comps, List<String> levels, int year, List<Integer> years) {
         Map<Integer, List<TeamRef>> teamsByClub = new HashMap<>();
-        for (Competition c : comps) {
+        // Los clubes son los de los torneos de la federación: las copas interprovinciales traen clubes de otras.
+        for (Competition c : comps.stream().filter(c -> c.tournament() != Competition.Tournament.CUP).toList()) {
             for (TeamRef t : c.teams()) {
                 teamsByClub.computeIfAbsent(t.clubId(), k -> new ArrayList<>()).add(t);
             }

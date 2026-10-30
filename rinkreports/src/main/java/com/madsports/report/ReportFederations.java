@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Federaciones que se ofrecen en el generador de informes: la FPP siempre; la AMP, con {@code madsports.signup.amp}
- * (oculta hasta nuevo aviso, como en el registro).
+ * Federaciones que se ofrecen en el generador de informes: la FPP y la FSP siempre; la AMP, con
+ * {@code madsports.signup.amp} (oculta hasta nuevo aviso, como en el registro).
  */
 @Component
 public class ReportFederations {
@@ -25,7 +25,7 @@ public class ReportFederations {
     }
 
     public List<Federation> list() {
-        return amp ? List.of(Federation.FPP, Federation.AMP) : List.of(Federation.FPP);
+        return amp ? List.of(Federation.FPP, Federation.AMP, Federation.FSP) : List.of(Federation.FPP, Federation.FSP);
     }
 
     public List<Option> options() {

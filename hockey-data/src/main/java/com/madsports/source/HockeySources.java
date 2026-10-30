@@ -23,6 +23,11 @@ public class HockeySources {
         return new HockeySources(Arrays.asList(sources));
     }
 
+    /** ¿Está registrada la fuente de la federación? */
+    public boolean serves(Federation f) {
+        return byKind.containsKey(f.source());
+    }
+
     /** La fuente de la federación. */
     public HockeySource of(Federation f) {
         HockeySource s = byKind.get(f.source());

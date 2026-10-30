@@ -37,12 +37,17 @@ public class ExcelExporter {
         return f.source();
     }
 
+    /** "VELEZ (CAVS)"; sin la sigla si es el mismo nombre (gestiondepsj no tiene siglas: "Aberastain"). */
+    static String nameAndCode(String name, String code) {
+        return code == null || code.isBlank() || code.equalsIgnoreCase(name) ? name : name + " (" + code + ")";
+    }
+
     // ---------- Club ----------
 
     public byte[] club(ClubReport r) {
         return write(book -> {
             Sheet summaryOf = new Sheet(book, "Resumen");
-            summaryOf.title("Informe de club · " + r.club().name() + " (" + r.club().code() + ")");
+            summaryOf.title("Informe de club · " + nameAndCode(r.club().name(), r.club().code()));
             summaryOf.meta("Período", r.period());
             summaryOf.meta("Federación", r.federation().name());
             summaryOf.meta("Generado", r.generatedOn());

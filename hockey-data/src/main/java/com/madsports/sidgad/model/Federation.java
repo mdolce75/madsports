@@ -7,12 +7,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Federaciones relevadas en SIDGAD ({@code id_fede_N} del catálogo), con sus categorías de Infantil para arriba
- * (de la más baja a la más alta) y en qué categorías puede jugar un jugador según la suya.
+ * Federaciones relevadas, con su fuente de datos, sus categorías (de la más baja a la más alta) y en qué categorías
+ * puede jugar un jugador según la suya.
  * <p>
- * La regla es la misma en las dos: se puede jugar en la propia categoría y en las dos de arriba; desde Juvenil se
- * llega hasta la mayor (Primera / Senior), y Reserva y la mayor se juegan entre sí. Mendoza tiene más categorías
- * intermedias (Precadete, Cadete, Prejunior), así que dos categorías arriba es menos edad que en la FPP.
+ * FPP y AMP (SIDGAD, {@code id_fede_N} del catálogo): se puede jugar en la propia categoría y en las dos de arriba;
+ * desde Juvenil se llega hasta la mayor (Primera / Senior), y Reserva y la mayor se juegan entre sí. Mendoza tiene más
+ * categorías intermedias (Precadete, Cadete, Prejunior), así que dos categorías arriba es menos edad que en la FPP.
+ * <p>
+ * FSP (gestiondepsj, {@code federation_id} 1): cada división masculina (A1, A2, A3) tiene Primera y Segunda, que son
+ * categorías distintas y se juegan entre sí (como Reserva y Primera); lo mismo Primera y Segunda femenino. La Copa
+ * Nacional de Clubes se cuenta en Primera A1 masculino ({@link #cupCategory()}).
  */
 public enum Federation {
 
@@ -24,7 +28,7 @@ public enum Federation {
                     "JUVENIL", List.of("JUVENIL", "JUNIORS", "RESERVA", "PRIMERA"),
                     "JUNIORS", List.of("JUNIORS", "RESERVA", "PRIMERA"),
                     "RESERVA", List.of("RESERVA", "PRIMERA"),
-                    "PRIMERA", List.of("RESERVA", "PRIMERA"))),
+                    "PRIMERA", List.of("RESERVA", "PRIMERA")), DataSource.SIDGAD),
 
     AMP(4, "Asociación Mendocina de Patín",
             List.of("INFANTIL", "PRECADETE", "CADETE", "PREJUVENIL", "JUVENIL", "PREJUNIOR", "JUNIOR", "RESERVA",
@@ -38,28 +42,51 @@ public enum Federation {
                     "PREJUNIOR", List.of("PREJUNIOR", "JUNIOR", "RESERVA", "SENIOR"),
                     "JUNIOR", List.of("JUNIOR", "RESERVA", "SENIOR"),
                     "RESERVA", List.of("RESERVA", "SENIOR"),
-                    "SENIOR", List.of("RESERVA", "SENIOR")));
+                    "SENIOR", List.of("RESERVA", "SENIOR")), DataSource.SIDGAD),
+
+    FSP(1, "Federación Sanjuanina de Patín",
+            List.of("SEGUNDA A3", "PRIMERA A3", "SEGUNDA A2", "PRIMERA A2", "SEGUNDA A1", "PRIMERA A1", "SEGUNDA",
+                    "PRIMERA"),
+            Map.of(
+                    "SEGUNDA A3", List.of("SEGUNDA A3", "PRIMERA A3"),
+                    "PRIMERA A3", List.of("SEGUNDA A3", "PRIMERA A3"),
+                    "SEGUNDA A2", List.of("SEGUNDA A2", "PRIMERA A2"),
+                    "PRIMERA A2", List.of("SEGUNDA A2", "PRIMERA A2"),
+                    "SEGUNDA A1", List.of("SEGUNDA A1", "PRIMERA A1"),
+                    "PRIMERA A1", List.of("SEGUNDA A1", "PRIMERA A1"),
+                    "SEGUNDA", List.of("SEGUNDA", "PRIMERA"),
+                    "PRIMERA", List.of("SEGUNDA", "PRIMERA")), DataSource.PSJ);
 
     private final int id;
     private final String fullName;
     private final List<String> levels;
     private final Map<String, List<String>> allowed;
+    private final DataSource source;
 
-    Federation(int id, String name, List<String> levels, Map<String, List<String>> allowed) {
+    Federation(int id, String name, List<String> levels, Map<String, List<String>> allowed, DataSource source) {
         this.id = id;
         this.fullName = name;
         this.levels = levels;
         this.allowed = allowed;
+        this.source = source;
     }
 
-    /** id de la federación en SIDGAD ({@code id_fede_N}). */
+    /** id de la federación en su fuente ({@code id_fede_N} en SIDGAD, {@code federation_id} en gestiondepsj). */
     public int id() {
         return id;
     }
 
     /** De dónde salen sus datos. */
     public DataSource source() {
-        return DataSource.SIDGAD;
+        return source;
+    }
+
+    /**
+     * La categoría en que se cuentan las copas interprovinciales de clubes (Copa Nacional): sus partidos no traen
+     * categoría. Null si la federación no las releva.
+     */
+    public Competition.Category cupCategory() {
+        return this == FSP ? new Competition.Category("PRIMERA A1", "MASCULINO") : null;
     }
 
     /** "Federación Porteña de Patín". La sigla es {@link #name()}. */
@@ -77,12 +104,12 @@ public enum Federation {
         return allowed.getOrDefault(level, List.of());
     }
 
-    /** La federación de un id de SIDGAD, o null si no se releva. */
+    /** La federación de un id de su fuente, o null si no se releva. */
     public static Federation of(int id) {
         return Arrays.stream(values()).filter(f -> f.id == id).findFirst().orElse(null);
     }
 
-    /** "FPP" o "AMP" (sin distinguir mayúsculas); vacío o nulo = FPP. */
+    /** "FPP", "AMP" o "FSP" (sin distinguir mayúsculas); vacío o nulo = FPP. */
     public static Federation parse(String acronym) {
         if (acronym == null || acronym.isBlank()) {
             return FPP;
@@ -90,7 +117,8 @@ public enum Federation {
         try {
             return valueOf(acronym.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Federación inválida: " + acronym + ". Válidas: FPP, AMP.");
+            throw new IllegalArgumentException("Federación inválida: " + acronym + ". Válidas: "
+                    + String.join(", ", Arrays.stream(values()).map(Enum::name).toList()) + ".");
         }
     }
 }
