@@ -82,7 +82,7 @@
             <td class="crest" th:if="${r.club.logo != null}"><img th:src="${r.club.logo}" th:alt="|Escudo de ${r.club.name}|"/></td>
             <td>
                 <div class="brandline">RinkReports · Hockey sobre patines · Informe del club</div>
-                <h1 th:text="|${r.club.name} (${r.club.code})|">Club</h1>
+                <h1 th:text="${(#strings.equalsIgnoreCase(r.club.name, r.club.code) ? r.club.name : r.club.name + ' (' + r.club.code + ')')}">Club</h1>
                 <div class="subtitle" th:text="${r.period}">Temporada</div>
                 <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(r.generatedOn)}|">fecha</div>
             </td>

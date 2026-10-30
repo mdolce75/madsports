@@ -192,7 +192,8 @@
                 return;
             }
             const clubs = [...c.clubs].sort((a, b) => a.name.localeCompare(b.name, "es"));
-            fill(sel, "Elegí el club", clubs.map(x => [String(x.id), `${x.name} (${x.code})`]));
+            fill(sel, "Elegí el club", clubs.map(x => [String(x.id),
+                x.code && x.code.toUpperCase() !== x.name.toUpperCase() ? `${x.name} (${x.code})` : x.name]));
             sel.disabled = false;
         } catch (e) {
             if (n === loading) status("No se pudo cargar el catálogo: " + e.message, true);

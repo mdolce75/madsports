@@ -2,12 +2,16 @@ package com.madsports.psj;
 
 import com.madsports.sidgad.SheetStore;
 import com.madsports.sidgad.model.Competition;
+import com.madsports.sidgad.model.Competition.Category;
+import com.madsports.sidgad.model.Competition.Tournament;
+import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.EventType;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
 import com.madsports.sidgad.model.Models.PlayerStats;
 import com.madsports.sidgad.model.Models.StandingRow;
+import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.source.DataSource;
 import com.madsports.source.GameSheet;
 import org.junit.jupiter.api.Test;
@@ -30,7 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * La fuente de gestiondepsj con respuestas reales guardadas el 30/10/2026 ({@code psj/}): de la FSP, Primera A1
  * Apertura 2026 (200004) con sus 14 fechas y dos partidos completos (1000026 Olimpia-Lomas y 1000414
- * Aberastain-Olimpia); de la UEHP, un torneo sin año en el nombre (200015).
+ * Aberastain-Olimpia) y la Copa Nacional de Clubes del comité CNTHsP (200031, con 1000448 Aberastain-Caucetera); de
+ * la UEHP, un torneo sin año en el nombre (200015).
  */
 class PsjSourceTest {
 
@@ -77,19 +82,22 @@ class PsjSourceTest {
     }
 
     Competition apertura() {
-        return source.competitions(1, 2026).getFirst();
+        return source.competitions(Federation.FSP, 2026).stream().filter(c -> c.id() == 200004).findFirst().orElseThrow();
     }
 
     @Test
     void tournamentsOfTheFederationInTheYear() {
-        List<Competition> fsp = source.competitions(1, 2026);
-        assertThat(fsp).hasSize(1);
+        List<Competition> fsp = source.competitions(Federation.FSP, 2026);
+        assertThat(fsp).extracting(Competition::id).containsExactly(200004, 200031);
         Competition c = fsp.getFirst();
         assertThat(c.id()).isEqualTo(200004);
         assertThat(c.name()).isEqualTo("A1 PRIMERA TORNEO APERTURA 2026");
         assertThat(c.seasonId()).isEqualTo(2026);
         assertThat(c.federationId()).isEqualTo(1);
         assertThat(c.periodMinutes()).isEqualTo(25);
+        assertThat(c.tournament()).isEqualTo(Tournament.OPENING);
+        assertThat(c.category()).isEqualTo(new Category("PRIMERA A1", "MASCULINO"));
+        assertThat(c.category().label()).isEqualTo("Primera A1 Masculino");
         // Los clubes salen de la tabla: el id de equipo es el del club.
         assertThat(c.teams()).hasSize(12).allMatch(t -> t.teamId() == t.clubId());
         assertThat(c.teams()).anySatisfy(t -> {
@@ -98,10 +106,19 @@ class PsjSourceTest {
             assertThat(t.code()).isEqualTo("ABERASTAIN");
             assertThat(t.logo()).startsWith("uploads/clubs/");
         });
-        assertThat(source.competitions(1, 2025)).isEmpty();
+        assertThat(source.competitions(Federation.FSP, 2025)).isEmpty();
+
+        // La Copa Nacional (del comité, no de la federación) va en Primera A1, con su nombre y sus clubes de otras
+        // provincias; el año, el de su primer partido. El Argentino de selecciones no entra.
+        Competition cup = fsp.get(1);
+        assertThat(cup.tournament()).isEqualTo(Tournament.CUP);
+        assertThat(cup.category()).isEqualTo(Federation.FSP.cupCategory());
+        assertThat(cup.tournamentLabel()).isEqualTo("Copa Nacional de Clubes");
+        assertThat(cup.seasonId()).isEqualTo(2026);
+        assertThat(cup.teams()).extracting(TeamRef::name).contains("Aberastain", "Petroleros");
 
         // Sin año en el nombre: el de su primer partido.
-        assertThat(source.competitions(1000, 2026)).extracting(Competition::id).containsExactly(200015);
+        assertThat(source.competitions(1000, null, 2026)).extracting(Competition::id).containsExactly(200015);
     }
 
     @Test

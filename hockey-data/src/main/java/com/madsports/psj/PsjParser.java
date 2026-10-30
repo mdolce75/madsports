@@ -296,9 +296,9 @@ public final class PsjParser {
         return String.join(" ", plain.toUpperCase(Locale.ROOT).trim().split("\\s+"));
     }
 
-    /** La sigla del club: no hay una en la API, va el nombre normalizado ("UVT", "ABERASTAIN"). */
+    /** La sigla del club: no hay una en la API, va el nombre en mayúsculas ("UVT", "ABERASTAIN", "UNIÓN"). */
     static String code(String name) {
-        return norm(name);
+        return String.join(" ", name.trim().toUpperCase(Locale.ROOT).split("\\s+"));
     }
 
     /** "LUIS IGNACIO ALANIZ" → "Luis Ignacio Alaniz". */

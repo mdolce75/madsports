@@ -180,7 +180,10 @@ public final class CategoryExtractor {
         if (missingSheets > 0) {
             notPublished.add("Actas de partido: " + missingSheets + " de " + clubSheets);
         }
-        String tournaments = comps.stream().map(c -> c.tournamentLabel(comps)).distinct().collect(Collectors.joining(" + "));
+        // Apertura, Clausura y después las copas ("Apertura + Clausura + Copa Nacional de Clubes").
+        String tournaments = comps.stream()
+                .sorted(Comparator.comparing(Competition::tournament, Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(c -> c.tournamentLabel(comps)).distinct().collect(Collectors.joining(" + "));
         String label = scope == Scope.LAST_5
                 ? "Últimos 5 partidos (" + tournaments + ")"
                 : "Temporada " + year + " · " + tournaments;

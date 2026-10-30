@@ -87,7 +87,7 @@
             <td class="crest" th:if="${d.club.logo != null}"><img th:src="${d.club.logo}" th:alt="|Escudo de ${d.club.name}|"/></td>
             <td>
                 <div class="brandline">RinkReports · Hockey sobre patines</div>
-                <h1 th:text="${d.teams.size() == 1 ? d.teams[0].name + ' (' + d.teams[0].code + ')' : d.club.name + ' (' + d.club.code + ')'}">Club</h1>
+                <h1 th:text="${d.teams.size() == 1 ? (#strings.equalsIgnoreCase(d.teams[0].name, d.teams[0].code) ? d.teams[0].name : d.teams[0].name + ' (' + d.teams[0].code + ')') : (#strings.equalsIgnoreCase(d.club.name, d.club.code) ? d.club.name : d.club.name + ' (' + d.club.code + ')')}">Club</h1>
                 <div class="subtitle" th:text="|${d.category} · ${d.tournament}|">Categoría · Torneo</div>
                 <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(d.generatedOn)}|">fecha</div>
             </td>
@@ -131,7 +131,7 @@
 </div>
 
 <div th:each="t : ${d.teams}" class="team">
-    <h2><img class="team-crest" th:if="${d.club.logo != null}" th:src="${d.club.logo}" alt=""/><span th:text="|${t.name} (${t.code})|">Equipo</span></h2>
+    <h2><img class="team-crest" th:if="${d.club.logo != null}" th:src="${d.club.logo}" alt=""/><span th:text="${(#strings.equalsIgnoreCase(t.name, t.code) ? t.name : t.name + ' (' + t.code + ')')}">Equipo</span></h2>
 
     <table class="kpis">
         <tr>
