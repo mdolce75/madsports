@@ -150,7 +150,7 @@ public class PsjSource implements HockeySource {
         return GameSheet.of(sheet.events(), sheet.lineups());
     }
 
-    /** La ficha del jugador desde gestiondepsj llega con el informe de jugador (#159): por ahora, sin ficha. */
+    /** Sin torneos no hay ficha: la API la da por torneo ({@link #playerSeason(int, List)}). */
     @Override
     public List<SeasonMatch> playerSeason(int playerId, int seasonId) {
         return List.of();
@@ -159,6 +159,16 @@ public class PsjSource implements HockeySource {
     @Override
     public List<SeasonMatch> playerSeason(int playerId, int seasonId, Instant notBefore) {
         return List.of();
+    }
+
+    /** Sus partidos de cada torneo, desde sus eventos ({@link PsjParser#seasonMatches}). */
+    @Override
+    public List<SeasonMatch> playerSeason(int playerId, List<Competition> competitions) {
+        List<SeasonMatch> out = new ArrayList<>();
+        for (Competition c : competitions) {
+            out.addAll(PsjParser.seasonMatches(client.playerEvents(playerId, c.id()), c.name()));
+        }
+        return out;
     }
 
     @Override

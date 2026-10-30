@@ -284,7 +284,7 @@ public class PlayerReportService {
                 }
             }
         }
-        inputs = withSummaries(source, q, comps, inputs, job);
+        inputs = withSummaries(source, q, inputs, job);
         ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(),
                 Crests.tile(source.clubLogo(CategoryExtractor.logoFile(all, club.id()))));
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
@@ -325,28 +325,29 @@ public class PlayerReportService {
 
     /**
      * Partidos sin acta publicada: SIDGAD los lista igual en la ficha de temporada del jugador, con sus goles, libres,
-     * penales, azules y rojas. Si la ficha no se puede leer, esos partidos quedan como "sin acta".
+     * penales, azules y rojas; gestiondepsj, los partidos en que tuvo algún evento (sin penales ni libres). Se pide la
+     * ficha de las competiciones con partidos sin acta. Si no se puede leer, esos partidos quedan como "sin acta".
      */
-    private List<TeamInput> withSummaries(HockeySource source, Query q, List<Competition> comps, List<TeamInput> inputs, Job job) {
-        boolean missing = inputs.stream().anyMatch(in -> in.matches().stream()
-                .anyMatch(m -> in.sheets().getOrDefault(m.idp(), List.of()).isEmpty()));
-        if (!missing) {
+    private List<TeamInput> withSummaries(HockeySource source, Query q, List<TeamInput> inputs, Job job) {
+        List<Competition> missing = inputs.stream().filter(in -> in.matches().stream()
+                        .anyMatch(m -> in.sheets().getOrDefault(m.idp(), List.of()).isEmpty()))
+                .map(TeamInput::competition).distinct().toList();
+        if (missing.isEmpty()) {
             return inputs;
         }
         job.update(Status.EXTRACTING, "Leyendo la ficha de temporada del jugador (partidos sin acta)");
-        List<SeasonMatch> season = new ArrayList<>();
-        for (int seasonId : comps.stream().map(Competition::seasonId).distinct().toList()) {
-            try {
-                season.addAll(source.playerSeason(q.playerId(), seasonId));
-            } catch (SourceException e) {
-                log.info("No se pudo leer la ficha de temporada del jugador {}: {}", q.playerId(), e.getMessage());
-                return inputs;
-            }
+        List<SeasonMatch> season;
+        try {
+            season = source.playerSeason(q.playerId(), missing);
+        } catch (SourceException e) {
+            log.info("No se pudo leer la ficha de temporada del jugador {}: {}", q.playerId(), e.getMessage());
+            return inputs;
         }
         if (season.isEmpty()) {
             return inputs;
         }
-        return inputs.stream().map(in -> in.withSummaries(PlayerReportAssembler.summaries(in, season))).toList();
+        return inputs.stream().map(in -> in.withSummaries(PlayerReportAssembler.summaries(in, season),
+                source.kind().fullSeason())).toList();
     }
 
 
