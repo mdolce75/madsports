@@ -7,7 +7,7 @@
         @page {
             size: A4;
             margin: 16mm 14mm 18mm 14mm;
-            @bottom-left { content: "Informe elaborado por RinkReports · Datos: [(${d.federation.name()})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-left { content: "Informe elaborado por RinkReports · Datos: [(${d.federation.name()})] ([(${src.label()})])"; font-size: 8pt; color: #888; font-family: sans-serif; }
             @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
         }
         body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
@@ -78,7 +78,7 @@
 <div class="sample-banner" th:if="${sample}">
     <b>Informe de ejemplo.</b> Club, rivales, jugadores y resultados son ficticios: sirven solo para mostrar el
     formato y las secciones de un informe de RinkReports. Los informes reales usan los datos publicados por la
-    <span th:text="${d.federation.name()}">FPP</span> en SIDGAD.
+    <span th:text="${d.federation.name()}">FPP</span> en <span th:text="${src.label()}">SIDGAD</span>.
 </div>
 
 <div class="header">
@@ -99,7 +99,7 @@
 <div class="analysis">
     <p th:text="${a.summary}">Resumen</p>
     <p th:if="${!#strings.isEmpty(a.trend)}"><b>Tendencia:</b> <span th:text="${a.trend}"></span></p>
-    <p class="muted" th:text="|Análisis: ${a.source}. Las cifras provienen de los datos publicados por la ${d.federation.name()} en SIDGAD.|"></p>
+    <p class="muted" th:text="|Análisis: ${a.source}. Las cifras provienen de los datos publicados por la ${d.federation.name()} en ${src.label()}.|"></p>
 </div>
 
 <table class="two">
@@ -249,7 +249,8 @@
     </div>
 
     <h3>Goleadores</h3>
-    <p class="muted" th:if="${d.partial()}">Acumulado del torneo completo: SIDGAD no publica estadísticas individuales por partido.</p>
+    <p class="muted" th:if="${d.partial()}"
+       th:text="|Acumulado del torneo completo: ${src.label()} no publica estadísticas individuales por partido.|">Acumulado</p>
     <table th:if="${!t.players.isEmpty()}" th:with="maxShare=${t.players[0].goalShare}">
         <tr><th class="l">Jugador</th><th>PJ</th><th>Goles</th><th>G/PJ</th><th class="l" style="width: 28%">% de los goles del equipo</th></tr>
         <tr th:each="p : ${t.players}">
@@ -315,7 +316,7 @@
         </table>
         <p class="muted" th:if="${tp.hasData()}">
             <span th:text="|Según ${tp.matchesWithSheet} actas de ${tp.matchesPlayed} partidos jugados (períodos de ${tp.periodMinutes}').|"></span>
-            <span th:if="${tp.matchesWithSheet < tp.matchesPlayed}">SIDGAD no publicó el acta de los partidos restantes.</span>
+            <span th:if="${tp.matchesWithSheet < tp.matchesPlayed}" th:text="|${src.label()} no publicó el acta de los partidos restantes.|">Sin acta</span>
             <span th:if="${tp.goalMismatches > 0}" th:text="|En ${tp.goalMismatches} acta(s) los goles cargados no coinciden con el resultado oficial.|"></span>
             <span th:if="${tp.hasUnrecordedGoals()}">* Goles de partidos sin ficha publicada o que faltan en fichas
                 incompletas: se conoce el resultado pero no el minuto. Las tarjetas de esos partidos no se conocen.</span>

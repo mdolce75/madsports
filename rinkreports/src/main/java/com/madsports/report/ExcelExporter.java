@@ -2,6 +2,8 @@ package com.madsports.report;
 
 import com.madsports.analysis.AnalysisResult;
 import com.madsports.player.PlayerReport;
+import com.madsports.sidgad.model.Federation;
+import com.madsports.source.DataSource;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.ReportData.PlayerLine;
 import com.madsports.stats.ReportData.TeamRecord;
@@ -29,6 +31,11 @@ public class ExcelExporter {
     /** Verde contable de RinkReports. */
     private static final String LEDGER = "1F5F4F";
     private static final String LEDGER_SOFT = "E6F0EC";
+
+    /** La fuente de los datos de la federación, como se nombra en el Excel (los tests prueban otra). */
+    protected DataSource sourceOf(Federation f) {
+        return f.source();
+    }
 
     // ---------- Club ----------
 
@@ -60,7 +67,7 @@ public class ExcelExporter {
             }
             if (!r.notPublished().isEmpty()) {
                 summaryOf.blank();
-                summaryOf.section("Sin publicar en SIDGAD");
+                summaryOf.section("Sin publicar en " + sourceOf(r.federation()).label());
                 r.notPublished().forEach(n -> summaryOf.row(n));
             }
             for (ClubReport.Branch b : r.branches()) {
@@ -194,7 +201,7 @@ public class ExcelExporter {
         return write(book -> {
             Sheet summaryOf = new Sheet(book, "Resumen");
             summaryOf.title("Informe de jugador · " + r.fullName());
-            summaryOf.meta("Jugador en SIDGAD", r.playerName());
+            summaryOf.meta("Jugador en " + sourceOf(r.federation()).label(), r.playerName());
             summaryOf.meta("Club", r.club().name());
             summaryOf.meta("Período", r.period());
             summaryOf.meta("Generado", r.generatedOn());

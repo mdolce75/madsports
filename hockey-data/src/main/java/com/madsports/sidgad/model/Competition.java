@@ -1,5 +1,7 @@
 package com.madsports.sidgad.model;
 
+import com.madsports.source.DataSource;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -116,7 +118,9 @@ public record Competition(int id, String name, int federationId, int seasonId,
         return twice && division == 1 ? tournament.label() + " 1" : tournamentLabel();
     }
 
+    /** Página pública de la competición en la fuente de su federación. */
     public String url() {
-        return "https://www.buenosaires.sidgad.com/league/" + id;
+        Federation f = federation();
+        return (f == null ? DataSource.SIDGAD : f.source()).competitionUrl(id);
     }
 }
