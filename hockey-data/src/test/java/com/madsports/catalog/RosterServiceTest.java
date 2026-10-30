@@ -4,6 +4,8 @@ import com.madsports.Fixtures;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.catalog.CatalogService.LevelView;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.SidgadSource;
+import com.madsports.source.HockeySources;
 import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.model.Federation;
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,8 @@ class RosterServiceTest {
     /** SIDGAD con las páginas guardadas; {@code sheet} decide qué trae el acta de cada partido. */
     static RosterService roster(IntFunction<String> sheet, boolean calendarFails) {
         SidgadClient client = client(sheet, calendarFails);
-        return new RosterService(new CatalogService(client, PROPS), client);
+        HockeySources sources = HockeySources.of(new SidgadSource(client));
+        return new RosterService(new CatalogService(sources, PROPS), sources);
     }
 
     static SidgadClient client(IntFunction<String> sheet, boolean calendarFails) {
@@ -83,8 +86,9 @@ class RosterServiceTest {
     @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
     void allCategoriesAtOnceDoNotHangWithFewCores() {
         SidgadClient client = client(idp -> Fixtures.read("gr_26389.html"), false);
-        CatalogService catalog = new CatalogService(client, PROPS);
-        RosterService r = new RosterService(catalog, client);
+        HockeySources sources = HockeySources.of(new SidgadSource(client));
+        CatalogService catalog = new CatalogService(sources, PROPS);
+        RosterService r = new RosterService(catalog, sources);
         ClubView club = catalog.club(Federation.FPP, 74, 2026);
         assertThat(club.categories()).hasSizeGreaterThan(2);
         assertThat(r.withPlayers(Federation.FPP, club, 2026).categories()).isNotEmpty();

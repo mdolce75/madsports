@@ -3,6 +3,8 @@ package com.madsports.catalog;
 import com.madsports.Fixtures;
 import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.SidgadSource;
+import com.madsports.source.HockeySources;
 import com.madsports.catalog.CatalogService.CatalogView;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.catalog.CatalogService.LevelView;
@@ -76,7 +78,7 @@ class CatalogServiceTest {
                 return Fixtures.read("catalogo.html");
             }
         };
-        return new CatalogService(client, props);
+        return new CatalogService(HockeySources.of(new SidgadSource(client)), props);
     }
 
     @Test

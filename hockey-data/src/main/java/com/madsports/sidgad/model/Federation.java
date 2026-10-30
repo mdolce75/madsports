@@ -1,5 +1,7 @@
 package com.madsports.sidgad.model;
 
+import com.madsports.source.DataSource;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,11 @@ public enum Federation {
     /** id de la federación en SIDGAD ({@code id_fede_N}). */
     public int id() {
         return id;
+    }
+
+    /** De dónde salen sus datos. */
+    public DataSource source() {
+        return DataSource.SIDGAD;
     }
 
     /** "Federación Porteña de Patín". La sigla es {@link #name()}. */

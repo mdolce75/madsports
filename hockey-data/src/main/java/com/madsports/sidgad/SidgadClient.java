@@ -1,6 +1,7 @@
 package com.madsports.sidgad;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.madsports.source.SourceException;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -341,13 +341,14 @@ public class SidgadClient {
         }
     }
 
-    public static class SidgadException extends UncheckedIOException {
+    /** Error de SIDGAD (HTTP o de red). */
+    public static class SidgadException extends SourceException {
         public SidgadException(String message) {
-            super(message, new IOException(message));
+            super(message);
         }
 
         public SidgadException(String message, Exception cause) {
-            super(message, cause instanceof IOException io ? io : new IOException(cause));
+            super(message, cause);
         }
     }
 }

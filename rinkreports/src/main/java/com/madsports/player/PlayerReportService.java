@@ -10,7 +10,6 @@ import com.madsports.report.ExcelExporter;
 import com.madsports.report.PdfRenderer;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.report.ReportService.Status;
-import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.LineupPlayer;
@@ -19,7 +18,10 @@ import com.madsports.sidgad.model.Models.MatchEvent;
 import com.madsports.sidgad.model.Models.SeasonMatch;
 import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.sidgad.model.Models.PlayerStats;
-import com.madsports.sidgad.parse.SidgadParser;
+import com.madsports.source.GameSheet;
+import com.madsports.source.HockeySource;
+import com.madsports.source.HockeySources;
+import com.madsports.source.SourceException;
 import com.madsports.stats.ReportData;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -176,17 +178,17 @@ public class PlayerReportService {
     }
 
     private final CatalogService catalog;
-    private final SidgadClient sidgad;
+    private final HockeySources sources;
     private final PdfRenderer renderer;
     private final ExcelExporter excel;
     private final Clock clock;
     private final Cache<UUID, Job> jobs = Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build();
     private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
-    public PlayerReportService(CatalogService catalog, SidgadClient sidgad, PdfRenderer renderer, ExcelExporter excel,
+    public PlayerReportService(CatalogService catalog, HockeySources sources, PdfRenderer renderer, ExcelExporter excel,
                                Clock clock) {
         this.catalog = catalog;
-        this.sidgad = sidgad;
+        this.sources = sources;
         this.renderer = renderer;
         this.excel = excel;
         this.clock = clock;
@@ -228,6 +230,7 @@ public class PlayerReportService {
 
     PlayerReport build(Query q, Job job) {
         ClubView club = catalog.club(q.federation(), q.clubId(), q.year());
+        HockeySource source = sources.of(q.federation());
         List<Competition> all = catalog.competitions(q.federation(), q.year()).stream()
                 .filter(c -> !ClubTeams.own(c, club).isEmpty())
                 .toList();
@@ -239,16 +242,16 @@ public class PlayerReportService {
                 .filter(q::eligible)
                 .toList();
         List<TeamInput> inputs = new ArrayList<>();
-        Map<Competition, Future<String>> scorerTables = new LinkedHashMap<>();
+        Map<Competition, Future<List<PlayerStats>>> scorerTables = new LinkedHashMap<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
             job.update(Status.EXTRACTING, "Leyendo los calendarios de los equipos del club");
-            Map<Competition, Future<String>> calendars = new LinkedHashMap<>();
-            comps.forEach(c -> calendars.put(c, io.submit(() -> sidgad.calendar(c.id()))));
+            Map<Competition, Future<List<Match>>> calendars = new LinkedHashMap<>();
+            comps.forEach(c -> calendars.put(c, io.submit(() -> source.calendar(c).orElse(List.of()))));
             // La tabla de goleadores de cada torneo, para su lugar en la liga.
-            comps.forEach(c -> scorerTables.put(c, io.submit(() -> sidgad.playerStats(c.id()))));
+            comps.forEach(c -> scorerTables.put(c, io.submit(() -> source.playerStats(c).orElse(List.of()))));
             Map<Competition, List<Match>> calendar = new LinkedHashMap<>();
             for (Competition c : comps) {
-                calendar.put(c, SidgadParser.calendar(ClubTeams.await(calendars.get(c))));
+                calendar.put(c, ClubTeams.await(calendars.get(c)));
             }
 
             Map<Integer, Competition> toRead = new LinkedHashMap<>();
@@ -259,11 +262,11 @@ public class PlayerReportService {
             }
             AtomicInteger done = new AtomicInteger();
             job.update(Status.EXTRACTING, "Leyendo actas de partido (0/" + toRead.size() + ")");
-            Map<Integer, Future<String>> sheets = new LinkedHashMap<>();
+            Map<Integer, Future<GameSheet>> sheets = new LinkedHashMap<>();
             toRead.forEach((idp, c) -> sheets.put(idp, io.submit(() -> {
-                String html = sidgad.gameSheet(c.id(), idp);
+                GameSheet sheet = source.gameSheet(c, idp);
                 job.update(Status.EXTRACTING, "Leyendo actas de partido (" + done.incrementAndGet() + "/" + toRead.size() + ")");
-                return html;
+                return sheet;
             })));
 
             for (Competition c : comps) {
@@ -272,18 +275,18 @@ public class PlayerReportService {
                     Map<Integer, List<LineupPlayer>> lineups = new LinkedHashMap<>();
                     Map<Integer, List<MatchEvent>> events = new LinkedHashMap<>();
                     for (Match m : matches) {
-                        String html = ClubTeams.await(sheets.get(m.idp()));
-                        lineups.put(m.idp(), RosterService.ownSide(SidgadParser.lineups(html), m, Set.of(t.teamId())));
-                        events.put(m.idp(), SidgadParser.gameEvents(html));
+                        GameSheet sheet = ClubTeams.await(sheets.get(m.idp()));
+                        lineups.put(m.idp(), RosterService.ownSide(sheet.lineups(), m, Set.of(t.teamId())));
+                        events.put(m.idp(), sheet.events());
                     }
                     inputs.add(new TeamInput(c, ClubTeams.label(c, club, keys.getOrDefault(t.teamId(), club.code())),
                             t.teamId(), matches, lineups, events));
                 }
             }
         }
-        inputs = withSummaries(q, comps, inputs, job);
+        inputs = withSummaries(source, q, comps, inputs, job);
         ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(),
-                Crests.tile(sidgad.clubLogo(CategoryExtractor.logoFile(all, club.id()))));
+                Crests.tile(source.clubLogo(CategoryExtractor.logoFile(all, club.id()))));
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
         Query resolved = PlayerReportAssembler.baseLevel(q.federation(), q.playerId(), inputs).map(q::withBase).orElse(q);
         List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
@@ -297,16 +300,16 @@ public class PlayerReportService {
      * queda sin lugar en la liga.
      */
     static Map<String, PlayerReport.LeagueRank> leagueRanks(int playerId, List<TeamInput> inputs,
-                                                            Map<Competition, Future<String>> scorerTables) {
+                                                            Map<Competition, Future<List<PlayerStats>>> scorerTables) {
         Map<String, Set<Competition>> byCategory = new LinkedHashMap<>();
         inputs.forEach(in -> byCategory.computeIfAbsent(in.category(), k -> new LinkedHashSet<>()).add(in.competition()));
         Map<String, PlayerReport.LeagueRank> ranks = new LinkedHashMap<>();
         byCategory.forEach((category, comps) -> {
             List<List<PlayerStats>> tables = new ArrayList<>();
             for (Competition c : comps) {
-                Future<String> f = scorerTables.get(c);
+                Future<List<PlayerStats>> f = scorerTables.get(c);
                 try {
-                    tables.add(f == null ? List.of() : SidgadParser.playerStats(ClubTeams.await(f)));
+                    tables.add(f == null ? List.of() : ClubTeams.await(f));
                 } catch (RuntimeException e) {
                     log.info("No se pudo leer la tabla de goleadores de {}: {}", c.id(), e.getMessage());
                     return;
@@ -324,7 +327,7 @@ public class PlayerReportService {
      * Partidos sin acta publicada: SIDGAD los lista igual en la ficha de temporada del jugador, con sus goles, libres,
      * penales, azules y rojas. Si la ficha no se puede leer, esos partidos quedan como "sin acta".
      */
-    private List<TeamInput> withSummaries(Query q, List<Competition> comps, List<TeamInput> inputs, Job job) {
+    private List<TeamInput> withSummaries(HockeySource source, Query q, List<Competition> comps, List<TeamInput> inputs, Job job) {
         boolean missing = inputs.stream().anyMatch(in -> in.matches().stream()
                 .anyMatch(m -> in.sheets().getOrDefault(m.idp(), List.of()).isEmpty()));
         if (!missing) {
@@ -334,8 +337,8 @@ public class PlayerReportService {
         List<SeasonMatch> season = new ArrayList<>();
         for (int seasonId : comps.stream().map(Competition::seasonId).distinct().toList()) {
             try {
-                season.addAll(SidgadParser.seasonMatches(sidgad.playerSeason(q.playerId(), seasonId)));
-            } catch (SidgadClient.SidgadException e) {
+                season.addAll(source.playerSeason(q.playerId(), seasonId));
+            } catch (SourceException e) {
                 log.info("No se pudo leer la ficha de temporada del jugador {}: {}", q.playerId(), e.getMessage());
                 return inputs;
             }

@@ -2,12 +2,13 @@ package com.madsports.catalog;
 
 import com.madsports.catalog.CatalogService.CategoryOption;
 import com.madsports.catalog.CatalogService.ClubView;
-import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
-import com.madsports.sidgad.parse.SidgadParser;
+import com.madsports.source.GameSheet;
+import com.madsports.source.HockeySource;
+import com.madsports.source.HockeySources;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.stereotype.Service;
@@ -65,7 +66,7 @@ public class RosterService {
     }
 
     private final CatalogService catalog;
-    private final SidgadClient sidgad;
+    private final HockeySources sources;
     /** Plantel por equipo (club, año, categoría, rama): las actas ya quedan en cache, esto evita re-parsearlas. */
     private final Cache<String, List<RosterPlayer>> cache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(200).build();
@@ -75,9 +76,9 @@ public class RosterService {
     private final Cache<String, Boolean> playersCache =
             Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(1)).maximumSize(2000).build();
 
-    public RosterService(CatalogService catalog, SidgadClient sidgad) {
+    public RosterService(CatalogService catalog, HockeySources sources) {
         this.catalog = catalog;
-        this.sidgad = sidgad;
+        this.sources = sources;
     }
 
     /**
@@ -123,7 +124,7 @@ public class RosterService {
                 for (Match m : c.getValue()) {
                     if (m.played() && m.idp() > 0
                             && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId()))
-                            && !ownSide(SidgadParser.lineups(sidgad.gameSheet(c.getKey().id(), m.idp())), m,
+                            && !ownSide(sources.of(fed).gameSheet(c.getKey(), m.idp()).lineups(), m,
                             e.teamIds()).isEmpty()) {
                         return true;
                     }
@@ -195,11 +196,15 @@ public class RosterService {
     private Map<Competition, List<Match>> calendars(Team e) {
         Map<Competition, List<Match>> out = new LinkedHashMap<>();
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
-            Map<Competition, Future<String>> calendars = new LinkedHashMap<>();
-            e.comps().forEach(c -> calendars.put(c, io.submit(() -> sidgad.calendar(c.id()))));
-            calendars.forEach((c, f) -> out.put(c, SidgadParser.calendar(ClubTeams.await(f))));
+            Map<Competition, Future<List<Match>>> calendars = new LinkedHashMap<>();
+            e.comps().forEach(c -> calendars.put(c, io.submit(() -> source(c).calendar(c).orElse(List.of()))));
+            calendars.forEach((c, f) -> out.put(c, ClubTeams.await(f)));
         }
         return out;
+    }
+
+    private HockeySource source(Competition c) {
+        return sources.of(c.federation());
     }
 
     /** Planillas del equipo en sus partidos jugados con acta (cada acta trae la del local y la del visitante). */
@@ -207,12 +212,12 @@ public class RosterService {
         List<LineupPlayer> lineups = new ArrayList<>();
         Map<Competition, List<Match>> calendars = calendars(e);
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
-            Map<Match, Future<String>> sheets = new LinkedHashMap<>();
+            Map<Match, Future<GameSheet>> sheets = new LinkedHashMap<>();
             calendars.forEach((c, matches) -> matches.stream()
                     .filter(m -> m.played() && m.idp() > 0
                             && (e.teamIds().contains(m.homeTeamId()) || e.teamIds().contains(m.awayTeamId())))
-                    .forEach(m -> sheets.put(m, io.submit(() -> sidgad.gameSheet(c.id(), m.idp())))));
-            sheets.forEach((m, sheet) -> lineups.addAll(ownSide(SidgadParser.lineups(ClubTeams.await(sheet)), m, e.teamIds())));
+                    .forEach(m -> sheets.put(m, io.submit(() -> source(c).gameSheet(c, m.idp())))));
+            sheets.forEach((m, sheet) -> lineups.addAll(ownSide(ClubTeams.await(sheet).lineups(), m, e.teamIds())));
         }
         return lineups;
     }

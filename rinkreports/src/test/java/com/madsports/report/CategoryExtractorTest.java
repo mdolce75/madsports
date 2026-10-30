@@ -7,11 +7,13 @@ import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.report.ReportService.Request;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.SidgadSource;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.parse.SidgadParser;
+import com.madsports.source.HockeySources;
 import com.madsports.stats.ReportData;
 import org.junit.jupiter.api.Test;
 
@@ -53,7 +55,7 @@ class CategoryExtractorTest {
     ReportData extract(SidgadClient sidgad) {
         CatalogService catalog = mock(CatalogService.class);
         when(catalog.competitionsFor(eq(Federation.FPP), eq(74), any(), any(), eq(2026))).thenReturn(List.of(primera));
-        return new CategoryExtractor(catalog, sidgad, Clock.systemUTC()).extract(REQUEST, VELEZ,
+        return new CategoryExtractor(catalog, HockeySources.of(new SidgadSource(sidgad)), Clock.systemUTC()).extract(REQUEST, VELEZ,
                 new Category("PRIMERA", "MASCULINO"), CategoryOption.parse("PRIMERA"), m -> { });
     }
 

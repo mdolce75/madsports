@@ -7,6 +7,8 @@ import com.madsports.catalog.CatalogService;
 import com.madsports.config.SiteUrls;
 import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.SidgadSource;
+import com.madsports.source.HockeySources;
 import com.madsports.sidgad.model.Federation;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -69,7 +71,7 @@ class SidgadMonitorTest {
     }
 
     SidgadMonitor monitor(FakeSite site, String alerts, boolean amp) {
-        return new SidgadMonitor(site, new CatalogService(site, PROPS), mailer,
+        return new SidgadMonitor(site, new CatalogService(HockeySources.of(new SidgadSource(site)), PROPS), mailer,
                 Clock.fixed(Instant.parse("2026-10-19T11:00:00Z"), ZoneOffset.UTC), alerts,
                 new SiteUrls("https://rinkmetrics.test", "", "", ""), amp);
     }
