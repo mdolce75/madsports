@@ -76,6 +76,7 @@ class SecurityTest {
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired Environment env;
+    @Autowired java.time.Clock clock;
 
     @MockitoBean CatalogService catalog;
     @MockitoBean RosterService roster;
@@ -331,7 +332,7 @@ class SecurityTest {
         assertThat(u.getClubName()).isEqualTo("VELEZ");
         // El plan elegido queda como suscripción desde hoy.
         assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("CLUB_FREE");
-        assertThat(u.getSubscriptionFrom()).isEqualTo(java.time.LocalDate.now());
+        assertThat(u.getSubscriptionFrom()).isEqualTo(java.time.LocalDate.now(clock));   // el día en Argentina, no el del CI (UTC)
         assertThat(u.getSubscriptionTo()).isEqualTo("2026-12-31");
         assertThat(u.getName()).isNull();   // el registro no pide nombre ni apellido
 
