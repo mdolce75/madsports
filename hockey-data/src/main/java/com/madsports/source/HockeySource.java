@@ -7,6 +7,7 @@ import com.madsports.sidgad.model.Models.PlayerStats;
 import com.madsports.sidgad.model.Models.SeasonMatch;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +42,13 @@ public interface HockeySource {
 
     /** La ficha de temporada, aceptando una guardada si se bajó desde {@code notBefore}. */
     List<SeasonMatch> playerSeason(int playerId, int seasonId, Instant notBefore);
+
+    /** La ficha del jugador en esas competiciones; por defecto, la de cada una de sus temporadas. */
+    default List<SeasonMatch> playerSeason(int playerId, List<Competition> competitions) {
+        List<SeasonMatch> out = new ArrayList<>();
+        competitions.stream().map(Competition::seasonId).distinct().forEach(s -> out.addAll(playerSeason(playerId, s)));
+        return out;
+    }
 
     /** Escudo de un club ({@code file} como figura en sus equipos); null si no está: el informe sale sin él. */
     byte[] clubLogo(String file);

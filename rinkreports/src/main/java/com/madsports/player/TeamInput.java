@@ -14,7 +14,7 @@ import java.util.Map;
  * los eventos del acta (goles y tarjetas con minuto e {@code id_player}).
  *
  * @param summaries      partidos sin acta en que figura el jugador, según su ficha de temporada (por idp)
- * @param summaryLoaded  se pudo leer su ficha de temporada: un partido sin acta que no figura ahí no lo jugó
+ * @param summaryLoaded  se pudo leer su ficha de temporada completa: un partido sin acta que no figura ahí no lo jugó
  */
 record TeamInput(Competition competition, String category, int teamId, List<Match> matches,
                  Map<Integer, List<LineupPlayer>> sheets, Map<Integer, List<MatchEvent>> events,
@@ -31,7 +31,12 @@ record TeamInput(Competition competition, String category, int teamId, List<Matc
     }
 
     TeamInput withSummaries(Map<Integer, SeasonMatch> summaries) {
-        return new TeamInput(competition, category, teamId, matches, sheets, events, summaries, true);
+        return withSummaries(summaries, true);
+    }
+
+    /** @param complete la ficha lista todos sus partidos (si no, uno sin acta que no figura sigue "sin acta") */
+    TeamInput withSummaries(Map<Integer, SeasonMatch> summaries, boolean complete) {
+        return new TeamInput(competition, category, teamId, matches, sheets, events, summaries, complete);
     }
 
     /** ¿El jugador figura en este equipo, en alguna planilla o en su ficha de temporada? */
