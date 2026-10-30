@@ -16,10 +16,10 @@ class HistoryDetailTest {
         assertThat(ApiController.detail(new ApiController.ReportRequest(74, "INFANTIL:B", "FEMENINO", "OPENING", 2026),
                 ReportService.Scope.OPENING, 2026)).isEqualTo("Infantil B Femenino · Apertura 2026");
         assertThat(ApiController.detail(new ApiController.ReportRequest(74, null, null, "CLOSING", 2026,
-                        List.of("JUVENIL|MASCULINO", "PRIMERA|FEMENINO")), ReportService.Scope.CLOSING, 2026))
+                        List.of("JUVENIL|MASCULINO", "PRIMERA|FEMENINO"), null), ReportService.Scope.CLOSING, 2026))
                 .isEqualTo("Juvenil Masculino, Primera Femenino · Clausura 2026");
         assertThat(ApiController.detail(new ApiController.ReportRequest(74, null, null, "LAST_5", 2026,
-                        List.of("INFANTIL:A|MASCULINO", "JUVENIL|MASCULINO", "RESERVA|MASCULINO", "PRIMERA|MASCULINO")),
+                        List.of("INFANTIL:A|MASCULINO", "JUVENIL|MASCULINO", "RESERVA|MASCULINO", "PRIMERA|MASCULINO"), null),
                 ReportService.Scope.LAST_5, 2026))
                 .isEqualTo("4 categorías: Infantil A Masculino, Juvenil Masculino, Reserva Masculino… · Últimos 5 partidos 2026");
     }

@@ -51,9 +51,9 @@ import java.util.UUID;
 import java.util.Map;
 
 /**
- * Registro y login con sesión. Cada pantalla pide su perfil: la de club (/rinkreports/club.html) CLUBFPP o CLUBAMP
- * y la de jugador (/rinkreports/player.html) PLAYERFPP o PLAYERAMP, y la del DT (/coach.html) COACHFPP, COACHAMP o COACHOTR; la federación sale del perfil
- * del usuario. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
+ * Registro y login con sesión. Cada pantalla pide su perfil: la de informes de RinkReports (/rinkreports/reports.html)
+ * uno de RinkReports ({@link Profile#RINKREPORTS}: el usuario de RinkReports o los de club y jugador de antes) y la del
+ * DT (/coach.html) COACHFPP, COACHAMP o COACHOTR; la federación del DT sale de su perfil. La API responde 401/403 en JSON; las páginas redirigen al login o a la pantalla del
  * perfil del usuario. CSRF con cookie XSRF-TOKEN que la web devuelve en el header X-XSRF-TOKEN.
  * <p>
  * Los intentos de ingreso fallidos, las altas de cuenta y los pedidos de mails tienen un límite por usuario o por IP
@@ -88,10 +88,9 @@ public class SecurityConfig {
                                 "/actuator/health", "/actuator/health/**")
                         .permitAll()
                         .requestMatchers(WebConfig.OLD_PAGES.keySet().toArray(String[]::new)).permitAll()
-                        .requestMatchers("/rinkreports/club.html", "/api/reports", "/api/reports/**")
-                        .hasAnyAuthority(Profile.CLUBFPP.name(), Profile.CLUBAMP.name())
-                        .requestMatchers("/rinkreports/player.html", "/api/player/**")
-                        .hasAnyAuthority(Profile.PLAYERFPP.name(), Profile.PLAYERAMP.name())
+                        .requestMatchers("/rinkreports/reports.html", "/api/reports", "/api/reports/**", "/api/player/**",
+                                "/api/catalog/players", "/api/federations")
+                        .hasAnyAuthority(Profile.RINKREPORTS.stream().map(Enum::name).toArray(String[]::new))
                         .requestMatchers("/coach.html", "/api/coach/**")
                         .hasAnyAuthority(Profile.COACHFPP.name(), Profile.COACHAMP.name(), Profile.COACHOTR.name())
                         .anyRequest().authenticated())
@@ -191,11 +190,8 @@ public class SecurityConfig {
 
     /** Pantalla de inicio según el perfil del usuario. */
     public static String home(Collection<? extends GrantedAuthority> authorities) {
-        if (has(authorities, Profile.CLUBFPP) || has(authorities, Profile.CLUBAMP)) {
-            return "/rinkreports/club.html";
-        }
-        if (has(authorities, Profile.PLAYERFPP) || has(authorities, Profile.PLAYERAMP)) {
-            return "/rinkreports/player.html";
+        if (Profile.RINKREPORTS.stream().anyMatch(p -> has(authorities, p))) {
+            return "/rinkreports/reports.html";
         }
         if (has(authorities, Profile.COACHFPP) || has(authorities, Profile.COACHAMP) || has(authorities, Profile.COACHOTR)) {
             return "/coach.html";

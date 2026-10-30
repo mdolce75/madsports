@@ -80,7 +80,8 @@ function renderUserBar(s) {
     const who = document.createElement("span");
     who.innerHTML = "<b></b>";
     who.querySelector("b").textContent = s.name ? `${s.name} ${s.lastName}` : s.username;
-    who.append(" · " + s.club.name);
+    // El usuario de RinkReports no tiene club propio.
+    if (s.club && s.club.name) who.append(" · " + s.club.name);
     const out = document.createElement("button");
     out.type = "button";
     out.textContent = "Salir";
@@ -172,10 +173,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
-    // Con sesión, en la pantalla del club o del jugador: solo lo suyo (su informe y los que generó); los ejemplos y
-    // "Por qué RinkReports" son para quien todavía no tiene cuenta.
-    const own = ["club", "player"].includes(document.body.dataset.section)
-        ? [[document.body.dataset.section, "Mi informe", location.pathname], ["history", "Informes generados", "#historial"]]
+    // Con sesión, en la pantalla de informes: solo lo suyo (generar y los que generó); los ejemplos y "Por qué
+    // RinkReports" son para quien todavía no tiene cuenta.
+    const own = document.body.dataset.section === "reports"
+        ? [["reports", "Generar informe", location.pathname], ["history", "Informes generados", "#historial"]]
         : product.items;
     for (const [id, text, href] of own) {
         const a = document.createElement("a");
@@ -189,6 +190,27 @@ document.addEventListener("DOMContentLoaded", () => {
     if (bar) bar.before(home);
     else nav.after(home);
 });
+
+// El ojito de la clave: la muestra u oculta (registro de los dos productos).
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+    + 'stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>'
+    + '<circle cx="12" cy="12" r="3"/>';
+const EYE_OFF = EYE + '<path d="M3 3l18 18"/></svg>';
+
+/** Conecta el botón del ojito con el campo de la clave; empieza oculta. */
+function passwordToggle(inputId, buttonId) {
+    const input = $(inputId);
+    const btn = $(buttonId);
+    const show = on => {
+        input.type = on ? "text" : "password";
+        btn.setAttribute("aria-pressed", String(on));
+        btn.setAttribute("aria-label", on ? "Ocultar clave" : "Mostrar clave");
+        btn.title = btn.getAttribute("aria-label");
+        btn.innerHTML = on ? EYE_OFF : EYE + "</svg>";
+    };
+    show(false);
+    btn.addEventListener("click", () => show(input.type === "password"));
+}
 
 /** Marca de la barra superior (pista con barras de métricas). */
 const BRAND = `<header class="brand">

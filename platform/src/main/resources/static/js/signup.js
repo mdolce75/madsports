@@ -1,6 +1,5 @@
-// Registro de cada producto (va después de /js/app.js).
-// Cada registro es de un solo perfil: RinkReports tiene el de Jugador (/rinkreports/signup.html?option=player) y el de
-// Club (?option=club), y RinkMetrics (/rinkmetrics/signup.html), el del DT. No se elige el perfil: lo dice el enlace.
+// Registro de RinkMetrics, el del DT (va después de /js/app.js). RinkReports tiene el suyo (/js/reports-signup.js);
+// las ramas de club y jugador de acá son del registro de RinkReports de antes.
 // Las cuentas de un producto no ingresan al otro. El DT puede ser de otra federación ("Otra", OTR), sin datos en
 // SIDGAD: escribe el nombre de su club y después carga a mano sus equipos y jugadores.
 const SECTION = product() === "REPORTS" ? "informes" : "dt";
@@ -329,21 +328,7 @@ if (SECTION === "dt") {
 }
 $("equipo").addEventListener("change", loadPlayers);
 
-// El ojito de la clave: la muestra u oculta.
-const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-    + 'stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>'
-    + '<circle cx="12" cy="12" r="3"/>';
-const EYE_OFF = EYE + '<path d="M3 3l18 18"/></svg>';
-function showPassword(show) {
-    const btn = $("clave-toggle");
-    $("clave").type = show ? "text" : "password";
-    btn.setAttribute("aria-pressed", String(show));
-    btn.setAttribute("aria-label", show ? "Ocultar clave" : "Mostrar clave");
-    btn.title = btn.getAttribute("aria-label");
-    btn.innerHTML = show ? EYE_OFF : EYE + "</svg>";
-}
-showPassword(false);
-$("clave-toggle").addEventListener("click", () => showPassword($("clave").type === "password"));
+passwordToggle("clave", "clave-toggle");
 
 $("form").addEventListener("submit", async ev => {
     ev.preventDefault();

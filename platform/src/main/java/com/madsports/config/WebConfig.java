@@ -13,9 +13,12 @@ public class WebConfig implements WebMvcConfigurer {
     /** Página de antes -> página de ahora. */
     public static final Map<String, String> OLD_PAGES = Map.ofEntries(
             Map.entry("/informes.html", "/rinkreports"),
-            Map.entry("/club.html", "/rinkreports/club.html"),
-            Map.entry("/jugador.html", "/rinkreports/player.html"),
-            Map.entry("/rinkreports/jugador.html", "/rinkreports/player.html"),
+            Map.entry("/club.html", "/rinkreports/reports.html"),
+            Map.entry("/jugador.html", "/rinkreports/reports.html"),
+            Map.entry("/rinkreports/jugador.html", "/rinkreports/reports.html"),
+            // Antes, una pantalla para el club y otra para el jugador; ahora, una sola para los dos informes.
+            Map.entry("/rinkreports/club.html", "/rinkreports/reports.html"),
+            Map.entry("/rinkreports/player.html", "/rinkreports/reports.html"),
             Map.entry("/rinkreports/ejemplo.html", "/rinkreports/sample.html"),
             Map.entry("/rinkreports/registro.html", "/rinkreports/signup.html"),
             Map.entry("/dt.html", "/coach.html"),

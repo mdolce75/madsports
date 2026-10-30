@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Informes · RinkReports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232fd3a0'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%2308130f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%2308130f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/reports.css">
+</head>
+<body data-product="reports" data-section="reports">
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar"></div>
+    </div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Informes</span>
+        <h1>Cualquier equipo,<br><em>en números.</em></h1>
+        <p class="lead">Elegí la federación, el club y la categoría para el informe del equipo: partidos, goles, faltas,
+            tarjetas, los top 3 y sus fortalezas y debilidades. Elegí además un jugador para su informe de rendimiento.</p>
+    </section>
+
+    <div class="board" aria-hidden="true">
+        <div><strong>Top 3</strong><span>Goleo, pelota parada y disciplina</span></div>
+        <div><strong>5'</strong><span>Tramos de goles y tarjetas</span></div>
+        <div><strong>IA</strong><span>Fortalezas y debilidades</span></div>
+    </div>
+    </div>
+    <div class="main">
+    <form class="sheet" id="form">
+        <div class="sheet-head"><span>Planilla del informe</span><span id="season">Temporada</span></div>
+
+        <div class="field">
+            <label for="federacion"><span class="num"><i>1</i></span>Federación</label>
+            <select id="federacion" required disabled><option value="">Cargando federaciones…</option></select>
+        </div>
+        <div class="field">
+            <label for="club"><span class="num"><i>2</i></span>Club</label>
+            <select id="club" required disabled><option value="">Elegí la federación</option></select>
+        </div>
+        <div class="notice" id="no-data" role="alert" hidden></div>
+        <div class="field">
+            <label for="categoria"><span class="num"><i>3</i></span>Categoría</label>
+            <select id="categoria" required disabled><option value="">Elegí el club</option></select>
+        </div>
+        <div class="field">
+            <label for="jugador"><span class="num"><i>4</i></span>Jugador</label>
+            <select id="jugador" disabled><option value="">Todos los jugadores</option></select>
+            <p class="hint" id="jugador-hint">Con «Todos los jugadores», el informe del equipo; con un jugador, el suyo
+                (incluye su categoría y las superiores en que puede jugar).</p>
+        </div>
+
+        <div class="grid2">
+            <div class="field">
+                <label for="anio"><span class="num"><i>5</i></span>Año</label>
+                <select id="anio" required disabled></select>
+            </div>
+            <div class="field">
+                <label for="periodo"><span class="num"><i>6</i></span>Período</label>
+                <select id="periodo" required>
+                    <option value="SEASON" selected>Temporada completa</option>
+                    <option value="OPENING">Apertura</option>
+                    <option value="CLOSING">Clausura</option>
+                    <option value="LAST_5" id="last5">Últimos 5 partidos</option>
+                </select>
+            </div>
+        </div>
+        <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos de cada categoría: récord, goles, faltas y tarjetas de
+            esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
+
+        <button class="go" id="go" type="submit" disabled>Generar informe</button>
+        <p class="hint" id="cupo"></p>
+
+        <ul class="steps" id="steps" hidden>
+            <li data-s="EXTRACTING">Datos de SIDGAD</li>
+            <li data-s="ANALYZING">Análisis</li>
+            <li data-s="RENDERING">Informe</li>
+        </ul>
+        <div id="status" role="status" aria-live="polite"></div>
+    </form>
+    </div>
+    </div>
+
+    <div id="visor" hidden></div>
+
+    <section class="rr-history" id="historial" aria-labelledby="historial-titulo">
+        <h2 class="section-title" id="historial-titulo">Informes generados</h2>
+        <div id="historial-lista"><p class="hint">Cargando…</p></div>
+    </section>
+
+    <footer>© 2026 RinkReports · Un producto de <a href="/madsports">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/reports.js"></script>
+<script>
+    // Generador: federación → club → categoría → jugador. Cada combo carga el siguiente y limpia los de abajo; con la
+    // categoría elegida ya se puede generar. «Todas las categorías» es el informe del club completo; un jugador, su
+    // informe de jugador; «Todos los jugadores», el del equipo.
+    const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
+    const PERIOD = {SEASON: "Temporada completa", OPENING: "Apertura", CLOSING: "Clausura", LAST_5: "Últimos 5 partidos"};
+    const ALL = "ALL";
+    let catalog = null;
+    // Cada carga lleva su número: si llega tarde (ya se eligió otra cosa), se descarta.
+    let loading = 0;
+
+    function fill(sel, placeholder, options) {
+        sel.innerHTML = "";
+        if (placeholder !== null) sel.add(new Option(placeholder, ""));
+        options.forEach(([value, text]) => sel.add(new Option(text, value)));
+    }
+
+    function busy(sel, on) {
+        sel.setAttribute("aria-busy", String(on));
+        if (on) sel.disabled = true;
+    }
+
+    /** Limpia los combos debajo de {@code from} (club, categoria o jugador). */
+    function reset(from) {
+        const order = ["club", "categoria", "jugador"];
+        for (const id of order.slice(order.indexOf(from))) {
+            const sel = $(id);
+            sel.disabled = true;
+            fill(sel, id === "jugador" ? "Todos los jugadores"
+                : id === "categoria" ? "Elegí el club" : "Elegí la federación", []);
+        }
+        updatePeriod();
+        updateGo();
+    }
+
+    function updateGo() {
+        $("go").disabled = !$("categoria").value || $("categoria").disabled;
+    }
+
+    // El informe de jugador no tiene «Últimos 5 partidos».
+    function updatePeriod() {
+        const player = !!$("jugador").value;
+        $("last5").disabled = player;
+        $("last5").hidden = player;
+        if (player && $("periodo").value === "LAST_5") $("periodo").value = "SEASON";
+        $("periodo-hint").hidden = $("periodo").value !== "LAST_5";
+    }
+
+    async function getJson(url) {
+        const res = await fetch(url);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.detail || res.statusText);
+        return body;
+    }
+
+    async function loadFederations() {
+        const sel = $("federacion");
+        try {
+            const feds = await getJson("/api/federations");
+            fill(sel, "Elegí la federación", feds.map(f => [f.code, `${f.code} · ${f.name}`]));
+            sel.disabled = false;
+        } catch (e) {
+            status("No se pudieron cargar las federaciones: " + e.message, true);
+        }
+    }
+
+    // Catálogo de la federación en el año (sin año: el más reciente con datos): años y clubes.
+    async function loadCatalog(year) {
+        reset("club");
+        catalog = null;
+        const fed = $("federacion").value;
+        if (!fed) return;
+        const n = ++loading;
+        const sel = $("club");
+        busy(sel, true);
+        fill(sel, "Cargando clubes…", []);
+        try {
+            const c = await getJson("/api/catalog?federation=" + fed + (year ? "&year=" + year : ""));
+            if (n !== loading) return;
+            catalog = c;
+            const years = $("anio");
+            years.innerHTML = "";
+            c.years.forEach(y => years.add(new Option(y, y, false, y === c.year)));
+            years.disabled = false;
+            $("season").textContent = "Temporada " + c.year;
+            $("no-data").hidden = c.available;
+            $("no-data").textContent = c.available ? "" : c.message;
+            if (!c.available || !c.clubs.length) {
+                fill(sel, "Sin información para " + c.year, []);
+                return;
+            }
+            const clubs = [...c.clubs].sort((a, b) => a.name.localeCompare(b.name, "es"));
+            fill(sel, "Elegí el club", clubs.map(x => [String(x.id), `${x.name} (${x.code})`]));
+            sel.disabled = false;
+        } catch (e) {
+            if (n === loading) status("No se pudo cargar el catálogo: " + e.message, true);
+        } finally {
+            if (n === loading) busy(sel, false);
+        }
+    }
+
+    // Categorías del club con jugadores (sin jugadores no hay informe): primero, el club completo.
+    async function loadCategories() {
+        reset("categoria");
+        const clubId = $("club").value;
+        if (!clubId) return;
+        const n = ++loading;
+        const sel = $("categoria");
+        busy(sel, true);
+        fill(sel, "Cargando categorías…", []);
+        try {
+            const club = await getJson(`/api/catalog/club?clubId=${clubId}&year=${catalog.year}`
+                + `&federation=${$("federacion").value}`);
+            if (n !== loading) return;
+            const options = [[ALL, "Todas las categorías (informe del club)"]];
+            for (const b of ["MASCULINO", "FEMENINO"]) {
+                club.categories.filter(c => c.branches.includes(b))
+                    .forEach(c => options.push([`${c.key}|${b}`, `${c.label} ${BRANCH_LABEL[b]}`]));
+            }
+            fill(sel, "Elegí la categoría", options);
+            sel.disabled = false;
+        } catch (e) {
+            if (n === loading) {
+                fill(sel, "Elegí el club", []);
+                status("No se pudieron cargar las categorías: " + e.message, true);
+            }
+        } finally {
+            if (n === loading) busy(sel, false);
+        }
+    }
+
+    // Jugadores de la categoría (los de sus planillas); de entrada, «Todos los jugadores».
+    async function loadPlayers() {
+        reset("jugador");
+        updateGo();
+        const value = $("categoria").value;
+        if (!value || value === ALL) return;
+        const [category, branch] = value.split("|");
+        const n = ++loading;
+        const sel = $("jugador");
+        busy(sel, true);
+        fill(sel, "Cargando jugadores…", []);
+        try {
+            const players = await getJson(`/api/catalog/players?clubId=${$("club").value}&category=${encodeURIComponent(category)}`
+                + `&branch=${branch}&year=${catalog.year}&federation=${$("federacion").value}`);
+            if (n !== loading) return;
+            const sorted = [...players].sort((a, b) => a.name.localeCompare(b.name, "es"));
+            fill(sel, "Todos los jugadores", sorted.map(p => [String(p.id), p.name]));
+            sel.disabled = false;
+        } catch (e) {
+            if (n === loading) {
+                fill(sel, "Todos los jugadores", []);
+                status("No se pudieron cargar los jugadores: " + e.message, true);
+            }
+        } finally {
+            if (n === loading) busy(sel, false);
+        }
+    }
+
+    $("federacion").addEventListener("change", () => { status(""); loadCatalog(); });
+    $("anio").addEventListener("change", () => {
+        status("");
+        // Otro año: otro catálogo (los clubes y sus categorías pueden cambiar).
+        loadCatalog($("anio").value);
+    });
+    $("club").addEventListener("change", () => { status(""); loadCategories(); });
+    $("categoria").addEventListener("change", () => { status(""); loadPlayers(); });
+    $("jugador").addEventListener("change", updatePeriod);
+    $("periodo").addEventListener("change", updatePeriod);
+
+    $("form").addEventListener("submit", async ev => {
+        ev.preventDefault();
+        const fed = $("federacion").value;
+        const clubId = Number($("club").value);
+        const club = $("club").selectedOptions[0].text;
+        const cat = $("categoria").value;
+        const playerId = Number($("jugador").value) || null;
+        const year = Number($("anio").value);
+        const period = $("periodo").value;
+        $("go").disabled = true;
+        $("steps").hidden = false;
+        $("visor").hidden = true;
+        showStep("PENDING");
+        status("Enviando…");
+        try {
+            let job;
+            let title;
+            if (playerId) {
+                const [category, branch] = cat.split("|");
+                const body = await postJson("/api/player/reports",
+                    {federation: fed, clubId, category, branch, playerId, year, period});
+                showQuota();
+                job = await poll(`/api/player/reports/${body.id}`);
+                title = `${$("jugador").selectedOptions[0].text} · ${PERIOD[period]} ${year}`;
+            } else {
+                const [category, branch] = cat === ALL ? [null, null] : cat.split("|");
+                const body = await postJson("/api/reports", {federation: fed, clubId, category, branch, period, year});
+                showQuota();
+                job = await poll(`/api/reports/${body.id}`);
+                title = `${club} · ${cat === ALL ? "Club completo" : $("categoria").selectedOptions[0].text}`
+                    + ` · ${PERIOD[period]} ${year}`;
+            }
+            status("Informe listo.");
+            rrHistory();
+            rrShowReport($("visor"), job, title);
+        } catch (e) {
+            status(e.message, true);
+        } finally {
+            updateGo();
+        }
+    });
+
+    async function showQuota(s) {
+        s = s || await session();
+        $("cupo").textContent = rrQuota(s.monthlyReports);
+    }
+
+    requireProfile(["REPORTS", "CLUBFPP", "CLUBAMP", "PLAYERFPP", "PLAYERAMP"]).then(s => {
+        if (!s) return;
+        showQuota(s);
+        loadFederations();
+        rrHistory();
+    });
+</script>
+</body>
+</html>

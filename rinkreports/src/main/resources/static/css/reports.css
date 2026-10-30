@@ -63,3 +63,6 @@ body[data-product="reports"] .cintillo { background: var(--lime); color: #1d1300
 .rr-history-table td.files { white-space: nowrap; text-align: right; color: var(--muted); font-size: .8rem; }
 .rr-history-table td.files .btn { padding: 4px 10px; font-size: .75rem; margin-left: 4px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Portada: crear cuenta o ingresar, debajo de los dos informes. */
+.cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin: 22px 0 0; }
+.cta-row .alt { margin: 0; }
