@@ -65,10 +65,13 @@ public final class StrengthsAnalysis {
                         diff, tp.matchesWithSheet()));
             }
         }
-        out.add(relative("Pelota parada", "Faltas directas convertidas", t.setPieces().directFreePct(), "Liga",
-                league.directFreePct(), Unit.PERCENT, true, t.setPieces().directFreeTaken(), "intentos"));
-        out.add(relative("Pelota parada", "Penales convertidos", t.setPieces().penaltyPct(), "Liga",
-                league.penaltyPct(), Unit.PERCENT, true, t.setPieces().penaltiesTaken(), "intentos"));
+        // Sin libres ni penales en la liga, la fuente no los distingue: no se evalúa (sería 0% contra 0%).
+        if (league.setPieces()) {
+            out.add(relative("Pelota parada", "Faltas directas convertidas", t.setPieces().directFreePct(), "Liga",
+                    league.directFreePct(), Unit.PERCENT, true, t.setPieces().directFreeTaken(), "intentos"));
+            out.add(relative("Pelota parada", "Penales convertidos", t.setPieces().penaltyPct(), "Liga",
+                    league.penaltyPct(), Unit.PERCENT, true, t.setPieces().penaltiesTaken(), "intentos"));
+        }
         out.add(relative("Disciplina", "Azules y rojas por partido", t.discipline().cardsPerGame(), "Liga",
                 league.cardsPerTeamGame(), Unit.PER_GAME, false, t.discipline().matches(), "partidos"));
         if (t.fouls().matches() > 0 && league.matchesWithSheet() > 0) {

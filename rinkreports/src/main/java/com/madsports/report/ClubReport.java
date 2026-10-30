@@ -101,6 +101,17 @@ public record ClubReport(ReportData.ClubInfo club, String period, LocalDate gene
     public record Branch(String name, List<CategoryBlock> categories) {
     }
 
+    /** ¿Alguna categoría muestra la pelota parada? (la fuente distingue libres y penales) */
+    public boolean hasSetPieces() {
+        return branches.stream().flatMap(b -> b.categories().stream()).anyMatch(k -> k.data().hasSetPieces());
+    }
+
+    /** ¿Hay arqueros marcados en las planillas? (gestiondepsj no los marca) */
+    public boolean hasKeepers() {
+        return branches.stream().flatMap(b -> b.categories().stream())
+                .anyMatch(k -> k.team().keepers() != null && !k.team().keepers().isEmpty());
+    }
+
     /** Un jugador en un top 3: el valor por el que se ordena y las cantidades que lo explican. */
     public record Ranked(PlayerLine player, double value, int count, int of) {
     }

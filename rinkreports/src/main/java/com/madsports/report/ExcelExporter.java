@@ -158,24 +158,35 @@ public class ExcelExporter {
         s.header("Jugador", "Goles", "Partidos", "Promedio");
         k.topScorers().forEach(x -> s.row(x.player().name(), x.count(), x.of(), x.value()));
         s.blank();
-        s.section("Top 3 · Libres directos");
-        s.header("Jugador", "Convertidos", "Tirados", "Efectividad");
-        k.topDirectFree().forEach(x -> s.row(x.player().name(), x.count(), x.of(), new Pct(x.value())));
-        s.blank();
-        s.section("Top 3 · Penales");
-        s.header("Jugador", "Convertidos", "Tirados", "Efectividad");
-        k.topPenalties().forEach(x -> s.row(x.player().name(), x.count(), x.of(), new Pct(x.value())));
-        s.blank();
+        boolean setPieces = k.data().hasSetPieces();
+        if (setPieces) {
+            s.section("Top 3 · Libres directos");
+            s.header("Jugador", "Convertidos", "Tirados", "Efectividad");
+            k.topDirectFree().forEach(x -> s.row(x.player().name(), x.count(), x.of(), new Pct(x.value())));
+            s.blank();
+            s.section("Top 3 · Penales");
+            s.header("Jugador", "Convertidos", "Tirados", "Efectividad");
+            k.topPenalties().forEach(x -> s.row(x.player().name(), x.count(), x.of(), new Pct(x.value())));
+            s.blank();
+        }
         s.section("Top 3 · Disciplina");
         s.header("Jugador", "Amarillas", "Azules", "Rojas", "Total");
         k.topDiscipline().forEach(p -> s.row(p.name(), p.yellowCards(), p.blueCards(), p.redCards(), p.cards()));
         s.blank();
         s.section("Plantel");
-        s.header("Jugador", "PJ", "Goles", "Promedio de gol", "Penales conv.", "Penales tir.", "Libres conv.",
-                "Libres tir.", "Amarillas", "Azules", "Rojas");
+        if (setPieces) {
+            s.header("Jugador", "PJ", "Goles", "Promedio de gol", "Penales conv.", "Penales tir.", "Libres conv.",
+                    "Libres tir.", "Amarillas", "Azules", "Rojas");
+        } else {
+            s.header("Jugador", "PJ", "Goles", "Promedio de gol", "Amarillas", "Azules", "Rojas");
+        }
         for (PlayerLine p : k.team().squad()) {
-            s.row(p.name(), p.games(), p.goals(), p.goalsPerGame(), p.penaltiesScored(), p.penaltiesTaken(),
-                    p.directFreeScored(), p.directFreeTaken(), p.yellowCards(), p.blueCards(), p.redCards());
+            if (setPieces) {
+                s.row(p.name(), p.games(), p.goals(), p.goalsPerGame(), p.penaltiesScored(), p.penaltiesTaken(),
+                        p.directFreeScored(), p.directFreeTaken(), p.yellowCards(), p.blueCards(), p.redCards());
+            } else {
+                s.row(p.name(), p.games(), p.goals(), p.goalsPerGame(), p.yellowCards(), p.blueCards(), p.redCards());
+            }
         }
         s.blank();
         indicators(s, k.team().indicators());

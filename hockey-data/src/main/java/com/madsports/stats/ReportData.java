@@ -555,9 +555,20 @@ public record ReportData(ClubInfo club, String category, String tournament, Loca
      * @param foulsPerTeamGame faltas por equipo y partido, según las fichas publicadas
      * @param matchesWithSheet partidos con ficha sobre los que se calcula {@code foulsPerTeamGame}
      */
+    /**
+     * La referencia de la liga: solo los torneos locales (las copas interprovinciales suman al equipo, no a la liga).
+     *
+     * @param setPieces la fuente distingue libres directos y penales (hay intentos en la liga): si no, el informe no
+     *                  muestra la pelota parada (gestiondepsj no los distingue)
+     */
     public record LeagueContext(int teams, int matchesPlayed, double goalsPerTeamGame, double top3GoalsForPerGame,
                                 double directFreePct, double penaltyPct, double cardsPerTeamGame, double effectiveness,
-                                double foulsPerTeamGame, int matchesWithSheet) {
+                                double foulsPerTeamGame, int matchesWithSheet, boolean setPieces) {
+    }
+
+    /** ¿Se muestra la pelota parada? (ver {@link LeagueContext#setPieces()}) */
+    public boolean hasSetPieces() {
+        return league != null && league.setPieces();
     }
 
     static double pct(int part, int total) {

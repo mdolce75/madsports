@@ -401,4 +401,43 @@ public class StatsEngineTest {
     public static TeamReport team(ReportData r, String code) {
         return r.teams().stream().filter(t -> t.code().equals(code)).findFirst().orElseThrow();
     }
+
+    /** La misma competición como copa interprovincial (Copa Nacional). */
+    static CompetitionData asCup(CompetitionData cd) {
+        Competition c = cd.competition();
+        return new CompetitionData(Competition.cup(c.id(), "COPA NACIONAL DE CLUBES", c.federationId(), c.seasonId(),
+                c.category(), c.teams(), c.periodMinutes()), cd.standings(), cd.standingsDate(), cd.matches(),
+                cd.players(), cd.sheets());
+    }
+
+    /** Las copas suman al equipo, pero la referencia de la liga es la de los torneos locales. */
+    @Test
+    void theLeagueReferenceLeavesTheCupsOut() {
+        ReportData local = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY);
+        ReportData withCup = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura",
+                List.of(data(779), asCup(data(765))), TODAY);
+        assertThat(withCup.league()).isEqualTo(local.league());
+        assertThat(withCup.sources()).hasSize(2);
+        // Solo copas: la referencia es la de la copa.
+        ReportData onlyCup = StatsEngine.build(VELEZ, "Primera Masculino", "Copa", List.of(asCup(data(779))), TODAY);
+        assertThat(onlyCup.league().matchesPlayed()).isEqualTo(local.league().matchesPlayed());
+    }
+
+    /** Sin libres ni penales en toda la liga (gestiondepsj no los distingue), la pelota parada no se evalúa. */
+    @Test
+    void withoutSetPiecesInTheLeagueTheyAreNotEvaluated() {
+        ReportData sidgad = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(data(779)), TODAY);
+        assertThat(sidgad.hasSetPieces()).isTrue();
+        assertThat(sidgad.teams().getFirst().indicators()).anyMatch(x -> x.area().equals("Pelota parada"));
+
+        CompetitionData cd = data(779);
+        List<Models.PlayerStats> plain = cd.players().stream().map(p -> new Models.PlayerStats(p.playerId(),
+                p.teamId(), p.teamCode(), p.clubId(), p.name(), p.goals(), p.games(), 0, 0, 0, 0, 0, p.blueCards(),
+                p.redCards())).toList();
+        CompetitionData psj = new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), cd.matches(),
+                plain, cd.sheets());
+        ReportData d = StatsEngine.build(VELEZ, "Primera Masculino", "Clausura", List.of(psj), TODAY);
+        assertThat(d.hasSetPieces()).isFalse();
+        assertThat(d.teams().getFirst().indicators()).noneMatch(x -> x.area().equals("Pelota parada"));
+    }
 }
