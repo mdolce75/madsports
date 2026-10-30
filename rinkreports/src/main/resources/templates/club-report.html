@@ -103,7 +103,8 @@
     </th:block>
 </table>
 <p class="muted">El informe sigue por rama y, dentro de cada rama, por categoría: partidos, goles, faltas, tarjetas,
-    los mejores promedios de gol, libres y penales, la disciplina y las fortalezas y debilidades de cada una.
+    los mejores promedios de gol<th:block th:if="${r.hasSetPieces()}">, libres y penales</th:block>, la disciplina y
+    las fortalezas y debilidades de cada una.
     Efectividad: puntos obtenidos sobre los posibles (3 por partido).</p>
 <p class="muted" th:if="${!r.notPublished.isEmpty()}"
    th:text="|${src.label()} no publicó: ${#strings.listJoin(r.notPublished, '; ')}.|">No publicado</p>
@@ -264,7 +265,7 @@
         </tr>
     </table>
 
-    <table class="two nobreak">
+    <table class="two nobreak" th:if="${k.data.hasSetPieces()}">
         <tr>
             <td>
                 <h3>Top 3 · Libres directos</h3>
@@ -349,8 +350,9 @@
 
 <p class="muted">Fortaleza o debilidad: más de un 10% mejor o peor que la referencia (por tiempo, más de 0,25 goles
     por partido de diferencia; goleo: más del 35% de los goles en un jugador es dependencia, hasta 25% es reparto).
-    Con menos de 3 partidos o intentos, la muestra es chica para evaluar. Los arqueros no entran en el promedio de
-    gol; sí en libres, penales y disciplina.</p>
+    Con menos de 3 partidos o intentos, la muestra es chica para evaluar.<th:block th:if="${r.hasKeepers()}"> Los
+    arqueros no entran en el promedio de gol; sí en <th:block th:if="${r.hasSetPieces()}">libres, penales y
+    </th:block>disciplina.</th:block></p>
 <p class="muted" th:text="|Fuentes: competiciones de la ${r.federation.name()} en ${src.label()} (${r.sources.size()}).|">Fuentes</p>
 
 </body>

@@ -388,10 +388,10 @@
         </table>
     </div>
 
-    <p class="muted" th:if="${d.partial()}">Pelota parada: acumulado del torneo completo.</p>
+    <p class="muted" th:if="${d.partial() and d.hasSetPieces()}">Pelota parada: acumulado del torneo completo.</p>
     <table class="two nobreak">
         <tr>
-            <td>
+            <td th:if="${d.hasSetPieces()}">
                 <h3>Pelota parada</h3>
                 <table>
                     <tr><th class="l"></th><th>Equipo</th><th>%</th><th>Liga</th></tr>

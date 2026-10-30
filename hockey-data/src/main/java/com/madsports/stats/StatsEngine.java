@@ -344,7 +344,15 @@ public final class StatsEngine {
                 .toList();
     }
 
-    private static LeagueContext league(List<CompetitionData> data) {
+    /**
+     * La referencia de la liga, con los torneos locales: las copas interprovinciales (Copa Nacional) suman al récord,
+     * los resultados y los rivales del equipo, pero no a los promedios de la liga. Si la categoría solo tiene copas,
+     * con ellas.
+     */
+    private static LeagueContext league(List<CompetitionData> competitions) {
+        List<CompetitionData> local = competitions.stream()
+                .filter(cd -> cd.competition().tournament() != Competition.Tournament.CUP).toList();
+        List<CompetitionData> data = local.isEmpty() ? competitions : local;
         int matches = 0;
         int goals = 0;
         int teams = 0;
@@ -385,6 +393,6 @@ public final class StatsEngine {
                 ReportData.pct(fdS, fdT), ReportData.pct(penS, penT),
                 teamGames == 0 ? 0 : (double) cards / teamGames,
                 teamGames == 0 ? 0 : 100.0 * points / (teamGames * 3),
-                sheets == 0 ? 0 : (double) fouls / (2 * sheets), sheets);
+                sheets == 0 ? 0 : (double) fouls / (2 * sheets), sheets, fdT + penT > 0);
     }
 }

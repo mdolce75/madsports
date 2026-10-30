@@ -78,14 +78,20 @@ class AnalysisContext {
             case "results" -> t.results();
             case "upcoming" -> t.upcoming();
             case "players" -> t.players();
-            case "set_pieces_discipline" -> Map.of(
-                    "set_pieces", Map.of(
+            case "set_pieces_discipline" -> {
+                // Sin libres ni penales en la liga (la fuente no los distingue), no se mandan.
+                Map<String, Object> out = new LinkedHashMap<>();
+                if (data.hasSetPieces()) {
+                    out.put("set_pieces", Map.of(
                             "direct_free_hits", t.setPieces().directFreeScored() + "/" + t.setPieces().directFreeTaken(),
                             "direct_free_hits_pct", round(t.setPieces().directFreePct()),
                             "penalties", t.setPieces().penaltiesScored() + "/" + t.setPieces().penaltiesTaken(),
-                            "penalties_pct", round(t.setPieces().penaltyPct())),
-                    "discipline", t.discipline(),
-                    "fouls", t.fouls());
+                            "penalties_pct", round(t.setPieces().penaltyPct())));
+                }
+                out.put("discipline", t.discipline());
+                out.put("fouls", t.fouls());
+                yield out;
+            }
             case "rivals" -> t.rivals();
             case "time_profile" -> Map.of(
                     "profile", t.timeProfile(),

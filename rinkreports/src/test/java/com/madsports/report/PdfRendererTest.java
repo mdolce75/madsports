@@ -49,6 +49,25 @@ class PdfRendererTest {
         Files.write(Path.of("target", "informe-ejemplo.pdf"), pdf);
     }
 
+    /** Sin libres ni penales en la liga (gestiondepsj), el informe no muestra la pelota parada. */
+    @Test
+    void withoutSetPiecesThereIsNoSetPieceSection() {
+        StatsEngine.CompetitionData cd = StatsEngineTest.data(779);
+        List<com.madsports.sidgad.model.Models.PlayerStats> plain = cd.players().stream()
+                .map(p -> new com.madsports.sidgad.model.Models.PlayerStats(p.playerId(), p.teamId(), p.teamCode(),
+                        p.clubId(), p.name(), p.goals(), p.games(), 0, 0, 0, 0, 0, p.blueCards(), p.redCards()))
+                .toList();
+        ReportData d = StatsEngine.build(StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
+                List.of(new StatsEngine.CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(),
+                        cd.matches(), plain, cd.sheets())), StatsEngineTest.TODAY);
+        String html = renderer.html(d, rules.analyze(d));
+        assertThat(html).doesNotContain("Pelota parada", "Faltas directas convertidas").contains("Disciplina");
+
+        ReportData withSetPieces = StatsEngine.build(StatsEngineTest.VELEZ, "Primera Masculino", "Clausura",
+                List.of(StatsEngineTest.data(779)), StatsEngineTest.TODAY);
+        assertThat(renderer.html(withSetPieces, rules.analyze(withSetPieces))).contains("Pelota parada");
+    }
+
     @Test
     void rendersThePlayerPdf() throws Exception {
         PlayerReport.Line primera = new PlayerReport.Line("Primera Masculino", 2, 1, 0, 1, 4, 1, 1, 0, 1, 2, 1, 1, 0, 10, 8, 2);
