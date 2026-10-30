@@ -4,7 +4,10 @@ import com.madsports.account.Profile;
 import com.madsports.account.UserAccount;
 import com.madsports.account.UserAccountRepository;
 import com.madsports.catalog.CatalogService;
+import com.madsports.catalog.RosterService;
+import com.madsports.catalog.RosterService.RosterPlayer;
 import com.madsports.sidgad.model.Federation;
+import com.madsports.report.ReportFederations;
 import com.madsports.report.ReportQuota;
 import com.madsports.report.Downloads;
 import com.madsports.report.JobView;
@@ -29,8 +32,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Informe del jugador logueado (perfil PLAYERFPP o PLAYERAMP): solo elige año y período; el jugador, el club y la
- * federación son los suyos.
+ * Informe de jugador: el de cualquier jugador, elegido en el generador (federación, club, categoría y jugador). Sin
+ * jugador, el del jugador vinculado al usuario (las cuentas de jugador de antes, PLAYERFPP o PLAYERAMP).
  */
 @RestController
 @RequestMapping("/api/player")
@@ -39,17 +42,30 @@ public class PlayerController {
     /**
      * @param anio    año (p. ej. 2026); si falta, el más reciente con datos
      * @param periodo APERTURA, CLAUSURA o TEMPORADA (Apertura + Clausura, por defecto)
+     * @param playerId el jugador del informe, de la planilla de {@code category} y {@code branch} del club
+     *                 ({@code /api/catalog/players}); null, el vinculado al usuario
+     * @param category categoría del club en que figura ("INFANTIL" o "INFANTIL:B"): sirve para encontrarlo; el informe
+     *                 incluye todas las categorías en que puede jugar
      */
-    public record PlayerReportRequest(Integer year, String period) {
+    public record PlayerReportRequest(Integer year, String period, String federation, Integer clubId, String category,
+                                      String branch, Integer playerId) {
+
+        public PlayerReportRequest(Integer year, String period) {
+            this(year, period, null, null, null, null, null);
+        }
     }
 
     private final PlayerReportService reports;
     private final UserAccountRepository users;
     private final CatalogService catalog;
     private final ReportQuota quota;
+    private final RosterService roster;
+    private final ReportFederations federations;
 
     public PlayerController(PlayerReportService reports, UserAccountRepository users, CatalogService catalog,
-                            ReportQuota quota) {
+                            ReportQuota quota, RosterService roster, ReportFederations federations) {
+        this.roster = roster;
+        this.federations = federations;
         this.reports = reports;
         this.users = users;
         this.catalog = catalog;
@@ -58,18 +74,39 @@ public class PlayerController {
 
     @PostMapping("/reports")
     public ResponseEntity<JobView> create(@RequestBody PlayerReportRequest req, Authentication auth) {
-        UserAccount u = users.findByPrincipal(auth.getName())
-                .filter(x -> x.isPlayer() && x.getPlayerId() != null)
-                .orElseThrow(() -> new AccessDeniedException("Tu usuario no tiene un jugador vinculado."));
-        Federation fed = u.federation();
-        // Dentro del cupo del mes (5 informes en el Jugador free): cada pedido cuenta.
+        UserAccount me = users.findByPrincipal(auth.getName())
+                .orElseThrow(() -> new AccessDeniedException("Sesión inválida."));
         Scope scope = Scope.parse(req.period());
         int year = catalog.checkYear(req.year());
+        if (req.playerId() != null) {
+            return chosen(req, me, scope, year);
+        }
+        UserAccount u = Optional.of(me).filter(x -> x.isPlayer() && x.getPlayerId() != null)
+                .orElseThrow(() -> new IllegalArgumentException("Elegí el jugador del informe."));
+        Federation fed = u.federation();
+        // Dentro del cupo del mes (5 informes en el Jugador free): cada pedido cuenta.
         PlayerReportService.Job job = quota.consume(u, "Jugador · " + scope.label() + " " + year,
                 () -> reports.submit(new PlayerReportService.Query(u.getPlayerId(),
                 u.getPlayerName(), u.getName() == null ? u.getPlayerName() : u.getName() + " " + u.getLastName(),
                 u.getClubId(), year, scope,
                 Eligibility.searchLevels(fed, u.getCategory()), u.getBranch(), fed), u.principal()));
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
+    }
+
+    /** El jugador elegido en el generador: tiene que figurar en la planilla de la categoría del club. */
+    private ResponseEntity<JobView> chosen(PlayerReportRequest req, UserAccount u, Scope scope, int year) {
+        Federation fed = federations.resolve(req.federation(), u);
+        if (req.clubId() == null || req.category() == null || req.category().isBlank()
+                || req.branch() == null || req.branch().isBlank()) {
+            throw new IllegalArgumentException("Elegí el club y la categoría del jugador.");
+        }
+        String branch = req.branch().trim().toUpperCase(java.util.Locale.ROOT);
+        RosterPlayer p = roster.find(fed, req.clubId(), year, req.category(), branch, req.playerId())
+                .orElseThrow(() -> new IllegalArgumentException("El jugador elegido no figura en la planilla de esa categoría."));
+        String level = CatalogService.CategoryOption.parse(req.category()).level();
+        PlayerReportService.Job job = quota.consume(u, "Jugador · " + p.name() + " · " + scope.label() + " " + year,
+                () -> reports.submit(new PlayerReportService.Query(p.id(), p.name(), p.name(), req.clubId(), year,
+                        scope, Eligibility.searchLevels(fed, level), branch, fed), u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 

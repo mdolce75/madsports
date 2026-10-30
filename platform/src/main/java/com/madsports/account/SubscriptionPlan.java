@@ -24,7 +24,7 @@ public class SubscriptionPlan {
     /** PLAYER_MENSUAL, CLUB_MENSUAL, DT_FREE o DT_MENSUAL. */
     private String code;
     private String name;
-    /** PLAYER, CLUB o DT: a qué tipo de usuario corresponde ({@link Profile#userType()}). */
+    /** PLAYER, CLUB, COACH o REPORTS: a qué tipo de usuario corresponde ({@link Profile#userType()}). */
     private String userType;
     /** Precio por mes, en dólares (se muestra en pesos: ver Cotizacion). */
     private BigDecimal priceUsd;
@@ -63,6 +63,7 @@ public class SubscriptionPlan {
         return switch (userType) {
             case "PLAYER" -> "jugadores";
             case "COACH" -> "DT";
+            case "REPORTS" -> "usuarios de RinkReports";
             default -> "clubes";
         };
     }

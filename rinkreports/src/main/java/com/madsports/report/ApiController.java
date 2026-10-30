@@ -39,12 +39,13 @@ public class ApiController {
      * @param anio      año (p. ej. 2026); si falta, el más reciente con datos
      * @param categories informe del club con solo esas categorías, de una o de las dos ramas ("JUVENIL|MASCULINO",
      *                   "INFANTIL:B|FEMENINO"); vacío, todas
+     * @param federation FPP o AMP (ver {@link ReportFederations}); si falta, la del perfil del usuario
      */
     public record ReportRequest(@Positive int clubId, String category, String branch, String period, Integer year,
-                                java.util.List<String> categories) {
+                                java.util.List<String> categories, String federation) {
 
         public ReportRequest(int clubId, String category, String branch, String period, Integer year) {
-            this(clubId, category, branch, period, year, null);
+            this(clubId, category, branch, period, year, null, null);
         }
 
         boolean wholeClub() {
@@ -58,10 +59,12 @@ public class ApiController {
     private final UserAccountRepository users;
     private final ReportQuota quota;
     private final RosterService roster;
+    private final ReportFederations federations;
 
     public ApiController(CatalogService catalog, ReportService reports, SampleReport sample, UserAccountRepository users,
-                         ReportQuota quota, RosterService roster) {
+                         ReportQuota quota, RosterService roster, ReportFederations federations) {
         this.roster = roster;
+        this.federations = federations;
         this.catalog = catalog;
         this.reports = reports;
         this.sample = sample;
@@ -91,24 +94,38 @@ public class ApiController {
         return roster.withPlayers(fed, catalog.club(fed, clubId, y), y);
     }
 
-    /** Un usuario de club (CLUBFPP o CLUBAMP) pide informes solo de su club, en su federación. */
+    /** Federaciones del generador de informes. */
+    @GetMapping("/federations")
+    public java.util.List<ReportFederations.Option> federations() {
+        return federations.options();
+    }
+
+    /** Jugadores de una categoría del club (los de sus planillas), para elegir el del informe de jugador. */
+    @GetMapping("/catalog/players")
+    public java.util.List<RosterService.RosterPlayer> players(@RequestParam int clubId, @RequestParam String category,
+                                                             @RequestParam String branch,
+                                                             @RequestParam(required = false) Integer year,
+                                                             @RequestParam(required = false) String federation) {
+        return roster.players(Federation.parse(federation), clubId, catalog.checkYear(year), category, branch);
+    }
+
+    /** Informe de una categoría o del club completo, de cualquier club de las federaciones ofrecidas. */
     @PostMapping("/reports")
     public ResponseEntity<JobView> create(@Valid @RequestBody ReportRequest req, Authentication auth) {
         UserAccount u = users.findByPrincipal(auth.getName())
                 .orElseThrow(() -> new AccessDeniedException("Sesión inválida."));
-        if (u.getClubId() != req.clubId()) {
-            throw new AccessDeniedException("Solo podés pedir informes de tu club (" + u.getClubName() + ").");
-        }
+        Federation fed = federations.resolve(req.federation(), u);
         ReportService.Scope scope = ReportService.Scope.parse(req.period());
         int year = catalog.checkYear(req.year());
         if (!req.wholeClub() && (req.category() == null || req.category().isBlank()
                 || req.branch() == null || req.branch().isBlank())) {
             throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
         }
-        ReportService.Job job = quota.consume(u, detail(req, scope, year), () -> req.wholeClub()
-                ? reports.submitClub(req.clubId(), scope, year, u.federation(), u.principal(), req.categories())
+        String club = catalog.club(fed, req.clubId(), year).name();
+        ReportService.Job job = quota.consume(u, club + " · " + detail(req, scope, year), () -> req.wholeClub()
+                ? reports.submitClub(req.clubId(), scope, year, fed, u.principal(), req.categories())
                 : reports.submit(new ReportService.Request(req.clubId(), req.category(), req.branch(), scope, year,
-                        u.federation()), u.principal()));
+                        fed), u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 
