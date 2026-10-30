@@ -36,41 +36,32 @@
     </div>
     </div>
     <div class="main">
-    <h2 class="section-title">Dos informes, una cuenta</h2>
-    <p class="hint">Con tu cuenta elegís la federación, el club y la categoría; si además elegís un jugador, el informe
-        es el suyo. Cada informe tiene su ejemplo, con datos ficticios, para que conozcas el formato.</p>
+    <h2 class="section-title">Una cuenta, todos los informes</h2>
 
-    <div class="examples">
-        <article class="example" id="opcion-club">
-            <span class="tag">Equipo</span>
-            <h3>Informe de equipo</h3>
-            <p class="hint">De una categoría o del club completo, por torneo o de la temporada.</p>
-            <ul>
-                <li>Por rama y, dentro de cada rama, por categoría</li>
-                <li>Partidos, efectividad, goles, faltas y tarjetas, con promedios</li>
-                <li>Top 3: promedio de gol, libres, penales y disciplina</li>
-                <li>Fortalezas y debilidades, con análisis de IA</li>
-            </ul>
-            <footer>
-                <a class="btn ghost" href="/rinkreports/sample.html?kind=club">Ver ejemplo</a>
-            </footer>
-        </article>
-        <article class="example" id="opcion-jugador">
-            <span class="tag">Jugador</span>
-            <h3>Informe de jugador</h3>
-            <p class="hint">De cualquier jugador, en su categoría y las superiores en que puede jugar.</p>
-            <ul>
-                <li>Partidos jugados, ganados, empatados y perdidos, por categoría</li>
-                <li>Goles y tarjetas por color, con promedios por partido</li>
-                <li>Incidencia de sus goles y tarjetas en el equipo</li>
-                <li>Penales, tiros libres directos y goles por tramo de 5'</li>
-                <li>Fortalezas y aspectos a mejorar</li>
-            </ul>
-            <footer>
-                <a class="btn ghost" href="/rinkreports/sample.html?kind=player">Ver ejemplo</a>
-            </footer>
-        </article>
-    </div>
+    <article class="example account-reports" id="informes">
+        <span class="tag">Tu cuenta</span>
+        <h3>Qué informes podés sacar</h3>
+        <p class="hint">Elegís la federación, el club y la categoría, el período (Apertura, Clausura o la temporada) y
+            el año. Según lo que elijas, el informe es:</p>
+        <dl class="report-kinds">
+            <dt>De una categoría</dt>
+            <dd>El equipo del club en esa categoría: partidos, efectividad, goles, faltas y tarjetas con promedios; top 3
+                de goleo, libres, penales y disciplina; fortalezas y debilidades, con análisis de IA. También de sus
+                últimos 5 partidos.</dd>
+            <dt>Del club completo</dt>
+            <dd>Con «Todas las categorías»: cada rama y, dentro de cada rama, cada categoría, en un solo informe.</dd>
+            <dt>De un jugador</dt>
+            <dd>Si además elegís un jugador de la categoría: sus partidos, goles y tarjetas en su categoría y en las
+                superiores en que juega, su incidencia en el equipo, penales, libres, goles por tramo de 5' y sus
+                fortalezas y aspectos a mejorar.</dd>
+        </dl>
+        <p class="hint">Cada informe se ve en pantalla y se descarga en PDF y en Excel. Mirá los ejemplos, con datos
+            ficticios:</p>
+        <footer class="samples">
+            <a class="btn ghost" href="/rinkreports/sample.html?kind=club">Ejemplo de equipo</a>
+            <a class="btn ghost" href="/rinkreports/sample.html?kind=player">Ejemplo de jugador</a>
+        </footer>
+    </article>
 
     <p class="cta-row">
         <a class="btn primary" href="/rinkreports/signup.html">Crear cuenta gratis</a>

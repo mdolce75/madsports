@@ -27,8 +27,9 @@ import java.util.function.Supplier;
  * rechaza (429) hasta el día 1 del mes siguiente. El club no tiene límite.
  * <p>
  * Lanzamiento ({@code madsports.reports.promo-*}): entre {@code promo-from} y {@code promo-until} todos, club y
- * jugador, tienen un cupo único para todo ese período ({@code promo-limit}, 5) en lugar del del mes; el día siguiente
- * al fin vuelve el cupo de siempre. Sin {@code promo-until}, no hay lanzamiento.
+ * jugador, tienen un cupo único para todo ese período ({@code promo-limit}) en lugar del del mes; el día siguiente
+ * al fin vuelve el cupo de siempre. Sin {@code promo-until}, no hay lanzamiento. Con {@code promo-limit} 0 (así está
+ * hasta el 31/12/2026), los informes son libres: sin límite.
  */
 @Service
 public class ReportQuota implements MonthlyReports {
@@ -53,7 +54,7 @@ public class ReportQuota implements MonthlyReports {
     public ReportQuota(RequestedReportRepository requests, UserAccountRepository users, Clock clock,
                        ReportArchive archive, @Value("${madsports.reports.promo-from:}") String promoFrom,
                        @Value("${madsports.reports.promo-until:}") String promoUntil,
-                       @Value("${madsports.reports.promo-limit:5}") int promoLimit) {
+                       @Value("${madsports.reports.promo-limit:0}") int promoLimit) {
         this.promoUntil = promoUntil == null || promoUntil.isBlank() ? null : LocalDate.parse(promoUntil.trim());
         this.promoFrom = promoFrom == null || promoFrom.isBlank() ? LocalDate.EPOCH : LocalDate.parse(promoFrom.trim());
         this.promoLimit = promoLimit;

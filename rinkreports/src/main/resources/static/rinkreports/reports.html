@@ -202,7 +202,8 @@
         }
     }
 
-    // Categorías del club con jugadores (sin jugadores no hay informe): primero, el club completo.
+    // Categorías del club con jugadores (sin jugadores no hay informe). De entrada, el club completo: con el club
+    // elegido ya se puede generar; una categoría lo cambia por el informe de esa categoría.
     async function loadCategories() {
         reset("categoria");
         const clubId = $("club").value;
@@ -220,8 +221,9 @@
                 club.categories.filter(c => c.branches.includes(b))
                     .forEach(c => options.push([`${c.key}|${b}`, `${c.label} ${BRANCH_LABEL[b]}`]));
             }
-            fill(sel, "Elegí la categoría", options);
+            fill(sel, null, options);
             sel.disabled = false;
+            updateGo();
         } catch (e) {
             if (n === loading) {
                 fill(sel, "Elegí el club", []);
