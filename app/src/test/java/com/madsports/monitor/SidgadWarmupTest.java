@@ -1,6 +1,8 @@
 package com.madsports.monitor;
 
 import com.madsports.catalog.CatalogService;
+import com.madsports.sidgad.SidgadSource;
+import com.madsports.source.HockeySources;
 import com.madsports.sidgad.model.Federation;
 import org.junit.jupiter.api.Test;
 
@@ -42,7 +44,7 @@ class SidgadWarmupTest {
                 return "";
             }
         };
-        SidgadWarmup warmup = new SidgadWarmup(new CatalogService(site, SidgadMonitorTest.PROPS), site,
+        SidgadWarmup warmup = new SidgadWarmup(new CatalogService(HockeySources.of(new SidgadSource(site)), SidgadMonitorTest.PROPS), site,
                 Clock.fixed(start, ZoneOffset.UTC), List.of("FPP"), false);
 
         SidgadWarmup.Result r = warmup.warm(Federation.FPP, 2026);

@@ -1,12 +1,11 @@
 package com.madsports.catalog;
 
-import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SidgadProperties;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.TeamRef;
-import com.madsports.sidgad.parse.SidgadParser;
+import com.madsports.source.HockeySources;
 import com.madsports.stats.TeamKeys;
 import org.springframework.stereotype.Service;
 
@@ -24,8 +23,8 @@ import java.util.stream.Collectors;
 
 /**
  * Catálogo por año y federación ({@link Federation}: FPP = id_fede_3, AMP = id_fede_4), limitado a sus categorías
- * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code madsports.sidgad.years}). El año se traduce al id de
- * temporada de SIDGAD con el selector de temporadas del portal (es el mismo para todas las federaciones).
+ * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code madsports.sidgad.years}). Las competiciones salen
+ * de la fuente de datos de cada federación ({@link HockeySources}).
  */
 @Service
 public class CatalogService {
@@ -79,11 +78,11 @@ public class CatalogService {
 
     private static final List<String> BRANCHES = List.of("MASCULINO", "FEMENINO");
 
-    private final SidgadClient client;
+    private final HockeySources sources;
     private final List<Integer> years;
 
-    public CatalogService(SidgadClient client, SidgadProperties props) {
-        this.client = client;
+    public CatalogService(HockeySources sources, SidgadProperties props) {
+        this.sources = sources;
         this.years = List.copyOf(props.years());
     }
 
@@ -118,22 +117,19 @@ public class CatalogService {
         return "No hay información de la " + f.name() + " para el año " + year + " todavía.";
     }
 
-    /**
-     * Competiciones de la federación en el año, en sus categorías relevadas. El año se traduce al id de temporada de
-     * SIDGAD con el selector de temporadas del portal; si el año no existe ahí, no hay competiciones.
-     */
+    /** Competiciones de la federación en el año (de su fuente de datos), en sus categorías relevadas. */
     public List<Competition> competitions(Federation f, int year) {
-        Integer seasonId = SidgadParser.seasons(client.portal()).get(year);
-        if (seasonId == null) {
-            return List.of();
-        }
-        return competitions(SidgadParser.catalog(client.catalog()), f.id(), f.levels(), seasonId);
+        return competitions(sources.of(f).competitions(f, year), f.levels());
     }
 
     static List<Competition> competitions(List<Competition> all, int federationId, List<String> levels, int seasonId) {
+        return competitions(all.stream().filter(c -> c.federationId() == federationId && c.seasonId() == seasonId)
+                .toList(), levels);
+    }
+
+    private static List<Competition> competitions(List<Competition> all, List<String> levels) {
         return all.stream()
-                .filter(c -> c.federationId() == federationId && c.seasonId() == seasonId && c.category() != null)
-                .filter(c -> levels.contains(c.category().level()))
+                .filter(c -> c.category() != null && levels.contains(c.category().level()))
                 .sorted(Comparator.comparingInt(Competition::id))
                 .toList();
     }

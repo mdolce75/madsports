@@ -6,7 +6,7 @@ import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.CatalogService.CatalogView;
 import com.madsports.sidgad.model.Federation;
-import com.madsports.sidgad.SidgadClient.SidgadException;
+import com.madsports.source.SourceException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpStatus;
@@ -193,8 +193,8 @@ public class ApiController {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
-    @ExceptionHandler(SidgadException.class)
-    ProblemDetail upstream(SidgadException e) {
+    @ExceptionHandler(SourceException.class)
+    ProblemDetail upstream(SourceException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer el sitio de la FPP: " + e.getMessage());
     }
 

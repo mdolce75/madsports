@@ -6,10 +6,10 @@ import com.madsports.analysis.RuleBasedAnalyst;
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.CategoryOption;
 import com.madsports.catalog.CatalogService.ClubView;
-import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.sidgad.model.Competition.Tournament;
 import com.madsports.sidgad.model.Federation;
+import com.madsports.source.HockeySources;
 import com.madsports.stats.ReportData;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -166,7 +166,7 @@ public class ReportService {
     }
 
     private final CatalogService catalog;
-    private final SidgadClient sidgad;
+    private final HockeySources sources;
     private final GeminiAnalyst gemini;
     private final RuleBasedAnalyst rules;
     private final PdfRenderer renderer;
@@ -179,18 +179,18 @@ public class ReportService {
     /** Análisis de Gemini a la vez en el informe del club (el plan gratuito limita los pedidos por minuto). */
     static final int CLUB_ANALYSES = 3;
 
-    public ReportService(CatalogService catalog, SidgadClient sidgad, GeminiAnalyst gemini,
+    public ReportService(CatalogService catalog, HockeySources sources, GeminiAnalyst gemini,
                          RuleBasedAnalyst rules, PdfRenderer renderer, ExcelExporter excel, Clock clock,
                          com.madsports.catalog.RosterService roster) {
         this.roster = roster;
         this.catalog = catalog;
-        this.sidgad = sidgad;
+        this.sources = sources;
         this.gemini = gemini;
         this.rules = rules;
         this.renderer = renderer;
         this.excel = excel;
         this.clock = clock;
-        this.extractor = new CategoryExtractor(catalog, sidgad, clock);
+        this.extractor = new CategoryExtractor(catalog, sources, clock);
     }
 
     /** Valida los parámetros (falla rápido) y encola el informe. */
@@ -266,7 +266,7 @@ public class ReportService {
         }
         Job job = new Job(new Request(clubId, null, null, scope, year, fed), owner);
         jobs.put(job.id(), job);
-        executor.submit(() -> sidgad.forClubReport(() -> runClub(job, club, categories)));
+        executor.submit(() -> sources.of(fed).forClubReport(() -> runClub(job, club, categories)));
         return job;
     }
 
@@ -300,7 +300,7 @@ public class ReportService {
 
     /**
      * El informe del club completo: todas las categorías a la vez. Cada una lee SIDGAD en paralelo (el ritmo lo pone el
-     * cupo del informe del club en SidgadClient) y, apenas termina, pasa al análisis; los análisis van de a
+     * cupo del informe del club en la fuente de datos) y, apenas termina, pasa al análisis; los análisis van de a
      * {@link #CLUB_ANALYSES} para no pasar el límite de pedidos por minuto de Gemini.
      */
     private void runClub(Job job, ClubView club, List<ClubCategory> categories) {

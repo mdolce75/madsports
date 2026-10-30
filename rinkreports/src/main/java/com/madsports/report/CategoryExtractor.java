@@ -5,7 +5,6 @@ import com.madsports.catalog.CatalogService.CategoryOption;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.report.ReportService.Request;
 import com.madsports.report.ReportService.Scope;
-import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.sidgad.model.Federation;
@@ -15,7 +14,11 @@ import com.madsports.sidgad.model.Models.MatchEvent;
 import com.madsports.sidgad.model.Models.PlayerStats;
 import com.madsports.sidgad.model.Models.SeasonMatch;
 import com.madsports.sidgad.model.Models.TeamRef;
-import com.madsports.sidgad.parse.SidgadParser;
+import com.madsports.source.GameSheet;
+import com.madsports.source.HockeySource;
+import com.madsports.source.HockeySources;
+import com.madsports.source.SourceException;
+import com.madsports.source.Standings;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.StatsEngine;
 import com.madsports.stats.StatsEngine.CompetitionData;
@@ -33,6 +36,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -43,56 +47,59 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * La extracción de un informe de categoría: lee de SIDGAD las tablas, calendarios, estadísticas, actas y fichas de
- * temporada de las competiciones del club (en paralelo; el ritmo lo pone SidgadClient) y se las pasa a StatsEngine.
+ * La extracción de un informe de categoría: lee de la fuente de datos de la federación las tablas, calendarios,
+ * estadísticas, actas y fichas de temporada de las competiciones del club (en paralelo; el ritmo lo pone la fuente) y se
+ * las pasa a StatsEngine.
  */
 public final class CategoryExtractor {
 
     private static final Logger log = LoggerFactory.getLogger(CategoryExtractor.class);
 
     private final CatalogService catalog;
-    private final SidgadClient sidgad;
+    private final HockeySources sources;
     private final Clock clock;
 
-    CategoryExtractor(CatalogService catalog, SidgadClient sidgad, Clock clock) {
+    CategoryExtractor(CatalogService catalog, HockeySources sources, Clock clock) {
         this.catalog = catalog;
-        this.sidgad = sidgad;
+        this.sources = sources;
         this.clock = clock;
     }
 
-    /** Lee de SIDGAD lo que hace falta para el informe de una categoría del club y lo calcula. */
+    /** Lee de la fuente lo que hace falta para el informe de una categoría del club y lo calcula. */
     ReportData extract(Request request, ClubView club, Category category, CategoryOption option,
                        Consumer<String> progress) {
         Scope scope = request.scope();
         int year = request.year();
         Federation fed = request.federation();
+        HockeySource source = sources.of(fed);
         List<Competition> comps = catalog.competitionsFor(fed, club.id(), category, scope.tournament(), year);
         List<CompetitionData> data = new ArrayList<>();
         List<String> notPublished = new ArrayList<>();
         Map<Competition, List<Match>> clubMatches = new LinkedHashMap<>();
         int clubSheets;
         // Los pedidos a SIDGAD van en paralelo (cada uno tarda ~1,5 s, casi todo latencia del sitio). El límite de
-        // pedidos simultáneos y por segundo lo pone SidgadClient, para no sobrecargar el sitio.
+        // pedidos simultáneos y por segundo lo pone la fuente, para no sobrecargar el sitio.
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
             progress.accept("Leyendo tablas, calendarios y estadísticas");
-            Map<Competition, List<Future<String>>> pages = new LinkedHashMap<>();
+            Map<Competition, Future<Optional<Standings>>> tables = new LinkedHashMap<>();
+            Map<Competition, Future<Optional<List<Match>>>> calendars = new LinkedHashMap<>();
+            Map<Competition, Future<Optional<List<PlayerStats>>>> scorers = new LinkedHashMap<>();
             for (Competition c : comps) {
-                pages.put(c, List.of(
-                        io.submit(() -> sidgad.standings(c.id())),
-                        io.submit(() -> sidgad.calendar(c.id())),
-                        io.submit(() -> sidgad.playerStats(c.id()))));
+                tables.put(c, io.submit(() -> source.standings(c)));
+                calendars.put(c, io.submit(() -> source.calendar(c)));
+                scorers.put(c, io.submit(() -> source.playerStats(c)));
             }
             for (Competition c : comps) {
                 String tournament = c.tournamentLabel(comps);
-                List<Future<String>> f = pages.get(c);
-                String standings = published(await(f.get(0)), "Tabla de posiciones (" + tournament + ")", notPublished);
-                String calendar = published(await(f.get(1)), "Calendario y resultados (" + tournament + ")", notPublished);
-                String players = published(await(f.get(2)), "Estadísticas por jugador (" + tournament + ")", notPublished);
-                List<Match> matches = SidgadParser.calendar(calendar);
+                Standings standings = published(await(tables.get(c)), new Standings(List.of(), null),
+                        "Tabla de posiciones (" + tournament + ")", notPublished);
+                List<Match> matches = published(await(calendars.get(c)), List.of(),
+                        "Calendario y resultados (" + tournament + ")", notPublished);
+                List<PlayerStats> players = published(await(scorers.get(c)), List.of(),
+                        "Estadísticas por jugador (" + tournament + ")", notPublished);
                 clubMatches.put(c, sheetsToRead(c, matches, club.id(), scope.lastMatches()));
-                data.add(new CompetitionData(c,
-                        SidgadParser.standings(standings), SidgadParser.reportDate(standings), matches,
-                        SidgadParser.playerStats(players), new HashMap<>(), Set.of(), new HashMap<>()));
+                data.add(new CompetitionData(c, standings.rows(), standings.date(), matches, players,
+                        new HashMap<>(), Set.of(), new HashMap<>()));
             }
 
             // Fichas: las de los partidos del club (minuto de goles, tarjetas y faltas) y las del resto de la liga
@@ -116,9 +123,9 @@ public final class CategoryExtractor {
                 Map.Entry<CompetitionData, Match> e = sheets.get(i);
                 boolean own = i < ownSheets;
                 reads.add(io.submit(() -> {
-                    String html = sidgad.gameSheet(e.getKey().competition().id(), e.getValue().idp());
+                    GameSheet sheet = source.gameSheet(e.getKey().competition(), e.getValue().idp());
                     progress.accept("Leyendo actas de partido (" + done.incrementAndGet() + "/" + sheets.size() + ")");
-                    return new SheetRead(SidgadParser.gameEvents(html), own ? SidgadParser.lineups(html) : List.of());
+                    return new SheetRead(sheet.events(), own ? sheet.lineups() : List.of());
                 }));
             }
             // Jugadores de cada equipo del club por competición: los de sus planillas y los de la tabla de SIDGAD.
@@ -155,7 +162,7 @@ public final class CategoryExtractor {
                     names.putIfAbsent(p.playerId(), p.name());
                 });
             }
-            replaceWithSeasonProfiles(progress, io, club, data, teamOf, names, notPublished);
+            replaceWithSeasonProfiles(progress, io, source, club, data, teamOf, names, notPublished);
             // Arqueros: figuran con "P" en al menos 2 planillas, o en la mayoría de las suyas (con pocas actas).
             Set<Integer> goalkeepers = roles.entrySet().stream()
                     .filter(e -> e.getValue()[0] >= 2 || (e.getValue()[0] > 0 && e.getValue()[0] >= e.getValue()[1]))
@@ -181,7 +188,7 @@ public final class CategoryExtractor {
                         option.teamKey(club.code()))
                 .withNotPublished(notPublished)
                 .withFederation(fed)
-                .withLogo(Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))));
+                .withLogo(Crests.tile(source.clubLogo(logoFile(comps, club.id()))));
     }
 
     /**
@@ -199,7 +206,7 @@ public final class CategoryExtractor {
                 .orElse(null);
     }
 
-    /** Espera el resultado de un pedido en paralelo; si falló, relanza el error original (p. ej. SidgadException). */
+    /** Espera el resultado de un pedido en paralelo; si falló, relanza el error original (p. ej. SourceException). */
     static <T> T await(Future<T> future) {
         try {
             return future.get();
@@ -243,7 +250,8 @@ public final class CategoryExtractor {
      * suma los partidos con acta (y a veces no se publica), así que sus goles no llegan a los del equipo. Quien no
      * tenga ficha conserva su fila de la tabla. Los demás equipos de la liga siguen con la tabla de SIDGAD.
      */
-    private void replaceWithSeasonProfiles(Consumer<String> progress, ExecutorService io, ClubView club,
+    private void replaceWithSeasonProfiles(Consumer<String> progress, ExecutorService io, HockeySource source,
+                                           ClubView club,
                                            List<CompetitionData> data,
                                            Map<Competition, Map<Integer, Integer>> teamOf, Map<Integer, String> names,
                                            List<String> notPublished) {
@@ -260,8 +268,8 @@ public final class CategoryExtractor {
             List<SeasonMatch> rows = new ArrayList<>();
             for (int season : seasons) {
                 try {
-                    rows.addAll(SidgadParser.seasonMatches(sidgad.playerSeason(id, season, notBefore)));
-                } catch (SidgadClient.SidgadException e) {
+                    rows.addAll(source.playerSeason(id, season, notBefore));
+                } catch (SourceException e) {
                     log.info("Sin ficha de temporada del jugador {}: {}", id, e.getMessage());
                 }
             }
@@ -289,12 +297,12 @@ public final class CategoryExtractor {
         }
     }
 
-    /** Si SIDGAD no publicó el fragmento (404), se anota para el PDF y se sigue con contenido vacío. */
-    private static String published(String body, String what, List<String> notPublished) {
-        if (SidgadClient.NOT_PUBLISHED.equals(body)) {
+    /** Si la fuente no publicó el dato, se anota para el PDF y se sigue con {@code empty}. */
+    private static <T> T published(Optional<T> value, T empty, String what, List<String> notPublished) {
+        if (value.isEmpty()) {
             notPublished.add(what);
         }
-        return body;
+        return value.orElse(empty);
     }
 
     /**

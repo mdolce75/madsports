@@ -13,7 +13,7 @@ import com.madsports.report.Downloads;
 import com.madsports.report.JobView;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.report.ReportService.Status;
-import com.madsports.sidgad.SidgadClient.SidgadException;
+import com.madsports.source.SourceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -146,8 +146,8 @@ public class PlayerController {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
-    @ExceptionHandler(SidgadException.class)
-    ProblemDetail upstream(SidgadException e) {
+    @ExceptionHandler(SourceException.class)
+    ProblemDetail upstream(SourceException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer SIDGAD: " + e.getMessage());
     }
 }
