@@ -30,7 +30,7 @@ public class PdfRenderer {
 
     /** @param sample informe modelo: cada página lleva la marca "datos ficticios" */
     public String html(ReportData data, AnalysisResult analysis, boolean sample) {
-        return render("report", sample, "d", data, "a", analysis);
+        return render("report", sample, "d", data, "a", analysis, "blocks", blocks(data, analysis));
     }
 
     public byte[] pdf(ReportData data, AnalysisResult analysis) {
@@ -39,6 +39,16 @@ public class PdfRenderer {
 
     public byte[] pdf(ReportData data, AnalysisResult analysis, boolean sample) {
         return Templates.toPdf(html(data, analysis, sample));
+    }
+
+    /**
+     * Cada equipo del informe como bloque del informe del club (por su código): de ahí salen sus goles, faltas y
+     * tarjetas con promedios y sus top 3 (promedio de gol, disciplina, libres y penales).
+     */
+    static Map<String, ClubReport.CategoryBlock> blocks(ReportData data, AnalysisResult analysis) {
+        Map<String, ClubReport.CategoryBlock> out = new HashMap<>();
+        data.teams().forEach(t -> out.put(t.code(), new ClubReport.CategoryBlock(t.name(), data, t, analysis)));
+        return out;
     }
 
     /** Informe del club completo (todas sus ramas y categorías), plantilla {@code templates/club-report.html}. */

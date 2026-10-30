@@ -20,7 +20,7 @@ async function rrSessionBar() {
     const go = document.createElement("a");
     go.className = "btn primary";
     go.href = s.home;
-    go.textContent = s.home.startsWith("/rinkreports/") ? "Mi informe" : "Mi cuenta";
+    go.textContent = s.home.startsWith("/rinkreports/") ? "Mis informes" : "Mi cuenta";
     $("userbar").prepend(go);
     return s;
 }

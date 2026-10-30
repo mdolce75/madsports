@@ -20,11 +20,13 @@
 
     <div class="split">
     <div class="intro">
-    <a class="volver" id="volver-top" href="/rinkreports">← Volver a RinkReports</a>
+    <a class="volver" href="/rinkreports">← Volver a RinkReports</a>
     <section class="hero">
-        <span class="tag" id="reg-tag">RinkReports · Crear cuenta</span>
+        <span class="tag">RinkReports · Crear cuenta</span>
         <h1>Sumate a<br><em>RinkReports.</em></h1>
-        <p class="lead" id="reg-lead">Elegí tu opción. Jugador: tu club, la categoría en que jugás y tu nombre en la planilla, para tu informe de rendimiento. Club: tu club, para el informe de todas sus categorías.</p>
+        <p class="lead">Una sola cuenta para todos los informes: elegís la federación, el club, la categoría y, si
+            querés, un jugador. Mirá cómo son: <a href="/rinkreports/sample.html?kind=club">ejemplo de equipo</a> ·
+            <a href="/rinkreports/sample.html?kind=player">ejemplo de jugador</a> (datos ficticios).</p>
     </section>
     </div>
     <div class="main">
@@ -32,38 +34,10 @@
         <div class="sheet-head"><span>Planilla de registro</span><span><span class="req">*</span> obligatorio</span></div>
 
         <div class="field">
-            <label>Federación <span class="req">*</span></label>
-            <div class="profiles" role="radiogroup" aria-label="Federación">
-                <label><input type="radio" name="federacion" value="FPP">FPP
-                    <small>Federación Porteña de Patín (Buenos Aires).</small></label>
-                <label><input type="radio" name="federacion" value="AMP">AMP
-                    <small>Asociación Mendocina de Patín (Mendoza).</small></label>
-            </div>
-            <p class="hint" id="fed-hint">Elegí tu federación para ver los perfiles y los planes.</p>
-        </div>
-
-        <!-- Perfiles, planes y datos: aparecen al elegir la federación. -->
-        <div id="after-fed" hidden>
-        <div class="field" id="perfil-field">
-            <label>Opción <span class="req">*</span></label>
-            <div class="profiles" role="radiogroup" aria-label="Opción">
-                <label><input type="radio" name="rol" value="CLUB" checked><span class="rol-name">Club FPP</span>
-                    <small>El informe de todas las categorías de tu club.</small></label>
-                <label><input type="radio" name="rol" value="PLAYER"><span class="rol-name">Jugador FPP</span>
-                    <small>Tus partidos, goles y tarjetas.</small></label>
-                <label><input type="radio" name="rol" value="COACH"><span class="rol-name">DT FPP</span>
-                    <small>Estadísticas en vivo de tus equipos.</small></label>
-            </div>
-            <p class="hint">Mirá cómo es cada informe: <a href="/rinkreports/sample.html?kind=club">ejemplo de club</a> ·
-                <a href="/rinkreports/sample.html?kind=player">ejemplo de jugador</a> (datos ficticios).</p>
-        </div>
-
-        <div class="field">
-            <label>Elegí tu plan <span class="req">*</span></label>
+            <label>Plan <span class="req">*</span></label>
             <div class="plans" id="plans" role="radiogroup" aria-label="Plan de suscripción">
                 <p class="hint">Cargando planes…</p>
             </div>
-            <p class="hint" id="plans-hint">Precios en pesos al dólar oficial del día. Podés cambiar de plan más adelante.</p>
         </div>
 
         <div class="grid2">
@@ -84,34 +58,10 @@
             <label for="email">Email <span class="req">*</span></label>
             <input type="email" id="email" autocomplete="email" required maxlength="120">
         </div>
-        <div class="field">
-            <label for="club">Club <span class="req">*</span></label>
-            <select id="club" required disabled><option value="">Cargando clubes…</option></select>
-        </div>
 
-        <div id="player-fields" hidden>
-            <div class="field">
-                <label for="equipo">Categoría en que jugás <span class="req">*</span></label>
-                <select id="equipo" disabled><option value="">Elegí el club</option></select>
-                <p class="hint">Cualquier equipo del club en que figures: sirve para encontrarte en su planilla.
-                    El informe calcula tu categoría (la más baja en que jugaste) e incluye todas las categorías en que
-                    podés jugar.</p>
-            </div>
-            <div class="field">
-                <label for="jugador">Jugador <span class="req">*</span></label>
-                <select id="jugador" disabled><option value="">Elegí la categoría</option></select>
-                <p class="hint">Tu nombre tal como figura en las actas de partido de tu federación.</p>
-            </div>
-        </div>
-
-        <div id="coach-fields" hidden>
-            <p class="hint">Tus equipos y sus jugadores los cargás después de ingresar, en la sección Equipo.</p>
-        </div>
-
-        <button class="go" id="go" type="submit" disabled>Registrarme</button>
-        </div>
+        <button class="go" id="go" type="submit">Registrarme</button>
         <div id="status" role="status" aria-live="polite"></div>
-        <p class="alt">¿Ya tenés usuario? <a href="/rinkreports/login.html">Ingresá</a> · <a href="/rinkreports" id="volver">Volver</a></p>
+        <p class="alt">¿Ya tenés usuario? <a href="/rinkreports/login.html">Ingresá</a> · <a href="/rinkreports">Volver</a></p>
     </form>
     </div>
     </div>
@@ -120,6 +70,7 @@
 </div>
 
 <script src="/js/app.js"></script>
-<script src="/js/signup.js"></script>
+<script src="/js/reports.js"></script>
+<script src="/js/reports-signup.js"></script>
 </body>
 </html>

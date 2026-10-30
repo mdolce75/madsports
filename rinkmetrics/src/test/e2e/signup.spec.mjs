@@ -1,5 +1,6 @@
-// Registro del DT (/rinkmetrics/signup.html) y de RinkReports con la API simulada: los clubes de una federación nunca se mezclan con los
+// Registro del DT (/rinkmetrics/signup.html) con la API simulada: los clubes de una federación nunca se mezclan con los
 // de la otra. Con la AMP habilitada se elige la federación y el combo trae solo sus clubes; sin ella, solo los de la FPP.
+// Y el de RinkReports, que no pide federación ni club.
 import {expect, test} from "@playwright/test";
 
 const CATALOGS = {
@@ -90,36 +91,36 @@ test("DT de otra federación: escribe el nombre de su club, sin catálogo de SID
     expect(asked).toEqual([]);
 });
 
-// RinkReports (club y jugador): con la AMP no hay federación elegida de antemano, para que nadie de Mendoza quede en la
-// FPP sin darse cuenta; los clubes son solo los de la elegida.
-test("Club de RinkReports con la AMP: elige la federación (ninguna marcada) y ve solo sus clubes", async ({page}) => {
-    const asked = await api(page, true);
-    await page.goto("/rinkreports/signup.html?option=club");
-    await expect(page.locator("input[name=federacion]:checked")).toHaveCount(0);
-    await expect(page.locator("#after-fed")).toBeHidden();
-    await expect(page.locator("#fed-hint")).toHaveText("Elegí tu federación para ver sus clubes y los planes.");
+// RinkReports: una sola cuenta, sin perfil, federación ni club (se eligen en cada informe). Solo usuario, clave, email
+// y el plan Free.
+test("Registro de RinkReports: usuario, clave, email y el plan Free, sin federación ni club", async ({page}) => {
+    const sent = [];
+    await page.route("**/api/**", route => {
+        const url = new URL(route.request().url());
+        switch (url.pathname) {
+            case "/api/session": return route.fulfill({json: {authenticated: false}});
+            case "/api/plans":
+                expect(url.searchParams.get("profile")).toBe("REPORTS");
+                return route.fulfill({json: [{code: "FREE", name: "Free", price: 0, reportsPerMonth: 0,
+                    validUntil: "2026-12-31", available: true}]});
+            case "/api/signup":
+                sent.push(route.request().postDataJSON());
+                return route.fulfill({status: 201, json: {username: "lucia", email: "lucia@example.com"}});
+            default: return route.fulfill({json: {}});
+        }
+    });
+    await page.goto("/rinkreports/signup.html");
+    await expect(page.locator("input[name=federacion]")).toHaveCount(0);
+    await expect(page.locator("#club")).toHaveCount(0);
+    await expect(page.locator("#plans .plan")).toHaveCount(1);
+    await expect(page.locator("#plans .plan")).toContainText("Informes sin límite");
+    await expect(page.locator("input[name=plan][value=FREE]")).toBeChecked();
 
-    await page.locator("input[name=federacion][value=AMP]").check();
-    await expect(page.locator("#after-fed")).toBeVisible();
-    await expect(clubs(page)).toHaveText(["SAN MARTIN (SM)", "GODOY CRUZ (GC)"]);
-    await page.locator("input[name=federacion][value=FPP]").check();
-    await expect(clubs(page)).toHaveText(["VELEZ (CAVS)", "ARGENTINOS JUNIORS (AAAJ)"]);
-    expect(asked).toEqual(["AMP", "FPP"]);
-});
-
-test("Jugador de RinkReports con la AMP pero sin jugadores AMP: la FPP sin preguntar y la AMP 'Próximamente'", async ({page}) => {
-    await api(page, true, false);
-    await page.goto("/rinkreports/signup.html?option=player");
-    await expect(page.locator("input[name=federacion][value=FPP]")).toBeChecked();
-    await expect(page.locator("input[name=federacion][value=AMP]")).toBeDisabled();
-    await expect(page.locator("label:has(input[value=AMP]) small")).toHaveText("Próximamente.");
-    await expect(clubs(page)).toHaveText(["VELEZ (CAVS)", "ARGENTINOS JUNIORS (AAAJ)"]);
-});
-
-test("RinkReports sin la AMP: la FPP sin preguntar, como hoy", async ({page}) => {
-    const asked = await api(page, false);
-    await page.goto("/rinkreports/signup.html?option=club");
-    await expect(page.locator("input[name=federacion][value=AMP]")).toHaveCount(0);
-    await expect(clubs(page)).toHaveText(["VELEZ (CAVS)", "ARGENTINOS JUNIORS (AAAJ)"]);
-    expect(asked).toEqual(["FPP"]);
+    await page.locator("#usuario").fill("lucia");
+    await page.locator("#clave").fill("clave-segura");
+    await page.locator("#email").fill("lucia@example.com");
+    await page.locator("#go").click();
+    await expect(page.locator(".notice.ok")).toContainText("Revisá tu correo");
+    expect(sent).toEqual([{profile: "REPORTS", username: "lucia", password: "clave-segura",
+        email: "lucia@example.com", subscription: "FREE"}]);
 });

@@ -30,7 +30,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Lanzamiento: del 27/10 al 31/12, club y jugador tienen 5 informes para todo el período; desde el 1/1, el de siempre. */
+/**
+ * Lanzamiento: del 27/10 al 31/12 un cupo único para todo el período (sin límite si es 0, como está configurado; los
+ * tests prueban también con 5); desde el 1/1, el de siempre.
+ */
 class ReportQuotaTest {
 
     static final ZoneId BUENOS_AIRES = ZoneId.of("America/Argentina/Buenos_Aires");
@@ -80,6 +83,22 @@ class ReportQuotaTest {
         }
         assertThat(quotaOn(LocalDate.of(2026, 12, 31)).de(user(Profile.CLUBFPP)))
                 .containsEntry("used", 5L).containsEntry("limit", 5).containsEntry("until", "2026-12-31");
+    }
+
+    /** Así está hasta el 31/12/2026: el lanzamiento sin límite (promo-limit 0), para club, jugador y RinkReports. */
+    @Test
+    void withoutALimitTheReportsAreFree() {
+        Clock clock = Clock.fixed(LocalDate.of(2026, 11, 15).atTime(12, 0).atZone(BUENOS_AIRES).toInstant(),
+                BUENOS_AIRES);
+        ReportQuota free = new ReportQuota(requests, mock(UserAccountRepository.class), clock, mock(ReportArchive.class),
+                "2026-10-27", "2026-12-31", 0);
+        when(requests.countByUserIdAndCreatedAtGreaterThanEqual(any(), eq(PROMO_START))).thenReturn(40L);
+        for (Profile p : new Profile[]{Profile.CLUBFPP, Profile.PLAYERFPP, Profile.REPORTS}) {
+            assertThat(free.quota(user(p)).exceeded()).isFalse();
+            assertThat(free.consume(user(p), () -> "pedido")).isEqualTo("pedido");
+            // Sin límite, la pantalla no muestra cupo ("x de 5 informes").
+            assertThat(free.de(user(p))).containsEntry("limit", 0);
+        }
     }
 
     @Test
