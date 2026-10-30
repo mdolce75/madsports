@@ -16,7 +16,9 @@ import java.util.EnumSet;
 import java.util.Locale;
 
 /**
- * Alta de usuarios: club, jugador o DT, de la FPP o de la AMP (excluyentes). Para el jugador es obligatorio el
+ * Alta de usuarios. En RinkReports, el usuario de RinkReports ({@link Profile#REPORTS}): usuario, clave, email y plan,
+ * sin club (elige federación, club, categoría y jugador en cada informe). Antes, RinkReports daba de alta club o
+ * jugador, de la FPP o de la AMP (excluyentes), y la API los sigue aceptando. Para el jugador es obligatorio el
  * jugador de SIDGAD, elegido de la planilla de un equipo del club (categoría y rama en que juega; solo sirve para
  * encontrarlo: el informe busca al jugador en todas las categorías del club). El DT elige uno o más equipos de su
  * club, hasta los que permite su plan. El DT de otra federación (COACHOTR) no tiene club en SIDGAD: escribe su nombre.
@@ -85,7 +87,7 @@ public class SignupService {
         if (r.profile() == null) {
             throw new IllegalArgumentException("Elegí el perfil: Club, Jugador o DT, de la FPP o de la AMP.");
         }
-        if (!r.profile().coach() && !r.profile().player() && !clubSignup) {
+        if (r.profile() != Profile.REPORTS && !r.profile().coach() && !r.profile().player() && !clubSignup) {
             throw new IllegalArgumentException("Las cuentas de club estarán disponibles próximamente. Por ahora podés "
                     + "crear tu cuenta de jugador.");
         }
@@ -104,15 +106,20 @@ public class SignupService {
         }
         String type = r.profile().userType();
         if (users.existsByEmailIgnoreCaseAndUserType(email, type)) {
-            throw new ConflictException("Ya hay una cuenta de " + switch (type) {
-                case "PLAYER" -> "jugador";
-                case "COACH" -> "DT";
-                default -> "club";
-            } + " en " + product.displayName() + " con ese email.");
+            throw new ConflictException("Ya hay una cuenta " + switch (type) {
+                case "PLAYER" -> "de jugador ";
+                case "COACH" -> "de DT ";
+                case "REPORTS" -> "";
+                default -> "de club ";
+            } + "en " + product.displayName() + " con ese email.");
         }
         SubscriptionPlan plan = plan(r);
         UserAccount u;
-        if (!r.profile().sidgad()) {
+        if (r.profile() == Profile.REPORTS) {
+            // Sin club: lo elige en cada informe.
+            u = new UserAccount(username, encoder.encode(r.password()), email, null, null,
+                    0, "", "", EnumSet.of(r.profile()), clock.instant());
+        } else if (!r.profile().sidgad()) {
             // DT de otra federación: sin club de SIDGAD (id 0, sin sigla); sus equipos y jugadores, a mano.
             u = new UserAccount(username, encoder.encode(r.password()), email, null, null,
                     0, ownClubName(r.clubName()), "", EnumSet.of(r.profile()), clock.instant());

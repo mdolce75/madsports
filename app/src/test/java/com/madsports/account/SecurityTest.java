@@ -209,7 +209,7 @@ class SecurityTest {
         // El token cambia en cada uso; con el nuevo, también las pantallas y la API del perfil.
         Cookie fresh = r.getResponse().getCookie("REMEMBER_ME");
         assertThat(fresh.getValue()).isNotEqualTo(c.getValue());
-        mvc.perform(get("/rinkreports/club.html").cookie(fresh)).andExpect(status().isOk());
+        mvc.perform(get("/rinkreports/reports.html").cookie(fresh)).andExpect(status().isOk());
 
         // Sin marcar la casilla no queda recordado.
         register(club("beto")).andExpect(status().isCreated());
@@ -282,16 +282,17 @@ class SecurityTest {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/rinkmetrics/index.html"));
         // Al ingreso, con la pantalla a la que volver después.
         // Las pantallas de RinkReports van a su ingreso; las de RinkMetrics, al suyo.
-        mvc.perform(get("/rinkreports/club.html")).andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/rinkreports/login.html?returnTo=%2Frinkreports%2Fclub.html"));
-        mvc.perform(get("/rinkreports/player.html"))
-                .andExpect(redirectedUrl("/rinkreports/login.html?returnTo=%2Frinkreports%2Fplayer.html"));
+        mvc.perform(get("/rinkreports/reports.html")).andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/rinkreports/login.html?returnTo=%2Frinkreports%2Freports.html"));
         mvc.perform(get("/coach.html")).andExpect(redirectedUrl("/rinkmetrics/login.html?returnTo=%2Fcoach.html"));
         mvc.perform(get("/rinkreports/login.html")).andExpect(status().isOk());
         mvc.perform(get("/rinkreports/signup.html")).andExpect(status().isOk());
         // Las direcciones de antes llevan a las nuevas, sin sesión y con los mismos parámetros.
-        mvc.perform(get("/club.html")).andExpect(redirectedUrl("/rinkreports/club.html"));
-        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/player.html"));
+        mvc.perform(get("/club.html")).andExpect(redirectedUrl("/rinkreports/reports.html"));
+        mvc.perform(get("/jugador.html")).andExpect(redirectedUrl("/rinkreports/reports.html"));
+        // Antes, una pantalla para el club y otra para el jugador: las dos llevan a la de informes.
+        mvc.perform(get("/rinkreports/club.html")).andExpect(redirectedUrl("/rinkreports/reports.html"));
+        mvc.perform(get("/rinkreports/player.html")).andExpect(redirectedUrl("/rinkreports/reports.html"));
         mvc.perform(get("/informes.html")).andExpect(redirectedUrl("/rinkreports"));
         mvc.perform(get("/dt.html")).andExpect(redirectedUrl("/coach.html"));
         mvc.perform(get("/login.html?verified")).andExpect(redirectedUrl("/rinkmetrics/login.html?verified"));
@@ -339,7 +340,7 @@ class SecurityTest {
                 .andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"));
         confirm("Ana.Club@example.com");
         assertThat(users.findByUsername("ana.club").orElseThrow().isEmailVerified()).isTrue();
-        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.home").value("/rinkreports/club.html"));
+        login("ANA.CLUB", "clave-segura").andExpect(status().isOk()).andExpect(jsonPath("$.home").value("/rinkreports/reports.html"));
         login("ana.club", "otra-clave").andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Usuario o clave incorrectos."));
     }
@@ -371,7 +372,7 @@ class SecurityTest {
         register(samePlayer).andExpect(status().isConflict());
 
         confirm("juan@example.com");
-        login("juan", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/player.html"));
+        login("juan", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/reports.html"));
     }
 
     @Test
@@ -398,21 +399,22 @@ class SecurityTest {
         assertThat(player.getPlayerName()).isEqualTo("Victor Daniel Terraza Gomez");
 
         confirm("murialdo@example.com");
-        login("murialdo", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/club.html"));
+        login("murialdo", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/reports.html"));
         mvc.perform(get("/api/session").with(user("murialdo").authorities(() -> "CLUBAMP")))
                 .andExpect(jsonPath("$.federation").value("AMP"));
         confirm("terraza@example.com");
-        login("terraza", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/player.html"));
+        login("terraza", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/reports.html"));
     }
 
     @Test
-    void screensAcceptProfilesOfBothFederations() throws Exception {
-        mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "CLUBAMP"))).andExpect(status().isOk());
-        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "PLAYERAMP"))).andExpect(status().isOk());
-        // Cada perfil, solo su pantalla.
-        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "CLUBAMP")))
-                .andExpect(status().is3xxRedirection());
-        mvc.perform(post("/api/reports").with(user("a").authorities(() -> "PLAYERAMP")).with(csrf())
+    void theReportsScreenAcceptsEveryRinkReportsProfile() throws Exception {
+        for (String p : List.of("REPORTS", "CLUBFPP", "CLUBAMP", "PLAYERFPP", "PLAYERAMP")) {
+            mvc.perform(get("/rinkreports/reports.html").with(user("a").authorities(() -> p))).andExpect(status().isOk());
+        }
+        // El DT es de RinkMetrics: ni la pantalla ni la API de informes.
+        mvc.perform(get("/rinkreports/reports.html").with(user("a").authorities(() -> "COACHFPP")))
+                .andExpect(redirectedUrl("/coach.html"));
+        mvc.perform(post("/api/reports").with(user("a").authorities(() -> "COACHFPP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
     }
@@ -490,8 +492,7 @@ class SecurityTest {
         mvc.perform(get("/coach.html").with(user("a").authorities(() -> "COACHAMP"))).andExpect(status().isOk());
         mvc.perform(get("/coach.html").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/coach.html").with(user("a").authorities(() -> "PLAYERFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/rinkreports/club.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/rinkreports/player.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/rinkreports/reports.html").with(user("a").authorities(() -> "COACHFPP"))).andExpect(status().is3xxRedirection());
         mvc.perform(get("/api/coach/matches").with(user("a").authorities(() -> "CLUBFPP"))).andExpect(status().isForbidden());
         // El service worker de la planilla (para abrirla sin señal) se baja sin sesión, como el resto de los estáticos.
         mvc.perform(get("/dt-sw.js")).andExpect(status().isOk());
@@ -784,7 +785,7 @@ class SecurityTest {
         assertThat(users.findByUsername("mismo")).isEmpty();
         // Cada uno entra a su producto con su clave, y la sesión es la de esa cuenta.
         MvcResult reports = loginTo("mismo", "REPORTS").andExpect(status().isOk())
-                .andExpect(jsonPath("$.home").value("/rinkreports/club.html")).andReturn();
+                .andExpect(jsonPath("$.home").value("/rinkreports/reports.html")).andReturn();
         mvc.perform(get("/api/session").session((MockHttpSession) reports.getRequest().getSession()))
                 .andExpect(jsonPath("$.product").value("REPORTS")).andExpect(jsonPath("$.username").value("mismo"));
         mvc.perform(post("/api/login").with(csrf()).param("username", "Mismo").param("password", "clave-del-dt")
@@ -879,26 +880,87 @@ class SecurityTest {
     }
 
     @Test
-    void theClubOnlyRequestsReportsOfItsClub() throws Exception {
-        saved("club", Profile.CLUBFPP);
+    void reportsOfAnyClubOfTheOfferedFederations() throws Exception {
+        UserAccount u = saved("club", Profile.CLUBFPP);
         ReportService.Job job = mock(ReportService.Job.class);
         when(job.id()).thenReturn(UUID.randomUUID());
         when(job.status()).thenReturn(ReportService.Status.PENDING);
         when(reports.submit(any(), eq("REPORTS:club"))).thenReturn(job);
-        String request = "{\"clubId\":%d,\"category\":\"PRIMERA\",\"branch\":\"MASCULINO\"}";
+        String request = "{\"federation\":\"%s\",\"clubId\":%d,\"category\":\"%s\",\"branch\":\"MASCULINO\"}";
 
+        // Un club que no juega en la federación: rechazado, y no cuenta.
         mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted(99)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.detail").value("Solo podés pedir informes de tu club (VELEZ)."));
-        assertThat(users.findByUsername("club").orElseThrow().getReportsRequested()).isZero();   // el rechazado no cuenta
+                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted("FPP", 99, "PRIMERA")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El club 99 no juega en la FPP en 2026."));
+        assertThat(users.findByUsername("club").orElseThrow().getReportsRequested()).isZero();
         mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted(74)))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted("FPP", 74, "PRIMERA")))
                 .andExpect(status().isAccepted());
+        // Un club de otra federación que la de su perfil (la AMP está habilitada en los tests).
         mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted(74)))
+                        .contentType(MediaType.APPLICATION_JSON).content(request.formatted("AMP", 3, "JUVENIL")))
                 .andExpect(status().isAccepted());
         assertThat(users.findByUsername("club").orElseThrow().getReportsRequested()).isEqualTo(2);
+        // En el historial, con el club.
+        assertThat(requests.findAll()).filteredOn(x -> x.getUserId().equals(u.getId()))
+                .extracting(com.madsports.report.RequestedReport::getDetail)
+                .containsExactlyInAnyOrder("LEONARDO MURIALDO · Juvenil Masculino · Apertura + Clausura 2026",
+                        "VELEZ · Primera Masculino · Apertura + Clausura 2026");
+    }
+
+    @Test
+    void rinkReportsUserSignsUpWithoutClubAndPicksTheReport() throws Exception {
+        Map<String, Object> body = new HashMap<>(Map.of("profile", "REPORTS", "username", "lucia",
+                "password", "clave-segura", "email", "lucia@example.com", "subscription", "FREE"));
+        register(body).andExpect(status().isCreated());
+        UserAccount u = users.findByUsername("lucia").orElseThrow();
+        assertThat(u.getProfiles()).containsExactly(Profile.REPORTS);
+        assertThat(u.getProduct()).isEqualTo(Product.REPORTS);
+        assertThat(u.getClubId()).isZero();
+        assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("FREE");
+        assertThat(u.getSubscriptionTo()).isEqualTo(java.time.LocalDate.of(2026, 12, 31));
+        // El plan es solo del usuario de RinkReports.
+        Map<String, Object> clubWithFree = club("club.free");
+        clubWithFree.put("subscription", "FREE");
+        register(clubWithFree).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El plan Free es para usuarios de RinkReports."));
+        Map<String, Object> again = new HashMap<>(body);
+        again.put("username", "lucia2");
+        register(again).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya hay una cuenta en RinkReports con ese email."));
+        mvc.perform(get("/api/plans").param("profile", "REPORTS")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value("FREE"))
+                .andExpect(jsonPath("$[0].reportsPerMonth").value(0))
+                .andExpect(jsonPath("$.length()").value(1));
+
+        confirm("lucia@example.com");
+        login("lucia", "clave-segura").andExpect(jsonPath("$.home").value("/rinkreports/reports.html"));
+        mvc.perform(get("/api/federations").with(user("lucia").authorities(() -> "REPORTS")))
+                .andExpect(jsonPath("$[0].code").value("FPP")).andExpect(jsonPath("$[1].code").value("AMP"));
+
+        // Informe de jugador de cualquier jugador de la planilla de la categoría.
+        com.madsports.player.PlayerReportService.Job job = mock(com.madsports.player.PlayerReportService.Job.class);
+        when(job.id()).thenReturn(UUID.randomUUID());
+        when(job.status()).thenReturn(ReportService.Status.PENDING);
+        when(playerReports.submit(any(), eq("REPORTS:lucia"))).thenReturn(job);
+        String player = "{\"federation\":\"FPP\",\"clubId\":74,\"category\":\"PRIMERA\",\"branch\":\"MASCULINO\","
+                + "\"playerId\":%d,\"year\":2026,\"period\":\"SEASON\"}";
+        mvc.perform(post("/api/player/reports").with(user("lucia").authorities(() -> "REPORTS")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(player.formatted(3851)))
+                .andExpect(status().isAccepted());
+        verify(playerReports).submit(org.mockito.ArgumentMatchers.argThat(q -> q.playerId() == 3851 && q.clubId() == 74
+                && q.federation() == Federation.FPP && "MASCULINO".equals(q.branch())), eq("REPORTS:lucia"));
+        mvc.perform(post("/api/player/reports").with(user("lucia").authorities(() -> "REPORTS")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(player.formatted(9999)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("El jugador elegido no figura en la planilla de esa categoría."));
+        // Sin jugador elegido ni vinculado, no hay informe de jugador.
+        mvc.perform(post("/api/player/reports").with(user("lucia").authorities(() -> "REPORTS")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"year\":2026}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Elegí el jugador del informe."));
+        assertThat(users.findByUsername("lucia").orElseThrow().getReportsRequested()).isEqualTo(1);
     }
 
     @Test
@@ -973,7 +1035,7 @@ class SecurityTest {
 
     @Test
     void subscriptionPlansAndValidity() throws Exception {
-        // Un plan mensual y uno free por tipo de usuario.
+        // Un plan mensual y uno free por tipo de usuario; el usuario de RinkReports, solo el Free.
         assertThat(subscriptions.findAll()).extracting(SubscriptionPlan::getCode, SubscriptionPlan::getUserType)
                 .containsExactlyInAnyOrder(
                         org.assertj.core.groups.Tuple.tuple("PLAYER_FREE", "PLAYER"),
@@ -981,6 +1043,7 @@ class SecurityTest {
                         org.assertj.core.groups.Tuple.tuple("CLUB_FREE", "CLUB"),
                         org.assertj.core.groups.Tuple.tuple("CLUB_MONTHLY", "CLUB"),
                         org.assertj.core.groups.Tuple.tuple("COACH_FREE", "COACH"),
+                        org.assertj.core.groups.Tuple.tuple("FREE", "REPORTS"),
                         org.assertj.core.groups.Tuple.tuple("COACH_MONTHLY", "COACH"));
 
         java.time.LocalDate from = java.time.LocalDate.of(2026, 10, 15);
@@ -1005,14 +1068,14 @@ class SecurityTest {
     }
 
     @Test
-    void eachProfileGoesToItsScreen() throws Exception {
-        mvc.perform(get("/rinkreports/club.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(redirectedUrl("/rinkreports/player.html"));
+    void clubAndPlayerAccountsUseBothReports() throws Exception {
+        // Las cuentas de club y de jugador de antes: la misma pantalla, con los dos informes (el pedido de otro, 404).
         mvc.perform(get("/api/reports/" + UUID.randomUUID()).with(user("j").authorities(() -> "PLAYERFPP")))
-                .andExpect(status().isForbidden());
-        mvc.perform(get("/rinkreports/player.html").with(user("c").authorities(() -> "CLUBFPP"))).andExpect(redirectedUrl("/rinkreports/club.html"));
+                .andExpect(status().isNotFound());
         mvc.perform(get("/api/player/reports/" + UUID.randomUUID()).with(user("c").authorities(() -> "CLUBFPP")))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/player/reports/" + UUID.randomUUID()).with(user("d").authorities(() -> "COACHFPP")))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/rinkreports/player.html").with(user("j").authorities(() -> "PLAYERFPP"))).andExpect(status().isOk());
     }
 
     @Test
@@ -1023,6 +1086,6 @@ class SecurityTest {
                 .andExpect(jsonPath("$.profiles[0]").value("CLUBFPP"))
                 .andExpect(jsonPath("$.club.id").value(74))
                 .andExpect(jsonPath("$.club.name").value("VELEZ"))
-                .andExpect(jsonPath("$.home").value("/rinkreports/club.html"));
+                .andExpect(jsonPath("$.home").value("/rinkreports/reports.html"));
     }
 }
