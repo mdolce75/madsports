@@ -283,8 +283,8 @@ final class PlayerReportAssembler {
             int summarized = fromSummary.getOrDefault(l.category(), 0);
             if (summarized > 0) {
                 notes.add(l.category() + ": " + (summarized == 1 ? "1 partido sin acta publicada se tomó"
-                        : summarized + " partidos sin acta publicada se tomaron") + " de su ficha de temporada en"
-                        + " SIDGAD (goles, azules, rojas, penales y libres; sin amarillas ni minutos). Van marcados"
+                        : summarized + " partidos sin acta publicada se tomaron") + " de su ficha de temporada en "
+                        + q.federation().source().label() + " (goles, azules, rojas, penales y libres; sin amarillas ni minutos). Van marcados"
                         + " con * en el partido a partido.");
             }
             if (l.withoutSheet() > 0) {

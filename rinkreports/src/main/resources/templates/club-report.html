@@ -7,7 +7,7 @@
         @page {
             size: A4;
             margin: 16mm 14mm 18mm 14mm;
-            @bottom-left { content: "Informe elaborado por RinkReports · Datos: [(${r.federation.name()})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-left { content: "Informe elaborado por RinkReports · Datos: [(${r.federation.name()})] ([(${src.label()})])"; font-size: 8pt; color: #888; font-family: sans-serif; }
             @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
         }
         body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
@@ -73,7 +73,7 @@
 <div class="sample-banner" th:if="${sample}">
     <b>Informe de ejemplo.</b> Club, rivales, jugadores y resultados son ficticios: sirven solo para mostrar el
     formato y las secciones de un informe de RinkReports. Los informes reales usan los datos publicados por la
-    <span th:text="${r.federation.name()}">FPP</span> en SIDGAD.
+    <span th:text="${r.federation.name()}">FPP</span> en <span th:text="${src.label()}">SIDGAD</span>.
 </div>
 
 <div class="header">
@@ -106,7 +106,7 @@
     los mejores promedios de gol, libres y penales, la disciplina y las fortalezas y debilidades de cada una.
     Efectividad: puntos obtenidos sobre los posibles (3 por partido).</p>
 <p class="muted" th:if="${!r.notPublished.isEmpty()}"
-   th:text="|SIDGAD no publicó: ${#strings.listJoin(r.notPublished, '; ')}.|">No publicado</p>
+   th:text="|${src.label()} no publicó: ${#strings.listJoin(r.notPublished, '; ')}.|">No publicado</p>
 
 <th:block th:with="pr=${r.promoted()}"><div th:if="${!pr.isEmpty()}">
 <h2>Semillero</h2>
@@ -184,7 +184,7 @@
             <tr><td class="l">Por partido</td><td th:text="${f.dec(k.yellowPerGame())}"></td>
                 <td th:text="${f.dec(k.bluePerGame())}"></td><td th:text="${f.dec(k.redPerGame())}"></td></tr>
         </table>
-        <p class="muted">Las amarillas salen de las actas (SIDGAD no las incluye en sus estadísticas): se promedian
+        <p class="muted">Las amarillas salen de las actas (<span th:text="${src.label()}">SIDGAD</span> no las incluye en sus estadísticas): se promedian
             sobre los partidos con acta. Azules y rojas, sobre todos los partidos jugados.</p>
     </div>
 
@@ -351,7 +351,7 @@
     por partido de diferencia; goleo: más del 35% de los goles en un jugador es dependencia, hasta 25% es reparto).
     Con menos de 3 partidos o intentos, la muestra es chica para evaluar. Los arqueros no entran en el promedio de
     gol; sí en libres, penales y disciplina.</p>
-<p class="muted" th:text="|Fuentes: competiciones de la ${r.federation.name()} en SIDGAD (${r.sources.size()}).|">Fuentes</p>
+<p class="muted" th:text="|Fuentes: competiciones de la ${r.federation.name()} en ${src.label()} (${r.sources.size()}).|">Fuentes</p>
 
 </body>
 </html>

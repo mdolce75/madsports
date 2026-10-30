@@ -3,6 +3,8 @@ package com.madsports.report;
 import com.madsports.analysis.AnalysisResult;
 import com.madsports.pdf.Templates;
 import com.madsports.player.PlayerReport;
+import com.madsports.sidgad.model.Federation;
+import com.madsports.source.DataSource;
 import com.madsports.stats.ReportData;
 import org.springframework.stereotype.Component;
 
@@ -12,7 +14,8 @@ import java.util.Map;
 /**
  * Los informes de RinkReports desde sus plantillas: {@code templates/report.html} (una categoría),
  * {@code club-report.html} (el club completo) y {@code player-report.html} (un jugador). Cada una lleva los gráficos
- * ({@code c}) y, en los de ejemplo, la marca "datos ficticios" ({@code sample}). El paso a HTML y a PDF es el de
+ * ({@code c}), la fuente de los datos de la federación ({@code src}: "SIDGAD") y, en los de ejemplo, la marca "datos
+ * ficticios" ({@code sample}). El paso a HTML y a PDF es el de
  * {@link Templates}, común a los productos.
  */
 @Component
@@ -30,7 +33,7 @@ public class PdfRenderer {
 
     /** @param sample informe modelo: cada página lleva la marca "datos ficticios" */
     public String html(ReportData data, AnalysisResult analysis, boolean sample) {
-        return render("report", sample, "d", data, "a", analysis);
+        return render("report", sample, "d", data, "a", analysis, "src", sourceOf(data.federation()));
     }
 
     public byte[] pdf(ReportData data, AnalysisResult analysis) {
@@ -43,7 +46,7 @@ public class PdfRenderer {
 
     /** Informe del club completo (todas sus ramas y categorías), plantilla {@code templates/club-report.html}. */
     public String clubHtml(ClubReport report, boolean sample) {
-        return render("club-report", sample, "r", report);
+        return render("club-report", sample, "r", report, "src", sourceOf(report.federation()));
     }
 
     public byte[] clubPdf(ClubReport report) {
@@ -61,7 +64,7 @@ public class PdfRenderer {
 
     /** @param sample informe modelo: cada página lleva la marca "datos ficticios" */
     public String playerHtml(PlayerReport report, boolean sample) {
-        return render("player-report", sample, "r", report);
+        return render("player-report", sample, "r", report, "src", sourceOf(report.federation()));
     }
 
     public byte[] playerPdf(PlayerReport report) {
@@ -70,6 +73,11 @@ public class PdfRenderer {
 
     public byte[] playerPdf(PlayerReport report, boolean sample) {
         return Templates.toPdf(playerHtml(report, sample));
+    }
+
+    /** La fuente de los datos de la federación, como se nombra en el informe (los tests prueban otra). */
+    protected DataSource sourceOf(Federation f) {
+        return f.source();
     }
 
     /** @param vars pares nombre, valor (un valor puede ser null: el informe sin análisis) */
