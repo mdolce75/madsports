@@ -1,5 +1,6 @@
 // Generador de informes de RinkReports (/rinkreports/reports.html) con la API simulada: federación → club → categoría →
-// jugador. Cada combo carga el siguiente y limpia los de abajo; con la categoría elegida ya se puede generar.
+// jugador. Cada combo carga el siguiente y limpia los de abajo; con el club elegido ya se puede generar (el club
+// completo, de entrada).
 import {expect, test} from "@playwright/test";
 
 const CATALOGS = {
@@ -45,7 +46,7 @@ async function api(page) {
 
 const options = (page, id) => page.locator(`#${id} option`);
 
-test("cascada: federación, club, categoría y jugador; se genera con la categoría elegida", async ({page}) => {
+test("cascada: federación, club, categoría y jugador; con el club ya se genera", async ({page}) => {
     const sent = await api(page);
     await page.goto("/rinkreports/reports.html");
     await expect(page.locator("#go")).toBeDisabled();
@@ -60,13 +61,15 @@ test("cascada: federación, club, categoría y jugador; se genera con la categor
     await expect(options(page, "club")).toHaveText(["Elegí el club", "ARGENTINOS JUNIORS (AAAJ)", "VELEZ (CAVS)"]);
     await expect(page.locator("#go")).toBeDisabled();
 
-    // Primero, el club completo; después cada categoría por rama.
+    // Con el club ya se puede generar: de entrada, el club completo; después cada categoría por rama.
     await page.locator("#club").selectOption("74");
-    await expect(options(page, "categoria")).toHaveText(["Elegí la categoría", "Todas las categorías (informe del club)",
+    await expect(options(page, "categoria")).toHaveText(["Todas las categorías (informe del club)",
         "Primera Masculino", "Primera Femenino", "Infantil B Femenino"]);
-    await expect(page.locator("#go")).toBeDisabled();
+    await expect(page.locator("#categoria")).toHaveValue("ALL");
+    await expect(page.locator("#jugador")).toBeDisabled();
+    await expect(page.locator("#go")).toBeEnabled();
 
-    // Con la categoría ya se puede generar; de entrada, «Todos los jugadores» (el informe del equipo).
+    // Con una categoría, su informe; de entrada, «Todos los jugadores» (el informe del equipo).
     await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
     await expect(page.locator("#go")).toBeEnabled();
     await expect(options(page, "jugador")).toHaveText(["Todos los jugadores", "Ana Perez", "Zoe Diaz"]);
@@ -93,10 +96,10 @@ test("cascada: federación, club, categoría y jugador; se genera con la categor
     expect(sent.pop()).toEqual({url: "/api/reports", body: {federation: "FPP", clubId: 74, category: null,
         branch: null, period: "SEASON", year: 2026}});
 
-    // Otro club limpia la categoría y el jugador, y vuelve a deshabilitar el botón.
+    // Otro club limpia la categoría y el jugador: vuelve al club completo.
     await page.locator("#club").selectOption("94");
-    await expect(options(page, "categoria")).toHaveText(["Elegí la categoría", "Todas las categorías (informe del club)",
-        "Juvenil Masculino"]);
+    await expect(options(page, "categoria")).toHaveText(["Todas las categorías (informe del club)", "Juvenil Masculino"]);
+    await expect(page.locator("#categoria")).toHaveValue("ALL");
     await expect(options(page, "jugador")).toHaveText(["Todos los jugadores"]);
-    await expect(page.locator("#go")).toBeDisabled();
+    await expect(page.locator("#go")).toBeEnabled();
 });

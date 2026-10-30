@@ -38,6 +38,9 @@ class PdfRendererTest {
         assertThat(renderer.html(withSheets, rules.analyze(withSheets))).contains("Goles con uno menos");
         assertThat(html).contains("VELEZ (CAVS)", "VELEZ A (CAVS A)", "VELEZ B (CAVS B)",
                 "Goleadores", "Pelota parada", "Cara a cara", "Análisis: Reglas");
+        // Como en el informe del club: goles, faltas y los top 3 de la categoría.
+        assertThat(html).contains("Top 3 · Promedio de gol", "Top 3 · Disciplina", "Top 3 · Libres directos",
+                "Top 3 · Penales", "Cometidas", "Recibidas");
 
         assertThat(html).doesNotContain("no tenía publicados");
         assertThat(renderer.html(data.withNotPublished(List.of("Actas de partido: 9 de 9")), analysis))
