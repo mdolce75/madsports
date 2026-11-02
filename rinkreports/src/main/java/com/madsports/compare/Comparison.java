@@ -18,33 +18,28 @@ import java.util.function.ToIntFunction;
  *
  * @param period        el período elegido: "Apertura", "Últimos 5 partidos", "Año 2026"
  * @param lastMatches   true si es el de los últimos {@link #LAST_MATCHES} partidos
+ * @param playerTops    ¿van los top 3 por jugador? En los últimos 5, solo si se pudieron recortar a esos partidos
+ *                      (con las fichas de temporada de los jugadores)
  * @param summary       el resumen escrito (quién llega mejor y por qué), un renglón por idea
  * @param notes         aclaraciones (p. ej. que juegan en divisiones distintas)
  * @param notPublished  lo que la fuente no publicó, de los dos equipos
  */
 public record Comparison(String federation, int year, String category, String period, boolean lastMatches,
-                         LocalDate generatedOn, Side a, Side b, List<HeadToHead> headToHead, List<String> summary,
-                         List<String> notes, List<String> notPublished, java.time.Instant dataAsOf) {
+                         boolean playerTops, LocalDate generatedOn, Side a, Side b, List<HeadToHead> headToHead,
+                         List<String> summary, List<String> notes, List<String> notPublished,
+                         java.time.Instant dataAsOf) {
 
     public Comparison(String federation, int year, String category, String period, boolean lastMatches,
-                      LocalDate generatedOn, Side a, Side b, List<HeadToHead> headToHead, List<String> summary,
-                      List<String> notes, List<String> notPublished) {
-        this(federation, year, category, period, lastMatches, generatedOn, a, b, headToHead, summary, notes,
-                notPublished, null);
+                      boolean playerTops, LocalDate generatedOn, Side a, Side b, List<HeadToHead> headToHead,
+                      List<String> summary, List<String> notes, List<String> notPublished) {
+        this(federation, year, category, period, lastMatches, playerTops, generatedOn, a, b, headToHead, summary,
+                notes, notPublished, null);
     }
 
     /** El mismo comparativo con la fecha de los datos de SIDGAD que usa (null si no se sabe). */
     public Comparison withDataAsOf(java.time.Instant at) {
-        return new Comparison(federation, year, category, period, lastMatches, generatedOn, a, b, headToHead, summary,
-                notes, notPublished, at);
-    }
-
-    /**
-     * ¿Van los goleadores, penales, libres y disciplina por jugador? Salen de las tablas de la federación por torneo:
-     * en los últimos 5 partidos no se pueden recortar, y no van.
-     */
-    public boolean playerTops() {
-        return !lastMatches;
+        return new Comparison(federation, year, category, period, lastMatches, playerTops, generatedOn, a, b,
+                headToHead, summary, notes, notPublished, at);
     }
 
     /**

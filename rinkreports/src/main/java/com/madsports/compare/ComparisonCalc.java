@@ -6,12 +6,14 @@ import com.madsports.compare.Comparison.HeadToHead;
 import com.madsports.compare.Comparison.Scorer;
 import com.madsports.compare.Comparison.Side;
 import com.madsports.compare.Comparison.View;
+import com.madsports.report.CategoryExtractor;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.EventType;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
+import com.madsports.sidgad.model.Models.PlayerStats;
 import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.ReportData.PlayerLine;
@@ -42,8 +44,20 @@ public final class ComparisonCalc {
     private ComparisonCalc() {
     }
 
-    /** Un equipo a comparar: el club, la clave del equipo ("CAVS B"; null si es el único) y lo leído de la fuente. */
-    public record Input(ClubView club, String teamKey, List<CompetitionData> data, String logo) {
+    /**
+     * Un equipo a comparar: el club, la clave del equipo ("CAVS B"; null si es el único), lo leído de la fuente y cómo
+     * recortar sus números por jugador a algunos partidos (de las fichas de temporada).
+     */
+    public record Input(ClubView club, String teamKey, List<CompetitionData> data, String logo,
+                        CategoryExtractor.PlayersByMatch byMatch) {
+
+        public Input(ClubView club, String teamKey, List<CompetitionData> data, String logo) {
+            this(club, teamKey, data, logo, CategoryExtractor.PlayersByMatch.NONE);
+        }
+
+        Input with(List<CompetitionData> other) {
+            return new Input(club, teamKey, other, logo, byMatch);
+        }
     }
 
     /** El comparativo del año completo. */
@@ -72,8 +86,22 @@ public final class ComparisonCalc {
                         + ": las cifras del " + period + " no son del mismo torneo.");
             }
         }
+        // En los últimos 5, los números por jugador van si se pudieron recortar a esos partidos (con las fichas).
+        boolean tops = scope != Scope.LAST_5 || (recuts(a) && recuts(b));
         return new Comparison(federation == null ? null : federation.name(), year, category, period,
-                scope == Scope.LAST_5, today, sa, sb, h2h, summary(sa, sb, h2h, scope, period), notes, notPublished);
+                scope == Scope.LAST_5, tops, today, sa, sb, h2h, summary(sa, sb, h2h, scope, period), notes,
+                notPublished);
+    }
+
+    /** ¿Las fichas de temporada del equipo permiten recortar sus números por jugador a los últimos 5? */
+    private static boolean recuts(Input in) {
+        Input last = scoped(in, Scope.LAST_5);
+        return last.data().stream().filter(cd -> !cd.matches().isEmpty())
+                .allMatch(cd -> in.byMatch().of(cd, idps(cd)) != null);
+    }
+
+    private static Set<Integer> idps(CompetitionData cd) {
+        return cd.matches().stream().map(Match::idp).filter(id -> id > 0).collect(Collectors.toSet());
     }
 
     /** "Apertura", "Últimos 5 partidos", "Año 2026". */
@@ -93,8 +121,7 @@ public final class ComparisonCalc {
         if (scope.tournament() == null) {
             return in;
         }
-        return new Input(in.club(), in.teamKey(), in.data().stream()
-                .filter(cd -> cd.competition().tournament() == scope.tournament()).toList(), in.logo());
+        return in.with(in.data().stream().filter(cd -> cd.competition().tournament() == scope.tournament()).toList());
     }
 
     /** Lo del equipo en el período: el torneo, o el año con solo sus últimos 5 partidos jugados, o el año. */
@@ -113,10 +140,15 @@ public final class ComparisonCalc {
         played.sort(StatsEngine.CHRONO);
         Set<Match> last = new HashSet<>(played.subList(Math.max(0, played.size() - Comparison.LAST_MATCHES),
                 played.size()));
-        List<CompetitionData> data = in.data().stream().map(cd -> new CompetitionData(cd.competition(), cd.standings(),
-                cd.standingsDate(), cd.matches().stream().filter(last::contains).toList(), cd.players(), cd.sheets(),
-                cd.goalkeepers(), cd.startingKeepers())).toList();
-        return new Input(in.club(), in.teamKey(), data, in.logo());
+        List<CompetitionData> data = in.data().stream().map(cd -> {
+            List<Match> matches = cd.matches().stream().filter(last::contains).toList();
+            // Los números por jugador, de esos partidos (de las fichas); si no se puede, los de la competición.
+            List<PlayerStats> players = in.byMatch().of(cd, matches.stream().map(Match::idp).filter(id -> id > 0)
+                    .collect(Collectors.toSet()));
+            return new CompetitionData(cd.competition(), cd.standings(), cd.standingsDate(), matches,
+                    players == null ? cd.players() : players, cd.sheets(), cd.goalkeepers(), cd.startingKeepers());
+        }).toList();
+        return in.with(data);
     }
 
     private static Side side(Input in, String category, int year, Scope scope, String period, LocalDate today) {
