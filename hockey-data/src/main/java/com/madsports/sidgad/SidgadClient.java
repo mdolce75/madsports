@@ -105,6 +105,32 @@ public class SidgadClient {
         return Boolean.TRUE.equals(CLUB_REPORT.get());
     }
 
+    /**
+     * Marca la sincronización (y el chequeo diario): en modo {@code stored} son los únicos que van a SIDGAD. Es
+     * heredable, como {@link #CLUB_REPORT}: los hilos virtuales que abre la sincronización también la llevan.
+     */
+    private static final InheritableThreadLocal<Boolean> SYNC = new InheritableThreadLocal<>();
+
+    /** Corre la sincronización (o el chequeo diario) con permiso para ir a SIDGAD. */
+    public void syncing(Runnable work) {
+        Boolean before = SYNC.get();
+        SYNC.set(Boolean.TRUE);
+        try {
+            work.run();
+        } finally {
+            if (before == null) {
+                SYNC.remove();
+            } else {
+                SYNC.set(before);
+            }
+        }
+    }
+
+    /** ¿Solo las copias guardadas? En modo {@code stored}, todo lo que no es la sincronización. */
+    private boolean offline() {
+        return readMode == ReadMode.STORED && !Boolean.TRUE.equals(SYNC.get());
+    }
+
     private Semaphore slots() {
         return clubReport() ? clubConcurrency : concurrency;
     }
@@ -183,13 +209,26 @@ public class SidgadClient {
                 : post("cap_ls_1.php", Map.of("idm", "1"));
     }
 
-    /** Lectura de las copias: {@code snapshot} (de la base, por defecto) o {@code live} (de SIDGAD, como antes). */
+    /**
+     * De dónde leen los informes: {@code STORED}, solo las copias guardadas (a SIDGAD va únicamente la sincronización);
+     * {@code SNAPSHOT}, las copias si están al día y si no SIDGAD; {@code LIVE}, SIDGAD (como antes).
+     */
+    enum ReadMode { STORED, SNAPSHOT, LIVE }
+
+    /** Sin Spring (los tests de este cliente), las copias con SIDGAD de respaldo; la app usa {@code stored}. */
+    private volatile ReadMode readMode = ReadMode.SNAPSHOT;
     private volatile boolean readSnapshots = true;
 
-    /** {@code madsports.sidgad.read}: {@code snapshot} o {@code live}. */
+    /** {@code madsports.sidgad.read}: {@code stored} (por defecto), {@code snapshot} o {@code live}. */
     @Autowired
-    public void setReadMode(@Value("${madsports.sidgad.read:snapshot}") String mode) {
-        this.readSnapshots = !"live".equalsIgnoreCase(mode == null ? "" : mode.trim());
+    public void setReadMode(@Value("${madsports.sidgad.read:stored}") String mode) {
+        String m = mode == null ? "" : mode.trim().toLowerCase(java.util.Locale.ROOT);
+        this.readMode = switch (m) {
+            case "live" -> ReadMode.LIVE;
+            case "snapshot" -> ReadMode.SNAPSHOT;
+            default -> ReadMode.STORED;
+        };
+        this.readSnapshots = readMode != ReadMode.LIVE;
     }
 
     /** ¿La copia se bajó hace menos de {@code catalog-ttl}? La sincronización la renueva antes de que venza. */
@@ -208,6 +247,12 @@ public class SidgadClient {
             return hit;
         }
         Optional<SnapshotStore.Stored> saved = stored(key);
+        if (offline()) {
+            // Solo lo guardado, aunque sea de días atrás: la sincronización lo renueva.
+            String body = saved.map(SnapshotStore.Stored::body).orElseThrow(NotSyncedException::new);
+            memory.put(key, body);
+            return body;
+        }
         if (readSnapshots && saved.isPresent() && fresh.test(saved.get().fetchedAt())) {
             memory.put(key, saved.get().body());
             return saved.get().body();
@@ -335,6 +380,10 @@ public class SidgadClient {
     public boolean refresh(Fragment f, int idc) {
         String body = post(f.file(idc), f.params(idc));
         if (body.equals(NOT_PUBLISHED)) {
+            // Sin copia anterior se guarda vacío: "SIDGAD no lo publicó", y los informes no lo dan por faltante.
+            if (stored(f.key(idc)).isEmpty()) {
+                save(f.key(idc), NOT_PUBLISHED);
+            }
             return false;
         }
         dataCache.put(f.key(idc), body);
@@ -383,6 +432,10 @@ public class SidgadClient {
             sheetCache.put(idp, saved.get());
             return saved.get();
         }
+        if (offline()) {
+            // La sincronización baja las actas de todos los partidos jugados; la que falta, para el informe, no está.
+            return NOT_PUBLISHED;
+        }
         String body = post("cap_gr_" + idp + "_1.php", Map.of(
                 "idm", "1", "idc", String.valueOf(idc), "idp", String.valueOf(idp), "tab", "tab_ficha_resumen"));
         if (!body.equals(NOT_PUBLISHED)) {
@@ -426,6 +479,11 @@ public class SidgadClient {
         }
         String key = profileKey(playerId, seasonId);
         Optional<SnapshotStore.Stored> saved = stored(key);
+        if (offline()) {
+            // La que dejó la sincronización (las de quienes jugaron, al día); sin ficha guardada, no hay partidos.
+            saved.ifPresent(s -> profileCache.put(file, new Fetched(s.body(), s.fetchedAt())));
+            return saved.map(SnapshotStore.Stored::body).orElse(NOT_PUBLISHED);
+        }
         if (readSnapshots && saved.isPresent() && !saved.get().fetchedAt().isBefore(notBefore)) {
             profileCache.put(file, new Fetched(saved.get().body(), saved.get().fetchedAt()));
             return saved.get().body();
@@ -469,6 +527,14 @@ public class SidgadClient {
         if (hit != null) {
             return hit;
         }
+        Optional<byte[]> saved = stored(logoKey(file)).map(s -> java.util.Base64.getDecoder().decode(s.body()));
+        if (saved.isPresent()) {
+            logoCache.put(file, saved.get());
+            return saved.get();
+        }
+        if (offline()) {
+            return null;
+        }
         Semaphore slots = slots();
         try {
             slots.acquire();
@@ -492,6 +558,7 @@ public class SidgadClient {
             }
             byte[] body = res.bodyAsBytes();
             logoCache.put(file, body);
+            save(logoKey(file), java.util.Base64.getEncoder().encodeToString(body));
             return body;
         } catch (IOException | RuntimeException e) {
             log.info("No se pudo bajar el escudo {}: {}", file, e.getMessage());
@@ -499,6 +566,11 @@ public class SidgadClient {
         } finally {
             slots.release();
         }
+    }
+
+    /** Clave de la copia de un escudo (en Base64): {@code sidgad:logo:22_10.png}. */
+    static String logoKey(String file) {
+        return "sidgad:logo:" + file;
     }
 
     /** URL base de los escudos (los tests la reemplazan por un servidor local). */
@@ -652,6 +724,16 @@ public class SidgadClient {
 
         public SidgadException(String message, Exception cause) {
             super(message, cause instanceof IOException io ? io : new IOException(cause));
+        }
+    }
+
+    /** Lo pedido todavía no está guardado (modo {@code stored}): lo baja la próxima sincronización. */
+    public static class NotSyncedException extends SidgadException {
+        public static final String MESSAGE = "Estos datos de SIDGAD todavía no están guardados: se bajan en la "
+                + "sincronización (al arrancar, a las 5:00 y en días de partido). Probá de nuevo en unos minutos.";
+
+        public NotSyncedException() {
+            super(MESSAGE);
         }
     }
 }

@@ -6,6 +6,7 @@ import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.CatalogService.CatalogView;
 import com.madsports.sidgad.model.Federation;
+import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SidgadClient.SidgadException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -193,7 +194,10 @@ public class ApiController {
 
     @ExceptionHandler(SidgadException.class)
     ProblemDetail upstream(SidgadException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer el sitio de la FPP: " + e.getMessage());
+        if (e instanceof SidgadClient.NotSyncedException) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        }
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer SIDGAD: " + e.getMessage());
     }
 
     /** Qué informe es, para el historial: "Club completo · Apertura + Clausura 2026", "Juvenil Masculino · ...". */

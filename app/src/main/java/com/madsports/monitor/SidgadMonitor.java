@@ -95,7 +95,10 @@ public class SidgadMonitor implements HealthIndicator {
         Outcome previous = last;
         Outcome r;
         try {
-            r = new Outcome(clock.instant(), true, review());
+            // El chequeo es de SIDGAD mismo: como la sincronización, puede ir al sitio.
+            String[] detail = new String[1];
+            client.syncing(() -> detail[0] = review());
+            r = new Outcome(clock.instant(), true, detail[0]);
         } catch (RuntimeException e) {
             r = new Outcome(clock.instant(), false, e.getMessage() == null ? e.toString() : e.getMessage());
         }

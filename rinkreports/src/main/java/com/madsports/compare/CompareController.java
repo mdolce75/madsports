@@ -8,6 +8,7 @@ import com.madsports.report.JobView;
 import com.madsports.report.ReportFederations;
 import com.madsports.report.ReportQuota;
 import com.madsports.report.ReportService.Status;
+import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SidgadClient.SidgadException;
 import com.madsports.sidgad.model.Federation;
 import org.springframework.http.HttpStatus;
@@ -120,6 +121,9 @@ public class CompareController {
 
     @ExceptionHandler(SidgadException.class)
     ProblemDetail upstream(SidgadException e) {
+        if (e instanceof SidgadClient.NotSyncedException) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        }
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer SIDGAD: " + e.getMessage());
     }
 }

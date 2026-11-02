@@ -11,6 +11,7 @@ import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
+import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.sidgad.parse.SidgadParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,6 +141,11 @@ public class SidgadWarmup {
 
     /** La pasada completa; {@code startup}: la del arranque, que siempre avisa al terminar (la de madrugada, si falla). */
     void run(boolean startup) {
+        // La sincronización es la única que va a SIDGAD: los informes leen lo que deja guardado.
+        sidgad.syncing(() -> sync(startup));
+    }
+
+    private void sync(boolean startup) {
         if (!running.tryLock()) {
             log.info("Ya hay una sincronización de SIDGAD en curso: se saltea esta");
             return;
@@ -255,6 +261,10 @@ public class SidgadWarmup {
      */
     @Scheduled(cron = "${madsports.sidgad.matchday-cron:0 0 12,15,18,21 * * SAT,SUN}", zone = "America/Argentina/Buenos_Aires")
     public void runMatchDay() {
+        sidgad.syncing(this::syncMatchDay);
+    }
+
+    private void syncMatchDay() {
         if (!running.tryLock()) {
             log.info("Ya hay una sincronización de SIDGAD en curso: se saltea la de día de partido");
             return;
@@ -331,6 +341,10 @@ public class SidgadWarmup {
                     })));
                 }
             }
+            // Los escudos de los equipos (casi no cambian): los que todavía no están guardados.
+            comps.stream().flatMap(c -> c.teams().stream()).map(TeamRef::logo)
+                    .filter(l -> l != null && !l.isBlank()).distinct()
+                    .forEach(logo -> work.add(io.submit(() -> paced(slots, () -> sidgad.clubLogo(logo)))));
             errors.addAndGet(waitAll(work));
             work.clear();
             for (Competition c : comps) {

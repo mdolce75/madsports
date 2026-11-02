@@ -77,6 +77,15 @@ class SidgadWarmupTest {
             }
             return super.refresh(f, idc);
         }
+
+        /** Escudos pedidos (sin bajarlos). */
+        final Set<String> logos = ConcurrentHashMap.newKeySet();
+
+        @Override
+        public byte[] clubLogo(String file) {
+            logos.add(file);
+            return null;
+        }
     }
 
     private static SidgadWarmup warmup(CountingSite site, SnapshotStore store) {
@@ -193,6 +202,8 @@ class SidgadWarmupTest {
         // Tabla, calendario y estadísticas de cada competición, renovados.
         assertThat(r.fragments()).isEqualTo(3 * 24);
         assertThat(site.refreshed).hasSize(3 * 24).contains("CALENDAR:779", "STANDINGS:779", "STATS:779");
+        // Los escudos de los equipos, cada uno una vez (los informes ya no los bajan).
+        assertThat(site.logos).isNotEmpty().allSatisfy(l -> assertThat(l).endsWith(".png"));
         // Cada partido jugado de cada competición: su acta.
         assertThat(r.sheets()).isPositive().isEqualTo(site.sheets.get());
         // Sin pasada anterior: la ficha de cada jugador de las planillas, bajada de nuevo desde el comienzo.
