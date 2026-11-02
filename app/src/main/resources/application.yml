@@ -99,12 +99,16 @@ madsports:
     # desde la pasada anterior; los informes leen esas copias. La AMP se suma sola cuando está habilitada (SIGNUP_AMP),
     # igual que en el chequeo diario.
     warmup-cron: ${SIDGAD_WARMUP_CRON:0 0 5 * * *}
-    warmup-federations: ${SIDGAD_WARMUP_FEDERATIONS:FPP}
+    # Las dos federaciones, aunque el alta de la AMP siga cerrada: sus datos quedan al día para cuando se abra.
+    warmup-federations: ${SIDGAD_WARMUP_FEDERATIONS:FPP,AMP}
     # Pedidos a la vez de la sincronización: va despacio, sin apuro y sin competir con los informes.
     sync-concurrency: ${SIDGAD_SYNC_CONCURRENCY:2}
     # Al arrancar (cada deploy), una sincronización completa en segundo plano, después de que Flyway migra el esquema:
     # los datos de SIDGAD no esperan a la madrugada.
     sync-on-startup: ${SIDGAD_SYNC_ON_STARTUP:true}
+    # Al terminar la del arranque (y la de madrugada si tuvo errores), un mail con cómo quedó cada federación. Vacío = a
+    # nadie.
+    sync-notify: ${SIDGAD_SYNC_NOTIFY_EMAIL:info@madsports.com.ar}
     # Pasadas extra en días de partido (hora argentina; "-" las apaga): solo las competiciones con partidos ese día,
     # para que un resultado de la tarde no espere a la madrugada.
     matchday-cron: ${SIDGAD_MATCHDAY_CRON:0 0 12,15,18,21 * * SAT,SUN}

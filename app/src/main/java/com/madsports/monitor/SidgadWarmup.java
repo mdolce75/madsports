@@ -1,6 +1,10 @@
 package com.madsports.monitor;
 
+import com.madsports.account.MailContent;
+import com.madsports.account.Mailer;
+import com.madsports.account.Product;
 import com.madsports.catalog.CatalogService;
+import com.madsports.config.SiteUrls;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SnapshotStore;
 import com.madsports.sidgad.model.Competition;
@@ -22,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -41,8 +46,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * estadísticas por jugador; baja las actas de los partidos jugados que faltan (y las de sus primeros días, que SIDGAD
  * puede corregir) y la ficha de temporada de los jugadores que jugaron desde la última pasada. Va despacio
  * ({@code madsports.sidgad.sync-concurrency} pedidos a la vez) y un error no la corta: queda la copia anterior.
- * {@code madsports.sidgad.warmup-cron} ("-" la apaga) y {@code madsports.sidgad.warmup-federations} (FPP); la AMP se
- * suma sola cuando está habilitada ({@code madsports.signup.amp}).
+ * {@code madsports.sidgad.warmup-cron} ("-" la apaga) y {@code madsports.sidgad.warmup-federations} (FPP y AMP); la
+ * AMP se suma sola cuando está habilitada ({@code madsports.signup.amp}). Al terminar la del arranque (cada deploy), y
+ * la de madrugada si tuvo errores, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
  */
 @Component
 public class SidgadWarmup {
@@ -91,6 +97,22 @@ public class SidgadWarmup {
     private final ReentrantLock running = new ReentrantLock();
     private volatile boolean syncOnStartup = true;
 
+    private Mailer mailer;
+    private SiteUrls urls;
+    private String notifyTo = "";
+
+    /**
+     * Aviso por mail al terminar: a quién ({@code madsports.sidgad.sync-notify}; vacío = a nadie). Sin el mailer (los
+     * tests sin la app) no se avisa.
+     */
+    @Autowired(required = false)
+    void setNotify(Mailer mailer, SiteUrls urls,
+                   @Value("${madsports.sidgad.sync-notify:info@madsports.com.ar}") String to) {
+        this.mailer = mailer;
+        this.urls = urls;
+        this.notifyTo = to == null ? "" : to.trim();
+    }
+
     /** {@code madsports.sidgad.sync-on-startup}: sincronizar al arrancar (cada deploy), además de lo programado. */
     @Autowired
     void setSyncOnStartup(@Value("${madsports.sidgad.sync-on-startup:true}") boolean on) {
@@ -106,19 +128,27 @@ public class SidgadWarmup {
         if (syncOnStartup) {
             Thread.ofVirtual().name("sidgad-sync-arranque").start(() -> {
                 log.info("Sincronización de SIDGAD al arrancar");
-                run();
+                run(true);
             });
         }
     }
 
     @Scheduled(cron = "${madsports.sidgad.warmup-cron:0 0 5 * * *}", zone = "America/Argentina/Buenos_Aires")
     public void run() {
+        run(false);
+    }
+
+    /** La pasada completa; {@code startup}: la del arranque, que siempre avisa al terminar (la de madrugada, si falla). */
+    void run(boolean startup) {
         if (!running.tryLock()) {
             log.info("Ya hay una sincronización de SIDGAD en curso: se saltea esta");
             return;
         }
+        Instant start = clock.instant();
         try {
-            refreshCatalog();
+            String catalogLine = refreshCatalog();
+            List<String> lines = new ArrayList<>();
+            boolean ok = true;
             for (Federation f : federations) {
                 try {
                     Result r = warm(f, catalog.defaultYear());
@@ -126,25 +156,76 @@ public class SidgadWarmup {
                                     + " cambiaron); {} actas; {} fichas de jugador; {} errores; en {} s", f,
                             r.competitions(), r.fragments(), r.changed(), r.sheets(), r.profiles(), r.errors(),
                             r.took().toSeconds());
+                    ok &= r.errors() == 0;
+                    lines.add(status(f, r));
                 } catch (RuntimeException e) {
                     log.warn("Falló la sincronización de SIDGAD ({}): {}", f, e.getMessage());
+                    ok = false;
+                    lines.add(f + ": falló (" + e.getMessage() + "). Los informes siguen con la copia anterior.");
                 }
+            }
+            if (startup || !ok) {
+                notify(startup, ok, start, catalogLine, lines);
             }
         } finally {
             running.unlock();
         }
     }
 
+    /** Cómo quedó una federación, para el mail. */
+    static String status(Federation f, Result r) {
+        String what = r.competitions() + " competiciones; " + r.fragments() + " tablas, calendarios y estadísticas ("
+                + r.changed() + " cambiaron); " + r.sheets() + " actas; " + r.profiles() + " fichas de jugador; en "
+                + minutes(r.took()) + ".";
+        return r.errors() == 0
+                ? f + ": OK. " + what
+                : f + ": con " + r.errors() + " errores (la próxima pasada los reintenta; mientras, sigue la copia"
+                        + " anterior). " + what;
+    }
+
+    private static String minutes(Duration d) {
+        long s = d.toSeconds();
+        return s < 60 ? s + " s" : (s / 60) + " min " + (s % 60) + " s";
+    }
+
+    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    /** Avisa por mail que terminó la sincronización y cómo quedó cada federación. */
+    private void notify(boolean startup, boolean ok, Instant start, String catalogLine, List<String> lines) {
+        if (mailer == null || notifyTo.isEmpty()) {
+            return;
+        }
+        String which = startup ? "del arranque (deploy)" : "de madrugada";
+        String subject = "Sincronización de SIDGAD " + which + (ok ? ": terminó bien" : ": terminó con errores");
+        List<String> paragraphs = new ArrayList<>();
+        paragraphs.add("Terminó la sincronización de SIDGAD " + which + ", empezada el "
+                + WHEN.format(start.atZone(AR)) + ". " + (ok ? "Todo quedó al día en la base."
+                : "Hubo errores: lo que no se pudo bajar sigue con la copia anterior."));
+        paragraphs.add(catalogLine);
+        paragraphs.addAll(lines);
+        try {
+            mailer.send(new MailContent(notifyTo, "RinkReports: " + subject, paragraphs.getFirst(), "Sincronización",
+                    subject, "equipo", paragraphs, "Abrir RinkReports", urls == null ? "" : urls.url(Product.REPORTS),
+                    "Aviso automático de la sincronización con SIDGAD.", Product.REPORTS));
+        } catch (RuntimeException e) {
+            log.warn("No se pudo avisar por mail el fin de la sincronización: {}", e.getMessage());
+        }
+    }
+
     /** La bajada del día del catálogo (competiciones, clubes, equipos): se guarda y se registra qué cambió. */
-    void refreshCatalog() {
+    String refreshCatalog() {
         SidgadClient.CatalogRefresh r = sidgad.refreshCatalog();
         if (!r.downloaded()) {
             log.warn("No se pudo actualizar el catálogo de SIDGAD: se sigue con la copia guardada");
+            return "Catálogo: no se pudo actualizar, sigue la copia guardada.";
         } else if (r.changes().isEmpty()) {
             log.info("Catálogo de SIDGAD actualizado, sin cambios en competiciones ni equipos");
+            return "Catálogo: actualizado, sin cambios en competiciones ni equipos.";
         } else {
             log.info("Catálogo de SIDGAD actualizado, {} cambio(s):\n  {}", r.changes().size(),
                     String.join("\n  ", r.changes()));
+            return "Catálogo: actualizado, " + r.changes().size() + " cambio(s): " + String.join("; ", r.changes())
+                    + ".";
         }
     }
 
