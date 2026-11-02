@@ -13,8 +13,9 @@ import java.util.List;
  * @param origin          portal que SIDGAD exige como Origin/Referer
  * @param minInterval     espera mínima entre el inicio de un pedido al sitio y el siguiente
  * @param maxConcurrency  pedidos simultáneos al sitio como máximo
- * @param dataTtl         vigencia del cache de clasificaciones/calendario/estadísticas
- * @param catalogTtl      vigencia de la copia del catálogo de competiciones (en memoria y en la base)
+ * @param dataTtl         vigencia en memoria de tablas, calendarios y estadísticas (delante de las copias guardadas)
+ * @param catalogTtl      vigencia de las copias guardadas de SIDGAD: catálogo, tablas, calendarios, estadísticas y
+ *                        fichas de temporada (en memoria y en la base)
  * @param years           años que se ofrecen (p. ej. 2026, 2027)
  * @param clubFactor      el informe del club completo lee las actas de todas sus categorías: usa este múltiplo de
  *                        pedidos simultáneos y de pedidos por segundo
