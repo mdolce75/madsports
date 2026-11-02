@@ -92,11 +92,10 @@ Excel**. El Excel trae las mismas cifras en tablas para filtrar y trabajar:
 Las direcciones anteriores (`/informes.html`, `/club.html`, `/jugador.html`, `/dt.html`, `/login.html`, `/registro.html`...)
 llevan a las nuevas, con los mismos parámetros (`WebConfig.OLD_PAGES`).
 
-### Informe del club completo
+### Informe de una categoría
 
-La pantalla de informes del club (`/rinkreports/club.html`) arma **un solo informe con todo el club**: primero por **rama** (Masculino
-y después Femenino) y, dentro de cada rama, una sección por **categoría** (de Infantil a Primera, solo las que juegan en
-el período). Cada categoría lleva:
+Siempre se elige una categoría: el informe del club completo (todas las categorías a la vez) ya no se ofrece, porque
+era demasiado costoso de armar. El informe de cada categoría lleva:
 
 - **Partidos:** jugados, ganados, empatados, perdidos y efectividad.
 - **Goles:** a favor, en contra y promedio por partido.
@@ -108,14 +107,11 @@ el período). Cada categoría lleva:
 - **Fortalezas y debilidades:** los indicadores de la categoría y un texto de IA (Gemini, o el análisis por reglas si
   no está disponible) por categoría.
 
-Al principio, una tabla de contenido con el resumen de cada categoría. Tarda unos minutos: lee las actas de todas las
-categorías; el estado muestra por cuál va ("Categoría 3 de 8 · Juvenil Masculino").
-
 ### Informe de equipo: filtros
 
 **Filtros:** Año (2026, 2027) · Club · Período (Apertura, Clausura, Apertura + Clausura, Últimos 5 partidos) · Rama
 (solo las que tiene el club) · Categoría (Infantil, Prejuvenil, Juvenil, Juniors, Reserva, Primera; solo las del club
-en esa rama). Por la API, sin `categoria` ni `rama` se pide el informe del club completo. Si SIDGAD todavía no tiene un
+en esa rama). Por la API, `categoria` y `rama` son obligatorias. Si SIDGAD todavía no tiene un
 año, la web lo informa y no deja generar el informe.
 
 **Equipos A y B:** son equipos distintos y cada uno tiene su informe. Si el club tiene dos equipos en una categoría y
@@ -596,9 +592,8 @@ Públicos: registro, sesión, catálogo e informes de ejemplo. El resto pide ses
   también juega en Primera del "Club Ejemplo"). Se arma con el mismo motor que los informes reales. Enlazado desde
   RinkReports. También `GET /api/sample-player.html` y `GET /api/sample-player.xlsx`.
 - `POST /api/reports` (CLUBFPP o CLUBAMP, solo su club y su federación) `{"clubId":74,"category":"INFANTIL","branch":"FEMENINO","period":"SEASON","year":2026}` → `202 {id, status}`
-  (`period`: `OPENING`, `CLOSING`, `SEASON` o `LAST_5`). Sin `category` ni `branch`
-  (`{"clubId":74,"period":"SEASON","year":2026}`): el informe del club completo, por rama y categoría; con una
-  sola de las dos, `400`
+  (`period`: `OPENING`, `CLOSING`, `SEASON` o `LAST_5`). Sin `category` o sin `branch`, `400` (el informe del club
+  completo no se ofrece)
 - `GET /api/reports/{id}` — estado: `PENDING`, `EXTRACTING`, `ANALYZING`, `RENDERING`, `READY`, `ERROR`
 - `GET /api/reports/{id}/html` (el informe para ver en pantalla), `/pdf` y `/xlsx` (Excel); el estado listo trae
   `htmlUrl`, `pdfUrl` y `xlsxUrl`
