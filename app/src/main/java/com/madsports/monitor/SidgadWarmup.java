@@ -96,6 +96,9 @@ public class SidgadWarmup {
             List<Future<?>> work = new ArrayList<>();
             for (Competition c : comps) {
                 work.add(io.submit(() -> {
+                    // Tabla y estadísticas, renovadas: las copias guardadas valen para el día.
+                    sidgad.refresh(SidgadClient.Fragment.STANDINGS, c.id());
+                    sidgad.refresh(SidgadClient.Fragment.STATS, c.id());
                     for (PlayerStats p : SidgadParser.playerStats(sidgad.playerStats(c.id()))) {
                         players.add(key(p.playerId(), c.seasonId()));
                     }
@@ -103,6 +106,7 @@ public class SidgadWarmup {
                 }));
                 List<Match> played;
                 try {
+                    sidgad.refresh(SidgadClient.Fragment.CALENDAR, c.id());
                     played = SidgadParser.calendar(sidgad.calendar(c.id())).stream()
                             .filter(m -> m.played() && m.idp() > 0).toList();
                 } catch (SidgadClient.SidgadException e) {

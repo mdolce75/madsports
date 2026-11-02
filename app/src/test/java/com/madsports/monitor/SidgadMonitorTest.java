@@ -62,6 +62,16 @@ class SidgadMonitorTest {
         public String gameSheet(int idc, int idp) {
             return sheet.apply(idp);
         }
+
+        /** Lo que se pidió renovar ("CALENDAR:779"). */
+        final java.util.Set<String> refreshed = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+        /** Las páginas son fijas: renovar no cambia nada. */
+        @Override
+        public boolean refresh(Fragment f, int idc) {
+            refreshed.add(f + ":" + idc);
+            return false;
+        }
     }
 
     SidgadMonitor monitor(FakeSite site, String alerts) {

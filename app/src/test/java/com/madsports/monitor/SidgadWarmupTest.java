@@ -54,5 +54,7 @@ class SidgadWarmupTest {
         assertThat(r.profiles()).isPositive().isEqualTo(profiles.size());
         assertThat(asked).containsExactly(start);
         assertThat(r.errors()).isZero();
+        // Tabla, calendario y estadísticas de cada competición, renovados (las copias guardadas valen para el día).
+        assertThat(site.refreshed).hasSize(3 * 24).contains("CALENDAR:779", "STANDINGS:779", "STATS:779");
     }
 }
