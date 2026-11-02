@@ -73,8 +73,42 @@ class SidgadWarmupTest {
     }
 
     private static SidgadWarmup warmup(CountingSite site, SnapshotStore store) {
+        return warmup(site, store, START);
+    }
+
+    private static SidgadWarmup warmup(CountingSite site, SnapshotStore store, Instant now) {
         return new SidgadWarmup(new CatalogService(site, SidgadMonitorTest.PROPS), site,
-                Clock.fixed(START, ZoneOffset.UTC), List.of("FPP"), false, store, 2);
+                Clock.fixed(now, ZoneOffset.UTC), List.of("FPP"), false, store, 2);
+    }
+
+    @Test
+    void onAMatchDayOnlyTheCompetitionsPlayingTodayAndTheirPlayers() {
+        // El calendario de prueba tiene partidos el 03/10 y el 10/10 (y el 13/10 sin jugar).
+        CountingSite all = new CountingSite();
+        warmup(all, new MemoryStore()).warm(Federation.FPP, 2026);
+        CountingSite site = new CountingSite();
+        MemoryStore store = new MemoryStore();
+
+        SidgadWarmup.Result r = warmup(site, store, Instant.parse("2026-10-10T21:00:00Z")).matchDay(Federation.FPP, 2026);
+
+        // Todas las competiciones de prueba usan ese calendario: todas juegan hoy.
+        assertThat(r.competitions()).isEqualTo(24);
+        assertThat(r.fragments()).isEqualTo(3 * 24);
+        // Solo las fichas de quienes jugaron hoy, no las de todo el año; y no se anota como pasada.
+        assertThat(r.profiles()).isPositive().isLessThanOrEqualTo(all.profiles.size());
+        assertThat(store.rows).doesNotContainKey(SidgadWarmup.lastSyncKey(Federation.FPP));
+    }
+
+    @Test
+    void onADayWithoutMatchesTheMatchDayPassDoesNothing() {
+        CountingSite site = new CountingSite();
+
+        SidgadWarmup.Result r = warmup(site, new MemoryStore(), Instant.parse("2026-10-11T21:00:00Z"))
+                .matchDay(Federation.FPP, 2026);
+
+        assertThat(r.competitions()).isZero();
+        assertThat(site.refreshed).isEmpty();
+        assertThat(site.profiles).isEmpty();
     }
 
     @Test
