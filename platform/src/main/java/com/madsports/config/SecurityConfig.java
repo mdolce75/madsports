@@ -88,8 +88,8 @@ public class SecurityConfig {
                                 "/actuator/health", "/actuator/health/**")
                         .permitAll()
                         .requestMatchers(WebConfig.OLD_PAGES.keySet().toArray(String[]::new)).permitAll()
-                        .requestMatchers("/rinkreports/reports.html", "/api/reports", "/api/reports/**", "/api/player/**",
-                                "/api/catalog/players", "/api/federations")
+                        .requestMatchers("/rinkreports/reports.html", "/rinkreports/compare.html", "/api/reports", "/api/reports/**", "/api/player/**",
+                                "/api/compare/**", "/api/catalog/players", "/api/federations")
                         .hasAnyAuthority(Profile.RINKREPORTS.stream().map(Enum::name).toArray(String[]::new))
                         .requestMatchers("/coach.html", "/api/coach/**")
                         .hasAnyAuthority(Profile.COACHFPP.name(), Profile.COACHAMP.name(), Profile.COACHOTR.name())

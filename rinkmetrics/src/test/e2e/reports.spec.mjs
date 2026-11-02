@@ -4,9 +4,18 @@
 import {expect, test} from "@playwright/test";
 
 const CATALOGS = {
-    FPP: {available: true, year: 2026, years: [2026], clubs: [
-        {id: 74, code: "CAVS", name: "VELEZ", categories: []},
-        {id: 94, code: "AAAJ", name: "ARGENTINOS JUNIORS", categories: []}]},
+    // Las categorías y los equipos de cada club en el catálogo son los que se ofrecen para comparar.
+    FPP: {available: true, year: 2026, years: [2026], categories: [
+        {key: "INFANTIL", label: "Infantil", branches: ["FEMENINO"]},
+        {key: "JUVENIL", label: "Juvenil", branches: ["MASCULINO"]},
+        {key: "PRIMERA", label: "Primera", branches: ["MASCULINO", "FEMENINO"]}], clubs: [
+        {id: 74, code: "CAVS", name: "VELEZ", categories: [
+            {key: "PRIMERA", label: "Primera", branches: ["MASCULINO", "FEMENINO"]},
+            {key: "INFANTIL:A", label: "Infantil A", branches: ["FEMENINO"]},
+            {key: "INFANTIL:B", label: "Infantil B", branches: ["FEMENINO"]}]},
+        {id: 94, code: "AAAJ", name: "ARGENTINOS JUNIORS", categories: [
+            {key: "PRIMERA", label: "Primera", branches: ["MASCULINO"]},
+            {key: "JUVENIL", label: "Juvenil", branches: ["MASCULINO"]}]}]},
     AMP: {available: true, year: 2026, years: [2026], clubs: [
         {id: 15, code: "GC", name: "GODOY CRUZ", categories: []}]},
 };
@@ -16,12 +25,26 @@ const CATEGORIES = {
     94: [{key: "JUVENIL", label: "Juvenil", branches: ["MASCULINO"]}],
 };
 
-/** La API con sesión de RinkReports; devuelve los pedidos de informe que se mandaron. */
-async function api(page) {
+/**
+ * La API con sesión de RinkReports; devuelve los pedidos de informe que se mandaron. Con {@code teamReady}, el informe
+ * de una categoría se genera y queda listo, con ese próximo rival.
+ */
+async function api(page, {teamReady} = {}) {
     const sent = [];
     await page.route("**/api/**", route => {
         const url = new URL(route.request().url());
         const json = (body, status = 200) => route.fulfill({status, json: body});
+        if (teamReady && url.pathname === "/api/reports" && route.request().method() === "POST") {
+            sent.push({url: url.pathname, body: route.request().postDataJSON()});
+            return json({id: "r1", status: "PENDING", message: "En cola"}, 202);
+        }
+        if (teamReady && url.pathname === "/api/reports/r1") {
+            return json({id: "r1", status: "READY", message: "Informe listo", pdfUrl: "/api/reports/r1/pdf",
+                htmlUrl: "/api/reports/r1/html", xlsxUrl: "/api/reports/r1/xlsx", nextOpponent: teamReady});
+        }
+        if (url.pathname === "/api/reports/r1/html") {
+            return route.fulfill({status: 200, contentType: "text/html", body: "<h1>Informe de prueba</h1>"});
+        }
         switch (url.pathname) {
             case "/api/session": return json({authenticated: true, username: "lucia", profiles: ["REPORTS"],
                 club: {id: 0, name: "", code: ""}, home: "/rinkreports/reports.html", monthlyReports: null});
@@ -36,6 +59,7 @@ async function api(page) {
             case "/api/history": return json([]);
             case "/api/reports":
             case "/api/player/reports":
+            case "/api/compare/reports":
                 sent.push({url: url.pathname, body: route.request().postDataJSON()});
                 return json({detail: "Pedido recibido (prueba)."}, 400);
             default: return json({});
@@ -102,4 +126,92 @@ test("cascada: federación, club, categoría y jugador; con el club ya se genera
     await expect(page.locator("#categoria")).toHaveValue("ALL");
     await expect(options(page, "jugador")).toHaveText(["Todos los jugadores"]);
     await expect(page.locator("#go")).toBeEnabled();
+});
+
+test("el generador no compara: «Comparar equipos» es su propia pantalla", async ({page}) => {
+    await api(page);
+    await page.goto("/rinkreports/reports.html");
+    await expect(page.locator("#rival")).toHaveCount(0);
+    await expect(page.locator("nav.secciones a", {hasText: "Comparar equipos"}))
+        .toHaveAttribute("href", "/rinkreports/compare.html");
+});
+
+test("comparar: solo equipos de la categoría elegida, de los clubes que la tienen", async ({page}) => {
+    const sent = await api(page);
+    await page.goto("/rinkreports/compare.html");
+    await expect(page.locator("nav.secciones a", {hasText: "Comparar equipos"})).toHaveAttribute("aria-current", "page");
+    await page.locator("#federacion").selectOption("FPP");
+    await expect(options(page, "categoria")).toHaveText(["Elegí la categoría", "Juvenil Masculino", "Primera Masculino",
+        "Infantil Femenino", "Primera Femenino"]);
+    await expect(page.locator("#go")).toBeDisabled();
+
+    // Primera Femenino: solo Vélez la tiene, no hay con quién.
+    await page.locator("#categoria").selectOption("PRIMERA|FEMENINO");
+    await expect(page.locator("#equipo-a")).toBeDisabled();
+    await expect(options(page, "equipo-a")).toHaveText(["No hay dos equipos en la categoría"]);
+    // Infantil Femenino: los equipos A y B de Vélez.
+    await page.locator("#categoria").selectOption("INFANTIL|FEMENINO");
+    await expect(options(page, "equipo-a")).toHaveText(["Elegí el equipo", "VELEZ A", "VELEZ B"]);
+
+    // Primera Masculino: el rival se elige después y no repite el equipo.
+    await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
+    await expect(options(page, "equipo-a")).toHaveText(["Elegí el equipo", "ARGENTINOS JUNIORS", "VELEZ"]);
+    await expect(page.locator("#equipo-b")).toBeDisabled();
+    await page.locator("#equipo-a").selectOption("74|PRIMERA");
+    await expect(options(page, "equipo-b")).toHaveText(["Elegí el rival", "ARGENTINOS JUNIORS"]);
+    await page.locator("#equipo-b").selectOption("94|PRIMERA");
+    await expect(page.locator("#go")).toBeEnabled();
+
+    await page.locator("#go").click();
+    await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
+    expect(sent.pop()).toEqual({url: "/api/compare/reports", body: {federation: "FPP", year: 2026,
+        branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA"}});
+});
+
+test("desde el informe de una categoría, al comparativo con el próximo rival ya elegido", async ({page}) => {
+    const sent = await api(page, {teamReady: "ARGENTINOS JUNIORS"});
+    await page.goto("/rinkreports/reports.html");
+    await page.locator("#federacion").selectOption("FPP");
+    await page.locator("#club").selectOption("74");
+    await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
+    await page.locator("#go").click();
+
+    const cta = page.locator(".rr-compare-cta");
+    await expect(cta.getByRole("link")).toHaveText(["Comparar con otro equipo",
+        "Comparar con el próximo rival: ARGENTINOS JUNIORS"]);
+    await cta.getByRole("link", {name: "Comparar con el próximo rival: ARGENTINOS JUNIORS"}).click();
+    await expect(page).toHaveURL(/\/rinkreports\/compare\.html\?/);
+    await expect(page.locator("#categoria")).toHaveValue("PRIMERA|MASCULINO");
+    await expect(page.locator("#equipo-a")).toHaveValue("74|PRIMERA");
+    await expect(page.locator("#equipo-b")).toHaveValue("94|PRIMERA");
+    await page.locator("#go").click();
+    await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
+    expect(sent.pop()).toEqual({url: "/api/compare/reports", body: {federation: "FPP", year: 2026,
+        branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA"}});
+});
+
+test("sin el próximo rival en la categoría, solo «Comparar con otro equipo»", async ({page}) => {
+    await api(page, {teamReady: "HURACAN"});
+    await page.goto("/rinkreports/reports.html");
+    await page.locator("#federacion").selectOption("FPP");
+    await page.locator("#club").selectOption("74");
+    await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
+    await page.locator("#go").click();
+
+    const cta = page.locator(".rr-compare-cta");
+    await expect(cta.getByRole("link")).toHaveText(["Comparar con otro equipo"]);
+    await cta.getByRole("link").click();
+    await expect(page.locator("#equipo-a")).toHaveValue("74|PRIMERA");
+    await expect(page.locator("#equipo-b")).toHaveValue("");
+});
+
+test("la portada de RinkReports presenta el comparativo", async ({page}) => {
+    await page.route("**/api/session**", route => route.fulfill({json: {authenticated: false}}));
+    // El servidor de prueba no resuelve carpetas: en la app, /rinkreports/ es esta portada.
+    await page.goto("/rinkreports/index.html#comparar");
+    await expect(page.locator("#comparar h3")).toHaveText("Comparar equipos, cara a cara");
+    await expect(page.locator("#comparar a", {hasText: "Comparar equipos"}))
+        .toHaveAttribute("href", "/rinkreports/compare.html");
+    await expect(page.locator("nav.secciones a", {hasText: "Comparar equipos"}))
+        .toHaveAttribute("href", "/rinkreports/#comparar");
 });

@@ -54,7 +54,7 @@ public final class CategoryExtractor {
     private final SidgadClient sidgad;
     private final Clock clock;
 
-    CategoryExtractor(CatalogService catalog, SidgadClient sidgad, Clock clock) {
+    public CategoryExtractor(CatalogService catalog, SidgadClient sidgad, Clock clock) {
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.clock = clock;
@@ -63,6 +63,30 @@ public final class CategoryExtractor {
     /** Lee de SIDGAD lo que hace falta para el informe de una categoría del club y lo calcula. */
     ReportData extract(Request request, ClubView club, Category category, CategoryOption option,
                        Consumer<String> progress) {
+        Scope scope = request.scope();
+        Read read = read(request, club, category, progress);
+        List<Competition> comps = read.competitions();
+        String tournaments = comps.stream().map(c -> c.tournamentLabel(comps)).distinct().collect(Collectors.joining(" + "));
+        String label = scope == Scope.LAST_5
+                ? "Últimos 5 partidos (" + tournaments + ")"
+                : "Temporada " + request.year() + " · " + tournaments;
+        return StatsEngine.build(club, ReportService.label(category, option), label, read.data(), LocalDate.now(clock),
+                        scope.lastMatches(), option.teamKey(club.code()))
+                .withNotPublished(read.notPublished())
+                .withFederation(request.federation())
+                .withLogo(read.logo());
+    }
+
+    /**
+     * Lo leído de una categoría del club: sus competiciones con tablas, calendarios, estadísticas y actas, lo que la
+     * fuente no publicó y el escudo.
+     */
+    public record Read(List<Competition> competitions, List<CompetitionData> data, List<String> notPublished,
+                       String logo) {
+    }
+
+    /** Lee de SIDGAD las competiciones del club en la categoría y el período (sin calcular el informe). */
+    public Read read(Request request, ClubView club, Category category, Consumer<String> progress) {
         Scope scope = request.scope();
         int year = request.year();
         Federation fed = request.federation();
@@ -173,15 +197,7 @@ public final class CategoryExtractor {
         if (missingSheets > 0) {
             notPublished.add("Actas de partido: " + missingSheets + " de " + clubSheets);
         }
-        String tournaments = comps.stream().map(c -> c.tournamentLabel(comps)).distinct().collect(Collectors.joining(" + "));
-        String label = scope == Scope.LAST_5
-                ? "Últimos 5 partidos (" + tournaments + ")"
-                : "Temporada " + year + " · " + tournaments;
-        return StatsEngine.build(club, ReportService.label(category, option), label, data, LocalDate.now(clock), scope.lastMatches(),
-                        option.teamKey(club.code()))
-                .withNotPublished(notPublished)
-                .withFederation(fed)
-                .withLogo(Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))));
+        return new Read(comps, data, notPublished, Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))));
     }
 
     /**

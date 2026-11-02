@@ -105,6 +105,7 @@ public class ReportService {
         private volatile String html;
         private volatile byte[] xlsx;
         private volatile String fileName;
+        private volatile String nextOpponent;
 
         Job(Request request, String owner) {
             this.request = request;
@@ -121,6 +122,8 @@ public class ReportService {
         public byte[] xlsx() { return xlsx; }
         /** "informe-club-cavs-temporada-2026.pdf" */
         public String fileName() { return fileName; }
+        /** El rival del próximo partido del equipo (informe de una categoría), para compararlo; null si no hay. */
+        public String nextOpponent() { return nextOpponent; }
 
         /** El nombre del archivo con otra extensión ("xlsx"). */
         public String fileName(String extension) { return fileName.substring(0, fileName.lastIndexOf('.') + 1) + extension; }
@@ -387,7 +390,7 @@ public class ReportService {
     }
 
     /** "Infantil B Femenino" (o "Infantil Femenino" si el club tiene un solo equipo). */
-    static String label(Category category, CategoryOption option) {
+    public static String label(Category category, CategoryOption option) {
         return category.levelLabel() + (option.letter() == null ? "" : " " + option.letter()) + " " + category.branchLabel();
     }
 
@@ -413,6 +416,8 @@ public class ReportService {
                     List.of(new ClubReport.CategoryBlock(level, data, data.teams().getFirst(), analysis)))),
                     data.notPublished(), data.sources()));
             job.fileName = fileName(club, category, option, job.request().scope());
+            job.nextOpponent = data.teams().getFirst().upcoming().stream().findFirst()
+                    .map(ReportData.MatchLine::opponent).orElse(null);
             job.update(Status.READY, "Informe listo");
         } catch (RuntimeException e) {
             log.error("Falló el informe {}", job.id(), e);

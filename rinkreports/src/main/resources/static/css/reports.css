@@ -77,3 +77,14 @@ body[data-product="reports"] .cintillo { background: var(--lime); color: #1d1300
 .account-reports .samples .btn { flex: 1 1 180px; }
 @media (max-width: 560px) { .report-kinds { grid-template-columns: 1fr; gap: 2px; }
     .report-kinds dd { margin-bottom: 8px; } }
+
+/* ---------- Comparar equipos ---------- */
+/* Debajo del informe de una categoría: ir al comparativo con ese equipo. */
+.rr-compare-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 16px;
+                  background: rgba(255, 193, 69, .08); border-bottom: 1px solid var(--line); }
+.rr-compare-cta .text { flex: 1 1 220px; color: var(--ink-2); }
+/* La tarjeta del comparativo en la portada. */
+.example.compare-card { border-color: var(--lime); margin-top: 18px; }
+.example.compare-card > .tag { background: var(--lime); color: #1d1300; }
+.example.compare-card ul { margin: 8px 0; padding-left: 18px; }
+.example.compare-card li { margin: 4px 0; }

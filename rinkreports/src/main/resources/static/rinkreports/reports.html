@@ -24,7 +24,8 @@
         <span class="tag">Informes</span>
         <h1>Cualquier equipo,<br><em>en números.</em></h1>
         <p class="lead">Elegí la federación, el club y la categoría para el informe del equipo: partidos, goles, faltas,
-            tarjetas, los top 3 y sus fortalezas y debilidades. Elegí además un jugador para su informe de rendimiento.</p>
+            tarjetas, los top 3 y sus fortalezas y debilidades. Elegí además un jugador para su informe de rendimiento.
+            Para poner dos equipos cara a cara, <a href="/rinkreports/compare.html">Comparar equipos</a>.</p>
     </section>
 
     <div class="board" aria-hidden="true">
@@ -306,13 +307,46 @@
             }
             status("Informe listo.");
             rrHistory();
-            rrShowReport($("visor"), job, title);
+            const shown = rrShowReport($("visor"), job, title);
+            // Del informe de una categoría se pasa al comparativo (su propia pantalla), con este equipo ya elegido.
+            if (!playerId && cat !== ALL) offerCompare(fed, year, cat, clubId, job.nextOpponent);
+            await shown;
         } catch (e) {
             status(e.message, true);
         } finally {
             updateGo();
         }
     });
+
+    /**
+     * Debajo del informe de una categoría: ir a «Comparar equipos» con este equipo elegido y, si el próximo rival
+     * juega la misma categoría, también con él.
+     */
+    function offerCompare(fed, year, cat, clubId, nextOpponent) {
+        const [category, branch] = cat.split("|");
+        const level = category.split(":")[0];
+        const url = b => "/rinkreports/compare.html?" + new URLSearchParams(Object.assign({federation: fed, year,
+            category: `${level}|${branch}`, a: `${clubId}|${category}`}, b ? {b} : {}));
+        const bar = document.createElement("div");
+        bar.className = "rr-compare-cta";
+        bar.innerHTML = `<span class="text">Comparalo con otro equipo de la categoría, cara a cara.</span>`;
+        const link = (text, href, cls) => {
+            const a = document.createElement("a");
+            a.className = "btn " + cls;
+            a.href = href;
+            a.textContent = text;
+            bar.append(a);
+        };
+        link("Comparar con otro equipo", url(), "ghost");
+        // El rival, por su nombre en el calendario: "ARGENTINOS JUNIORS", o "VELEZ B" si el club tiene dos equipos.
+        const rival = nextOpponent && catalog && catalog.clubs.flatMap(club => club.categories
+            .filter(c => c.key.split(":")[0] === level && c.branches.includes(branch))
+            .map(c => ({value: `${club.id}|${c.key}`,
+                name: club.name + (c.key.includes(":") ? " " + c.key.split(":")[1] : "")})))
+            .find(t => t.name.localeCompare(nextOpponent, "es", {sensitivity: "base"}) === 0);
+        if (rival) link(`Comparar con el próximo rival: ${rival.name}`, url(rival.value), "primary");
+        $("visor").querySelector(".bar").after(bar);
+    }
 
     async function showQuota(s) {
         s = s || await session();

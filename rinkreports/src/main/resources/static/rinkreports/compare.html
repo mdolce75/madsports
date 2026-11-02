@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Comparar equipos · RinkReports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232fd3a0'/%3E%3Crect x='13' y='11' width='38' height='42' rx='3' fill='%23fff'/%3E%3Cpath d='M19 21H36M19 29H36M19 37H36M41 21H45M41 29H45M41 37H45' stroke='%2308130f' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M19 45H45' stroke='%2308130f' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="/css/reports.css">
+</head>
+<body data-product="reports" data-section="compare">
+<div class="wrap">
+    <div class="topbar">
+        <div id="brand"></div>
+        <div class="userbar" id="userbar"></div>
+    </div>
+
+    <div class="split">
+    <div class="intro">
+    <section class="hero">
+        <span class="tag">Comparar equipos</span>
+        <h1>Dos equipos,<br><em>cara a cara.</em></h1>
+        <p class="lead">Elegí la categoría y los dos equipos: el comparativo los pone lado a lado en el torneo actual y
+            en el año, con cómo llegan en sus últimos 5 partidos, goles y tarjetas por tramo de 5' y todos los
+            enfrentamientos entre los dos.</p>
+    </section>
+
+    <div class="board" aria-hidden="true">
+        <div><strong>5</strong><span>Cómo llegan: últimos partidos</span></div>
+        <div><strong>5'</strong><span>Goles y tarjetas por tramo</span></div>
+        <div><strong>VS</strong><span>Enfrentamientos del año</span></div>
+    </div>
+    </div>
+    <div class="main">
+    <form class="sheet" id="form">
+        <div class="sheet-head"><span>Planilla del comparativo</span><span id="season">Temporada</span></div>
+
+        <div class="field">
+            <label for="federacion"><span class="num"><i>1</i></span>Federación</label>
+            <select id="federacion" required disabled><option value="">Cargando federaciones…</option></select>
+        </div>
+        <div class="notice" id="no-data" role="alert" hidden></div>
+        <div class="field">
+            <label for="categoria"><span class="num"><i>2</i></span>Categoría</label>
+            <select id="categoria" required disabled><option value="">Elegí la federación</option></select>
+        </div>
+        <div class="field">
+            <label for="equipo-a"><span class="num"><i>3</i></span>Equipo</label>
+            <select id="equipo-a" required disabled><option value="">Elegí la categoría</option></select>
+        </div>
+        <div class="field">
+            <label for="equipo-b"><span class="num"><i>4</i></span>Contra</label>
+            <select id="equipo-b" required disabled><option value="">Elegí la categoría</option></select>
+        </div>
+        <div class="field">
+            <label for="anio"><span class="num"><i>5</i></span>Año</label>
+            <select id="anio" required disabled></select>
+        </div>
+        <p class="hint">El comparativo trae el torneo actual (el del último partido de cada equipo) y el año completo.</p>
+
+        <button class="go" id="go" type="submit" disabled>Generar comparativo</button>
+        <p class="hint" id="cupo"></p>
+
+        <ul class="steps" id="steps" hidden>
+            <li data-s="EXTRACTING">Datos de SIDGAD</li>
+            <li data-s="RENDERING">Comparativo</li>
+        </ul>
+        <div id="status" role="status" aria-live="polite"></div>
+    </form>
+    </div>
+    </div>
+
+    <div id="visor" hidden></div>
+
+    <section class="rr-history" id="historial" aria-labelledby="historial-titulo">
+        <h2 class="section-title" id="historial-titulo">Informes generados</h2>
+        <div id="historial-lista"><p class="hint">Cargando…</p></div>
+    </section>
+
+    <footer>© 2026 RinkReports · Un producto de <a href="/madsports">Mad Sports</a>.</footer>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/reports.js"></script>
+<script>
+    // Comparativo: federación → categoría (nivel y rama) → los dos equipos de esa categoría → año. Los equipos salen
+    // del catálogo del año: un club con equipos A y B tiene los dos. Se puede llegar con todo elegido desde el informe
+    // de una categoría (?federation=FPP&year=2026&category=PRIMERA|MASCULINO&a=74|PRIMERA&b=94|PRIMERA).
+    const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
+    const params = new URLSearchParams(location.search);
+    let catalog = null;
+    let loading = 0;
+
+    function fill(sel, placeholder, options) {
+        sel.innerHTML = "";
+        if (placeholder !== null) sel.add(new Option(placeholder, ""));
+        options.forEach(([value, text]) => sel.add(new Option(text, value)));
+    }
+
+    async function getJson(url) {
+        const res = await fetch(url);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.detail || res.statusText);
+        return body;
+    }
+
+    function updateGo() {
+        const a = $("equipo-a").value;
+        const b = $("equipo-b").value;
+        $("go").disabled = !a || !b || a === b;
+    }
+
+    async function loadFederations() {
+        const sel = $("federacion");
+        try {
+            const feds = await getJson("/api/federations");
+            fill(sel, "Elegí la federación", feds.map(f => [f.code, `${f.code} · ${f.name}`]));
+            sel.disabled = false;
+            if (params.get("federation") && feds.some(f => f.code === params.get("federation"))) {
+                sel.value = params.get("federation");
+                await loadCatalog(params.get("year"));
+            }
+        } catch (e) {
+            status("No se pudieron cargar las federaciones: " + e.message, true);
+        }
+    }
+
+    // Catálogo de la federación en el año: años, categorías (nivel y rama) y los equipos de cada club.
+    async function loadCatalog(year) {
+        catalog = null;
+        fill($("categoria"), "Elegí la federación", []);
+        $("categoria").disabled = true;
+        teams();
+        const fed = $("federacion").value;
+        if (!fed) return;
+        const n = ++loading;
+        fill($("categoria"), "Cargando categorías…", []);
+        try {
+            const c = await getJson("/api/catalog?federation=" + fed + (year ? "&year=" + year : ""));
+            if (n !== loading) return;
+            catalog = c;
+            const years = $("anio");
+            years.innerHTML = "";
+            c.years.forEach(y => years.add(new Option(y, y, false, y === c.year)));
+            years.disabled = false;
+            $("season").textContent = "Temporada " + c.year;
+            $("no-data").hidden = c.available;
+            $("no-data").textContent = c.available ? "" : c.message;
+            const options = [];
+            for (const b of ["MASCULINO", "FEMENINO"]) {
+                c.categories.filter(x => x.branches.includes(b))
+                    .forEach(x => options.push([`${x.key}|${b}`, `${x.label} ${BRANCH_LABEL[b]}`]));
+            }
+            fill($("categoria"), options.length ? "Elegí la categoría" : "Sin información para " + c.year, options);
+            $("categoria").disabled = !options.length;
+            if (params.get("category") && options.some(([v]) => v === params.get("category"))) {
+                $("categoria").value = params.get("category");
+                teams();
+                if (params.get("a")) $("equipo-a").value = params.get("a");
+                rivals();
+                if (params.get("b")) $("equipo-b").value = params.get("b");
+                updateGo();
+            }
+        } catch (e) {
+            if (n === loading) status("No se pudo cargar el catálogo: " + e.message, true);
+        }
+    }
+
+    // Los equipos de la categoría y la rama elegidas, solo de los clubes que la tienen: "VELEZ", o "VELEZ A" y
+    // "VELEZ B" si el club tiene dos. En «Contra» no está el equipo ya elegido.
+    let options = [];
+
+    function teams() {
+        const value = $("categoria").value;
+        options = [];
+        if (value && catalog) {
+            const [level, branch] = value.split("|");
+            [...catalog.clubs].sort((a, b) => a.name.localeCompare(b.name, "es")).forEach(club => club.categories
+                .filter(c => c.key.split(":")[0] === level && c.branches.includes(branch))
+                .forEach(c => options.push([`${club.id}|${c.key}`,
+                    club.name + (c.key.includes(":") ? " " + c.key.split(":")[1] : "")])));
+        }
+        const enough = options.length > 1;
+        const placeholder = !value ? "Elegí la categoría" : enough ? "Elegí el equipo" : "No hay dos equipos en la categoría";
+        fill($("equipo-a"), placeholder, enough ? options : []);
+        $("equipo-a").disabled = !enough;
+        rivals();
+    }
+
+    function rivals() {
+        const a = $("equipo-a").value;
+        const b = $("equipo-b").value;
+        const enough = options.length > 1;
+        fill($("equipo-b"), !$("categoria").value ? "Elegí la categoría" : !enough ? "No hay dos equipos en la categoría"
+            : a ? "Elegí el rival" : "Elegí primero el equipo", a ? options.filter(([v]) => v !== a) : []);
+        $("equipo-b").disabled = !a;
+        if (b && b !== a) $("equipo-b").value = b;
+        updateGo();
+    }
+
+    $("federacion").addEventListener("change", () => { status(""); loadCatalog(); });
+    $("anio").addEventListener("change", () => { status(""); loadCatalog($("anio").value); });
+    $("categoria").addEventListener("change", () => { status(""); teams(); });
+    $("equipo-a").addEventListener("change", rivals);
+    $("equipo-b").addEventListener("change", updateGo);
+
+    $("form").addEventListener("submit", async ev => {
+        ev.preventDefault();
+        const [level, branch] = $("categoria").value.split("|");
+        const [clubA, categoryA] = $("equipo-a").value.split("|");
+        const [clubB, categoryB] = $("equipo-b").value.split("|");
+        const year = Number($("anio").value);
+        $("go").disabled = true;
+        $("steps").hidden = false;
+        $("visor").hidden = true;
+        showStep("PENDING");
+        status("Enviando…");
+        try {
+            const body = await postJson("/api/compare/reports", {federation: $("federacion").value, year, branch,
+                clubA: Number(clubA), categoryA, clubB: Number(clubB), categoryB});
+            showQuota();
+            const job = await poll(`/api/compare/reports/${body.id}`);
+            status("Comparativo listo.");
+            rrHistory();
+            await rrShowReport($("visor"), job, `${$("equipo-a").selectedOptions[0].text} vs `
+                + `${$("equipo-b").selectedOptions[0].text} · ${$("categoria").selectedOptions[0].text} ${year}`);
+        } catch (e) {
+            status(e.message, true);
+        } finally {
+            updateGo();
+        }
+    });
+
+    async function showQuota(s) {
+        s = s || await session();
+        $("cupo").textContent = rrQuota(s.monthlyReports);
+    }
+
+    requireProfile(["REPORTS", "CLUBFPP", "CLUBAMP", "PLAYERFPP", "PLAYERAMP"]).then(s => {
+        if (!s) return;
+        showQuota(s);
+        loadFederations();
+        rrHistory();
+    });
+</script>
+</body>
+</html>

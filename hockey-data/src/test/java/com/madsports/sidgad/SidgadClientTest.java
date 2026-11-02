@@ -8,9 +8,13 @@ import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,10 +29,29 @@ class SidgadClientTest {
     SidgadClient client;
     final AtomicInteger inFlight = new AtomicInteger();
     final AtomicInteger maxInFlight = new AtomicInteger();
+    /** Respuesta de SIDGAD al catálogo: 200 con {@link #catalogBody}, o el error que se ponga. */
+    final AtomicInteger catalogStatus = new AtomicInteger(200);
+    volatile String catalogBody = "<a class='idc_master' id='779'>v1</a>";
     /** Cuántas veces más el calendario responde 429 (demasiados pedidos) antes de contestar normal. */
     final AtomicInteger busy = new AtomicInteger();
     /** El Retry-After de esos 429 (null: sin encabezado). */
     volatile String retryAfter;
+
+    /** Un almacén del catálogo en memoria, como el de la base. */
+    static class MemoryCatalogStore implements CatalogStore {
+        final Map<String, Stored> rows = new ConcurrentHashMap<>();
+        Instant now = Instant.parse("2026-11-02T08:00:00Z");
+
+        @Override
+        public Optional<Stored> get(String key) {
+            return Optional.ofNullable(rows.get(key));
+        }
+
+        @Override
+        public void put(String key, String body) {
+            rows.put(key, new Stored(body, now));
+        }
+    }
 
     @BeforeEach
     void start() throws Exception {
@@ -73,6 +96,14 @@ class SidgadClientTest {
                 }
                 byte[] body = "Too Many Requests".getBytes(StandardCharsets.UTF_8);
                 ex.sendResponseHeaders(429, body.length);
+                ex.getResponseBody().write(body);
+                ex.close();
+                return;
+            }
+            if (file.equals("cap_ls_1.php")) {
+                int code = catalogStatus.get();
+                byte[] body = (code == 200 ? catalogBody : "error").getBytes(StandardCharsets.UTF_8);
+                ex.sendResponseHeaders(code, body.length);
                 ex.getResponseBody().write(body);
                 ex.close();
                 return;
@@ -207,6 +238,16 @@ class SidgadClientTest {
         assertThat(maxInFlight.get()).isGreaterThan(1).isLessThanOrEqualTo(3);
     }
 
+    /** Un cliente nuevo (como después de reiniciar la app) con el almacén y la hora dados; catálogo vigente 5 min. */
+    private SidgadClient restarted(MemoryCatalogStore store, Instant now) {
+        SidgadClient c = new SidgadClient(new SidgadProperties(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/", "http://localhost", Duration.ZERO, 3,
+                Duration.ofMinutes(5), Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026), 1));
+        c.setCatalogStore(store);
+        c.setClock(Clock.fixed(now, ZoneOffset.UTC));
+        return c;
+    }
+
     @Test
     void aTooManyRequestsPausesAndRetries() {
         client.retryBackoff(List.of(Duration.ofMillis(50), Duration.ofMillis(50), Duration.ofMillis(50)));
@@ -286,5 +327,73 @@ class SidgadClientTest {
                 .isFalse();
         assertThat(SidgadClient.tooManyStreams(new SidgadException("x",
                 new java.io.IOException("too many concurrent streams")))).isTrue();
+    }
+
+    @Test
+    void theCatalogIsSavedAndARestartDoesNotDownloadItAgain() {
+        MemoryCatalogStore store = new MemoryCatalogStore();
+        assertThat(restarted(store, store.now).catalog()).contains("v1");
+        assertThat(store.rows.get(SidgadClient.CATALOG).body()).contains("v1");
+
+        catalogBody = "<a class='idc_master' id='779'>v2</a>";
+        assertThat(restarted(store, store.now.plusSeconds(60)).catalog()).contains("v1");
+        assertThat(hits.get("cap_ls_1.php")).hasValue(1);
+    }
+
+    @Test
+    void anExpiredCopyIsDownloadedAgain() {
+        MemoryCatalogStore store = new MemoryCatalogStore();
+        restarted(store, store.now).catalog();
+        catalogBody = "<a class='idc_master' id='779'>v2</a>";
+        store.now = store.now.plus(Duration.ofMinutes(10));
+
+        assertThat(restarted(store, store.now).catalog()).contains("v2");
+        assertThat(store.rows.get(SidgadClient.CATALOG).fetchedAt()).isEqualTo(store.now);
+    }
+
+    @Test
+    void ifSidgadFailsTheSavedCopyIsUsedEvenIfOld() {
+        MemoryCatalogStore store = new MemoryCatalogStore();
+        restarted(store, store.now).catalog();
+        catalogStatus.set(500);
+
+        assertThat(restarted(store, store.now.plus(Duration.ofDays(3))).catalog()).contains("v1");
+        // Sin copia guardada, el error llega al informe.
+        assertThatThrownBy(() -> restarted(new MemoryCatalogStore(), store.now).catalog())
+                .isInstanceOf(SidgadException.class);
+    }
+
+    @Test
+    void theDailyRefreshDownloadsEvenAValidCopyAndSaysWhatChanged() {
+        MemoryCatalogStore store = new MemoryCatalogStore();
+        SidgadClient c = restarted(store, store.now);
+        catalogBody = "<a class='idc_master id_fede_3 temp_15' id='779'>"
+                + "<span class='nombre_competicion_listado'>TORNEO APERTURA PRIMERA MASCULINO (FPP)</span></a>"
+                + "<input id='teams_array_779' value='22,101,VELEZ,VELEZ'>";
+        c.catalog();
+        catalogBody = catalogBody.replace("value='22,101,VELEZ,VELEZ'", "value='22,101,VELEZ,VELEZ;30,102,CAVS,CAVS'");
+
+        SidgadClient.CatalogRefresh r = c.refreshCatalog();
+
+        assertThat(hits.get("cap_ls_1.php")).hasValue(2);
+        assertThat(r.downloaded()).isFalse();   // el portal (otro sitio) no responde en el test
+        assertThat(r.changes()).containsExactly("En TORNEO APERTURA PRIMERA MASCULINO (FPP): entra CAVS");
+        assertThat(c.catalog()).contains("CAVS");
+        assertThat(store.rows.get(SidgadClient.CATALOG).body()).contains("CAVS");
+    }
+
+    @Test
+    void ifTheDailyRefreshFailsTheCopyStays() {
+        MemoryCatalogStore store = new MemoryCatalogStore();
+        SidgadClient c = restarted(store, store.now);
+        c.catalog();
+        catalogStatus.set(503);
+
+        SidgadClient.CatalogRefresh r = c.refreshCatalog();
+
+        assertThat(r.downloaded()).isFalse();
+        assertThat(r.changes()).isEmpty();
+        assertThat(c.catalog()).contains("v1");
+        assertThat(store.rows.get(SidgadClient.CATALOG).body()).contains("v1");
     }
 }

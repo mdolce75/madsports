@@ -1,6 +1,7 @@
 package com.madsports.report;
 
 import com.madsports.analysis.AnalysisResult;
+import com.madsports.compare.Comparison;
 import com.madsports.player.PlayerReport;
 import com.madsports.stats.ReportData;
 import com.madsports.stats.ReportData.PlayerLine;
@@ -257,6 +258,125 @@ public class ExcelExporter {
             }
             strengths.widths(18, 30, 10, 14, 10, 14, 60);
         });
+    }
+
+    // ---------- Comparativo ----------
+
+    /**
+     * Comparativo de dos equipos: el resumen con las cifras lado a lado (torneo actual y año), los últimos 5 partidos,
+     * los jugadores del año, cada tarjeta con el marcador, los goles por tramo y los enfrentamientos.
+     */
+    public byte[] compare(Comparison r) {
+        Comparison.Side a = r.a();
+        Comparison.Side b = r.b();
+        return write(book -> {
+            Sheet summary = new Sheet(book, "Resumen");
+            summary.title("Comparativo · " + a.name() + " vs " + b.name());
+            summary.meta("Categoría", r.category());
+            summary.meta("Temporada", r.year());
+            summary.meta("Generado", r.generatedOn());
+            summary.blank();
+            r.summary().forEach(summary::text);
+            r.notes().forEach(summary::text);
+            scope(summary, "Torneo actual · " + a.currentTournament(), a.current(), b.current(), a.name(), b.name());
+            scope(summary, "Año " + r.year(), a.season(), b.season(), a.name(), b.name());
+            summary.widths(34, 18, 18);
+
+            Sheet last = new Sheet(book, "Últimos 5");
+            last.header("Equipo", "Fecha", "Torneo", "Rival", "Condición", "GF", "GC", "Resultado");
+            for (Comparison.Side s : List.of(a, b)) {
+                for (ReportData.MatchLine m : s.last5().results()) {
+                    last.row(s.name(), m.date(), m.tournament(), m.opponent(), m.home() ? "Local" : "Visitante",
+                            m.goalsFor(), m.goalsAgainst(), m.outcome());
+                }
+            }
+            last.widths(24, 12, 14, 30, 11, 6, 6, 10);
+            last.freezeHeader();
+
+            Sheet players = new Sheet(book, "Jugadores");
+            players.header("Equipo", "Jugador", "PJ", "Goles", "Penales conv.", "Penales tir.", "Libres conv.",
+                    "Libres tir.", "Amarillas", "Azules", "Rojas");
+            for (Comparison.Side s : List.of(a, b)) {
+                for (PlayerLine p : s.season().report().squad()) {
+                    players.row(s.name(), p.name(), p.games(), p.goals(), p.penaltiesScored(), p.penaltiesTaken(),
+                            p.directFreeScored(), p.directFreeTaken(), p.yellowCards(), p.blueCards(), p.redCards());
+                }
+            }
+            players.widths(24, 30, 6, 7, 13, 12, 12, 11, 10, 8, 7);
+            players.freezeHeader();
+
+            Sheet cards = new Sheet(book, "Tarjetas");
+            cards.header("Equipo", "Fecha", "Torneo", "Rival", "Jugador", "Cuerpo técnico", "Tarjeta", "Minuto",
+                    "Marcador", "Iba");
+            for (Comparison.Side s : List.of(a, b)) {
+                for (Comparison.CardLine c : s.season().cards()) {
+                    cards.row(s.name(), c.date(), c.tournament(), c.opponent(), c.player(), c.staff() ? "Sí" : "",
+                            c.card(), c.minuteLabel(), c.score(), c.state().label());
+                }
+            }
+            cards.widths(24, 12, 14, 30, 30, 14, 10, 10, 10, 11);
+            cards.freezeHeader();
+
+            Sheet minutes = new Sheet(book, "Minutos");
+            minutes.title("Goles del año por tramo de 5 minutos");
+            minutes.header("Tramo", a.name() + " a favor", a.name() + " en contra", b.name() + " a favor",
+                    b.name() + " en contra");
+            List<ReportData.TimeBucket> ba = a.season().report().timeProfile().buckets();
+            List<ReportData.TimeBucket> bb = b.season().report().timeProfile().buckets();
+            for (int i = 0; i < Math.max(ba.size(), bb.size()); i++) {
+                ReportData.TimeBucket x = i < ba.size() ? ba.get(i) : null;
+                ReportData.TimeBucket y = i < bb.size() ? bb.get(i) : null;
+                minutes.row(x != null ? x.label() : y.label(), x == null ? null : x.goalsFor(),
+                        x == null ? null : x.goalsAgainst(), y == null ? null : y.goalsFor(),
+                        y == null ? null : y.goalsAgainst());
+            }
+            minutes.widths(14, 20, 20, 20, 20);
+
+            Sheet h2h = new Sheet(book, "Enfrentamientos");
+            h2h.header("Fecha", "Torneo", "Fecha nº", "Local", "GL", "GV", "Visitante", "Goleadores");
+            for (Comparison.HeadToHead m : r.headToHead()) {
+                String scorers = String.join(", ", m.scorers().stream()
+                        .map(g -> g.player() + (g.goals() > 1 ? " (" + g.goals() + ")" : "") + " - "
+                                + (g.home() ? m.home() : m.away())).toList());
+                h2h.row(m.date(), m.tournament(), m.round(), m.home(), m.homeGoals(), m.awayGoals(), m.away(), scorers);
+            }
+            h2h.widths(12, 14, 9, 26, 5, 5, 26, 80);
+        });
+    }
+
+    /** Un alcance del comparativo: cada cifra con la de A y la de B. */
+    private static void scope(Sheet s, String title, Comparison.View a, Comparison.View b, String na, String nb) {
+        TeamRecord ta = a.report().total();
+        TeamRecord tb = b.report().total();
+        s.blank();
+        s.section(title);
+        s.header("", na, nb);
+        s.row("Posición", position(a), position(b));
+        s.row("Partidos jugados", ta.played(), tb.played());
+        s.row("Ganados", ta.won(), tb.won());
+        s.row("Empatados", ta.drawn(), tb.drawn());
+        s.row("Perdidos", ta.lost(), tb.lost());
+        s.row("Efectividad (%)", round(ta.effectiveness()), round(tb.effectiveness()));
+        s.row("Goles a favor", ta.goalsFor(), tb.goalsFor());
+        s.row("Goles en contra", ta.goalsAgainst(), tb.goalsAgainst());
+        s.row("Goles a favor por partido", round(ta.goalsForPerGame()), round(tb.goalsForPerGame()));
+        s.row("Goles en contra por partido", round(ta.goalsAgainstPerGame()), round(tb.goalsAgainstPerGame()));
+        s.row("Faltas cometidas (actas)", a.report().fouls().own(), b.report().fouls().own());
+        s.row("Faltas recibidas (actas)", a.report().fouls().opponent(), b.report().fouls().opponent());
+        s.row("Amarillas", a.cardColors()[0], b.cardColors()[0]);
+        s.row("Azules", a.cardColors()[1], b.cardColors()[1]);
+        s.row("Rojas", a.cardColors()[2], b.cardColors()[2]);
+        s.row("Tarjetas yendo ganando", a.cardStates()[0], b.cardStates()[0]);
+        s.row("Tarjetas yendo empatando", a.cardStates()[1], b.cardStates()[1]);
+        s.row("Tarjetas yendo perdiendo", a.cardStates()[2], b.cardStates()[2]);
+    }
+
+    private static String position(Comparison.View v) {
+        return v.report().standings().stream().findFirst().map(st -> st.position() + "º de " + st.groupSize()).orElse("-");
+    }
+
+    private static double round(double v) {
+        return Math.round(v * 100) / 100.0;
     }
 
     private static void line(Sheet s, PlayerReport.Line l) {

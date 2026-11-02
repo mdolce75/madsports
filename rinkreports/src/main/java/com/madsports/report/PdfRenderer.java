@@ -1,6 +1,7 @@
 package com.madsports.report;
 
 import com.madsports.analysis.AnalysisResult;
+import com.madsports.compare.Comparison;
 import com.madsports.pdf.Templates;
 import com.madsports.player.PlayerReport;
 import com.madsports.stats.ReportData;
@@ -80,6 +81,15 @@ public class PdfRenderer {
 
     public byte[] playerPdf(PlayerReport report, boolean sample) {
         return Templates.toPdf(playerHtml(report, sample));
+    }
+
+    /** Comparativo de dos equipos, plantilla {@code templates/compare-report.html}. */
+    public String compareHtml(Comparison report) {
+        return render("compare-report", false, "r", report);
+    }
+
+    public byte[] comparePdf(Comparison report) {
+        return Templates.toPdf(compareHtml(report));
     }
 
     /** @param vars pares nombre, valor (un valor puede ser null: el informe sin análisis) */
