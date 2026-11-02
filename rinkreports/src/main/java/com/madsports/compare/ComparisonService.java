@@ -262,7 +262,7 @@ public class ComparisonService {
                 Team t = teams.get(i);
                 CategoryExtractor.Read read = await(reads.get(i));
                 inputs.add(new ComparisonCalc.Input(t.club(), t.option().teamKey(t.club().code()), read.data(),
-                        read.logo()));
+                        read.logo(), read.byMatch()));
                 read.notPublished().forEach(n -> notPublished.add(t.club().name() + ": " + n));
                 if (read.dataAsOf() != null && (dataAsOf == null || read.dataAsOf().isBefore(dataAsOf))) {
                     dataAsOf = read.dataAsOf();
