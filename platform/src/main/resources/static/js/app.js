@@ -143,7 +143,7 @@ const SECTIONS = {
     metrics: {home: "/rinkmetrics", name: "RinkMetrics", items: [["home", "Inicio", "/rinkmetrics"],
         ["demo", "Demo", "/coach-demo.html"], ["why", "Por qué RinkMetrics", "/rinkmetrics/why.html"]]},
     reports: {home: "/rinkreports", name: "RinkReports", items: [["home", "Inicio", "/rinkreports"],
-        ["samples", "Ejemplos", "/rinkreports/sample.html"],
+        ["compare", "Comparar equipos", "/rinkreports/#comparar"], ["samples", "Ejemplos", "/rinkreports/sample.html"],
         ["why", "Por qué RinkReports", "/rinkreports/why.html"]]}
 };
 
@@ -176,7 +176,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Con sesión, en la pantalla de informes: solo lo suyo (generar y los que generó); los ejemplos y "Por qué
     // RinkReports" son para quien todavía no tiene cuenta.
     const own = document.body.dataset.section === "reports"
-        ? [["reports", "Generar informe", location.pathname], ["history", "Informes generados", "#historial"]]
+        ? [["reports", "Generar informe", location.pathname], ["compare", "Comparar equipos", "#comparar"],
+            ["history", "Informes generados", "#historial"]]
         : product.items;
     for (const [id, text, href] of own) {
         const a = document.createElement("a");
