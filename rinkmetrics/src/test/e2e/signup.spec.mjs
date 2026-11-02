@@ -1,5 +1,5 @@
 // Registro del DT (/rinkmetrics/signup.html) con la API simulada: los clubes de una federación nunca se mezclan con los
-// de la otra. Con la AMP habilitada se elige la federación y el combo trae solo sus clubes; sin ella, solo los de la FPP.
+// de la otra: se elige la federación (FPP, AMP u Otra) y el combo trae solo sus clubes.
 // Y el de RinkReports, que no pide federación ni club.
 import {expect, test} from "@playwright/test";
 
@@ -12,15 +12,15 @@ const CATALOGS = {
         {id: 15, code: "GC", name: "GODOY CRUZ", categories: []}]},
 };
 
-/** La API del registro, con la AMP (y sus jugadores) habilitada o no; devuelve qué catálogos se pidieron. */
-async function api(page, amp, playerAmp = amp) {
+/** La API del registro; devuelve qué catálogos se pidieron. */
+async function api(page) {
     const asked = [];
     await page.route("**/api/**", route => {
         const url = new URL(route.request().url());
         const json = body => route.fulfill({json: body});
         switch (url.pathname) {
             case "/api/session": return json({authenticated: false});
-            case "/api/signup/options": return json({club: true, amp, playerAmp});
+            case "/api/signup/options": return json({club: true});
             case "/api/plans": return json([]);
             case "/api/catalog": {
                 const f = url.searchParams.get("federation");
@@ -39,8 +39,8 @@ async function api(page, amp, playerAmp = amp) {
 
 const clubs = page => page.locator("#club option:not([value=''])");
 
-test("DT con la AMP habilitada: elige la federación y ve solo los clubes de esa federación", async ({page}) => {
-    const asked = await api(page, true);
+test("DT: elige la federación y ve solo los clubes de esa federación", async ({page}) => {
+    const asked = await api(page);
     await page.goto("/rinkmetrics/signup.html");
     const amp = page.locator("input[name=federacion][value=AMP]");
     await expect(amp).toBeVisible();
@@ -56,18 +56,8 @@ test("DT con la AMP habilitada: elige la federación y ve solo los clubes de esa
     expect(asked).toEqual(["AMP", "FPP"]);
 });
 
-test("DT sin la AMP: elige entre la FPP y Otra, y con la FPP ve solo sus clubes", async ({page}) => {
-    const asked = await api(page, false);
-    await page.goto("/rinkmetrics/signup.html");
-    await expect(page.locator("input[name=federacion][value=AMP]")).toHaveCount(0);
-    await expect(page.locator("input[name=federacion]:checked")).toHaveCount(0);
-    await page.locator("input[name=federacion][value=FPP]").check();
-    await expect(clubs(page)).toHaveText(["VELEZ (CAVS)", "ARGENTINOS JUNIORS (AAAJ)"]);
-    expect(asked).toEqual(["FPP"]);
-});
-
 test("DT de otra federación: escribe el nombre de su club, sin catálogo de SIDGAD", async ({page}) => {
-    const asked = await api(page, true);
+    const asked = await api(page);
     let sent;
     await page.route("**/api/signup", route => {
         sent = route.request().postDataJSON();

@@ -807,7 +807,7 @@ class SecurityTest {
     @Test
     void signupOptions() throws Exception {
         mvc.perform(get("/api/signup/options")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.club").isBoolean()).andExpect(jsonPath("$.playerAmp").isBoolean());
+                .andExpect(jsonPath("$.club").isBoolean()).andExpect(jsonPath("$.amp").doesNotExist());
     }
 
     @Test
