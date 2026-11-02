@@ -13,10 +13,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -50,6 +52,15 @@ public class SidgadClient {
      */
     private static final InheritableThreadLocal<Boolean> CLUB_REPORT = new InheritableThreadLocal<>();
     private long lastRequestNanos;
+    /**
+     * Esperas ante un 429 (SIDGAD pide bajar el ritmo), una por reintento; si responde con Retry-After, se espera eso
+     * (hasta {@link #MAX_PAUSE}). Agotados los reintentos, el 429 corta el informe como cualquier error.
+     */
+    private List<Duration> backoff = List.of(Duration.ofSeconds(2), Duration.ofSeconds(5), Duration.ofSeconds(10),
+            Duration.ofSeconds(20));
+    static final Duration MAX_PAUSE = Duration.ofSeconds(60);
+    /** Hasta cuándo (System.nanoTime) no sale ningún pedido a SIDGAD: después de un 429, la pausa vale para todos. */
+    private final AtomicLong pausedUntil = new AtomicLong(System.nanoTime());
 
     public SidgadClient(SidgadProperties props) {
         this.props = props;
@@ -290,10 +301,64 @@ public class SidgadClient {
         }
     }
 
+    /** Las esperas ante un 429 (los tests las acortan). */
+    void retryBackoff(List<Duration> backoff) {
+        this.backoff = List.copyOf(backoff);
+    }
+
+    /**
+     * Un pedido a SIDGAD. Si responde 429 (demasiados pedidos), todos los pedidos se pausan un rato y este se reintenta
+     * (ver {@link #backoff}).
+     */
     private String doFetch(String url, Connection.Method method, Map<String, String> params, String file) {
+        for (int attempt = 0; ; attempt++) {
+            Connection.Response res = request(url, method, params, file);
+            if (res.statusCode() == 429 && attempt < backoff.size()) {
+                Duration pause = retryAfter(res.header("Retry-After")).orElse(backoff.get(attempt));
+                log.warn("SIDGAD pidió bajar el ritmo (429) en {}: se pausan los pedidos {} s (reintento {} de {})",
+                        file, pause.toSeconds(), attempt + 1, backoff.size());
+                pause(pause);
+                continue;
+            }
+            return body(res, file);
+        }
+    }
+
+    /** "30" (segundos) del encabezado Retry-After, hasta {@link #MAX_PAUSE}; vacío si no viene o es una fecha. */
+    static Optional<Duration> retryAfter(String header) {
+        if (header == null || !header.trim().matches("\\d{1,6}")) {
+            return Optional.empty();
+        }
+        Duration d = Duration.ofSeconds(Long.parseLong(header.trim()));
+        return Optional.of(d.compareTo(MAX_PAUSE) > 0 ? MAX_PAUSE : d);
+    }
+
+    /** Ningún pedido sale antes de que pase la pausa (si ya había una más larga, queda esa). */
+    private void pause(Duration pause) {
+        long until = System.nanoTime() + pause.toNanos();
+        pausedUntil.accumulateAndGet(until, (current, next) -> next - current > 0 ? next : current);
+    }
+
+    private String body(Connection.Response res, String file) {
+        if (res.statusCode() == 404) {
+            log.info("SIDGAD no publicó {} (404), se continúa sin ese dato", file);
+            return NOT_PUBLISHED;
+        }
+        if (res.statusCode() >= 400) {
+            throw new SidgadException("SIDGAD respondió " + res.statusCode() + " para " + file);
+        }
+        String body = res.body();
+        log.debug("SIDGAD {} -> {} bytes", file, body.length());
+        if (body.isBlank()) {
+            throw new SidgadException("SIDGAD devolvió una respuesta vacía para " + file);
+        }
+        return body;
+    }
+
+    private Connection.Response request(String url, Connection.Method method, Map<String, String> params, String file) {
         waitTurn();
         try {
-            Connection.Response res = Jsoup.connect(url)
+            return Jsoup.connect(url)
                     .userAgent(USER_AGENT)
                     .header("Origin", props.origin())
                     .referrer(props.origin() + "/")
@@ -304,19 +369,6 @@ public class SidgadClient {
                     .timeout((int) props.timeout().toMillis())
                     .maxBodySize(0)
                     .execute();
-            if (res.statusCode() == 404) {
-                log.info("SIDGAD no publicó {} (404), se continúa sin ese dato", file);
-                return NOT_PUBLISHED;
-            }
-            if (res.statusCode() >= 400) {
-                throw new SidgadException("SIDGAD respondió " + res.statusCode() + " para " + file);
-            }
-            String body = res.body();
-            log.debug("SIDGAD {} -> {} bytes", file, body.length());
-            if (body.isBlank()) {
-                throw new SidgadException("SIDGAD devolvió una respuesta vacía para " + file);
-            }
-            return body;
         } catch (IOException e) {
             throw new SidgadException("No se pudo consultar " + file + ": " + e.getMessage(), e);
         }
@@ -326,7 +378,8 @@ public class SidgadClient {
         throttle.lock();
         try {
             long interval = props.minInterval().toNanos() / (clubReport() ? clubFactor() : 1);
-            long wait = interval - (System.nanoTime() - lastRequestNanos);
+            long now = System.nanoTime();
+            long wait = Math.max(interval - (now - lastRequestNanos), pausedUntil.get() - now);
             if (wait > 0) {
                 try {
                     Thread.sleep(Duration.ofNanos(wait));
