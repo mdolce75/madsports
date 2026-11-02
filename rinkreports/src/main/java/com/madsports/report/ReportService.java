@@ -387,7 +387,7 @@ public class ReportService {
     }
 
     /** "Infantil B Femenino" (o "Infantil Femenino" si el club tiene un solo equipo). */
-    static String label(Category category, CategoryOption option) {
+    public static String label(Category category, CategoryOption option) {
         return category.levelLabel() + (option.letter() == null ? "" : " " + option.letter()) + " " + category.branchLabel();
     }
 
