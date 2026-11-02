@@ -9,6 +9,7 @@ import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
 import com.madsports.sidgad.model.Models.PlayerStats;
+import com.madsports.sidgad.model.Models.SeasonMatch;
 import com.madsports.sidgad.model.Models.StandingRow;
 import com.madsports.sidgad.model.Models.TeamRef;
 
@@ -246,6 +247,34 @@ public final class PsjParser {
             }
         }
         return List.copyOf(byPlayer.values());
+    }
+
+    /**
+     * La ficha de un jugador en un torneo, desde sus eventos ({@code players/{id}/events_in_tournament/{torneo}}): un
+     * partido por cada uno en que tuvo algún evento (gol, falta o tarjeta), con sus goles, azules y rojas. Los eventos
+     * no traen el resultado (va en 0: el de cada partido sale del calendario) ni penales o libres.
+     */
+    public static List<SeasonMatch> seasonMatches(String json, String competition) {
+        Map<Integer, JsonNode> first = new LinkedHashMap<>();
+        Map<Integer, int[]> counts = new LinkedHashMap<>();   // partido -> {goles, azules, rojas}
+        for (JsonNode e : array(json)) {
+            int match = e.path("match_id").asInt();
+            first.putIfAbsent(match, e);
+            int[] c = counts.computeIfAbsent(match, k -> new int[3]);
+            switch (text(e, "event_type")) {
+                case "goal" -> c[0]++;
+                case "blue_card" -> c[1]++;
+                case "red_card" -> c[2]++;
+                default -> { }
+            }
+        }
+        List<SeasonMatch> out = new ArrayList<>();
+        first.forEach((match, e) -> {
+            int[] c = counts.get(match);
+            out.add(new SeasonMatch(competition, date(text(e, "match_date")), text(e, "home_club_name"),
+                    text(e, "away_club_name"), 0, 0, match, c[0], 0, 0, 0, 0, 0, c[1], c[2]));
+        });
+        return out;
     }
 
     private static EventType eventType(String type) {

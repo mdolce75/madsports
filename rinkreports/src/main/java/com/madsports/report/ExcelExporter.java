@@ -16,6 +16,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -222,25 +224,26 @@ public class ExcelExporter {
             summaryOf.meta("Período", r.period());
             summaryOf.meta("Generado", r.generatedOn());
             summaryOf.blank();
-            summaryOf.header("Categoría", "PJ", "G", "E", "P", "Goles", "Goles por partido", "Incidencia de goles",
-                    "Amarillas", "Azules", "Rojas", "Tarjetas por partido", "Incidencia de tarjetas", "Penales conv.",
-                    "Penales tir.", "Libres conv.", "Libres tir.", "Sin acta");
+            boolean setPieces = sourceOf(r.federation()).setPieces();
+            summaryOf.header(lineHeader("Categoría", setPieces));
             for (PlayerReport.Line l : r.categories()) {
-                line(summaryOf, l);
+                line(summaryOf, l, setPieces);
             }
-            line(summaryOf, r.total());
+            line(summaryOf, r.total(), setPieces);
             if (!r.tournaments().isEmpty()) {
                 summaryOf.blank();
                 summaryOf.section("Por torneo");
-                summaryOf.header("Torneo", "PJ", "G", "E", "P", "Goles", "Goles por partido", "Incidencia de goles",
-                        "Amarillas", "Azules", "Rojas", "Tarjetas por partido", "Incidencia de tarjetas", "Penales conv.",
-                        "Penales tir.", "Libres conv.", "Libres tir.", "Sin acta");
+                summaryOf.header(lineHeader("Torneo", setPieces));
                 for (PlayerReport.TournamentLine t : r.tournaments()) {
-                    line(summaryOf, t.labeled());
+                    line(summaryOf, t.labeled(), setPieces);
                 }
-                line(summaryOf, r.total());
+                line(summaryOf, r.total(), setPieces);
             }
-            summaryOf.widths(26, 6, 6, 6, 6, 8, 16, 18, 10, 9, 8, 18, 20, 13, 12, 12, 11, 9);
+            if (setPieces) {
+                summaryOf.widths(26, 6, 6, 6, 6, 8, 16, 18, 10, 9, 8, 18, 20, 13, 12, 12, 11, 9);
+            } else {
+                summaryOf.widths(26, 6, 6, 6, 6, 8, 16, 18, 10, 9, 8, 18, 20, 9);
+            }
             if (!r.notes().isEmpty()) {
                 summaryOf.blank();
                 summaryOf.section("Notas");
@@ -248,11 +251,13 @@ public class ExcelExporter {
             }
 
             Sheet matches = new Sheet(book, "Partidos");
-            matches.header("Fecha", "Categoría", "Torneo", "Rival", "Condición", "GF", "GC", "Resultado", "Titular",
-                    "Goles", "Amarillas", "Azules", "Rojas", "Sin acta");
+            boolean starters = sourceOf(r.federation()).starters();
+            matches.header("Fecha", "Categoría", "Torneo", "Rival", "Condición", "GF", "GC", "Resultado",
+                    starters ? "Titular" : "", "Goles", "Amarillas", "Azules", "Rojas", "Sin acta");
             for (PlayerReport.MatchRow m : r.matches()) {
                 matches.row(m.date(), m.category(), m.tournament(), m.opponent(), m.home() ? "Local" : "Visitante",
-                        m.goalsFor(), m.goalsAgainst(), m.result(), m.fromSummary() ? "" : m.starter() ? "Sí" : "No",
+                        m.goalsFor(), m.goalsAgainst(), m.result(),
+                        !starters || m.fromSummary() ? "" : m.starter() ? "Sí" : "No",
                         m.goals(), m.yellowCards(), m.blueCards(), m.redCards(), m.fromSummary() ? "Sí" : "");
             }
             matches.widths(12, 18, 14, 30, 11, 6, 6, 10, 8, 7, 10, 8, 7, 9);
@@ -282,10 +287,26 @@ public class ExcelExporter {
         });
     }
 
-    private static void line(Sheet s, PlayerReport.Line l) {
-        s.row(l.category(), l.played(), l.won(), l.drawn(), l.lost(), l.goals(), l.goalsPerGame(), new Pct(l.goalShare()),
-                l.yellowCards(), l.blueCards(), l.redCards(), l.cardsPerGame(), new Pct(l.cardShare()),
-                l.penaltiesScored(), l.penaltiesTaken(), l.directFreeScored(), l.directFreeTaken(), l.withoutSheet());
+    /** Las columnas de una línea del jugador; penales y libres, si la fuente los publica. */
+    private static String[] lineHeader(String first, boolean setPieces) {
+        List<String> h = new ArrayList<>(Arrays.asList(first, "PJ", "G", "E", "P", "Goles", "Goles por partido",
+                "Incidencia de goles", "Amarillas", "Azules", "Rojas", "Tarjetas por partido", "Incidencia de tarjetas"));
+        if (setPieces) {
+            h.addAll(List.of("Penales conv.", "Penales tir.", "Libres conv.", "Libres tir."));
+        }
+        h.add("Sin acta");
+        return h.toArray(String[]::new);
+    }
+
+    private static void line(Sheet s, PlayerReport.Line l, boolean setPieces) {
+        List<Object> row = new ArrayList<>(Arrays.asList(l.category(), l.played(), l.won(), l.drawn(), l.lost(), l.goals(),
+                l.goalsPerGame(), new Pct(l.goalShare()), l.yellowCards(), l.blueCards(), l.redCards(), l.cardsPerGame(),
+                new Pct(l.cardShare())));
+        if (setPieces) {
+            row.addAll(List.of(l.penaltiesScored(), l.penaltiesTaken(), l.directFreeScored(), l.directFreeTaken()));
+        }
+        row.add(l.withoutSheet());
+        s.row(row.toArray());
     }
 
     private static void bucket(Sheet s, PlayerReport.Bucket b) {

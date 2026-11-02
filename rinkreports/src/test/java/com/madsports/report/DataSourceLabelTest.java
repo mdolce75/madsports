@@ -82,6 +82,32 @@ class DataSourceLabelTest {
         assertThat(text(psjExcel.player(player))).doesNotContain("SIDGAD").contains("Jugador en gestiondepsj");
     }
 
+    /** gestiondepsj no distingue penales ni libres directos ni marca titulares: el informe de jugador no los muestra. */
+    @Test
+    void playerReportWithoutSetPiecesWhenTheSourceHasNone() throws IOException {
+        PdfRenderer renderer = new PdfRenderer(templates) {
+            @Override
+            protected DataSource sourceOf(Federation f) {
+                return DataSource.PSJ;
+            }
+        };
+        PlayerReport player = SamplePlayerData.build(TODAY, null);
+        assertThat(sidgad.playerHtml(player, true)).contains("<th>Penales</th>", "Penales y libres directos");
+        assertThat(text(sidgadExcel.player(player))).contains("Penales conv.", "Libres tir.");
+        // (Los datos de ejemplo tienen penales; los de gestiondepsj nunca, así que tampoco hay indicadores de pelota parada.)
+        assertThat(renderer.playerHtml(player, true)).doesNotContain("<th>Penales</th>", "Penales y libres directos",
+                "Penales y libres: convertidos");
+        assertThat(text(psjExcel.player(player))).doesNotContain("Penales conv.", "Libres tir.").contains("Sin acta");
+        assertThat(DataSource.SIDGAD.setPieces()).isTrue();
+        assertThat(DataSource.PSJ.setPieces()).isFalse();
+        assertThat(sidgad.playerHtml(player, true)).contains("<th>Titular</th>");
+        assertThat(renderer.playerHtml(player, true)).doesNotContain("<th>Titular</th>");
+        assertThat(text(sidgadExcel.player(player))).contains("Titular Goles");
+        assertThat(text(psjExcel.player(player))).doesNotContain("Titular Goles");
+        assertThat(DataSource.SIDGAD.fullSeason()).isTrue();
+        assertThat(DataSource.PSJ.fullSeason()).isFalse();
+    }
+
     @Test
     void competitionPageOfEachSource() {
         assertThat(DataSource.SIDGAD.competitionUrl(779)).isEqualTo("https://www.buenosaires.sidgad.com/league/779");

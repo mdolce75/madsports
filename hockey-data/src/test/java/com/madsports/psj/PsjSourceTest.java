@@ -10,6 +10,7 @@ import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
 import com.madsports.sidgad.model.Models.PlayerStats;
+import com.madsports.sidgad.model.Models.SeasonMatch;
 import com.madsports.sidgad.model.Models.StandingRow;
 import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.source.DataSource;
@@ -220,6 +221,26 @@ class PsjSourceTest {
         assertThat(source.clubLogo("../secret.png")).isNull();
         assertThat(source.clubLogo(null)).isNull();
         assertThat(source.playerSeason(20566, 2026)).isEmpty();
+    }
+
+    /** La ficha del jugador sale de sus eventos en cada torneo: un partido por cada uno en que tuvo alguno. */
+    @Test
+    void playerSeasonFromHisEvents() {
+        Competition apertura = apertura();
+        List<SeasonMatch> season = source.playerSeason(20566, List.of(apertura));
+        assertThat(season).extracting(SeasonMatch::idp)
+                .containsExactly(1000546, 1000414, 1000209, 1000149, 1000058, 1000026);
+        assertThat(season).allSatisfy(m -> assertThat(m.competition()).isEqualTo(apertura.name()));
+        SeasonMatch richet = season.get(4);
+        assertThat(richet.date()).isEqualTo(LocalDate.of(2026, 3, 20));
+        assertThat(richet.home()).isEqualTo("Richet Zapata");
+        assertThat(richet.away()).isEqualTo("Olimpia");
+        assertThat(richet.goals()).isEqualTo(1);
+        assertThat(season).filteredOn(m -> m.idp() != 1000058).allSatisfy(m -> assertThat(m.goals()).isZero());
+        assertThat(season).allSatisfy(m -> assertThat(m.penaltiesTaken() + m.directFreeTaken()).isZero());
+        assertThat(requested).contains("players/20566/events_in_tournament/200004");
+        // Un jugador sin eventos en el torneo: sin ficha.
+        assertThat(source.playerSeason(1, List.of(apertura))).isEmpty();
     }
 
     @Test

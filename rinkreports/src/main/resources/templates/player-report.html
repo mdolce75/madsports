@@ -150,10 +150,10 @@
     <h2>Resumen por categoría</h2>
     <table>
         <tr><th class="l" rowspan="2">Categoría</th><th colspan="4">Partidos</th><th colspan="3">Goles</th>
-            <th colspan="5">Tarjetas</th><th colspan="2">Pelota parada</th></tr>
+            <th colspan="5">Tarjetas</th><th th:if="${src.setPieces()}" colspan="2">Pelota parada</th></tr>
         <tr><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Total</th><th>Por PJ</th><th>Incid.</th>
             <th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th>
-            <th>Por PJ</th><th>Incid.</th><th>Penales</th><th>Libres</th></tr>
+            <th>Por PJ</th><th>Incid.</th><th:block th:if="${src.setPieces()}"><th>Penales</th><th>Libres</th></th:block></tr>
         <tr th:each="l : ${r.categories}">
             <td class="l" th:text="${l.category}"></td>
             <td th:text="${l.played}"></td><td th:text="${l.won}"></td><td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
@@ -162,8 +162,8 @@
             <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
             <td th:text="${f.dec(l.cardsPerGame())}"></td>
             <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
-            <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
-            <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
+            <td th:if="${src.setPieces()}" th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+            <td th:if="${src.setPieces()}" th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
         </tr>
         <tr class="total" th:with="l=${r.total}">
             <td class="l">Total</td>
@@ -173,13 +173,13 @@
             <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
             <td th:text="${f.dec(l.cardsPerGame())}"></td>
             <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
-            <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
-            <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
+            <td th:if="${src.setPieces()}" th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+            <td th:if="${src.setPieces()}" th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
         </tr>
     </table>
     <p class="muted">Incid.: incidencia, la parte de los goles de su equipo en los partidos que jugó que fueron suyos, y
         la de las tarjetas de su equipo que fueron suyas (las tarjetas, en los partidos con acta: de los sin acta no se
-        conocen las del equipo). Penales y libres: convertidos/tirados. Amarilla, azul y roja se cuentan por separado; "por PJ" es el
+        conocen las del equipo).<th:block th:if="${src.setPieces()}"> Penales y libres: convertidos/tirados.</th:block> Amarilla, azul y roja se cuentan por separado; "por PJ" es el
         promedio por partido jugado. El detalle de cada categoría sigue a continuación.</p>
 
     <!--/* Por torneo: lo mismo que por categoría, para cada torneo de cada categoría, y la progresión de sus goles. */-->
@@ -187,10 +187,10 @@
         <h2>Por torneo</h2>
         <table>
             <tr><th class="l" rowspan="2">Categoría</th><th class="l" rowspan="2">Torneo</th><th colspan="4">Partidos</th>
-                <th colspan="3">Goles</th><th colspan="5">Tarjetas</th><th colspan="2">Pelota parada</th></tr>
+                <th colspan="3">Goles</th><th colspan="5">Tarjetas</th><th th:if="${src.setPieces()}" colspan="2">Pelota parada</th></tr>
             <tr><th>PJ</th><th>G</th><th>E</th><th>P</th><th>Total</th><th>Por PJ</th><th>Incid.</th>
                 <th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th>
-                <th>Por PJ</th><th>Incid.</th><th>Penales</th><th>Libres</th></tr>
+                <th>Por PJ</th><th>Incid.</th><th:block th:if="${src.setPieces()}"><th>Penales</th><th>Libres</th></th:block></tr>
             <tr th:each="t : ${r.tournaments}" th:with="l=${t.line}">
                 <td class="l" th:text="${t.category}"></td><td class="l" th:text="${t.tournamentName()}"></td>
                 <td th:text="${l.played}"></td><td th:text="${l.won}"></td><td th:text="${l.drawn}"></td><td th:text="${l.lost}"></td>
@@ -199,8 +199,8 @@
                 <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
                 <td th:text="${f.dec(l.cardsPerGame())}"></td>
                 <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
-                <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
-                <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
+                <td th:if="${src.setPieces()}" th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+                <td th:if="${src.setPieces()}" th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
             </tr>
             <tr class="total" th:with="l=${r.total}">
                 <td class="l" colspan="2">Total</td>
@@ -210,8 +210,8 @@
                 <td th:text="${l.yellowCards}"></td><td th:text="${l.blueCards}"></td><td th:text="${l.redCards}"></td>
                 <td th:text="${f.dec(l.cardsPerGame())}"></td>
                 <td th:text="${l.teamCards == 0 ? '-' : f.pct(l.cardShare())}"></td>
-                <td th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
-                <td th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
+                <td th:if="${src.setPieces()}" th:text="${f.fraction(l.penaltiesScored, l.penaltiesTaken)}"></td>
+                <td th:if="${src.setPieces()}" th:text="${f.fraction(l.directFreeScored, l.directFreeTaken)}"></td>
             </tr>
         </table>
         <th:block th:with="gp=${c.goalProgression(r.goalProgression())}">
@@ -279,7 +279,7 @@
                 <td><div class="kpi-v" th:text="${lr.leaderGoals}">0</div><div class="kpi-l">Goles del goleador de la categoría</div></td>
             </tr>
         </table>
-        <div class="nobreak">
+        <div class="nobreak" th:if="${src.setPieces()}">
             <h4>Penales y libres directos</h4>
             <table class="two" th:if="${l.hasSetPieces()}">
                 <tr>
@@ -373,13 +373,13 @@
                 <td>
                     <h3>Mes a mes</h3>
                     <table>
-                        <tr><th class="l">Mes</th><th>PJ</th><th>Titular</th><th>Goles</th></tr>
+                        <tr><th class="l">Mes</th><th>PJ</th><th th:if="${src.starters()}">Titular</th><th>Goles</th></tr>
                         <tr th:each="x : ${b.byMonth()}">
-                            <td class="l" th:text="${x.month}"></td><td th:text="${x.played}"></td><td th:text="${x.starts}"></td>
+                            <td class="l" th:text="${x.month}"></td><td th:text="${x.played}"></td><td th:if="${src.starters()}" th:text="${x.starts}"></td>
                             <td th:text="${x.goals}"></td>
                         </tr>
                     </table>
-                    <p class="muted">Titular: partidos en el cinco inicial, según las planillas de las actas.</p>
+                    <p class="muted" th:if="${src.starters()}">Titular: partidos en el cinco inicial, según las planillas de las actas.</p>
                 </td>
                 <td>
                     <h3>Por rival</h3>
@@ -429,7 +429,7 @@
         <div th:replace="~{fragments/player-strengths :: strengths(${r.indicators}, 'Fortalezas y debilidades generales')}"></div>
 
         <h3 class="apartado">Goles</h3>
-        <div class="nobreak" th:if="${t.hasSetPieces()}">
+        <div class="nobreak" th:if="${src.setPieces() and t.hasSetPieces()}">
             <h4>Penales y libres directos</h4>
             <table class="two">
                 <tr>

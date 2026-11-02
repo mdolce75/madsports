@@ -21,6 +21,24 @@ public enum DataSource {
         return label;
     }
 
+    /** ¿Publica penales y libres directos? (gestiondepsj no los distingue de los goles.) */
+    public boolean setPieces() {
+        return this == SIDGAD;
+    }
+
+    /** ¿Las planillas marcan a los titulares (el cinco inicial)? Las de gestiondepsj, no. */
+    public boolean starters() {
+        return this == SIDGAD;
+    }
+
+    /**
+     * ¿La ficha de temporada del jugador lista todos sus partidos? La de gestiondepsj, solo en los que tuvo algún
+     * evento: un partido sin acta que no figura ahí puede haberlo jugado.
+     */
+    public boolean fullSeason() {
+        return this == SIDGAD;
+    }
+
     /** Página pública de la competición; gestiondepsj no tiene una por torneo: su sitio. */
     public String competitionUrl(int id) {
         return switch (this) {

@@ -143,6 +143,27 @@ class PlayerReportAssemblerTest {
                 "ficha de temporada");
     }
 
+    /**
+     * Una ficha que solo lista los partidos con eventos (gestiondepsj): el partido en que figura cuenta, y los otros sin
+     * acta siguen "sin acta" (pudo jugarlos sin gol, falta ni tarjeta).
+     */
+    @Test
+    void anIncompleteSeasonProfileLeavesTheOtherMatchesWithoutSheet() {
+        TeamInput base = argentinosWithMatchWithoutSheet();
+        Match other = base.matches().getLast();
+        long sheetless = base.matches().stream().filter(m -> base.sheets().getOrDefault(m.idp(), List.of()).isEmpty())
+                .count();
+        TeamInput in = base.withSummaries(PlayerReportAssembler.summaries(base, List.of(
+                new SeasonMatch(primera.name(), other.date(), "", "", 0, 0, other.idp(), 1, 0, 0, 0, 0, 0, 0, 0))), false);
+
+        PlayerReport r = PlayerReportAssembler.assemble(query(2698, "Nicolas Ortin"), VELEZ, TODAY, LEVELS, List.of(in));
+
+        Line l = r.categories().getFirst();
+        assertThat(l.played()).isEqualTo(2);
+        assertThat(l.goals()).isEqualTo(1);
+        assertThat(l.withoutSheet()).isEqualTo((int) sheetless - 1);
+    }
+
     @Test
     void withoutIdpItSearchesByDateInTheSameCompetition() {
         TeamInput base = argentinosWithMatchWithoutSheet();
@@ -290,6 +311,25 @@ class PlayerReportAssemblerTest {
         assertThat(r.indicators()).allMatch(i -> i.verdict() == ReportData.Verdict.SMALL_SAMPLE);
         assertThat(byMetric).containsKeys("Tarjetas por partido", "Azules y rojas por partido", "Penales convertidos",
                 "Libres directos convertidos", "Efectividad del equipo cuando juega");
+    }
+
+    /** Planillas sin titulares ni penales y libres (como las de gestiondepsj): esos indicadores no salen. */
+    @Test
+    void noStartersNorSetPiecesIndicatorsWithoutThatData() {
+        TeamInput full = team(5581, "Primera Masculino", velezSheets());
+        Map<Integer, List<LineupPlayer>> plain = new LinkedHashMap<>();
+        full.sheets().forEach((idp, sheet) -> plain.put(idp, sheet.stream()
+                .map(p -> new LineupPlayer(p.playerId(), p.team(), p.home(), p.number(), p.name(), false, p.goals(),
+                        p.yellowCards(), p.blueCards(), p.redCards(), 0, 0, 0, 0, p.surname(), false))
+                .toList()));
+        TeamInput in = new TeamInput(full.competition(), full.category(), full.teamId(), full.matches(), plain,
+                full.events());
+
+        List<String> metrics = PlayerStrengths.evaluate(3851, List.of(in), ReportData.ShortHanded.EMPTY).stream()
+                .map(ReportData.Indicator::metric).toList();
+
+        assertThat(metrics).contains("Goles por partido", "Tarjetas por partido")
+                .doesNotContain("Partidos en el cinco inicial", "Penales convertidos", "Libres directos convertidos");
     }
 
     @Test
