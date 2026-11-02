@@ -70,7 +70,7 @@ public final class StatsEngine {
     public record Keeper(int playerId, String name) {
     }
 
-    private static final Comparator<Match> CHRONO = Comparator
+    public static final Comparator<Match> CHRONO = Comparator
             .comparing(Match::date, Comparator.nullsLast(Comparator.naturalOrder()))
             .thenComparing(Match::round);
 
@@ -121,6 +121,22 @@ public final class StatsEngine {
                 .map(cd -> new Source(cd.competition().name(), cd.competition().url())).toList();
         return new ReportData(new ReportData.ClubInfo(club.id(), club.code(), club.name()),
                 categoryLabel, tournamentLabel, today, lastMatches, sources, teams, league, List.of());
+    }
+
+    /**
+     * El equipo del club con esa clave ("CAVS B"; null = el único) en cada competición, con el mismo criterio que
+     * {@link #build}. Las competiciones en que no juega no figuran.
+     */
+    public static Map<Competition, TeamRef> teamsOf(List<CompetitionData> data, ClubView club, String teamKey) {
+        boolean severalTeams = data.stream().anyMatch(cd -> ownTeams(cd.competition(), club).size() > 1);
+        Map<Competition, TeamRef> out = new LinkedHashMap<>();
+        for (CompetitionData cd : data) {
+            List<TeamRef> own = ownTeams(cd.competition(), club);
+            Map<Integer, String> keys = TeamKeys.keys(own, club.code(), severalTeams);
+            own.stream().filter(t -> teamKey == null || teamKey.equals(keys.get(t.teamId()))).findFirst()
+                    .ifPresent(t -> out.put(cd.competition(), t));
+        }
+        return out;
     }
 
     private static List<TeamRef> ownTeams(Competition c, ClubView club) {
