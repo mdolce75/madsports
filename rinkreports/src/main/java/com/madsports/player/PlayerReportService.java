@@ -288,7 +288,8 @@ public class PlayerReportService {
         Query resolved = PlayerReportAssembler.baseLevel(q.federation(), q.playerId(), inputs).map(q::withBase).orElse(q);
         List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
         return PlayerReportAssembler.assemble(resolved, info, LocalDate.now(clock), q.federation().levels(), own)
-                .withLeagueRanks(leagueRanks(q.playerId(), own, scorerTables));
+                .withLeagueRanks(leagueRanks(q.playerId(), own, scorerTables))
+                .withDataAsOf(sidgad.oldestCopy(comps.stream().map(Competition::id).toList()).orElse(null));
     }
 
     /**

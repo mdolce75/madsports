@@ -22,7 +22,17 @@ import java.util.function.ToIntFunction;
  */
 public record Comparison(String federation, int year, String category, LocalDate generatedOn, Side a, Side b,
                          List<HeadToHead> headToHead, List<String> summary, List<String> notes,
-                         List<String> notPublished) {
+                         List<String> notPublished, java.time.Instant dataAsOf) {
+
+    public Comparison(String federation, int year, String category, LocalDate generatedOn, Side a, Side b,
+                      List<HeadToHead> headToHead, List<String> summary, List<String> notes, List<String> notPublished) {
+        this(federation, year, category, generatedOn, a, b, headToHead, summary, notes, notPublished, null);
+    }
+
+    /** El mismo comparativo con la fecha de los datos de SIDGAD que usa (null si no se sabe). */
+    public Comparison withDataAsOf(java.time.Instant at) {
+        return new Comparison(federation, year, category, generatedOn, a, b, headToHead, summary, notes, notPublished, at);
+    }
 
     /** Últimos partidos con que se mide cómo llega cada equipo. */
     public static final int LAST_MATCHES = 5;

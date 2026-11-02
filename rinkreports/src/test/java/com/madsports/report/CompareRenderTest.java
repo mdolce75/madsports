@@ -45,6 +45,10 @@ class CompareRenderTest {
                 "Enfrentamientos del año", "Goles por tramo de 5 minutos");
         // Vélez 2-4 Argentinos (acta 26390), con sus goleadores.
         assertThat(html).contains("2 - 4");
+        // Sin copias guardadas no se sabe la fecha de los datos; con ellas, en hora argentina.
+        assertThat(html).doesNotContain("Datos de SIDGAD al");
+        assertThat(renderer.compareHtml(velezVsArgentinos().withDataAsOf(java.time.Instant.parse("2026-11-02T09:00:00Z"))))
+                .contains("Datos de SIDGAD al 02/11/2026 06:00");
     }
 
     @Test
