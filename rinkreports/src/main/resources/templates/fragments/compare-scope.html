@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <body>
-<!--/* Un alcance del comparativo (torneo actual o año): los dos equipos lado a lado. a y b son Comparison.View. */-->
-<th:block th:fragment="scope(title, a, b, na, nb)">
+<!--/* El período del comparativo: los dos equipos lado a lado. a y b son Comparison.View; sin tops (los últimos 5),
+     no van los goleadores, penales, libres ni la disciplina por jugador (son de las tablas por torneo). */-->
+<th:block th:fragment="scope(title, a, b, na, nb, tops)">
     <h3 class="apartado" th:text="${title}">Torneo actual</h3>
 
     <table class="vs nobreak" th:with="ra=${a.report}, rb=${b.report}, ta=${a.report.total}, tb=${b.report.total}">
@@ -38,6 +39,7 @@
     </table>
     <p class="muted">Faltas y tarjetas, de las actas publicadas. Las tarjetas del cuerpo técnico no se cuentan acá.</p>
 
+    <th:block th:if="${tops}">
     <h4>Goleadores</h4>
     <table class="two nobreak">
         <tr>
@@ -85,6 +87,9 @@
             </td>
         </tr>
     </table>
+    </th:block>
+    <p class="muted" th:unless="${tops}">Goleadores, penales, libres y disciplina por jugador salen de las tablas de la
+        federación por torneo: no se pueden recortar a los últimos 5 partidos.</p>
 
     <th:block th:with="ga=${c.goalsByBucket(a.report.timeProfile)}, gb=${c.goalsByBucket(b.report.timeProfile)}">
         <th:block th:if="${ga != null or gb != null}">

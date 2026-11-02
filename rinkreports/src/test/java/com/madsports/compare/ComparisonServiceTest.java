@@ -61,6 +61,16 @@ class ComparisonServiceTest {
     }
 
     @Test
+    void thePeriodsAreTheTournamentsOfTheCategoryTheLastFiveAndTheYear() {
+        List<ComparisonService.PeriodOption> periods = service.periods(Federation.FPP, 2026, "PRIMERA", "MASCULINO");
+
+        assertThat(periods).extracting(ComparisonService.PeriodOption::value).contains("CLOSING")
+                .endsWith("LAST_5", "SEASON");
+        assertThat(periods).extracting(ComparisonService.PeriodOption::label)
+                .endsWith("Últimos 5 partidos", "Año completo");
+    }
+
+    @Test
     void aClubWithoutThatTeamIsRejected() {
         // Vélez no tiene equipo B en Primera.
         assertThatThrownBy(() -> service.validate(request(74, "PRIMERA:B", 69, "PRIMERA")))

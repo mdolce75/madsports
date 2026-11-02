@@ -40,15 +40,29 @@ class CompareRenderTest {
     void htmlWithTheSectionsOfBothTeams() {
         String html = renderer.compareHtml(velezVsArgentinos());
 
-        assertThat(html).contains("VELEZ vs ARGENTINOS JUNIORS", "Primera Masculino · FPP · Temporada 2026",
-                "Cómo llegan · últimos 5 partidos", "Torneo actual · Clausura", "Año 2026", "Goleadores", "Disciplina",
-                "Enfrentamientos del año", "Goles por tramo de 5 minutos");
+        assertThat(html).contains("VELEZ vs ARGENTINOS JUNIORS", "Primera Masculino · FPP · Año 2026",
+                "Goleadores", "Disciplina", "Enfrentamientos del año", "Goles por tramo de 5 minutos");
+        // Solo el período elegido: ni el torneo actual ni los últimos 5 aparte.
+        assertThat(html).doesNotContain("Torneo actual", "Cómo llegan");
         // Vélez 2-4 Argentinos (acta 26390), con sus goleadores.
         assertThat(html).contains("2 - 4");
         // Sin copias guardadas no se sabe la fecha de los datos; con ellas, en hora argentina.
         assertThat(html).doesNotContain("Datos de SIDGAD al");
         assertThat(renderer.compareHtml(velezVsArgentinos().withDataAsOf(java.time.Instant.parse("2026-11-02T09:00:00Z"))))
                 .contains("Datos de SIDGAD al 02/11/2026 06:00");
+    }
+
+    @Test
+    void theLastFiveMatchesWithoutThePlayerTables() {
+        List<CompetitionData> data = List.of(StatsEngineTest.data(779));
+        ClubView aaaj = new ClubView(94, "AAAJ", "ARGENTINOS JUNIORS", List.of());
+        String html = renderer.compareHtml(ComparisonCalc.build(Federation.FPP, 2026, "Primera Masculino",
+                ReportService.Scope.LAST_5, new ComparisonCalc.Input(StatsEngineTest.VELEZ, "CAVS", data, null),
+                new ComparisonCalc.Input(aaaj, "AAAJ", data, null), StatsEngineTest.TODAY, List.of()));
+
+        assertThat(html).contains("Primera Masculino · FPP · Últimos 5 partidos 2026", "Cómo llegan · últimos 5 partidos",
+                "no se pueden recortar a los últimos 5 partidos");
+        assertThat(html).doesNotContain("<h4>Goleadores</h4>");
     }
 
     @Test
@@ -60,7 +74,7 @@ class CompareRenderTest {
         assertThat(new String(pdf, 0, 5)).isEqualTo("%PDF-");
         try (ReadableWorkbook wb = new ReadableWorkbook(new ByteArrayInputStream(xlsx))) {
             assertThat(wb.getSheets().map(s -> s.getName()).toList())
-                    .containsExactly("Resumen", "Últimos 5", "Jugadores", "Tarjetas", "Minutos", "Enfrentamientos");
+                    .containsExactly("Resumen", "Partidos", "Jugadores", "Tarjetas", "Minutos", "Enfrentamientos");
         }
         String out = System.getProperty("compare.out");
         if (out != null) {

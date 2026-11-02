@@ -23,15 +23,15 @@
     <section class="hero">
         <span class="tag">Comparar equipos</span>
         <h1>Dos equipos,<br><em>cara a cara.</em></h1>
-        <p class="lead">Elegí la categoría y los dos equipos: el comparativo los pone lado a lado en el torneo actual y
-            en el año, con cómo llegan en sus últimos 5 partidos, goles y tarjetas por tramo de 5' y todos los
+        <p class="lead">Elegí la categoría, los dos equipos y el período (un torneo, los últimos 5 partidos o el año
+            completo): el comparativo los pone lado a lado en ese período, con goles y tarjetas por tramo de 5' y los
             enfrentamientos entre los dos.</p>
     </section>
 
     <div class="board" aria-hidden="true">
-        <div><strong>5</strong><span>Cómo llegan: últimos partidos</span></div>
+        <div><strong>1</strong><span>Período: un torneo, últimos 5 o el año</span></div>
         <div><strong>5'</strong><span>Goles y tarjetas por tramo</span></div>
-        <div><strong>VS</strong><span>Enfrentamientos del año</span></div>
+        <div><strong>VS</strong><span>Enfrentamientos entre los dos</span></div>
     </div>
     </div>
     <div class="main">
@@ -59,7 +59,12 @@
             <label for="anio"><span class="num"><i>5</i></span>Año</label>
             <select id="anio" required disabled></select>
         </div>
-        <p class="hint">El comparativo trae el torneo actual (el del último partido de cada equipo) y el año completo.</p>
+        <div class="field">
+            <label for="periodo"><span class="num"><i>6</i></span>Período</label>
+            <select id="periodo" required disabled><option value="">Elegí la categoría</option></select>
+        </div>
+        <p class="hint">Cada torneo que tenga la categoría en el año, los últimos 5 partidos de cada equipo o el año
+            completo. El informe muestra solo el período elegido.</p>
 
         <button class="go" id="go" type="submit" disabled>Generar comparativo</button>
         <p class="hint" id="cupo"></p>
@@ -110,7 +115,36 @@
     function updateGo() {
         const a = $("equipo-a").value;
         const b = $("equipo-b").value;
-        $("go").disabled = !a || !b || a === b;
+        $("go").disabled = !a || !b || a === b || !$("periodo").value;
+    }
+
+    // Los períodos de la categoría en el año: sus torneos, los últimos 5 y el año completo (elegido de entrada).
+    let loadingPeriods = 0;
+
+    async function periods() {
+        const sel = $("periodo");
+        const value = $("categoria").value;
+        sel.disabled = true;
+        fill(sel, value ? "Cargando períodos…" : "Elegí la categoría", []);
+        updateGo();
+        if (!value) return;
+        const [category, branch] = value.split("|");
+        const n = ++loadingPeriods;
+        try {
+            const list = await getJson(`/api/compare/periods?federation=${$("federacion").value}&year=${$("anio").value}`
+                + `&category=${encodeURIComponent(category)}&branch=${branch}`);
+            if (n !== loadingPeriods) return;
+            fill(sel, null, list.map(p => [p.value, p.label]));
+            sel.value = params.get("period") && list.some(p => p.value === params.get("period"))
+                ? params.get("period") : "SEASON";
+            sel.disabled = false;
+        } catch (e) {
+            if (n === loadingPeriods) {
+                fill(sel, "Elegí la categoría", []);
+                status("No se pudieron cargar los períodos: " + e.message, true);
+            }
+        }
+        updateGo();
     }
 
     async function loadFederations() {
@@ -134,6 +168,7 @@
         fill($("categoria"), "Elegí la federación", []);
         $("categoria").disabled = true;
         teams();
+        periods();
         const fed = $("federacion").value;
         if (!fed) return;
         const n = ++loading;
@@ -159,6 +194,7 @@
             if (params.get("category") && options.some(([v]) => v === params.get("category"))) {
                 $("categoria").value = params.get("category");
                 teams();
+                periods();
                 if (params.get("a")) $("equipo-a").value = params.get("a");
                 rivals();
                 if (params.get("b")) $("equipo-b").value = params.get("b");
@@ -203,7 +239,8 @@
 
     $("federacion").addEventListener("change", () => { status(""); loadCatalog(); });
     $("anio").addEventListener("change", () => { status(""); loadCatalog($("anio").value); });
-    $("categoria").addEventListener("change", () => { status(""); teams(); });
+    $("categoria").addEventListener("change", () => { status(""); teams(); periods(); });
+    $("periodo").addEventListener("change", updateGo);
     $("equipo-a").addEventListener("change", rivals);
     $("equipo-b").addEventListener("change", updateGo);
 
@@ -213,6 +250,7 @@
         const [clubA, categoryA] = $("equipo-a").value.split("|");
         const [clubB, categoryB] = $("equipo-b").value.split("|");
         const year = Number($("anio").value);
+        const period = $("periodo").value;
         $("go").disabled = true;
         $("steps").hidden = false;
         $("visor").hidden = true;
@@ -220,13 +258,14 @@
         status("Enviando…");
         try {
             const body = await postJson("/api/compare/reports", {federation: $("federacion").value, year, branch,
-                clubA: Number(clubA), categoryA, clubB: Number(clubB), categoryB});
+                clubA: Number(clubA), categoryA, clubB: Number(clubB), categoryB, period});
             showQuota();
             const job = await poll(`/api/compare/reports/${body.id}`);
             status("Comparativo listo.");
             rrHistory();
             await rrShowReport($("visor"), job, `${$("equipo-a").selectedOptions[0].text} vs `
-                + `${$("equipo-b").selectedOptions[0].text} · ${$("categoria").selectedOptions[0].text} ${year}`);
+                + `${$("equipo-b").selectedOptions[0].text} · ${$("categoria").selectedOptions[0].text}`
+                + ` · ${$("periodo").selectedOptions[0].text} ${year}`);
         } catch (e) {
             status(e.message, true);
         } finally {

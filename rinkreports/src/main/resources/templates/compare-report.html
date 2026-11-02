@@ -75,7 +75,7 @@
             <td>
                 <div class="brandline">RinkReports · Hockey sobre patines · Comparativo de equipos</div>
                 <h1 th:text="|${r.a.name} vs ${r.b.name}|">A vs B</h1>
-                <div class="subtitle" th:text="|${r.category} · ${r.federation} · Temporada ${r.year}|">Categoría</div>
+                <div class="subtitle" th:text="|${r.category} · ${r.federation} · ${r.periodTitle()}|">Categoría</div>
                 <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(r.generatedOn)}${r.dataAsOf == null ? '' : ' · Datos de SIDGAD al ' + f.dateTime(r.dataAsOf)}|">fecha</div>
             </td>
             <td class="crest right" th:if="${r.b.club.logo != null}"><img th:src="${r.b.club.logo}" th:alt="|Escudo de ${r.b.name}|"/></td>
@@ -91,10 +91,11 @@
     <p th:if="${!r.notPublished.isEmpty()}" class="muted" th:text="|No publicado por la federación: ${#strings.listJoin(r.notPublished, '; ')}|">No publicado</p>
 </div>
 
+<th:block th:if="${r.lastMatches}">
 <h3 class="apartado">Cómo llegan · últimos 5 partidos</h3>
 <table class="two">
     <tr>
-        <td th:each="s, i : ${ {r.a, r.b} }" th:with="t=${s.last5.total}, cl=${i.index == 0 ? 'ta' : 'tb'}">
+        <td th:each="s, i : ${ {r.a, r.b} }" th:with="t=${s.view.report.total}, cl=${i.index == 0 ? 'ta' : 'tb'}">
             <div class="side-name" th:classappend="${cl}" th:text="${s.name}">Equipo</div>
             <table class="kpis" th:classappend="${cl}">
                 <tr>
@@ -108,7 +109,7 @@
             </table>
             <table>
                 <tr><th>Fecha</th><th class="l">Rival</th><th></th><th>Res.</th><th></th></tr>
-                <tr th:each="m : ${s.last5.results}">
+                <tr th:each="m : ${s.view.report.results}">
                     <td th:text="${f.date(m.date)}">01/01</td>
                     <td class="l" th:text="${m.opponent}">Rival</td>
                     <td th:text="${m.home ? 'L' : 'V'}">L</td>
@@ -120,20 +121,19 @@
     </tr>
 </table>
 
-<div th:replace="~{fragments/compare-scope :: scope(|Torneo actual · ${r.a.currentTournament}|, ${r.a.current}, ${r.b.current}, ${r.a.name}, ${r.b.name})}"></div>
+</th:block>
 
-<div class="page"></div>
-<div th:replace="~{fragments/compare-scope :: scope(|Año ${r.year}|, ${r.a.season}, ${r.b.season}, ${r.a.name}, ${r.b.name})}"></div>
+<div th:replace="~{fragments/compare-scope :: scope(${r.periodTitle()}, ${r.a.view}, ${r.b.view}, ${r.a.name}, ${r.b.name}, ${r.playerTops()})}"></div>
 
-<th:block th:if="${!r.a.season.cards.isEmpty() or !r.b.season.cards.isEmpty()}">
-    <h3 class="apartado">Tarjetas del año, una por una</h3>
+<th:block th:if="${!r.a.view.cards.isEmpty() or !r.b.view.cards.isEmpty()}">
+    <h3 class="apartado" th:text="|Tarjetas, una por una · ${r.period}|">Tarjetas, una por una</h3>
     <p class="muted">Con el marcador del equipo en ese momento. En cursiva, las del cuerpo técnico.</p>
     <th:block th:each="s, i : ${ {r.a, r.b} }">
-        <th:block th:if="${!s.season.cards.isEmpty()}">
+        <th:block th:if="${!s.view.cards.isEmpty()}">
             <div class="side-name" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${s.name}">Equipo</div>
             <table>
                 <tr><th>Fecha</th><th class="l">Rival</th><th class="l">Jugador</th><th>Tarjeta</th><th>Minuto</th><th>Marcador</th><th>Iba</th></tr>
-                <tr th:each="k : ${s.season.cards}" th:classappend="${k.staff ? 'staff' : ''}">
+                <tr th:each="k : ${s.view.cards}" th:classappend="${k.staff ? 'staff' : ''}">
                     <td th:text="${f.date(k.date)}">01/01</td>
                     <td class="l" th:text="${k.opponent}">Rival</td>
                     <td class="l" th:text="${k.staff ? k.player + ' (cuerpo técnico)' : k.player}">Jugador</td>
@@ -148,7 +148,7 @@
     </th:block>
 </th:block>
 
-<h3 class="apartado">Enfrentamientos del año</h3>
+<h3 class="apartado" th:text="${r.headToHeadTitle()}">Enfrentamientos del año</h3>
 <table th:if="${!r.headToHead.isEmpty()}">
     <tr><th>Fecha</th><th class="l">Torneo</th><th class="l">Local</th><th>Resultado</th><th class="l">Visitante</th><th class="l">Goleadores</th></tr>
     <tr th:each="m : ${r.headToHead}">
@@ -162,7 +162,7 @@
         </td>
     </tr>
 </table>
-<p class="muted" th:if="${r.headToHead.isEmpty()}">No se enfrentan en el año.</p>
+<p class="muted" th:if="${r.headToHead.isEmpty()}" th:text="${r.headToHeadTitle().replace('Enfrentamientos', 'No se enfrentan')} + '.'">No se enfrentan en el año.</p>
 
 </body>
 </html>
