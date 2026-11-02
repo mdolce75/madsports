@@ -41,7 +41,8 @@ class CompareRenderTest {
         String html = renderer.compareHtml(velezVsArgentinos());
 
         assertThat(html).contains("VELEZ vs ARGENTINOS JUNIORS", "Primera Masculino · FPP · Año 2026",
-                "Goleadores", "Disciplina", "Enfrentamientos del año", "Goles por tramo de 5 minutos");
+                "Top 3 · Goles", "Top 3 · Tarjetas", "Top 3 · Penales", "Top 3 · Libres directos",
+                "Enfrentamientos del año", "Goles por tramo de 5 minutos");
         // Solo el período elegido: ni el torneo actual ni los últimos 5 aparte.
         assertThat(html).doesNotContain("Torneo actual", "Cómo llegan");
         // Vélez 2-4 Argentinos (acta 26390), con sus goleadores.
@@ -62,7 +63,7 @@ class CompareRenderTest {
 
         assertThat(html).contains("Primera Masculino · FPP · Últimos 5 partidos 2026", "Cómo llegan · últimos 5 partidos",
                 "no se pueden recortar a los últimos 5 partidos");
-        assertThat(html).doesNotContain("<h4>Goleadores</h4>");
+        assertThat(html).doesNotContain("Top 3 · Goles");
     }
 
     @Test
