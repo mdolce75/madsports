@@ -388,6 +388,71 @@ class SidgadClientTest {
     }
 
     @Test
+    void inStoredModeOnlyTheSyncGoesToSidgad() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.Fragment.STANDINGS.key(40), "<table>de hace días</table>");
+        store.put(SidgadClient.profileKey(41, 15), "<p>ficha vieja</p>");
+        // Mucho después de la vigencia de las copias: igual se usan, sin ir a SIDGAD.
+        SidgadClient c = restarted(store, store.now.plus(Duration.ofDays(5)));
+        c.setReadMode("stored");
+
+        assertThat(c.standings(40)).isEqualTo("<table>de hace días</table>");
+        assertThat(c.playerSeason(41, 15)).isEqualTo("<p>ficha vieja</p>");
+        // Lo que no está guardado no se baja: falta la sincronización (los datos), o no hay (actas, fichas, escudos).
+        assertThatThrownBy(() -> c.calendar(40)).isInstanceOf(SidgadClient.NotSyncedException.class)
+                .hasMessage(SidgadClient.NotSyncedException.MESSAGE);
+        assertThatThrownBy(c::catalog).isInstanceOf(SidgadClient.NotSyncedException.class);
+        assertThat(c.gameSheet(40, 2040)).isEqualTo(SidgadClient.NOT_PUBLISHED);
+        assertThat(c.playerSeason(42, 15)).isEqualTo(SidgadClient.NOT_PUBLISHED);
+        assertThat(c.clubLogo("22_10.png")).isNull();
+        assertThat(hits).isEmpty();
+
+        // La sincronización sí va a SIDGAD, y deja la copia para los informes.
+        c.syncing(() -> assertThat(c.refresh(SidgadClient.Fragment.STANDINGS, 43)).isTrue());
+        assertThat(c.standings(43)).isEqualTo("<table></table>");
+        assertThat(hits.get("cap_clasif_idc_43_1.php")).hasValue(1);
+    }
+
+    @Test
+    void whatSidgadDidNotPublishIsNotedSoTheReportsDoNotWaitForIt() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        SidgadClient c = restarted(store, store.now);
+        c.setReadMode("stored");
+
+        // El calendario da 404 en este SIDGAD: sin copia anterior, queda anotado como no publicado.
+        c.syncing(() -> assertThat(c.refresh(SidgadClient.Fragment.CALENDAR, 44)).isFalse());
+        assertThat(c.calendar(44)).isEqualTo(SidgadClient.NOT_PUBLISHED);
+        // Con una copia anterior, un 404 no la pisa.
+        store.put(SidgadClient.Fragment.CALENDAR.key(45), "<table>anterior</table>");
+        c.syncing(() -> c.refresh(SidgadClient.Fragment.CALENDAR, 45));
+        assertThat(store.rows.get(SidgadClient.Fragment.CALENDAR.key(45)).body()).isEqualTo("<table>anterior</table>");
+    }
+
+    @Test
+    void theSyncSavesTheCrestsAndTheReportsReadThemFromTheStore() {
+        String base = "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/logos/";
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        java.util.function.Supplier<SidgadClient> fresh = () -> {
+            SidgadClient c = new SidgadClient(new SidgadProperties(base, "http://localhost", Duration.ZERO, 3,
+                    Duration.ofMinutes(5), Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026), 1)) {
+                @Override
+                protected String logosUrl() {
+                    return base;
+                }
+            };
+            c.setSnapshotStore(store);
+            c.setReadMode("stored");
+            return c;
+        };
+        SidgadClient sync = fresh.get();
+        sync.syncing(() -> assertThat(sync.clubLogo("22_10.png")).hasSize(4));
+
+        // Otro arranque, sin memoria: el escudo sale de la base.
+        assertThat(fresh.get().clubLogo("22_10.png")).containsExactly(0x89, 'P', 'N', 'G');
+        assertThat(hits.get("logos/22_10.png")).hasValue(1);
+    }
+
+    @Test
     void inLiveModeTheSavedCopiesAreNotRead() {
         MemorySnapshotStore store = new MemorySnapshotStore();
         store.put(SidgadClient.Fragment.STANDINGS.key(9), "<table>guardada</table>");

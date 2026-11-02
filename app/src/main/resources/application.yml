@@ -87,9 +87,9 @@ madsports:
     # Vigencia de las copias de SIDGAD guardadas en la base (catálogo, tablas, calendarios, estadísticas y fichas de
     # temporada): la precarga de madrugada las renueva cada día; el margen evita bajarlas de nuevo justo antes.
     catalog-ttl: 26h
-    # De dónde leen los informes: "snapshot" (las copias guardadas en la base; SIDGAD solo si falta o venció) o "live"
-    # (SIDGAD en cada informe, como antes).
-    read: ${SIDGAD_READ:snapshot}
+    # De dónde leen los informes: "stored" (solo las copias guardadas en la base: a SIDGAD va únicamente la
+    # sincronización), "snapshot" (las copias; SIDGAD si falta o venció) o "live" (SIDGAD en cada informe, como antes).
+    read: ${SIDGAD_READ:stored}
     timeout: 20s
     # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federation (de Infantil para arriba)
     # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa

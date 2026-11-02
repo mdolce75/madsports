@@ -12,6 +12,7 @@ import com.madsports.coach.SquadService.PlayerData;
 import com.madsports.coach.SquadService.SquadPlayer;
 import com.madsports.coach.SquadService.SidgadPlayer;
 import com.madsports.coach.SquadService.NewTeam;
+import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SidgadClient.SidgadException;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -263,6 +264,9 @@ public class CoachController {
 
     @ExceptionHandler(SidgadException.class)
     ProblemDetail sidgad(SidgadException e) {
+        if (e instanceof SidgadClient.NotSyncedException) {
+            return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        }
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "No se pudo leer SIDGAD: " + e.getMessage());
     }
 }
