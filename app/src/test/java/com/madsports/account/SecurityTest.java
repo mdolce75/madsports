@@ -895,6 +895,12 @@ class SecurityTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("El club 99 no juega en la FPP en 2026."));
         assertThat(users.findByUsername("club").orElseThrow().getReportsRequested()).isZero();
+        // Sin categoría (el club completo, que ya no se ofrece): rechazado, y no cuenta.
+        mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"federation\":\"FPP\",\"clubId\":74}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Elegí la categoría y la rama."));
+        assertThat(users.findByUsername("club").orElseThrow().getReportsRequested()).isZero();
         mvc.perform(post("/api/reports").with(user("club").authorities(() -> "CLUBFPP")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(request.formatted("FPP", 74, "PRIMERA")))
                 .andExpect(status().isAccepted());

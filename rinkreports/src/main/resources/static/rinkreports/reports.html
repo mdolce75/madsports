@@ -103,11 +103,10 @@
 <script src="/js/reports.js"></script>
 <script>
     // Generador: federación → club → categoría → jugador. Cada combo carga el siguiente y limpia los de abajo; con la
-    // categoría elegida ya se puede generar. «Todas las categorías» es el informe del club completo; un jugador, su
-    // informe de jugador; «Todos los jugadores», el del equipo.
+    // categoría elegida ya se puede generar (siempre una: el club completo no se ofrece, es demasiado costoso). Un
+    // jugador, su informe de jugador; «Todos los jugadores», el del equipo.
     const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
     const PERIOD = {SEASON: "Temporada completa", OPENING: "Apertura", CLOSING: "Clausura", LAST_5: "Últimos 5 partidos"};
-    const ALL = "ALL";
     let catalog = null;
     // Cada carga lleva su número: si llega tarde (ya se eligió otra cosa), se descarta.
     let loading = 0;
@@ -202,8 +201,7 @@
         }
     }
 
-    // Categorías del club con jugadores (sin jugadores no hay informe). De entrada, el club completo: con el club
-    // elegido ya se puede generar; una categoría lo cambia por el informe de esa categoría.
+    // Categorías del club con jugadores (sin jugadores no hay informe): hay que elegir una para generar.
     async function loadCategories() {
         reset("categoria");
         const clubId = $("club").value;
@@ -216,12 +214,12 @@
             const club = await getJson(`/api/catalog/club?clubId=${clubId}&year=${catalog.year}`
                 + `&federation=${$("federacion").value}`);
             if (n !== loading) return;
-            const options = [[ALL, "Todas las categorías (informe del club)"]];
+            const options = [];
             for (const b of ["MASCULINO", "FEMENINO"]) {
                 club.categories.filter(c => c.branches.includes(b))
                     .forEach(c => options.push([`${c.key}|${b}`, `${c.label} ${BRANCH_LABEL[b]}`]));
             }
-            fill(sel, null, options);
+            fill(sel, "Elegí la categoría", options);
             sel.disabled = false;
             updateGo();
         } catch (e) {
@@ -239,7 +237,7 @@
         reset("jugador");
         updateGo();
         const value = $("categoria").value;
-        if (!value || value === ALL) return;
+        if (!value) return;
         const [category, branch] = value.split("|");
         const n = ++loading;
         const sel = $("jugador");
@@ -298,18 +296,18 @@
                 job = await poll(`/api/player/reports/${body.id}`);
                 title = `${$("jugador").selectedOptions[0].text} · ${PERIOD[period]} ${year}`;
             } else {
-                const [category, branch] = cat === ALL ? [null, null] : cat.split("|");
+                const [category, branch] = cat.split("|");
                 const body = await postJson("/api/reports", {federation: fed, clubId, category, branch, period, year});
                 showQuota();
                 job = await poll(`/api/reports/${body.id}`);
-                title = `${club} · ${cat === ALL ? "Club completo" : $("categoria").selectedOptions[0].text}`
+                title = `${club} · ${$("categoria").selectedOptions[0].text}`
                     + ` · ${PERIOD[period]} ${year}`;
             }
             status("Informe listo.");
             rrHistory();
             const shown = rrShowReport($("visor"), job, title);
             // Del informe de una categoría se pasa al comparativo (su propia pantalla), con este equipo ya elegido.
-            if (!playerId && cat !== ALL) offerCompare(fed, year, cat, clubId, job.nextOpponent);
+            if (!playerId) offerCompare(fed, year, cat, clubId, job.nextOpponent);
             await shown;
         } catch (e) {
             status(e.message, true);

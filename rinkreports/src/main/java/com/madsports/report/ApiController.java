@@ -33,7 +33,7 @@ public class ApiController {
 
     /**
      * @param categoria INFANTIL, PREJUVENIL, JUVENIL, JUNIORS, RESERVA o PRIMERA ("INFANTIL:B" si el club tiene dos
-     *                  equipos); sin categoría ni rama, el informe del club completo (todas sus ramas y categorías)
+     *                  equipos); obligatoria, igual que la rama
      * @param rama      MASCULINO o FEMENINO
      * @param periodo   APERTURA, CLAUSURA, TEMPORADA (Apertura + Clausura, por defecto) o ULTIMOS_5
      * @param anio      año (p. ej. 2026); si falta, el más reciente con datos
@@ -109,7 +109,7 @@ public class ApiController {
         return roster.players(Federation.parse(federation), clubId, catalog.checkYear(year), category, branch);
     }
 
-    /** Informe de una categoría o del club completo, de cualquier club de las federaciones ofrecidas. */
+    /** Informe de una categoría, de cualquier club de las federaciones ofrecidas. */
     @PostMapping("/reports")
     public ResponseEntity<JobView> create(@Valid @RequestBody ReportRequest req, Authentication auth) {
         UserAccount u = users.findByPrincipal(auth.getName())
@@ -117,15 +117,13 @@ public class ApiController {
         Federation fed = federations.resolve(req.federation(), u);
         ReportService.Scope scope = ReportService.Scope.parse(req.period());
         int year = catalog.checkYear(req.year());
-        if (!req.wholeClub() && (req.category() == null || req.category().isBlank()
-                || req.branch() == null || req.branch().isBlank())) {
-            throw new IllegalArgumentException("Elegí la categoría y la rama, o ninguna para el informe del club completo.");
+        // Siempre una categoría: el informe del club completo (todas a la vez) es demasiado costoso de armar.
+        if (req.category() == null || req.category().isBlank() || req.branch() == null || req.branch().isBlank()) {
+            throw new IllegalArgumentException("Elegí la categoría y la rama.");
         }
         String club = catalog.club(fed, req.clubId(), year).name();
-        ReportService.Job job = quota.consume(u, club + " · " + detail(req, scope, year), () -> req.wholeClub()
-                ? reports.submitClub(req.clubId(), scope, year, fed, u.principal(), req.categories())
-                : reports.submit(new ReportService.Request(req.clubId(), req.category(), req.branch(), scope, year,
-                        fed), u.principal()));
+        ReportService.Job job = quota.consume(u, club + " · " + detail(req, scope, year), () -> reports.submit(
+                new ReportService.Request(req.clubId(), req.category(), req.branch(), scope, year, fed), u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(JobView.of(job));
     }
 
