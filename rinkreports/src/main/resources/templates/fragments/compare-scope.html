@@ -92,8 +92,8 @@
         </tr>
     </table>
     </th:block>
-    <p class="muted" th:unless="${tops}">Los top 3 de goles, tarjetas, penales y libres salen de las tablas de la
-        federación por torneo: no se pueden recortar a los últimos 5 partidos.</p>
+    <p class="muted" th:unless="${tops}">Sin las fichas de temporada de los jugadores, los top 3 de goles, tarjetas,
+        penales y libres no se pueden recortar a los últimos 5 partidos.</p>
 
     <th:block th:with="ga=${c.goalsByBucket(a.report.timeProfile)}, gb=${c.goalsByBucket(b.report.timeProfile)}">
         <th:block th:if="${ga != null or gb != null}">
