@@ -11,8 +11,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -37,6 +39,9 @@ public class SidgadClient {
     private final Cache<String, Fetched> profileCache;
     /** Las actas guardadas de forma permanente (null en los tests sin base). */
     private volatile SheetStore sheetStore;
+    /** La copia guardada del catálogo (null en los tests sin base). */
+    private volatile CatalogStore catalogStore;
+    private Clock clock = Clock.systemUTC();
     private final Cache<String, byte[]> logoCache;
     /** Un lock (no synchronized): el turno duerme adentro y, en Java 21, dormir en un synchronized fija el hilo virtual. */
     private final ReentrantLock throttle = new ReentrantLock();
@@ -97,21 +102,114 @@ public class SidgadClient {
      * informe. Cualquier otro error HTTP o de red sí corta el informe.
      */
 
+    /** Catálogo de competiciones ({@code cap_ls_1.php}), con sus clubes y equipos. Ver {@link #catalogCopy(String)}. */
     public String catalog() {
-        return cachedIn(catalogCache, "ls", "cap_ls_1.php", Map.of("idm", "1"));
+        return catalogCopy(CATALOG);
     }
 
     /** Página principal del portal (GET): trae la lista de temporadas con su año (selector "Temporada"). */
     public String portal() {
-        String hit = catalogCache.getIfPresent("portal");
+        return catalogCopy(PORTAL);
+    }
+
+    /** Claves de las copias del catálogo en {@link CatalogStore}. */
+    static final String CATALOG = "sidgad:ls";
+    static final String PORTAL = "sidgad:portal";
+
+    /** Lo que dejó una actualización del catálogo: si se pudo bajar todo y qué cambió respecto de la copia anterior. */
+    public record CatalogRefresh(boolean downloaded, List<String> changes) {
+    }
+
+    /**
+     * Baja de nuevo el catálogo y el portal aunque la copia esté vigente (la precarga de madrugada, una vez por día) y
+     * guarda la copia nueva. Si SIDGAD falla, queda la anterior.
+     */
+    public CatalogRefresh refreshCatalog() {
+        boolean downloaded = true;
+        List<String> changes = List.of();
+        for (String key : List.of(CATALOG, PORTAL)) {
+            Optional<CatalogStore.Stored> saved = stored(key);
+            Optional<String> fresh;
+            try {
+                fresh = download(key);
+            } catch (SidgadException e) {
+                log.warn("SIDGAD falló al actualizar el catálogo ({}), queda la copia anterior: {}", key, e.getMessage());
+                fresh = Optional.empty();
+            }
+            if (fresh.isEmpty()) {
+                downloaded = false;
+            } else if (key.equals(CATALOG) && saved.isPresent()) {
+                changes = CatalogChanges.between(saved.get().body(), fresh.get());
+            }
+        }
+        return new CatalogRefresh(downloaded, changes);
+    }
+
+    /**
+     * Una parte del catálogo: primero la memoria; después la copia guardada en la base si tiene menos de
+     * {@code catalog-ttl}; si no, se baja de SIDGAD y se guarda. Si SIDGAD falla y hay una copia guardada (aunque sea
+     * vieja), se sigue con esa.
+     */
+    private String catalogCopy(String key) {
+        String hit = catalogCache.getIfPresent(key);
         if (hit != null) {
             return hit;
         }
-        String body = fetch(props.origin() + "/", Connection.Method.GET, Map.of(), "portal");
-        if (!body.equals(NOT_PUBLISHED)) {
-            catalogCache.put("portal", body);
+        Optional<CatalogStore.Stored> saved = stored(key);
+        if (saved.isPresent() && saved.get().fetchedAt().plus(props.catalogTtl()).isAfter(clock.instant())) {
+            catalogCache.put(key, saved.get().body());
+            return saved.get().body();
         }
-        return body;
+        try {
+            Optional<String> fresh = download(key);
+            if (fresh.isPresent()) {
+                return fresh.get();
+            }
+        } catch (SidgadException e) {
+            if (saved.isEmpty()) {
+                throw e;
+            }
+            log.warn("SIDGAD falló al bajar el catálogo ({}), se sigue con la copia del {}: {}", key,
+                    saved.get().fetchedAt(), e.getMessage());
+        }
+        if (saved.isEmpty()) {
+            return NOT_PUBLISHED;
+        }
+        catalogCache.put(key, saved.get().body());
+        return saved.get().body();
+    }
+
+    /** Baja la parte del catálogo y la guarda (memoria y base); vacío si SIDGAD no la publicó. */
+    private Optional<String> download(String key) {
+        String body = key.equals(PORTAL)
+                ? fetch(props.origin() + "/", Connection.Method.GET, Map.of(), "portal")
+                : post("cap_ls_1.php", Map.of("idm", "1"));
+        if (body.equals(NOT_PUBLISHED)) {
+            return Optional.empty();
+        }
+        catalogCache.put(key, body);
+        CatalogStore store = catalogStore;
+        if (store != null) {
+            try {
+                store.put(key, body);
+            } catch (RuntimeException e) {
+                log.warn("No se pudo guardar la copia del catálogo {}: {}", key, e.getMessage());
+            }
+        }
+        return Optional.of(body);
+    }
+
+    private Optional<CatalogStore.Stored> stored(String key) {
+        CatalogStore store = catalogStore;
+        if (store == null) {
+            return Optional.empty();
+        }
+        try {
+            return store.get(key);
+        } catch (RuntimeException e) {
+            log.warn("No se pudo leer la copia del catálogo {}: {}", key, e.getMessage());
+            return Optional.empty();
+        }
     }
 
     public String standings(int idc) {
@@ -132,6 +230,17 @@ public class SidgadClient {
     @Autowired(required = false)
     public void setSheetStore(SheetStore store) {
         this.sheetStore = store;
+    }
+
+    /** El catálogo se guarda en este almacén (lo registra la app; sin él, solo en memoria). */
+    @Autowired(required = false)
+    public void setCatalogStore(CatalogStore store) {
+        this.catalogStore = store;
+    }
+
+    /** Reloj con que se mide la vigencia de la copia guardada del catálogo (los tests lo fijan). */
+    void setClock(Clock clock) {
+        this.clock = clock;
     }
 
     /**

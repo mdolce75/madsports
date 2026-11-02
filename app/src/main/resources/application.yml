@@ -84,7 +84,9 @@ madsports:
     # vez y 50 por segundo, en su propio cupo.
     club-factor: 5
     data-ttl: 15m
-    catalog-ttl: 6h
+    # Vigencia de la copia del catálogo (competiciones, clubes, equipos), guardada en la base: la precarga de
+    # madrugada la renueva cada día; el margen evita bajarla de nuevo justo antes de la precarga.
+    catalog-ttl: 26h
     timeout: 20s
     # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federation (de Infantil para arriba)
     # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa
