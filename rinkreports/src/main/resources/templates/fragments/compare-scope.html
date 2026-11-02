@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!--/* Un alcance del comparativo (torneo actual o año): los dos equipos lado a lado. a y b son Comparison.View. */-->
+<th:block th:fragment="scope(title, a, b, na, nb)">
+    <h3 class="apartado" th:text="${title}">Torneo actual</h3>
+
+    <table class="vs nobreak" th:with="ra=${a.report}, rb=${b.report}, ta=${a.report.total}, tb=${b.report.total}">
+        <tr><th class="l"></th><th class="ta" th:text="${na}">A</th><th class="tb" th:text="${nb}">B</th></tr>
+        <tr th:if="${!ra.standings.isEmpty() or !rb.standings.isEmpty()}">
+            <td class="l">Posición en la tabla</td>
+            <td th:text="${ra.standings.isEmpty() ? '-' : ra.standings[0].position + 'º de ' + ra.standings[0].groupSize}">1º</td>
+            <td th:text="${rb.standings.isEmpty() ? '-' : rb.standings[0].position + 'º de ' + rb.standings[0].groupSize}">2º</td>
+        </tr>
+        <tr><td class="l">Partidos jugados</td><td th:text="${ta.played}">0</td><td th:text="${tb.played}">0</td></tr>
+        <tr><td class="l">Ganados</td><td th:text="${ta.won}">0</td><td th:text="${tb.won}">0</td></tr>
+        <tr><td class="l">Empatados</td><td th:text="${ta.drawn}">0</td><td th:text="${tb.drawn}">0</td></tr>
+        <tr><td class="l">Perdidos</td><td th:text="${ta.lost}">0</td><td th:text="${tb.lost}">0</td></tr>
+        <tr><td class="l">Efectividad</td><td th:text="${f.pct(ta.effectiveness())}">0</td><td th:text="${f.pct(tb.effectiveness())}">0</td></tr>
+        <tr class="sep"><td class="l">Goles a favor</td><td th:text="${ta.goalsFor}">0</td><td th:text="${tb.goalsFor}">0</td></tr>
+        <tr><td class="l">Goles en contra</td><td th:text="${ta.goalsAgainst}">0</td><td th:text="${tb.goalsAgainst}">0</td></tr>
+        <tr><td class="l">Diferencia de gol</td><td th:text="${(ta.goalDiff() > 0 ? '+' : '') + ta.goalDiff()}">0</td><td th:text="${(tb.goalDiff() > 0 ? '+' : '') + tb.goalDiff()}">0</td></tr>
+        <tr><td class="l">Goles a favor por partido</td><td th:text="${f.dec(ta.goalsForPerGame())}">0</td><td th:text="${f.dec(tb.goalsForPerGame())}">0</td></tr>
+        <tr><td class="l">Goles en contra por partido</td><td th:text="${f.dec(ta.goalsAgainstPerGame())}">0</td><td th:text="${f.dec(tb.goalsAgainstPerGame())}">0</td></tr>
+        <th:block th:if="${ra.fouls.matches > 0 or rb.fouls.matches > 0}">
+            <tr class="sep"><td class="l">Faltas cometidas</td><td th:text="${ra.fouls.own}">0</td><td th:text="${rb.fouls.own}">0</td></tr>
+            <tr><td class="l">Faltas por partido</td>
+                <td th:text="${ra.fouls.matches == 0 ? '-' : f.dec(1.0 * ra.fouls.own / ra.fouls.matches)}">0</td>
+                <td th:text="${rb.fouls.matches == 0 ? '-' : f.dec(1.0 * rb.fouls.own / rb.fouls.matches)}">0</td></tr>
+            <tr><td class="l">Faltas recibidas</td><td th:text="${ra.fouls.opponent}">0</td><td th:text="${rb.fouls.opponent}">0</td></tr>
+        </th:block>
+        <tr class="sep"><td class="l"><span class="card y"></span> Amarillas</td><td th:text="${a.cardColors()[0]}">0</td><td th:text="${b.cardColors()[0]}">0</td></tr>
+        <tr><td class="l"><span class="card b"></span> Azules</td><td th:text="${a.cardColors()[1]}">0</td><td th:text="${b.cardColors()[1]}">0</td></tr>
+        <tr><td class="l"><span class="card r"></span> Rojas</td><td th:text="${a.cardColors()[2]}">0</td><td th:text="${b.cardColors()[2]}">0</td></tr>
+        <tr><td class="l">Tarjetas yendo ganando</td><td th:text="${a.cardStates()[0]}">0</td><td th:text="${b.cardStates()[0]}">0</td></tr>
+        <tr><td class="l">Tarjetas yendo empatando</td><td th:text="${a.cardStates()[1]}">0</td><td th:text="${b.cardStates()[1]}">0</td></tr>
+        <tr><td class="l">Tarjetas yendo perdiendo</td><td th:text="${a.cardStates()[2]}">0</td><td th:text="${b.cardStates()[2]}">0</td></tr>
+    </table>
+    <p class="muted">Faltas y tarjetas, de las actas publicadas. Las tarjetas del cuerpo técnico no se cuentan acá.</p>
+
+    <h4>Goleadores</h4>
+    <table class="two nobreak">
+        <tr>
+            <td th:each="v, i : ${ {a, b} }">
+                <table>
+                    <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th><th>PJ</th><th>Goles</th></tr>
+                    <tr th:each="p : ${v.topScorers()}"><td class="l" th:text="${p.name}">Jugador</td><td th:text="${p.games}">0</td><td th:text="${p.goals}">0</td></tr>
+                    <tr th:if="${v.topScorers().isEmpty()}"><td class="l muted" colspan="3">Sin goles</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <th:block th:if="${!a.topPenalties().isEmpty() or !b.topPenalties().isEmpty() or !a.topFreeHits().isEmpty() or !b.topFreeHits().isEmpty()}">
+        <h4>Penales y libres directos (convertidos / tirados)</h4>
+        <table class="two nobreak">
+            <tr>
+                <td th:each="v, i : ${ {a, b} }">
+                    <table>
+                        <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th><th>Penales</th><th>Libres</th></tr>
+                        <tr th:each="p : ${v.topPenalties()}"><td class="l" th:text="${p.name}">Jugador</td>
+                            <td th:text="${f.fraction(p.penaltiesScored, p.penaltiesTaken)}">0/0</td>
+                            <td th:text="${p.directFreeTaken == 0 ? '-' : f.fraction(p.directFreeScored, p.directFreeTaken)}">-</td></tr>
+                        <tr th:each="p : ${v.topFreeHits()}" th:unless="${v.topPenalties().contains(p)}"><td class="l" th:text="${p.name}">Jugador</td>
+                            <td th:text="${p.penaltiesTaken == 0 ? '-' : f.fraction(p.penaltiesScored, p.penaltiesTaken)}">-</td>
+                            <td th:text="${f.fraction(p.directFreeScored, p.directFreeTaken)}">0/0</td></tr>
+                        <tr th:if="${v.topPenalties().isEmpty() and v.topFreeHits().isEmpty()}"><td class="l muted" colspan="3">Sin penales ni libres</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </th:block>
+
+    <h4>Disciplina</h4>
+    <table class="two nobreak">
+        <tr>
+            <td th:each="v, i : ${ {a, b} }">
+                <table>
+                    <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th>
+                        <th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th></tr>
+                    <tr th:each="p : ${v.topDiscipline()}"><td class="l" th:text="${p.name}">Jugador</td>
+                        <td th:text="${p.yellowCards}">0</td><td th:text="${p.blueCards}">0</td><td th:text="${p.redCards}">0</td></tr>
+                    <tr th:if="${v.topDiscipline().isEmpty()}"><td class="l muted" colspan="4">Sin tarjetas</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <th:block th:with="ga=${c.goalsByBucket(a.report.timeProfile)}, gb=${c.goalsByBucket(b.report.timeProfile)}">
+        <th:block th:if="${ga != null or gb != null}">
+            <h4>Goles por tramo de 5 minutos</h4>
+            <table class="two nobreak">
+                <tr>
+                    <td><div class="chart-title ta" th:text="${na}">A</div><img class="chart" th:if="${ga != null}" th:src="${ga}" th:alt="|Goles por tramo de ${na}|"/></td>
+                    <td><div class="chart-title tb" th:text="${nb}">B</div><img class="chart" th:if="${gb != null}" th:src="${gb}" th:alt="|Goles por tramo de ${nb}|"/></td>
+                </tr>
+            </table>
+        </th:block>
+    </th:block>
+
+    <th:block th:with="ca=${c.cardsByState(a.report.timeProfile, a.cards)}, cb=${c.cardsByState(b.report.timeProfile, b.cards)}">
+        <th:block th:if="${ca != null or cb != null}">
+            <h4>Tarjetas por tramo, según cómo iba el partido</h4>
+            <table class="two nobreak">
+                <tr>
+                    <td><div class="chart-title ta" th:text="${na}">A</div><img class="chart" th:if="${ca != null}" th:src="${ca}" th:alt="|Tarjetas por tramo de ${na}|"/></td>
+                    <td><div class="chart-title tb" th:text="${nb}">B</div><img class="chart" th:if="${cb != null}" th:src="${cb}" th:alt="|Tarjetas por tramo de ${nb}|"/></td>
+                </tr>
+            </table>
+        </th:block>
+    </th:block>
+</th:block>
+</body>
+</html>

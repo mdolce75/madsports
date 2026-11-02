@@ -107,7 +107,10 @@ public final class ComparisonCalc {
         return best;
     }
 
-    /** Cada tarjeta del equipo en sus partidos con acta, en orden, con el marcador en ese momento. */
+    /**
+     * Cada tarjeta del equipo en sus partidos con acta, en orden, con el marcador en ese momento. Es de un jugador si
+     * figura en el plantel ({@code squad}: los de las planillas de sus partidos); si no, del cuerpo técnico.
+     */
     static List<CardLine> cards(Input in, List<PlayerLine> squad, List<Competition> all) {
         Map<Competition, TeamRef> teams = StatsEngine.teamsOf(in.data(), in.club(), in.teamKey());
         Set<Integer> squadIds = squad.stream().map(PlayerLine::playerId).filter(id -> id > 0).collect(Collectors.toSet());

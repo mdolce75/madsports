@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="|Comparativo ${r.a.name} vs ${r.b.name}|">Comparativo</title>
+    <style th:inline="css">
+        @page {
+            size: A4;
+            margin: 16mm 14mm 18mm 14mm;
+            @bottom-left { content: "Informe elaborado por RinkReports · Datos: [(${r.federation})] (SIDGAD)"; font-size: 8pt; color: #888; font-family: sans-serif; }
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 8pt; color: #888; font-family: sans-serif; }
+        }
+        body { font-family: sans-serif; font-size: 9.5pt; color: #1d2433; line-height: 1.35; }
+        h1 { font-size: 20pt; margin: 2px 0 0 0; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
+        h3 { font-size: 10pt; color: #12303a; text-transform: uppercase; letter-spacing: .5px;
+             border-left: 3px solid #0a7ea4; padding-left: 5px; margin: 12px 0 5px 0; }
+        h3.apartado { border-left: none; background: #0a7ea4; color: #fff; padding: 3px 8px; margin: 16px 0 6px 0; }
+        h4 { font-size: 8.5pt; color: #12303a; text-transform: uppercase; letter-spacing: .5px; margin: 10px 0 4px 0; }
+        h3, h4 { page-break-after: avoid; }
+        .brandline { font-size: 7.5pt; font-weight: bold; color: #0a7ea4; text-transform: uppercase; letter-spacing: 2px; }
+        .subtitle { font-size: 11pt; color: #e3e8f1; margin-top: 3px; }
+        .meta { font-size: 8.5pt; color: #93a1b8; margin-top: 4px; }
+        .header { background: #12303a; border-left: 8px solid #0a7ea4; padding: 12px 14px; margin-bottom: 12px; }
+        .header table { margin: 0; }
+        .header td { border: none; padding: 0; text-align: left; vertical-align: middle; }
+        .header td.crest { width: 64px; padding-right: 10px; }
+        .header td.crest.right { padding: 0 0 0 10px; }
+        .crest img { width: 56px; height: 56px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        th { background: #12303a; color: #fff; font-weight: bold; font-size: 8.5pt; padding: 3px 4px; text-align: center; }
+        th.ta { background: #0a7ea4; } th.tb { background: #2f855a; }
+        td { border-bottom: 1px solid #e2e8f0; padding: 3px 4px; text-align: center; font-size: 8.5pt; }
+        td.l, th.l { text-align: left; }
+        table.vs td { width: 30%; } table.vs td.l { width: 40%; }
+        tr.sep td { border-top: 2px solid #12303a; }
+        tr { page-break-inside: avoid; }
+        .kpis { width: 100%; margin: 4px 0; }
+        .kpis td { border: none; border-top: 3px solid #0a7ea4; background: #f4f6fa; padding: 5px 2px; width: 16.6%; }
+        .kpis.tb td { border-top-color: #2f855a; }
+        .kpi-v { font-size: 13pt; font-weight: bold; color: #12303a; }
+        .kpi-l { font-size: 7pt; color: #718096; text-transform: uppercase; letter-spacing: .5px; }
+        .chip { display: inline-block; width: 16px; padding: 1px 0; text-align: center; color: #fff; font-weight: bold; font-size: 8pt; border-radius: 3px; }
+        .G { background: #2f855a; } .E { background: #b7791f; } .P { background: #c53030; }
+        .card { display: inline-block; width: 7px; height: 10px; border-radius: 1px; vertical-align: middle; }
+        .card.y { background: #ecc94b; } .card.b { background: #3182ce; } .card.r { background: #e53e3e; }
+        img.chart { width: 100%; }
+        .chart-title { font-size: 8pt; font-weight: bold; text-transform: uppercase; padding: 2px 4px; color: #fff; }
+        .chart-title.ta { background: #0a7ea4; } .chart-title.tb { background: #2f855a; }
+        .two { width: 100%; }
+        .two > tbody > tr > td { width: 50%; vertical-align: top; border: none; padding: 0 4px 0 0; text-align: left; }
+        .side-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; padding: 3px 6px; color: #fff; }
+        .side-name.ta { background: #0a7ea4; } .side-name.tb { background: #2f855a; }
+        .notes { background: #f7fafc; border-left: 4px solid #0a7ea4; padding: 6px 10px; margin: 8px 0; }
+        .notes p { margin: 3px 0; }
+        .warn { border-left-color: #b7791f; }
+        .muted { color: #718096; font-size: 8pt; }
+        .nobreak { page-break-inside: avoid; }
+        .nw { white-space: nowrap; }
+        .page { page-break-before: always; }
+        .staff td { color: #718096; font-style: italic; }
+        .st-AHEAD { color: #2f855a; font-weight: bold; } .st-LEVEL { color: #b7791f; font-weight: bold; } .st-BEHIND { color: #c53030; font-weight: bold; }
+    </style>
+    <style th:if="${sample}">
+        @page {
+            @top-center { content: "INFORME DE EJEMPLO — DATOS FICTICIOS"; font-size: 9pt; font-weight: bold; color: #c53030; font-family: sans-serif; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <table>
+        <tr>
+            <td class="crest" th:if="${r.a.club.logo != null}"><img th:src="${r.a.club.logo}" th:alt="|Escudo de ${r.a.name}|"/></td>
+            <td>
+                <div class="brandline">RinkReports · Hockey sobre patines · Comparativo de equipos</div>
+                <h1 th:text="|${r.a.name} vs ${r.b.name}|">A vs B</h1>
+                <div class="subtitle" th:text="|${r.category} · ${r.federation} · Temporada ${r.year}|">Categoría</div>
+                <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(r.generatedOn)}|">fecha</div>
+            </td>
+            <td class="crest right" th:if="${r.b.club.logo != null}"><img th:src="${r.b.club.logo}" th:alt="|Escudo de ${r.b.name}|"/></td>
+        </tr>
+    </table>
+</div>
+
+<div class="notes" th:if="${!r.summary.isEmpty()}">
+    <p th:each="s : ${r.summary}" th:text="${s}">Resumen</p>
+</div>
+<div class="notes warn" th:if="${!r.notes.isEmpty() or !r.notPublished.isEmpty()}">
+    <p th:each="n : ${r.notes}" th:text="${n}">Nota</p>
+    <p th:if="${!r.notPublished.isEmpty()}" class="muted" th:text="|No publicado por la federación: ${#strings.listJoin(r.notPublished, '; ')}|">No publicado</p>
+</div>
+
+<h3 class="apartado">Cómo llegan · últimos 5 partidos</h3>
+<table class="two">
+    <tr>
+        <td th:each="s, i : ${ {r.a, r.b} }" th:with="t=${s.last5.total}, cl=${i.index == 0 ? 'ta' : 'tb'}">
+            <div class="side-name" th:classappend="${cl}" th:text="${s.name}">Equipo</div>
+            <table class="kpis" th:classappend="${cl}">
+                <tr>
+                    <td><div class="kpi-v" th:text="${t.played}">0</div><div class="kpi-l">PJ</div></td>
+                    <td><div class="kpi-v" th:text="${t.won}">0</div><div class="kpi-l">G</div></td>
+                    <td><div class="kpi-v" th:text="${t.drawn}">0</div><div class="kpi-l">E</div></td>
+                    <td><div class="kpi-v" th:text="${t.lost}">0</div><div class="kpi-l">P</div></td>
+                    <td><div class="kpi-v" th:text="${t.goalsFor}">0</div><div class="kpi-l">GF</div></td>
+                    <td><div class="kpi-v" th:text="${t.goalsAgainst}">0</div><div class="kpi-l">GC</div></td>
+                </tr>
+            </table>
+            <table>
+                <tr><th>Fecha</th><th class="l">Rival</th><th></th><th>Res.</th><th></th></tr>
+                <tr th:each="m : ${s.last5.results}">
+                    <td th:text="${f.date(m.date)}">01/01</td>
+                    <td class="l" th:text="${m.opponent}">Rival</td>
+                    <td th:text="${m.home ? 'L' : 'V'}">L</td>
+                    <td th:text="${m.score()}">0 - 0</td>
+                    <td><span class="chip" th:classappend="${m.outcome}" th:text="${m.outcome}">G</span></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<div th:replace="~{fragments/compare-scope :: scope(|Torneo actual · ${r.a.currentTournament}|, ${r.a.current}, ${r.b.current}, ${r.a.name}, ${r.b.name})}"></div>
+
+<div class="page"></div>
+<div th:replace="~{fragments/compare-scope :: scope(|Año ${r.year}|, ${r.a.season}, ${r.b.season}, ${r.a.name}, ${r.b.name})}"></div>
+
+<th:block th:if="${!r.a.season.cards.isEmpty() or !r.b.season.cards.isEmpty()}">
+    <h3 class="apartado">Tarjetas del año, una por una</h3>
+    <p class="muted">Con el marcador del equipo en ese momento. En cursiva, las del cuerpo técnico.</p>
+    <th:block th:each="s, i : ${ {r.a, r.b} }">
+        <th:block th:if="${!s.season.cards.isEmpty()}">
+            <div class="side-name" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${s.name}">Equipo</div>
+            <table>
+                <tr><th>Fecha</th><th class="l">Rival</th><th class="l">Jugador</th><th>Tarjeta</th><th>Minuto</th><th>Marcador</th><th>Iba</th></tr>
+                <tr th:each="k : ${s.season.cards}" th:classappend="${k.staff ? 'staff' : ''}">
+                    <td th:text="${f.date(k.date)}">01/01</td>
+                    <td class="l" th:text="${k.opponent}">Rival</td>
+                    <td class="l" th:text="${k.staff ? k.player + ' (cuerpo técnico)' : k.player}">Jugador</td>
+                    <td><span class="card" th:classappend="${k.card == 'Amarilla' ? 'y' : k.card == 'Azul' ? 'b' : 'r'}"></span>
+                        <span th:text="${k.card}">Azul</span></td>
+                    <td th:text="${k.minuteLabel()}">1T 00:00</td>
+                    <td th:text="${k.score()}">0-0</td>
+                    <td th:classappend="|st-${k.state()}|" th:text="${k.state().label()}">ganando</td>
+                </tr>
+            </table>
+        </th:block>
+    </th:block>
+</th:block>
+
+<h3 class="apartado">Enfrentamientos del año</h3>
+<table th:if="${!r.headToHead.isEmpty()}">
+    <tr><th>Fecha</th><th class="l">Torneo</th><th class="l">Local</th><th>Resultado</th><th class="l">Visitante</th><th class="l">Goleadores</th></tr>
+    <tr th:each="m : ${r.headToHead}">
+        <td class="nw" th:text="${m.date == null ? '-' : f.date(m.date)}">01/01</td>
+        <td class="l nw" th:text="|${m.tournament} · F${m.round}|">Apertura</td>
+        <td class="l" th:text="${m.home}">Local</td>
+        <td th:text="${m.played() ? m.homeGoals + ' - ' + m.awayGoals : 'por jugar'}">0 - 0</td>
+        <td class="l" th:text="${m.away}">Visitante</td>
+        <td class="l muted">
+            <th:block th:each="g, gi : ${m.scorers}"><span th:text="|${g.player}${g.goals > 1 ? ' (' + g.goals + ')' : ''} · ${g.home ? m.home : m.away}|">Goleador</span><br th:unless="${gi.last}"/></th:block>
+        </td>
+    </tr>
+</table>
+<p class="muted" th:if="${r.headToHead.isEmpty()}">No se enfrentan en el año.</p>
+
+</body>
+</html>
