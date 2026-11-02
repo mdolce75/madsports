@@ -32,6 +32,10 @@ class SidgadClientTest {
     /** Respuesta de SIDGAD al catálogo: 200 con {@link #catalogBody}, o el error que se ponga. */
     final AtomicInteger catalogStatus = new AtomicInteger(200);
     volatile String catalogBody = "<a class='idc_master' id='779'>v1</a>";
+    /** Cuántas veces más el calendario responde 429 (demasiados pedidos) antes de contestar normal. */
+    final AtomicInteger busy = new AtomicInteger();
+    /** El Retry-After de esos 429 (null: sin encabezado). */
+    volatile String retryAfter;
 
     /** Un almacén del catálogo en memoria, como el de la base. */
     static class MemoryCatalogStore implements CatalogStore {
@@ -82,6 +86,16 @@ class SidgadClientTest {
                 // Ficha de temporada o acta: cada respuesta dice cuántas veces se pidió.
                 byte[] body = ("<p>" + hits.get(file).get() + "</p>").getBytes(StandardCharsets.UTF_8);
                 ex.sendResponseHeaders(200, body.length);
+                ex.getResponseBody().write(body);
+                ex.close();
+                return;
+            }
+            if (file.startsWith("cap_cal") && busy.getAndDecrement() > 0) {
+                if (retryAfter != null) {
+                    ex.getResponseHeaders().add("Retry-After", retryAfter);
+                }
+                byte[] body = "Too Many Requests".getBytes(StandardCharsets.UTF_8);
+                ex.sendResponseHeaders(429, body.length);
                 ex.getResponseBody().write(body);
                 ex.close();
                 return;
@@ -232,6 +246,87 @@ class SidgadClientTest {
         c.setCatalogStore(store);
         c.setClock(Clock.fixed(now, ZoneOffset.UTC));
         return c;
+    }
+
+    @Test
+    void aTooManyRequestsPausesAndRetries() {
+        client.retryBackoff(List.of(Duration.ofMillis(50), Duration.ofMillis(50), Duration.ofMillis(50)));
+        busy.set(2);
+        long start = System.nanoTime();
+
+        // Dos 429 y después la respuesta de siempre (404: no publicado).
+        assertThat(client.calendar(7)).isEqualTo(SidgadClient.NOT_PUBLISHED);
+        assertThat(hits.get("cap_cal_idc_7_1.php")).hasValue(3);
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isGreaterThanOrEqualTo(Duration.ofMillis(100));
+    }
+
+    @Test
+    void ifSidgadKeepsSayingTooManyRequestsTheReportStops() {
+        client.retryBackoff(List.of(Duration.ofMillis(10), Duration.ofMillis(10)));
+        busy.set(10);
+
+        assertThatThrownBy(() -> client.calendar(8)).isInstanceOf(SidgadException.class).hasMessageContaining("429");
+        assertThat(hits.get("cap_cal_idc_8_1.php")).hasValue(3);
+    }
+
+    @Test
+    void retryAfterInSecondsUpToAMinute() {
+        assertThat(SidgadClient.retryAfter("30")).contains(Duration.ofSeconds(30));
+        assertThat(SidgadClient.retryAfter(" 0 ")).contains(Duration.ZERO);
+        assertThat(SidgadClient.retryAfter("600")).contains(SidgadClient.MAX_PAUSE);
+        assertThat(SidgadClient.retryAfter(null)).isEmpty();
+        assertThat(SidgadClient.retryAfter("Wed, 21 Oct 2026 07:28:00 GMT")).isEmpty();
+    }
+
+    @Test
+    void theRetryAfterOfSidgadIsRespected() {
+        // Las esperas propias serían largas: manda el Retry-After de SIDGAD (0 s).
+        client.retryBackoff(List.of(Duration.ofSeconds(30)));
+        busy.set(1);
+        retryAfter = "0";
+        long start = System.nanoTime();
+
+        assertThat(client.calendar(9)).isEqualTo(SidgadClient.NOT_PUBLISHED);
+        assertThat(hits.get("cap_cal_idc_9_1.php")).hasValue(2);
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
+    }
+
+    /** Un cliente cuya conexión HTTP/2 rechaza los primeros {@code refusals} pedidos por "too many concurrent streams". */
+    private SidgadClient refusingStreams(int refusals) {
+        AtomicInteger left = new AtomicInteger(refusals);
+        SidgadClient c = new SidgadClient(new SidgadProperties(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/", "http://localhost", Duration.ZERO, 3,
+                Duration.ofMinutes(5), Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026), 1)) {
+            @Override
+            org.jsoup.Connection.Response request(String url, org.jsoup.Connection.Method method,
+                                                  Map<String, String> params, String file) {
+                if (left.getAndDecrement() > 0) {
+                    throw new SidgadException("No se pudo consultar " + file + ": too many concurrent streams",
+                            new java.io.IOException("too many concurrent streams"));
+                }
+                return super.request(url, method, params, file);
+            }
+        };
+        c.retryBackoff(List.of(Duration.ofMillis(10), Duration.ofMillis(10)));
+        return c;
+    }
+
+    @Test
+    void tooManyConcurrentStreamsAlsoPausesAndRetries() {
+        assertThat(refusingStreams(2).standings(3)).isEqualTo("<table></table>");
+        assertThat(hits.get("cap_clasif_idc_3_1.php")).hasValue(1);
+
+        assertThatThrownBy(() -> refusingStreams(5).standings(4)).isInstanceOf(SidgadException.class)
+                .hasMessageContaining("too many concurrent streams");
+        assertThat(hits).doesNotContainKey("cap_clasif_idc_4_1.php");
+    }
+
+    @Test
+    void otherNetworkErrorsAreNotRetried() {
+        assertThat(SidgadClient.tooManyStreams(new SidgadException("x", new java.io.IOException("Connection reset"))))
+                .isFalse();
+        assertThat(SidgadClient.tooManyStreams(new SidgadException("x",
+                new java.io.IOException("too many concurrent streams")))).isTrue();
     }
 
     @Test
