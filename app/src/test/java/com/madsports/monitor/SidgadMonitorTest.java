@@ -75,32 +75,21 @@ class SidgadMonitorTest {
     }
 
     SidgadMonitor monitor(FakeSite site, String alerts) {
-        return monitor(site, alerts, false);
+        return new SidgadMonitor(site, new CatalogService(site, PROPS), mailer, CLOCK, alerts, URLS,
+                List.of(Federation.FPP));
     }
 
-    SidgadMonitor monitor(FakeSite site, String alerts, boolean amp) {
-        return new SidgadMonitor(site, new CatalogService(site, PROPS), mailer,
-                Clock.fixed(Instant.parse("2026-10-19T11:00:00Z"), ZoneOffset.UTC), alerts,
-                new SiteUrls("https://rinkmetrics.test", "", "", ""), amp);
-    }
+    static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-19T11:00:00Z"), ZoneOffset.UTC);
+    static final SiteUrls URLS = new SiteUrls("https://rinkmetrics.test", "", "", "");
 
     @Test
-    void withTheAmpEnabledItAlsoChecksTheAmp() {
-        SidgadMonitor.Outcome r = monitor(new FakeSite(), "", true).check();
+    void itAlwaysChecksBothFederations() {
+        FakeSite site = new FakeSite();
+        SidgadMonitor.Outcome r = new SidgadMonitor(site, new CatalogService(site, PROPS), mailer, CLOCK, "", URLS)
+                .check();
         assertThat(r.ok()).isTrue();
         assertThat(r.detail()).startsWith("2026: 24 competiciones FPP;").contains(" · 2026: ")
                 .contains("competiciones AMP");
-        // Sin la AMP habilitada, solo la FPP.
-        assertThat(monitor(new FakeSite(), "").check().detail()).doesNotContain("AMP");
-    }
-
-    @Test
-    void theDailyFederationsAreTheConfiguredOnesPlusTheAmpWhenEnabled() {
-        assertThat(Monitored.federations(List.of(Federation.FPP), false)).containsExactly(Federation.FPP);
-        assertThat(Monitored.federations(List.of(Federation.FPP), true)).containsExactly(Federation.FPP, Federation.AMP);
-        // Si ya está configurada, no se repite.
-        assertThat(Monitored.federations(List.of(Federation.FPP, Federation.AMP), true))
-                .containsExactly(Federation.FPP, Federation.AMP);
     }
 
     @Test

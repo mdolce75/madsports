@@ -1,9 +1,12 @@
 package com.madsports.monitor;
 
+import com.madsports.account.MailContent;
+import com.madsports.account.Mailer;
 import com.madsports.catalog.CatalogService;
 import com.madsports.sidgad.SnapshotStore;
 import com.madsports.sidgad.model.Federation;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -16,6 +19,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /** La sincronización de madrugada, contra el SIDGAD simulado con páginas guardadas (las del monitor). */
 class SidgadWarmupTest {
@@ -78,7 +85,7 @@ class SidgadWarmupTest {
 
     private static SidgadWarmup warmup(CountingSite site, SnapshotStore store, Instant now) {
         return new SidgadWarmup(new CatalogService(site, SidgadMonitorTest.PROPS), site,
-                Clock.fixed(now, ZoneOffset.UTC), List.of("FPP"), false, store, 2);
+                Clock.fixed(now, ZoneOffset.UTC), List.of(Federation.FPP), store, 2);
     }
 
     @Test
@@ -131,6 +138,48 @@ class SidgadWarmupTest {
         quiet.onStartup();
         Thread.sleep(300);
         assertThat(off.refreshed).isEmpty();
+    }
+
+    @Test
+    void whenTheStartupSyncEndsItMailsHowEachFederationIsLeft() {
+        Mailer mailer = mock(Mailer.class);
+        CountingSite site = new CountingSite();
+        SidgadWarmup w = warmup(site, new MemoryStore());
+        w.setNotify(mailer, null, "info@madsports.com.ar");
+
+        w.run(true);
+
+        ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer).send(mail.capture());
+        assertThat(mail.getValue().to()).isEqualTo("info@madsports.com.ar");
+        assertThat(mail.getValue().subject()).isEqualTo("RinkReports: Sincronización de SIDGAD del arranque (deploy): terminó bien");
+        assertThat(mail.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: OK. 24 competiciones;"))
+                // Inicio, fin y cuánto tardó, en hora argentina (el reloj de la prueba está fijo).
+                .contains("Inicio: 20/10/2026 05:00:00 · Fin: 20/10/2026 05:00:00 · Tardó 0 s (hora argentina).");
+    }
+
+    @Test
+    void theNightlySyncOnlyMailsIfItHadErrors() {
+        Mailer mailer = mock(Mailer.class);
+        CountingSite site = new CountingSite();
+        SidgadWarmup w = warmup(site, new MemoryStore());
+        w.setNotify(mailer, null, "info@madsports.com.ar");
+
+        w.run();
+        verify(mailer, never()).send(any());
+
+        site.failing.add(779);
+        w.run();
+        ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer).send(mail.capture());
+        assertThat(mail.getValue().subject()).endsWith("de madrugada: terminó con errores");
+        assertThat(mail.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: con 3 errores"));
+
+        // Sin destinatario, no avisa.
+        Mailer quiet = mock(Mailer.class);
+        w.setNotify(quiet, null, "");
+        w.run(true);
+        verify(quiet, never()).send(any());
     }
 
     @Test
