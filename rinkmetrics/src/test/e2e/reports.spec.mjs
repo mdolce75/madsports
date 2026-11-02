@@ -4,8 +4,11 @@
 import {expect, test} from "@playwright/test";
 
 const CATALOGS = {
-    // Las categorías del catálogo son las que se ofrecen para comparar (equipos de la misma categoría y rama).
-    FPP: {available: true, year: 2026, years: [2026], clubs: [
+    // Las categorías y los equipos de cada club en el catálogo son los que se ofrecen para comparar.
+    FPP: {available: true, year: 2026, years: [2026], categories: [
+        {key: "INFANTIL", label: "Infantil", branches: ["FEMENINO"]},
+        {key: "JUVENIL", label: "Juvenil", branches: ["MASCULINO"]},
+        {key: "PRIMERA", label: "Primera", branches: ["MASCULINO", "FEMENINO"]}], clubs: [
         {id: 74, code: "CAVS", name: "VELEZ", categories: [
             {key: "PRIMERA", label: "Primera", branches: ["MASCULINO", "FEMENINO"]},
             {key: "INFANTIL:A", label: "Infantil A", branches: ["FEMENINO"]},
@@ -125,62 +128,47 @@ test("cascada: federación, club, categoría y jugador; con el club ya se genera
     await expect(page.locator("#go")).toBeEnabled();
 });
 
-test("comparar con otro equipo de la misma categoría y rama", async ({page}) => {
-    const sent = await api(page);
+test("el generador no compara: «Comparar equipos» es su propia pantalla", async ({page}) => {
+    await api(page);
     await page.goto("/rinkreports/reports.html");
+    await expect(page.locator("#rival")).toHaveCount(0);
+    await expect(page.locator("nav.secciones a", {hasText: "Comparar equipos"}))
+        .toHaveAttribute("href", "/rinkreports/compare.html");
+});
+
+test("comparar: solo equipos de la categoría elegida, de los clubes que la tienen", async ({page}) => {
+    const sent = await api(page);
+    await page.goto("/rinkreports/compare.html");
+    await expect(page.locator("nav.secciones a", {hasText: "Comparar equipos"})).toHaveAttribute("aria-current", "page");
     await page.locator("#federacion").selectOption("FPP");
-    await page.locator("#club").selectOption("74");
-    // Sin categoría (club completo) no hay con quién comparar.
-    await expect(page.locator("#rival")).toBeDisabled();
+    await expect(options(page, "categoria")).toHaveText(["Elegí la categoría", "Juvenil Masculino", "Primera Masculino",
+        "Infantil Femenino", "Primera Femenino"]);
+    await expect(page.locator("#go")).toBeDisabled();
 
-    // Primera Masculino: Argentinos tiene equipo; Primera Femenino, nadie más.
-    await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
-    await expect(options(page, "rival")).toHaveText(["Sin comparar", "ARGENTINOS JUNIORS"]);
-    await expect(page.locator("#rival")).toBeEnabled();
+    // Primera Femenino: solo Vélez la tiene, no hay con quién.
     await page.locator("#categoria").selectOption("PRIMERA|FEMENINO");
-    await expect(options(page, "rival")).toHaveText(["No hay otros equipos en la categoría"]);
-    await expect(page.locator("#rival")).toBeDisabled();
-    // Infantil B: el otro equipo del mismo club (Infantil A) también se puede comparar.
-    await page.locator("#categoria").selectOption("INFANTIL:B|FEMENINO");
-    await expect(options(page, "rival")).toHaveText(["Sin comparar", "VELEZ A"]);
+    await expect(page.locator("#equipo-a")).toBeDisabled();
+    await expect(options(page, "equipo-a")).toHaveText(["No hay dos equipos en la categoría"]);
+    // Infantil Femenino: los equipos A y B de Vélez.
+    await page.locator("#categoria").selectOption("INFANTIL|FEMENINO");
+    await expect(options(page, "equipo-a")).toHaveText(["Elegí el equipo", "VELEZ A", "VELEZ B"]);
 
-    // Con un rival: sin período ni jugador, y el botón lo dice.
+    // Primera Masculino: el rival se elige después y no repite el equipo.
     await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
-    await page.locator("#jugador").selectOption("1");
-    await page.locator("#rival").selectOption("94|PRIMERA");
-    await expect(page.locator("#jugador")).toHaveValue("");
-    await expect(page.locator("#periodo")).toBeDisabled();
-    await expect(page.locator("#compare-hint")).toBeVisible();
-    await expect(page.locator("#go")).toHaveText("Generar comparativo");
+    await expect(options(page, "equipo-a")).toHaveText(["Elegí el equipo", "ARGENTINOS JUNIORS", "VELEZ"]);
+    await expect(page.locator("#equipo-b")).toBeDisabled();
+    await page.locator("#equipo-a").selectOption("74|PRIMERA");
+    await expect(options(page, "equipo-b")).toHaveText(["Elegí el rival", "ARGENTINOS JUNIORS"]);
+    await page.locator("#equipo-b").selectOption("94|PRIMERA");
+    await expect(page.locator("#go")).toBeEnabled();
 
     await page.locator("#go").click();
     await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
     expect(sent.pop()).toEqual({url: "/api/compare/reports", body: {federation: "FPP", year: 2026,
         branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA"}});
-
-    // Elegir un jugador saca el rival: vuelve el informe de jugador.
-    await page.locator("#jugador").selectOption("2");
-    await expect(page.locator("#rival")).toHaveValue("");
-    await expect(page.locator("#periodo")).toBeEnabled();
-    await expect(page.locator("#go")).toHaveText("Generar informe");
 });
 
-test("«Comparar equipos» en el menú lleva al paso del comparativo", async ({page}) => {
-    await api(page);
-    await page.goto("/rinkreports/reports.html");
-    const link = page.locator("nav.secciones a", {hasText: "Comparar equipos"});
-    await expect(link).toHaveAttribute("href", "#comparar");
-    await page.locator("#federacion").selectOption("FPP");
-    await page.locator("#club").selectOption("74");
-    await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
-    await expect(page.locator("#rival")).toBeEnabled();
-    // El menú puede quedar en una hamburguesa en el celular: el enlace se sigue por su destino.
-    await page.evaluate(() => { location.hash = "comparar"; });
-    await expect(page.locator(".field.compare")).toHaveClass(/flash/);
-    await expect(page.locator("#rival")).toBeFocused();
-});
-
-test("desde el informe de una categoría, comparar con el próximo rival", async ({page}) => {
+test("desde el informe de una categoría, al comparativo con el próximo rival ya elegido", async ({page}) => {
     const sent = await api(page, {teamReady: "ARGENTINOS JUNIORS"});
     await page.goto("/rinkreports/reports.html");
     await page.locator("#federacion").selectOption("FPP");
@@ -189,8 +177,14 @@ test("desde el informe de una categoría, comparar con el próximo rival", async
     await page.locator("#go").click();
 
     const cta = page.locator(".rr-compare-cta");
-    await expect(cta.getByRole("button", {name: "Comparar con otro equipo"})).toBeVisible();
-    await cta.getByRole("button", {name: "Comparar con el próximo rival: ARGENTINOS JUNIORS"}).click();
+    await expect(cta.getByRole("link")).toHaveText(["Comparar con otro equipo",
+        "Comparar con el próximo rival: ARGENTINOS JUNIORS"]);
+    await cta.getByRole("link", {name: "Comparar con el próximo rival: ARGENTINOS JUNIORS"}).click();
+    await expect(page).toHaveURL(/\/rinkreports\/compare\.html\?/);
+    await expect(page.locator("#categoria")).toHaveValue("PRIMERA|MASCULINO");
+    await expect(page.locator("#equipo-a")).toHaveValue("74|PRIMERA");
+    await expect(page.locator("#equipo-b")).toHaveValue("94|PRIMERA");
+    await page.locator("#go").click();
     await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
     expect(sent.pop()).toEqual({url: "/api/compare/reports", body: {federation: "FPP", year: 2026,
         branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA"}});
@@ -205,9 +199,10 @@ test("sin el próximo rival en la categoría, solo «Comparar con otro equipo»"
     await page.locator("#go").click();
 
     const cta = page.locator(".rr-compare-cta");
-    await expect(cta.getByRole("button")).toHaveText(["Comparar con otro equipo"]);
-    await cta.getByRole("button", {name: "Comparar con otro equipo"}).click();
-    await expect(page.locator("#rival")).toBeFocused();
+    await expect(cta.getByRole("link")).toHaveText(["Comparar con otro equipo"]);
+    await cta.getByRole("link").click();
+    await expect(page.locator("#equipo-a")).toHaveValue("74|PRIMERA");
+    await expect(page.locator("#equipo-b")).toHaveValue("");
 });
 
 test("la portada de RinkReports presenta el comparativo", async ({page}) => {
@@ -215,6 +210,8 @@ test("la portada de RinkReports presenta el comparativo", async ({page}) => {
     // El servidor de prueba no resuelve carpetas: en la app, /rinkreports/ es esta portada.
     await page.goto("/rinkreports/index.html#comparar");
     await expect(page.locator("#comparar h3")).toHaveText("Comparar equipos, cara a cara");
+    await expect(page.locator("#comparar a", {hasText: "Comparar equipos"}))
+        .toHaveAttribute("href", "/rinkreports/compare.html");
     await expect(page.locator("nav.secciones a", {hasText: "Comparar equipos"}))
         .toHaveAttribute("href", "/rinkreports/#comparar");
 });

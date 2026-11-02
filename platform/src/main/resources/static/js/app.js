@@ -173,11 +173,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const nav = document.createElement("nav");
     nav.className = "secciones";
     nav.setAttribute("aria-label", "Secciones");
-    // Con sesión, en la pantalla de informes: solo lo suyo (generar y los que generó); los ejemplos y "Por qué
-    // RinkReports" son para quien todavía no tiene cuenta.
-    const own = document.body.dataset.section === "reports"
-        ? [["reports", "Generar informe", location.pathname], ["compare", "Comparar equipos", "#comparar"],
-            ["history", "Informes generados", "#historial"]]
+    // Con sesión, en las pantallas de informes y de comparar: solo lo suyo (generar, comparar y los que generó); los
+    // ejemplos y "Por qué RinkReports" son para quien todavía no tiene cuenta.
+    const own = ["reports", "compare"].includes(document.body.dataset.section)
+        ? [["reports", "Generar informe", "/rinkreports/reports.html"],
+            ["compare", "Comparar equipos", "/rinkreports/compare.html"], ["history", "Informes generados", "#historial"]]
         : product.items;
     for (const [id, text, href] of own) {
         const a = document.createElement("a");
