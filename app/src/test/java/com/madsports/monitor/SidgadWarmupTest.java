@@ -85,7 +85,7 @@ class SidgadWarmupTest {
 
     private static SidgadWarmup warmup(CountingSite site, SnapshotStore store, Instant now) {
         return new SidgadWarmup(new CatalogService(site, SidgadMonitorTest.PROPS), site,
-                Clock.fixed(now, ZoneOffset.UTC), List.of("FPP"), false, store, 2);
+                Clock.fixed(now, ZoneOffset.UTC), List.of(Federation.FPP), store, 2);
     }
 
     @Test
@@ -153,7 +153,9 @@ class SidgadWarmupTest {
         verify(mailer).send(mail.capture());
         assertThat(mail.getValue().to()).isEqualTo("info@madsports.com.ar");
         assertThat(mail.getValue().subject()).isEqualTo("RinkReports: Sincronización de SIDGAD del arranque (deploy): terminó bien");
-        assertThat(mail.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: OK. 24 competiciones;"));
+        assertThat(mail.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: OK. 24 competiciones;"))
+                // Inicio, fin y cuánto tardó, en hora argentina (el reloj de la prueba está fijo).
+                .contains("Inicio: 20/10/2026 05:00:00 · Fin: 20/10/2026 05:00:00 · Tardó 0 s (hora argentina).");
     }
 
     @Test

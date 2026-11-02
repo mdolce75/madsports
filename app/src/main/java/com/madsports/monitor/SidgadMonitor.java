@@ -33,7 +33,7 @@ import java.util.Optional;
  * Chequeo diario de SIDGAD: los informes dependen de leer su HTML, y si el sitio cambia de formato los parsers devuelven
  * listas vacías sin dar error. Una vez por día ({@code madsports.monitor.cron}) se recorre el camino de un informe con
  * datos reales (temporada del portal, catálogo de la federación, calendario con partidos jugados, acta con sus
- * planteles) de la FPP y, si está habilitada ({@code madsports.signup.amp}), de la AMP; el resultado queda en el health
+ * planteles) de la FPP y de la AMP; el resultado queda en el health
  * check ({@code sidgad}): si falla una federación, falla el chequeo. Si falla, o si se recupera, avisa por mail a
  * {@code ALERTAS_EMAIL}.
  */
@@ -66,10 +66,17 @@ public class SidgadMonitor implements HealthIndicator {
         this.store = store;
     }
 
+    @Autowired
     public SidgadMonitor(SidgadClient client, CatalogService catalog, Mailer mailer, Clock clock,
                          @Value("${madsports.alerts.email:}") String alerts,
-                         SiteUrls urls, @Value("${madsports.signup.amp:false}") boolean amp) {
-        this.federations = Monitored.federations(List.of(Federation.FPP), amp);
+                         SiteUrls urls) {
+        this(client, catalog, mailer, clock, alerts, urls, List.of(Federation.values()));
+    }
+
+    /** Con otras federaciones (los tests, solo la FPP). */
+    SidgadMonitor(SidgadClient client, CatalogService catalog, Mailer mailer, Clock clock, String alerts,
+                  SiteUrls urls, List<Federation> federations) {
+        this.federations = List.copyOf(federations);
         this.client = client;
         this.catalog = catalog;
         this.mailer = mailer;

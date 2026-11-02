@@ -497,7 +497,6 @@ Abrir http://localhost:8080.
 | `MAIL_FROM` | `MadSports <info@madsports.com.ar>` | Remitente (tiene que ser un dominio verificado en el proveedor). El nombre lo pone cada mail: el del producto de la cuenta |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
 | `SIDGAD_WARMUP_CRON` | `0 0 5 * * *` | Precarga de madrugada (hora argentina; `-` la apaga): las actas nuevas del año y las fichas de temporada de los jugadores, para que el primer informe del día ya encuentre todo leído |
-| `SIDGAD_WARMUP_FEDERATIONS` | `FPP,AMP` | Federaciones que sincroniza |
 | `SIDGAD_SYNC_NOTIFY_EMAIL` | `info@madsports.com.ar` | A quién avisa por mail que terminó la sincronización del arranque (y la de madrugada si tuvo errores), con el estado de cada federación; vacío = a nadie |
 | `REPORTS_DIR` | `./data/informes` | Carpeta donde se guardan los informes generados (PDF, Excel y HTML de cada pedido) para verlos y bajarlos desde el historial. En el servidor, un volumen |
 | `REPORTS_RETENTION_MONTHS` | `12` | Meses que se conservan los informes guardados; todos los días a las 4:30 se borran los más viejos (el pedido queda en el historial) |

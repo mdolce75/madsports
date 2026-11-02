@@ -96,11 +96,8 @@ madsports:
     years: [2026, 2027]
     # Sincronización de madrugada (SidgadWarmup, hora argentina; "-" la apaga): renueva tabla, calendario y
     # estadísticas de cada competición del año, baja las actas que faltan y las fichas de temporada de quienes jugaron
-    # desde la pasada anterior; los informes leen esas copias. La AMP se suma sola cuando está habilitada (SIGNUP_AMP),
-    # igual que en el chequeo diario.
+    # desde la pasada anterior; los informes leen esas copias. Siempre FPP y AMP, igual que en el chequeo diario.
     warmup-cron: ${SIDGAD_WARMUP_CRON:0 0 5 * * *}
-    # Las dos federaciones, aunque el alta de la AMP siga cerrada: sus datos quedan al día para cuando se abra.
-    warmup-federations: ${SIDGAD_WARMUP_FEDERATIONS:FPP,AMP}
     # Pedidos a la vez de la sincronización: va despacio, sin apuro y sin competir con los informes.
     sync-concurrency: ${SIDGAD_SYNC_CONCURRENCY:2}
     # Al arrancar (cada deploy), una sincronización completa en segundo plano, después de que Flyway migra el esquema:

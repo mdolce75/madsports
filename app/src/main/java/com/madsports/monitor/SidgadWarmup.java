@@ -46,8 +46,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * estadísticas por jugador; baja las actas de los partidos jugados que faltan (y las de sus primeros días, que SIDGAD
  * puede corregir) y la ficha de temporada de los jugadores que jugaron desde la última pasada. Va despacio
  * ({@code madsports.sidgad.sync-concurrency} pedidos a la vez) y un error no la corta: queda la copia anterior.
- * {@code madsports.sidgad.warmup-cron} ("-" la apaga) y {@code madsports.sidgad.warmup-federations} (FPP y AMP); la
- * AMP se suma sola cuando está habilitada ({@code madsports.signup.amp}). Al terminar la del arranque (cada deploy), y
+ * {@code madsports.sidgad.warmup-cron} ("-" la apaga); siempre las dos federaciones, FPP y AMP. Al terminar la del arranque (cada deploy), y
  * la de madrugada si tuvo errores, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
  */
 @Component
@@ -75,20 +74,21 @@ public class SidgadWarmup {
     private final SnapshotStore store;
     private final int concurrency;
 
-    public SidgadWarmup(CatalogService catalog, SidgadClient sidgad, Clock clock, List<String> federations, boolean amp) {
-        this(catalog, sidgad, clock, federations, amp, null, 2);
-    }
-
+    /** Siempre FPP y AMP. */
     @Autowired
     public SidgadWarmup(CatalogService catalog, SidgadClient sidgad, Clock clock,
-                        @Value("${madsports.sidgad.warmup-federations:FPP}") List<String> federations,
-                        @Value("${madsports.signup.amp:false}") boolean amp,
                         @Autowired(required = false) SnapshotStore store,
                         @Value("${madsports.sidgad.sync-concurrency:2}") int concurrency) {
+        this(catalog, sidgad, clock, List.of(Federation.values()), store, concurrency);
+    }
+
+    /** Con otras federaciones (los tests, solo la FPP). */
+    SidgadWarmup(CatalogService catalog, SidgadClient sidgad, Clock clock, List<Federation> federations,
+                 SnapshotStore store, int concurrency) {
         this.catalog = catalog;
         this.sidgad = sidgad;
         this.clock = clock;
-        this.federations = Monitored.federations(federations.stream().map(Federation::parse).toList(), amp);
+        this.federations = List.copyOf(federations);
         this.store = store;
         this.concurrency = Math.max(1, concurrency);
     }
@@ -188,19 +188,21 @@ public class SidgadWarmup {
         return s < 60 ? s + " s" : (s / 60) + " min " + (s % 60) + " s";
     }
 
-    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
-    /** Avisa por mail que terminó la sincronización y cómo quedó cada federación. */
+    /** Avisa por mail que terminó la sincronización, cuándo empezó y terminó, y cómo quedó cada federación. */
     private void notify(boolean startup, boolean ok, Instant start, String catalogLine, List<String> lines) {
         if (mailer == null || notifyTo.isEmpty()) {
             return;
         }
+        Instant end = clock.instant();
         String which = startup ? "del arranque (deploy)" : "de madrugada";
         String subject = "Sincronización de SIDGAD " + which + (ok ? ": terminó bien" : ": terminó con errores");
         List<String> paragraphs = new ArrayList<>();
-        paragraphs.add("Terminó la sincronización de SIDGAD " + which + ", empezada el "
-                + WHEN.format(start.atZone(AR)) + ". " + (ok ? "Todo quedó al día en la base."
+        paragraphs.add("Terminó la sincronización de SIDGAD " + which + ". " + (ok ? "Todo quedó al día en la base."
                 : "Hubo errores: lo que no se pudo bajar sigue con la copia anterior."));
+        paragraphs.add("Inicio: " + WHEN.format(start.atZone(AR)) + " · Fin: " + WHEN.format(end.atZone(AR))
+                + " · Tardó " + minutes(Duration.between(start, end)) + " (hora argentina).");
         paragraphs.add(catalogLine);
         paragraphs.addAll(lines);
         try {
