@@ -47,6 +47,18 @@ class CompareRenderTest {
         assertThat(html).doesNotContain("Torneo actual", "Cómo llegan");
         // Vélez 2-4 Argentinos (acta 26390), con sus goleadores.
         assertThat(html).contains("2 - 4");
+        // En cada métrica, resaltado el que va adelante (con la aclaración de qué es mejor).
+        assertThat(html).contains("class=\"ahead\"", "Resaltado en naranja");
+        Comparison c = velezVsArgentinos();
+        int wonA = c.a().view().report().total().won();
+        int wonB = c.b().view().report().total().won();
+        String wonRow = html.substring(html.indexOf(">Ganados<"), html.indexOf(">Empatados<"));
+        if (wonA == wonB) {
+            assertThat(wonRow).doesNotContain("ahead");
+        } else {
+            // La celda resaltada es la del que ganó más (la primera es la de Vélez).
+            assertThat(wonRow.indexOf("ahead") < wonRow.lastIndexOf("<td")).isEqualTo(wonA > wonB);
+        }
         // Sin copias guardadas no se sabe la fecha de los datos; con ellas, en hora argentina.
         assertThat(html).doesNotContain("Datos de SIDGAD al");
         assertThat(renderer.compareHtml(velezVsArgentinos().withDataAsOf(java.time.Instant.parse("2026-11-02T09:00:00Z"))))
