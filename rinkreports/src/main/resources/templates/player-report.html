@@ -87,7 +87,7 @@
                 <div class="brandline">RinkReports · Hockey sobre patines · Informe de jugador</div>
                 <h1 th:text="${r.playerName}">Jugador</h1>
                 <div class="subtitle" th:text="|${r.club.name} · Temporada ${r.year} · ${r.period}|">Club · Temporada</div>
-                <div class="meta" th:text="|Informe elaborado por RinkReports para ${r.fullName} · ${f.date(r.generatedOn)}|">fecha</div>
+                <div class="meta" th:text="|Informe elaborado por RinkReports para ${r.fullName} · ${f.date(r.generatedOn)}${r.dataAsOf == null ? '' : ' · Datos de SIDGAD al ' + f.dateTime(r.dataAsOf)}|">fecha</div>
             </td>
         </tr>
     </table>

@@ -7,6 +7,7 @@ import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -14,14 +15,18 @@ import java.io.UncheckedIOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Pide fragmentos HTML a server2.sidgad.es. Es un sitio de terceros sin API pública:
@@ -42,7 +47,7 @@ public class SidgadClient {
     /** Las actas guardadas de forma permanente (null en los tests sin base). */
     private volatile SheetStore sheetStore;
     /** La copia guardada del catálogo (null en los tests sin base). */
-    private volatile CatalogStore catalogStore;
+    private volatile SnapshotStore snapshotStore;
     private Clock clock = Clock.systemUTC();
     private final Cache<String, byte[]> logoCache;
     /** Un lock (no synchronized): el turno duerme adentro y, en Java 21, dormir en un synchronized fija el hilo virtual. */
@@ -123,7 +128,7 @@ public class SidgadClient {
         return catalogCopy(PORTAL);
     }
 
-    /** Claves de las copias del catálogo en {@link CatalogStore}. */
+    /** Claves de las copias del catálogo en {@link SnapshotStore}. */
     static final String CATALOG = "sidgad:ls";
     static final String PORTAL = "sidgad:portal";
 
@@ -139,7 +144,7 @@ public class SidgadClient {
         boolean downloaded = true;
         List<String> changes = List.of();
         for (String key : List.of(CATALOG, PORTAL)) {
-            Optional<CatalogStore.Stored> saved = stored(key);
+            Optional<SnapshotStore.Stored> saved = stored(key);
             Optional<String> fresh;
             try {
                 fresh = download(key);
@@ -156,85 +161,184 @@ public class SidgadClient {
         return new CatalogRefresh(downloaded, changes);
     }
 
-    /**
-     * Una parte del catálogo: primero la memoria; después la copia guardada en la base si tiene menos de
-     * {@code catalog-ttl}; si no, se baja de SIDGAD y se guarda. Si SIDGAD falla y hay una copia guardada (aunque sea
-     * vieja), se sigue con esa.
-     */
+    /** Una parte del catálogo, de la copia guardada si tiene menos de {@code catalog-ttl} (ver {@link #copy}). */
     private String catalogCopy(String key) {
-        String hit = catalogCache.getIfPresent(key);
+        return copy(key, catalogCache, () -> fetchCatalog(key), this::recent);
+    }
+
+    /** Baja la parte del catálogo y la guarda (memoria y base); vacío si SIDGAD no la publicó. */
+    private Optional<String> download(String key) {
+        String body = fetchCatalog(key);
+        if (body.equals(NOT_PUBLISHED)) {
+            return Optional.empty();
+        }
+        catalogCache.put(key, body);
+        save(key, body);
+        return Optional.of(body);
+    }
+
+    private String fetchCatalog(String key) {
+        return key.equals(PORTAL)
+                ? fetch(props.origin() + "/", Connection.Method.GET, Map.of(), "portal")
+                : post("cap_ls_1.php", Map.of("idm", "1"));
+    }
+
+    /** Lectura de las copias: {@code snapshot} (de la base, por defecto) o {@code live} (de SIDGAD, como antes). */
+    private volatile boolean readSnapshots = true;
+
+    /** {@code madsports.sidgad.read}: {@code snapshot} o {@code live}. */
+    @Autowired
+    public void setReadMode(@Value("${madsports.sidgad.read:snapshot}") String mode) {
+        this.readSnapshots = !"live".equalsIgnoreCase(mode == null ? "" : mode.trim());
+    }
+
+    /** ¿La copia se bajó hace menos de {@code catalog-ttl}? La sincronización la renueva antes de que venza. */
+    private boolean recent(Instant fetchedAt) {
+        return fetchedAt.plus(props.catalogTtl()).isAfter(clock.instant());
+    }
+
+    /**
+     * Un dato de SIDGAD: primero la memoria; después la copia guardada en la base, si sirve ({@code fresh}); si no, se
+     * baja de SIDGAD y se guarda. Si SIDGAD falla o no lo publica y hay una copia guardada (aunque sea vieja), se sigue
+     * con esa. En modo {@code live} no se leen las copias guardadas salvo para ese último caso.
+     */
+    private String copy(String key, Cache<String, String> memory, Supplier<String> source, Predicate<Instant> fresh) {
+        String hit = memory.getIfPresent(key);
         if (hit != null) {
             return hit;
         }
-        Optional<CatalogStore.Stored> saved = stored(key);
-        if (saved.isPresent() && saved.get().fetchedAt().plus(props.catalogTtl()).isAfter(clock.instant())) {
-            catalogCache.put(key, saved.get().body());
+        Optional<SnapshotStore.Stored> saved = stored(key);
+        if (readSnapshots && saved.isPresent() && fresh.test(saved.get().fetchedAt())) {
+            memory.put(key, saved.get().body());
             return saved.get().body();
         }
         try {
-            Optional<String> fresh = download(key);
-            if (fresh.isPresent()) {
-                return fresh.get();
+            String body = source.get();
+            if (!body.equals(NOT_PUBLISHED)) {
+                memory.put(key, body);
+                save(key, body);
+                return body;
             }
         } catch (SidgadException e) {
             if (saved.isEmpty()) {
                 throw e;
             }
-            log.warn("SIDGAD falló al bajar el catálogo ({}), se sigue con la copia del {}: {}", key,
-                    saved.get().fetchedAt(), e.getMessage());
+            log.warn("SIDGAD falló al bajar {}, se sigue con la copia del {}: {}", key, saved.get().fetchedAt(),
+                    e.getMessage());
         }
         if (saved.isEmpty()) {
             return NOT_PUBLISHED;
         }
-        catalogCache.put(key, saved.get().body());
+        memory.put(key, saved.get().body());
         return saved.get().body();
     }
 
-    /** Baja la parte del catálogo y la guarda (memoria y base); vacío si SIDGAD no la publicó. */
-    private Optional<String> download(String key) {
-        String body = key.equals(PORTAL)
-                ? fetch(props.origin() + "/", Connection.Method.GET, Map.of(), "portal")
-                : post("cap_ls_1.php", Map.of("idm", "1"));
-        if (body.equals(NOT_PUBLISHED)) {
-            return Optional.empty();
+    /** Guarda la copia en la base; true si es nueva o cambió. Si no se puede guardar, queda solo en memoria. */
+    private boolean save(String key, String body) {
+        SnapshotStore store = snapshotStore;
+        if (store == null) {
+            return false;
         }
-        catalogCache.put(key, body);
-        CatalogStore store = catalogStore;
-        if (store != null) {
-            try {
-                store.put(key, body);
-            } catch (RuntimeException e) {
-                log.warn("No se pudo guardar la copia del catálogo {}: {}", key, e.getMessage());
-            }
+        try {
+            return store.put(key, body);
+        } catch (RuntimeException e) {
+            log.warn("No se pudo guardar la copia {}: {}", key, e.getMessage());
+            return false;
         }
-        return Optional.of(body);
     }
 
-    private Optional<CatalogStore.Stored> stored(String key) {
-        CatalogStore store = catalogStore;
+    private Optional<SnapshotStore.Stored> stored(String key) {
+        SnapshotStore store = snapshotStore;
         if (store == null) {
             return Optional.empty();
         }
         try {
             return store.get(key);
         } catch (RuntimeException e) {
-            log.warn("No se pudo leer la copia del catálogo {}: {}", key, e.getMessage());
+            log.warn("No se pudo leer la copia {}: {}", key, e.getMessage());
             return Optional.empty();
         }
     }
 
+    /** Los datos de una competición que se copian: tabla, calendario y estadísticas por jugador. */
+    public enum Fragment {
+        STANDINGS("standings"), CALENDAR("calendar"), STATS("stats");
+
+        private final String kind;
+
+        Fragment(String kind) {
+            this.kind = kind;
+        }
+
+        /** Clave de la copia: {@code sidgad:calendar:779}. */
+        public String key(int idc) {
+            return "sidgad:" + kind + ":" + idc;
+        }
+
+        String file(int idc) {
+            return switch (this) {
+                case STANDINGS -> "cap_clasif_idc_" + idc + "_1.php";
+                case CALENDAR -> "cap_cal_idc_" + idc + "_1.php";
+                case STATS -> "cap_stats_1_" + idc + ".php";
+            };
+        }
+
+        /** Las 13 columnas de las estadísticas vienen siempre; {@code tipo_stats} solo cambia el orden. */
+        Map<String, String> params(int idc) {
+            return this == STATS
+                    ? Map.of("idc", String.valueOf(idc), "tipo_stats", "goles", "site_lang", "es")
+                    : Map.of("idc", String.valueOf(idc));
+        }
+    }
+
+    /** Cuándo se bajó la copia guardada de ese dato de la competición; vacío si no hay copia. */
+    public Optional<Instant> fetchedAt(Fragment f, int idc) {
+        return stored(f.key(idc)).map(SnapshotStore.Stored::fetchedAt);
+    }
+
+    /**
+     * La fecha de los datos de un informe: la más vieja de las copias de tabla, calendario y estadísticas de esas
+     * competiciones. Vacío si no hay copias guardadas (sin base, o leyendo de SIDGAD en el momento).
+     */
+    public Optional<Instant> oldestCopy(Collection<Integer> competitions) {
+        return competitions.stream()
+                .flatMap(idc -> Arrays.stream(Fragment.values()).map(f -> fetchedAt(f, idc)))
+                .flatMap(Optional::stream)
+                .min(Comparator.naturalOrder());
+    }
+
+    /** La tabla de posiciones de la competición. */
     public String standings(int idc) {
-        return cached("cap_clasif_idc_" + idc + "_1.php", Map.of("idc", String.valueOf(idc)));
+        return fragment(Fragment.STANDINGS, idc);
     }
 
+    /** El calendario con los resultados. */
     public String calendar(int idc) {
-        return cached("cap_cal_idc_" + idc + "_1.php", Map.of("idc", String.valueOf(idc)));
+        return fragment(Fragment.CALENDAR, idc);
     }
 
-    /** Las 13 columnas vienen siempre; {@code tipo_stats} solo cambia el orden. */
+    /** Estadísticas por jugador. */
     public String playerStats(int idc) {
-        return cached("cap_stats_1_" + idc + ".php",
-                Map.of("idc", String.valueOf(idc), "tipo_stats", "goles", "site_lang", "es"));
+        return fragment(Fragment.STATS, idc);
+    }
+
+    private String fragment(Fragment f, int idc) {
+        return copy(f.key(idc), dataCache, () -> post(f.file(idc), f.params(idc)), this::recent);
+    }
+
+    /**
+     * Baja de nuevo un dato de la competición aunque la copia esté vigente (la sincronización programada) y lo guarda.
+     * Si SIDGAD no lo publicó, queda la copia anterior.
+     *
+     * @return true si es nuevo o cambió respecto de la copia guardada
+     */
+    public boolean refresh(Fragment f, int idc) {
+        String body = post(f.file(idc), f.params(idc));
+        if (body.equals(NOT_PUBLISHED)) {
+            return false;
+        }
+        dataCache.put(f.key(idc), body);
+        return save(f.key(idc), body);
     }
 
     /** Las actas se guardan de forma permanente en este almacén (lo registra la app; sin él, solo en memoria). */
@@ -243,13 +347,16 @@ public class SidgadClient {
         this.sheetStore = store;
     }
 
-    /** El catálogo se guarda en este almacén (lo registra la app; sin él, solo en memoria). */
+    /**
+     * Las copias de SIDGAD (catálogo, tablas, calendarios, estadísticas, fichas) se guardan en este almacén (lo registra
+     * la app; sin él, solo en memoria).
+     */
     @Autowired(required = false)
-    public void setCatalogStore(CatalogStore store) {
-        this.catalogStore = store;
+    public void setSnapshotStore(SnapshotStore store) {
+        this.snapshotStore = store;
     }
 
-    /** Reloj con que se mide la vigencia de la copia guardada del catálogo (los tests lo fijan). */
+    /** Reloj con que se mide la vigencia de las copias guardadas (los tests lo fijan). */
     void setClock(Clock clock) {
         this.clock = clock;
     }
@@ -296,13 +403,20 @@ public class SidgadClient {
      * que no tienen acta publicada, con goles, libres, penales, azules y rojas.
      */
     public String playerSeason(int playerId, int seasonId) {
-        return playerSeason(playerId, seasonId, Instant.now().minus(props.dataTtl()));
+        // De las copias guardadas sirve la que la sincronización dejó al día; leyendo de SIDGAD, la de los últimos minutos.
+        Duration age = readSnapshots ? props.catalogTtl() : props.dataTtl();
+        return playerSeason(playerId, seasonId, clock.instant().minus(age));
+    }
+
+    /** Clave de la copia de la ficha de temporada: {@code sidgad:profile:<jugador>:<temporada>}. */
+    static String profileKey(int playerId, int seasonId) {
+        return "sidgad:profile:" + playerId + ":" + seasonId;
     }
 
     /**
-     * La ficha de temporada, si la guardada se bajó desde {@code notBefore}; si no, de nuevo de SIDGAD. Cambia con cada
-     * partido: el informe del club la acepta si se bajó después del día de su último partido (la precarga de la
-     * madrugada las deja al día).
+     * La ficha de temporada, si la que hay (en memoria o guardada en la base) se bajó desde {@code notBefore}; si no, de
+     * nuevo de SIDGAD, y se guarda. Cambia con cada partido: el informe del club la acepta si se bajó después del día de
+     * su último partido (la sincronización de la madrugada las deja al día). Si SIDGAD falla, sirve la guardada.
      */
     public String playerSeason(int playerId, int seasonId, Instant notBefore) {
         String file = "profiles/cap_profileseason_" + playerId + "_1_" + seasonId + ".php";
@@ -310,10 +424,27 @@ public class SidgadClient {
         if (hit != null && !hit.at().isBefore(notBefore)) {
             return hit.body();
         }
-        Instant at = Instant.now();
-        String body = post(file, Map.of("idm", "1", "id_player", String.valueOf(playerId)));
+        String key = profileKey(playerId, seasonId);
+        Optional<SnapshotStore.Stored> saved = stored(key);
+        if (readSnapshots && saved.isPresent() && !saved.get().fetchedAt().isBefore(notBefore)) {
+            profileCache.put(file, new Fetched(saved.get().body(), saved.get().fetchedAt()));
+            return saved.get().body();
+        }
+        Instant at = clock.instant();
+        String body;
+        try {
+            body = post(file, Map.of("idm", "1", "id_player", String.valueOf(playerId)));
+        } catch (SidgadException e) {
+            if (saved.isEmpty()) {
+                throw e;
+            }
+            log.warn("SIDGAD falló al bajar la ficha {}, se sigue con la del {}: {}", key, saved.get().fetchedAt(),
+                    e.getMessage());
+            return saved.get().body();
+        }
         if (!body.equals(NOT_PUBLISHED)) {
             profileCache.put(file, new Fetched(body, at));
+            save(key, body);
         }
         return body;
     }
@@ -373,22 +504,6 @@ public class SidgadClient {
     /** URL base de los escudos (los tests la reemplazan por un servidor local). */
     protected String logosUrl() {
         return LOGOS_URL;
-    }
-
-    private String cached(String file, Map<String, String> params) {
-        return cachedIn(dataCache, file + new TreeMap<>(params), file, params);
-    }
-
-    private <K> String cachedIn(Cache<K, String> cache, K key, String file, Map<String, String> params) {
-        String hit = cache.getIfPresent(key);
-        if (hit != null) {
-            return hit;
-        }
-        String body = post(file, params);
-        if (!body.equals(NOT_PUBLISHED)) {
-            cache.put(key, body);
-        }
-        return body;
     }
 
     private String post(String file, Map<String, String> params) {

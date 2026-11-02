@@ -74,15 +74,16 @@ public final class CategoryExtractor {
                         scope.lastMatches(), option.teamKey(club.code()))
                 .withNotPublished(read.notPublished())
                 .withFederation(request.federation())
-                .withLogo(read.logo());
+                .withLogo(read.logo())
+                .withDataAsOf(read.dataAsOf());
     }
 
     /**
      * Lo leído de una categoría del club: sus competiciones con tablas, calendarios, estadísticas y actas, lo que la
-     * fuente no publicó y el escudo.
+     * fuente no publicó, el escudo y la fecha de los datos (la más vieja de las copias guardadas; null si no hay).
      */
     public record Read(List<Competition> competitions, List<CompetitionData> data, List<String> notPublished,
-                       String logo) {
+                       String logo, java.time.Instant dataAsOf) {
     }
 
     /** Lee de SIDGAD las competiciones del club en la categoría y el período (sin calcular el informe). */
@@ -197,7 +198,8 @@ public final class CategoryExtractor {
         if (missingSheets > 0) {
             notPublished.add("Actas de partido: " + missingSheets + " de " + clubSheets);
         }
-        return new Read(comps, data, notPublished, Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))));
+        return new Read(comps, data, notPublished, Crests.tile(sidgad.clubLogo(logoFile(comps, club.id()))),
+                sidgad.oldestCopy(comps.stream().map(Competition::id).toList()).orElse(null));
     }
 
     /**

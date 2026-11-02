@@ -62,6 +62,16 @@ class SidgadMonitorTest {
         public String gameSheet(int idc, int idp) {
             return sheet.apply(idp);
         }
+
+        /** Lo que se pidió renovar ("CALENDAR:779"). */
+        final java.util.Set<String> refreshed = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+        /** Las páginas son fijas: renovar no cambia nada. */
+        @Override
+        public boolean refresh(Fragment f, int idc) {
+            refreshed.add(f + ":" + idc);
+            return false;
+        }
     }
 
     SidgadMonitor monitor(FakeSite site, String alerts) {
@@ -91,6 +101,28 @@ class SidgadMonitorTest {
         // Si ya está configurada, no se repite.
         assertThat(Monitored.federations(List.of(Federation.FPP, Federation.AMP), true))
                 .containsExactly(Federation.FPP, Federation.AMP);
+    }
+
+    @Test
+    void aRecentSyncIsOkAndAnOldOrMissingOneIsAFailure() {
+        // El chequeo corre el 19/10 a las 11:00 (UTC).
+        SidgadWarmupTest.MemoryStore store = new SidgadWarmupTest.MemoryStore();
+        SidgadMonitor m = monitor(new FakeSite(), "alertas@example.com");
+        m.setSnapshotStore(store);
+
+        SidgadMonitor.Outcome none = m.check();
+        assertThat(none.ok()).isFalse();
+        assertThat(none.detail()).contains("Todavía no hubo una sincronización de SIDGAD sin errores para la FPP");
+
+        store.put(SidgadWarmup.lastSyncKey(Federation.FPP), "2026-10-19T08:00:00Z");
+        SidgadMonitor.Outcome recent = m.check();
+        assertThat(recent.ok()).isTrue();
+        assertThat(recent.detail()).endsWith("Sincronizada hace 3 h.");
+
+        store.put(SidgadWarmup.lastSyncKey(Federation.FPP), "2026-10-17T08:00:00Z");
+        SidgadMonitor.Outcome old = m.check();
+        assertThat(old.ok()).isFalse();
+        assertThat(old.detail()).contains("fue hace 51 h").contains("leen datos viejos");
     }
 
     @Test

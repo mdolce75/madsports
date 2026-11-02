@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.madsports.sidgad.model.Federation;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -15,29 +16,42 @@ import java.util.List;
  */
 public record ReportData(ClubInfo club, String category, String tournament, LocalDate generatedOn,
                          int lastMatches, List<Source> sources, List<TeamReport> teams, LeagueContext league,
-                         List<String> notPublished, Federation federation) {
+                         List<String> notPublished, Federation federation, @JsonIgnore Instant dataAsOf) {
 
     public ReportData(ClubInfo club, String category, String tournament, LocalDate generatedOn, int lastMatches,
                       List<Source> sources, List<TeamReport> teams, LeagueContext league, List<String> notPublished) {
         this(club, category, tournament, generatedOn, lastMatches, sources, teams, league, notPublished, Federation.FPP);
     }
 
+    public ReportData(ClubInfo club, String category, String tournament, LocalDate generatedOn, int lastMatches,
+                      List<Source> sources, List<TeamReport> teams, LeagueContext league, List<String> notPublished,
+                      Federation federation) {
+        this(club, category, tournament, generatedOn, lastMatches, sources, teams, league, notPublished, federation,
+                null);
+    }
+
+    /** Copia con la fecha de los datos de SIDGAD que usa (la más vieja de sus copias guardadas; null si no se sabe). */
+    public ReportData withDataAsOf(Instant at) {
+        return new ReportData(club, category, tournament, generatedOn, lastMatches, sources, teams, league, notPublished,
+                federation, at);
+    }
+
     /** Copia con el escudo del club (data URI, o null si no hay). */
     public ReportData withLogo(String logo) {
         return new ReportData(new ClubInfo(club.id(), club.code(), club.name(), logo), category, tournament, generatedOn,
-                lastMatches, sources, teams, league, notPublished, federation);
+                lastMatches, sources, teams, league, notPublished, federation, dataAsOf);
     }
 
     /** Copia con la lista de datos que el sitio no publicó (respuestas 404 de SIDGAD). */
     public ReportData withNotPublished(List<String> items) {
         return new ReportData(club, category, tournament, generatedOn, lastMatches, sources, teams, league,
-                List.copyOf(items), federation);
+                List.copyOf(items), federation, dataAsOf);
     }
 
     /** Copia con la federación del club (FPP o AMP). */
     public ReportData withFederation(Federation fed) {
         return new ReportData(club, category, tournament, generatedOn, lastMatches, sources, teams, league, notPublished,
-                fed);
+                fed, dataAsOf);
     }
 
     /** True si el informe se limita a los últimos N partidos (jugadores y pelota parada siguen siendo del torneo). */

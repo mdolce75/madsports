@@ -40,6 +40,7 @@ public class ExcelExporter {
             summaryOf.meta("Período", r.period());
             summaryOf.meta("Federación", r.federation().name());
             summaryOf.meta("Generado", r.generatedOn());
+            dataAsOf(summaryOf, r.dataAsOf());
             summaryOf.blank();
             summaryOf.header("Rama", "Categoría", "PJ", "G", "E", "P", "Efectividad", "GF", "GC", "GF por partido",
                     "GC por partido", "Faltas cometidas", "Faltas recibidas", "Amarillas", "Azules", "Rojas");
@@ -199,6 +200,7 @@ public class ExcelExporter {
             summaryOf.meta("Club", r.club().name());
             summaryOf.meta("Período", r.period());
             summaryOf.meta("Generado", r.generatedOn());
+            dataAsOf(summaryOf, r.dataAsOf());
             summaryOf.blank();
             summaryOf.header("Categoría", "PJ", "G", "E", "P", "Goles", "Goles por partido", "Incidencia de goles",
                     "Amarillas", "Azules", "Rojas", "Tarjetas por partido", "Incidencia de tarjetas", "Penales conv.",
@@ -260,6 +262,14 @@ public class ExcelExporter {
         });
     }
 
+    /** "Datos de SIDGAD al 02/11/2026 06:00" (hora argentina), si se sabe. */
+    private static void dataAsOf(Sheet s, java.time.Instant at) {
+        if (at != null) {
+            s.meta("Datos de SIDGAD al", at.atZone(java.time.ZoneId.of("America/Argentina/Buenos_Aires"))
+                    .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        }
+    }
+
     // ---------- Comparativo ----------
 
     /**
@@ -275,6 +285,7 @@ public class ExcelExporter {
             summary.meta("Categoría", r.category());
             summary.meta("Temporada", r.year());
             summary.meta("Generado", r.generatedOn());
+            dataAsOf(summary, r.dataAsOf());
             summary.blank();
             r.summary().forEach(summary::text);
             r.notes().forEach(summary::text);

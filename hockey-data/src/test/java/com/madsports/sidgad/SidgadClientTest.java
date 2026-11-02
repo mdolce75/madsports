@@ -37,8 +37,8 @@ class SidgadClientTest {
     /** El Retry-After de esos 429 (null: sin encabezado). */
     volatile String retryAfter;
 
-    /** Un almacén del catálogo en memoria, como el de la base. */
-    static class MemoryCatalogStore implements CatalogStore {
+    /** Un almacén de copias en memoria, como el de la base. */
+    static class MemorySnapshotStore implements SnapshotStore {
         final Map<String, Stored> rows = new ConcurrentHashMap<>();
         Instant now = Instant.parse("2026-11-02T08:00:00Z");
 
@@ -48,8 +48,11 @@ class SidgadClientTest {
         }
 
         @Override
-        public void put(String key, String body) {
-            rows.put(key, new Stored(body, now));
+        public boolean put(String key, String body) {
+            Stored old = rows.get(key);
+            boolean changed = old == null || !old.body().equals(body);
+            rows.put(key, new Stored(body, now, changed ? now : old.changedAt()));
+            return changed;
         }
     }
 
@@ -239,11 +242,11 @@ class SidgadClientTest {
     }
 
     /** Un cliente nuevo (como después de reiniciar la app) con el almacén y la hora dados; catálogo vigente 5 min. */
-    private SidgadClient restarted(MemoryCatalogStore store, Instant now) {
+    private SidgadClient restarted(MemorySnapshotStore store, Instant now) {
         SidgadClient c = new SidgadClient(new SidgadProperties(
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/", "http://localhost", Duration.ZERO, 3,
                 Duration.ofMinutes(5), Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026), 1));
-        c.setCatalogStore(store);
+        c.setSnapshotStore(store);
         c.setClock(Clock.fixed(now, ZoneOffset.UTC));
         return c;
     }
@@ -329,9 +332,102 @@ class SidgadClientTest {
                 new java.io.IOException("too many concurrent streams")))).isTrue();
     }
 
+    // --- Copias de los datos de cada competición y de las fichas de temporada (vigentes 5 min en estos tests).
+
+    @Test
+    void theDateOfTheDataIsTheOldestSavedCopyOfThoseCompetitions() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.Fragment.CALENDAR.key(30), "<table></table>");
+        store.now = store.now.plusSeconds(3600);
+        store.put(SidgadClient.Fragment.STANDINGS.key(31), "<table></table>");
+        SidgadClient c = restarted(store, store.now);
+
+        assertThat(c.oldestCopy(List.of(30, 31))).contains(Instant.parse("2026-11-02T08:00:00Z"));
+        assertThat(c.oldestCopy(List.of(31))).contains(Instant.parse("2026-11-02T09:00:00Z"));
+        assertThat(c.oldestCopy(List.of(32))).isEmpty();
+    }
+
+    @Test
+    void withSavedCopiesNothingIsAskedToSidgad() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.Fragment.STANDINGS.key(5), "<table>tabla</table>");
+        store.put(SidgadClient.Fragment.CALENDAR.key(5), "<table>calendario</table>");
+        store.put(SidgadClient.Fragment.STATS.key(5), "<table>estadísticas</table>");
+        store.put(SidgadClient.profileKey(10, 15), "<p>ficha</p>");
+        SidgadClient c = restarted(store, store.now.plusSeconds(60));
+
+        assertThat(c.standings(5)).isEqualTo("<table>tabla</table>");
+        assertThat(c.calendar(5)).isEqualTo("<table>calendario</table>");
+        assertThat(c.playerStats(5)).isEqualTo("<table>estadísticas</table>");
+        assertThat(c.playerSeason(10, 15)).isEqualTo("<p>ficha</p>");
+        assertThat(hits).isEmpty();
+    }
+
+    @Test
+    void withoutACopyItIsDownloadedAndSaved() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+
+        assertThat(restarted(store, store.now).standings(6)).isEqualTo("<table></table>");
+        assertThat(store.rows.get(SidgadClient.Fragment.STANDINGS.key(6)).body()).isEqualTo("<table></table>");
+        // Lo no publicado (404) no se guarda.
+        assertThat(restarted(store, store.now).calendar(6)).isEqualTo(SidgadClient.NOT_PUBLISHED);
+        assertThat(store.rows).doesNotContainKey(SidgadClient.Fragment.CALENDAR.key(6));
+    }
+
+    @Test
+    void anExpiredDataCopyIsDownloadedAgainAndIfSidgadFailsTheOldOneIsUsed() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.Fragment.STANDINGS.key(7), "<table>vieja</table>");
+        store.put(SidgadClient.Fragment.STATS.key(7), "<table>vieja</table>");
+        Instant later = store.now.plus(Duration.ofMinutes(10));
+
+        assertThat(restarted(store, later).standings(7)).isEqualTo("<table></table>");
+        // Las estadísticas dan 500 en este SIDGAD: queda la copia vieja; sin copia, el error.
+        assertThat(restarted(store, later).playerStats(7)).isEqualTo("<table>vieja</table>");
+        assertThatThrownBy(() -> restarted(store, later).playerStats(8)).isInstanceOf(SidgadException.class);
+    }
+
+    @Test
+    void inLiveModeTheSavedCopiesAreNotRead() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.Fragment.STANDINGS.key(9), "<table>guardada</table>");
+        SidgadClient c = restarted(store, store.now);
+        c.setReadMode("live");
+
+        assertThat(c.standings(9)).isEqualTo("<table></table>");
+        assertThat(hits.get("cap_clasif_idc_9_1.php")).hasValue(1);
+    }
+
+    @Test
+    void refreshDownloadsEvenAValidCopyAndSaysIfItChanged() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.Fragment.STANDINGS.key(11), "<table>antes</table>");
+        SidgadClient c = restarted(store, store.now);
+
+        assertThat(c.refresh(SidgadClient.Fragment.STANDINGS, 11)).isTrue();
+        assertThat(c.standings(11)).isEqualTo("<table></table>");
+        assertThat(c.refresh(SidgadClient.Fragment.STANDINGS, 11)).isFalse();
+        assertThat(hits.get("cap_clasif_idc_11_1.php")).hasValue(2);
+        // No publicado: queda la copia que hubiera.
+        assertThat(c.refresh(SidgadClient.Fragment.CALENDAR, 11)).isFalse();
+    }
+
+    @Test
+    void aSavedProfileServesIfItIsNewerThanAskedAndIsSavedWhenDownloaded() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.profileKey(20, 15), "<p>guardada</p>");
+        SidgadClient c = restarted(store, store.now.plusSeconds(60));
+
+        assertThat(c.playerSeason(20, 15, store.now.minusSeconds(1))).isEqualTo("<p>guardada</p>");
+        // Pedida desde después de la copia (como la precarga): se baja de nuevo y se guarda.
+        assertThat(restarted(store, store.now.plusSeconds(60)).playerSeason(20, 15, store.now.plusSeconds(30)))
+                .isEqualTo("<p>1</p>");
+        assertThat(store.rows.get(SidgadClient.profileKey(20, 15)).body()).isEqualTo("<p>1</p>");
+    }
+
     @Test
     void theCatalogIsSavedAndARestartDoesNotDownloadItAgain() {
-        MemoryCatalogStore store = new MemoryCatalogStore();
+        MemorySnapshotStore store = new MemorySnapshotStore();
         assertThat(restarted(store, store.now).catalog()).contains("v1");
         assertThat(store.rows.get(SidgadClient.CATALOG).body()).contains("v1");
 
@@ -342,7 +438,7 @@ class SidgadClientTest {
 
     @Test
     void anExpiredCopyIsDownloadedAgain() {
-        MemoryCatalogStore store = new MemoryCatalogStore();
+        MemorySnapshotStore store = new MemorySnapshotStore();
         restarted(store, store.now).catalog();
         catalogBody = "<a class='idc_master' id='779'>v2</a>";
         store.now = store.now.plus(Duration.ofMinutes(10));
@@ -353,19 +449,19 @@ class SidgadClientTest {
 
     @Test
     void ifSidgadFailsTheSavedCopyIsUsedEvenIfOld() {
-        MemoryCatalogStore store = new MemoryCatalogStore();
+        MemorySnapshotStore store = new MemorySnapshotStore();
         restarted(store, store.now).catalog();
         catalogStatus.set(500);
 
         assertThat(restarted(store, store.now.plus(Duration.ofDays(3))).catalog()).contains("v1");
         // Sin copia guardada, el error llega al informe.
-        assertThatThrownBy(() -> restarted(new MemoryCatalogStore(), store.now).catalog())
+        assertThatThrownBy(() -> restarted(new MemorySnapshotStore(), store.now).catalog())
                 .isInstanceOf(SidgadException.class);
     }
 
     @Test
     void theDailyRefreshDownloadsEvenAValidCopyAndSaysWhatChanged() {
-        MemoryCatalogStore store = new MemoryCatalogStore();
+        MemorySnapshotStore store = new MemorySnapshotStore();
         SidgadClient c = restarted(store, store.now);
         catalogBody = "<a class='idc_master id_fede_3 temp_15' id='779'>"
                 + "<span class='nombre_competicion_listado'>TORNEO APERTURA PRIMERA MASCULINO (FPP)</span></a>"
@@ -384,7 +480,7 @@ class SidgadClientTest {
 
     @Test
     void ifTheDailyRefreshFailsTheCopyStays() {
-        MemoryCatalogStore store = new MemoryCatalogStore();
+        MemorySnapshotStore store = new MemorySnapshotStore();
         SidgadClient c = restarted(store, store.now);
         c.catalog();
         catalogStatus.set(503);

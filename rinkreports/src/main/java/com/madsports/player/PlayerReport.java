@@ -27,7 +27,22 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
                            String period, LocalDate generatedOn, List<Line> categories, Line total,
                            Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
                            List<String> notes, List<CategoryBlock> blocks, List<ReportData.Indicator> indicators,
-                           Federation federation, List<TournamentLine> tournaments) {
+                           Federation federation, List<TournamentLine> tournaments, java.time.Instant dataAsOf) {
+
+    public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
+                        String period, LocalDate generatedOn, List<Line> categories, Line total,
+                        Minutes minutes, ReportData.ShortHanded shortHanded, List<MatchRow> matches,
+                        List<String> notes, List<CategoryBlock> blocks, List<ReportData.Indicator> indicators,
+                        Federation federation, List<TournamentLine> tournaments) {
+        this(playerId, playerName, fullName, club, year, period, generatedOn, categories, total, minutes, shortHanded,
+                matches, notes, blocks, indicators, federation, tournaments, null);
+    }
+
+    /** El mismo informe con la fecha de los datos de SIDGAD que usa (null si no se sabe). */
+    public PlayerReport withDataAsOf(java.time.Instant at) {
+        return new PlayerReport(playerId, playerName, fullName, club, year, period, generatedOn, categories, total,
+                minutes, shortHanded, matches, notes, blocks, indicators, federation, tournaments, at);
+    }
 
     public PlayerReport(int playerId, String playerName, String fullName, ReportData.ClubInfo club, int year,
                         String period, LocalDate generatedOn, List<Line> categories, Line total, Minutes minutes,
@@ -221,7 +236,7 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
         return new PlayerReport(playerId, playerName, fullName, club, year, period, generatedOn, categories, total,
                 minutes, shortHanded, matches, notes,
                 blocks.stream().map(b -> b.withLeagueRank(ranks.get(b.line().category()))).toList(),
-                indicators, federation, tournaments);
+                indicators, federation, tournaments, dataAsOf);
     }
 
     public boolean hasData() {

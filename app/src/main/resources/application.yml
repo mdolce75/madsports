@@ -84,18 +84,30 @@ madsports:
     # vez y 50 por segundo, en su propio cupo.
     club-factor: 5
     data-ttl: 15m
-    # Vigencia de la copia del catálogo (competiciones, clubes, equipos), guardada en la base: la precarga de
-    # madrugada la renueva cada día; el margen evita bajarla de nuevo justo antes de la precarga.
+    # Vigencia de las copias de SIDGAD guardadas en la base (catálogo, tablas, calendarios, estadísticas y fichas de
+    # temporada): la precarga de madrugada las renueva cada día; el margen evita bajarlas de nuevo justo antes.
     catalog-ttl: 26h
+    # De dónde leen los informes: "snapshot" (las copias guardadas en la base; SIDGAD solo si falta o venció) o "live"
+    # (SIDGAD en cada informe, como antes).
+    read: ${SIDGAD_READ:snapshot}
     timeout: 20s
     # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federation (de Infantil para arriba)
     # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa
     years: [2026, 2027]
-    # Precarga de madrugada (SidgadWarmup, hora argentina; "-" la apaga): las actas nuevas del año y las fichas de
-    # temporada de los jugadores, para que el primer informe del día ya encuentre todo leído. La AMP se suma sola cuando
-    # está habilitada (SIGNUP_AMP), igual que en el chequeo diario.
+    # Sincronización de madrugada (SidgadWarmup, hora argentina; "-" la apaga): renueva tabla, calendario y
+    # estadísticas de cada competición del año, baja las actas que faltan y las fichas de temporada de quienes jugaron
+    # desde la pasada anterior; los informes leen esas copias. La AMP se suma sola cuando está habilitada (SIGNUP_AMP),
+    # igual que en el chequeo diario.
     warmup-cron: ${SIDGAD_WARMUP_CRON:0 0 5 * * *}
     warmup-federations: ${SIDGAD_WARMUP_FEDERATIONS:FPP}
+    # Pedidos a la vez de la sincronización: va despacio, sin apuro y sin competir con los informes.
+    sync-concurrency: ${SIDGAD_SYNC_CONCURRENCY:2}
+    # Al arrancar (cada deploy), una sincronización completa en segundo plano, después de que Flyway migra el esquema:
+    # los datos de SIDGAD no esperan a la madrugada.
+    sync-on-startup: ${SIDGAD_SYNC_ON_STARTUP:true}
+    # Pasadas extra en días de partido (hora argentina; "-" las apaga): solo las competiciones con partidos ese día,
+    # para que un resultado de la tarde no espere a la madrugada.
+    matchday-cron: ${SIDGAD_MATCHDAY_CRON:0 0 12,15,18,21 * * SAT,SUN}
   # Análisis con Google Gemini (plan gratuito de Google AI Studio). Sin API key: análisis por reglas.
   ai:
     enabled: ${AI_ENABLED:${FPP_AI_ENABLED:true}}
