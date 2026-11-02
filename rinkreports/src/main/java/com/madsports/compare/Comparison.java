@@ -47,6 +47,14 @@ public record Comparison(String federation, int year, String category, String pe
         return !lastMatches;
     }
 
+    /**
+     * Para marcar quién va adelante en una métrica: "ahead" si {@code mine} es mejor que {@code other} (más es mejor
+     * si {@code higherIsBetter}, si no menos); "" si es peor o empatan.
+     */
+    public String ahead(double mine, double other, boolean higherIsBetter) {
+        return (higherIsBetter ? mine > other : mine < other) ? "ahead" : "";
+    }
+
     /** El período con su año: "Apertura 2026", "Últimos 5 partidos 2026", "Año 2026". */
     public String periodTitle() {
         return period.startsWith("Año") ? period : period + " " + year;
