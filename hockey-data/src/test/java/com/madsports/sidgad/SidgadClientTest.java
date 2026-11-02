@@ -249,4 +249,42 @@ class SidgadClientTest {
         assertThat(hits.get("cap_cal_idc_9_1.php")).hasValue(2);
         assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
     }
+
+    /** Un cliente cuya conexión HTTP/2 rechaza los primeros {@code refusals} pedidos por "too many concurrent streams". */
+    private SidgadClient refusingStreams(int refusals) {
+        AtomicInteger left = new AtomicInteger(refusals);
+        SidgadClient c = new SidgadClient(new SidgadProperties(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/cap/", "http://localhost", Duration.ZERO, 3,
+                Duration.ofMinutes(5), Duration.ofMinutes(5), Duration.ofSeconds(5), List.of(2026), 1)) {
+            @Override
+            org.jsoup.Connection.Response request(String url, org.jsoup.Connection.Method method,
+                                                  Map<String, String> params, String file) {
+                if (left.getAndDecrement() > 0) {
+                    throw new SidgadException("No se pudo consultar " + file + ": too many concurrent streams",
+                            new java.io.IOException("too many concurrent streams"));
+                }
+                return super.request(url, method, params, file);
+            }
+        };
+        c.retryBackoff(List.of(Duration.ofMillis(10), Duration.ofMillis(10)));
+        return c;
+    }
+
+    @Test
+    void tooManyConcurrentStreamsAlsoPausesAndRetries() {
+        assertThat(refusingStreams(2).standings(3)).isEqualTo("<table></table>");
+        assertThat(hits.get("cap_clasif_idc_3_1.php")).hasValue(1);
+
+        assertThatThrownBy(() -> refusingStreams(5).standings(4)).isInstanceOf(SidgadException.class)
+                .hasMessageContaining("too many concurrent streams");
+        assertThat(hits).doesNotContainKey("cap_clasif_idc_4_1.php");
+    }
+
+    @Test
+    void otherNetworkErrorsAreNotRetried() {
+        assertThat(SidgadClient.tooManyStreams(new SidgadException("x", new java.io.IOException("Connection reset"))))
+                .isFalse();
+        assertThat(SidgadClient.tooManyStreams(new SidgadException("x",
+                new java.io.IOException("too many concurrent streams")))).isTrue();
+    }
 }

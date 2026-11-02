@@ -14,6 +14,7 @@ import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -307,21 +308,47 @@ public class SidgadClient {
     }
 
     /**
-     * Un pedido a SIDGAD. Si responde 429 (demasiados pedidos), todos los pedidos se pausan un rato y este se reintenta
-     * (ver {@link #backoff}).
+     * Un pedido a SIDGAD. Si pide bajar el ritmo (responde 429, o la conexión HTTP/2 rechaza el pedido por "too many
+     * concurrent streams"), todos los pedidos se pausan un rato y este se reintenta (ver {@link #backoff}).
      */
     private String doFetch(String url, Connection.Method method, Map<String, String> params, String file) {
         for (int attempt = 0; ; attempt++) {
-            Connection.Response res = request(url, method, params, file);
+            Connection.Response res;
+            try {
+                res = request(url, method, params, file);
+            } catch (SidgadException e) {
+                if (!tooManyStreams(e) || attempt >= backoff.size()) {
+                    throw e;
+                }
+                slowDown(file, "demasiados pedidos simultáneos en la conexión", backoff.get(attempt), attempt);
+                continue;
+            }
             if (res.statusCode() == 429 && attempt < backoff.size()) {
-                Duration pause = retryAfter(res.header("Retry-After")).orElse(backoff.get(attempt));
-                log.warn("SIDGAD pidió bajar el ritmo (429) en {}: se pausan los pedidos {} s (reintento {} de {})",
-                        file, pause.toSeconds(), attempt + 1, backoff.size());
-                pause(pause);
+                slowDown(file, "429", retryAfter(res.header("Retry-After")).orElse(backoff.get(attempt)), attempt);
                 continue;
             }
             return body(res, file);
         }
+    }
+
+    private void slowDown(String file, String why, Duration pause, int attempt) {
+        log.warn("SIDGAD pidió bajar el ritmo ({}) en {}: se pausan los pedidos {} s (reintento {} de {})",
+                why, file, pause.toSeconds(), attempt + 1, backoff.size());
+        pause(pause);
+    }
+
+    /**
+     * ¿El pedido falló porque la conexión HTTP/2 con SIDGAD ya tenía todos los pedidos simultáneos que acepta? El
+     * cliente HTTP de Java no los encola: avisa con una IOException "too many concurrent streams".
+     */
+    static boolean tooManyStreams(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t.getMessage() != null && t.getMessage().toLowerCase(Locale.ROOT)
+                    .contains("too many concurrent streams")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** "30" (segundos) del encabezado Retry-After, hasta {@link #MAX_PAUSE}; vacío si no viene o es una fecha. */
@@ -355,7 +382,8 @@ public class SidgadClient {
         return body;
     }
 
-    private Connection.Response request(String url, Connection.Method method, Map<String, String> params, String file) {
+    /** Un pedido, sin reintentos; un error de red es una {@link SidgadException} (los tests lo reemplazan). */
+    Connection.Response request(String url, Connection.Method method, Map<String, String> params, String file) {
         waitTurn();
         try {
             return Jsoup.connect(url)
