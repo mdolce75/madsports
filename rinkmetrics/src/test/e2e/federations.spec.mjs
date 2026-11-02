@@ -1,4 +1,4 @@
-// Textos que nombran las federaciones: la AMP aparece recién cuando está habilitada (el mismo interruptor que el registro).
+// Textos que nombran las federaciones: la FPP y la AMP, siempre las dos.
 import {expect, test} from "@playwright/test";
 
 // Página, cómo nombra a la FPP y cómo a la AMP.
@@ -8,27 +8,11 @@ const PAGES = [
     ["/rinkreports/why.html", "la FPP", "la AMP"],
 ];
 
-async function options(page, amp) {
-    await page.route("**/api/**", route => route.fulfill({json: new URL(route.request().url()).pathname === "/api/session"
-        ? {authenticated: false} : {club: true, amp, playerAmp: amp}}));
-}
-
 for (const [path, fpp, amp] of PAGES) {
-    test(`${path}: sin la AMP habilitada nombra solo a la FPP`, async ({page}) => {
-        await options(page, false);
+    test(`${path}: nombra a las dos federaciones`, async ({page}) => {
+        await page.route("**/api/**", route => route.fulfill({json: {authenticated: false}}));
         await page.goto(path);
-        const text = page.locator("p:has(span[data-amp])");
-        await expect(text).toContainText(fpp);
-        await expect(text.locator("span[data-amp]")).toBeHidden();
-        await expect(text).not.toContainText(amp, {useInnerText: true});
-    });
-
-    test(`${path}: con la AMP habilitada nombra a las dos`, async ({page}) => {
-        await options(page, true);
-        await page.goto(path);
-        const text = page.locator("p:has(span[data-amp])");
-        await expect(text.locator("span[data-amp]")).toBeVisible();
-        await expect(text).toContainText(fpp);
-        await expect(text).toContainText(amp);
+        await expect(page.locator("body")).toContainText(fpp);
+        await expect(page.locator("body")).toContainText(amp);
     });
 }

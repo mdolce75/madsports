@@ -2,15 +2,11 @@ package com.madsports.report;
 
 import com.madsports.account.UserAccount;
 import com.madsports.sidgad.model.Federation;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Federaciones que se ofrecen en el generador de informes: la FPP siempre; la AMP, con {@code madsports.signup.amp}
- * (oculta hasta nuevo aviso, como en el registro).
- */
+/** Federaciones que se ofrecen en el generador de informes: la FPP y la AMP, siempre. */
 @Component
 public class ReportFederations {
 
@@ -18,14 +14,8 @@ public class ReportFederations {
     public record Option(String code, String name) {
     }
 
-    private final boolean amp;
-
-    public ReportFederations(@Value("${madsports.signup.amp:false}") boolean amp) {
-        this.amp = amp;
-    }
-
     public List<Federation> list() {
-        return amp ? List.of(Federation.FPP, Federation.AMP) : List.of(Federation.FPP);
+        return List.of(Federation.FPP, Federation.AMP);
     }
 
     public List<Option> options() {

@@ -4,8 +4,8 @@
 // SIDGAD: escribe el nombre de su club y después carga a mano sus equipos y jugadores.
 const SECTION = product() === "REPORTS" ? "informes" : "dt";
 $("brand").outerHTML = brand();
-// Qué se puede registrar hoy: las cuentas de club, la AMP y sus jugadores se habilitan por configuración.
-let signupOpts = {club: true, amp: false, playerAmp: false};
+// Qué se puede registrar hoy: las cuentas de club se habilitan por configuración (la FPP y la AMP, siempre).
+let signupOpts = {club: true};
 if (SECTION === "dt") {
     document.querySelectorAll("input[name=rol]").forEach(r => {
         if (r.value === "COACH") r.checked = true; else r.closest("label").remove();
@@ -31,15 +31,6 @@ if (SECTION === "dt") {
     document.querySelectorAll(".profiles small").forEach(s => { s.dataset.text = s.textContent; });
 }
 
-/** Habilita o apaga una opción ("Próximamente"), y si estaba elegida, elige otra. */
-function enable(input, si, other) {
-    const label = input.closest("label");
-    input.disabled = !si;
-    label.classList.toggle("no-disponible", !si);
-    label.querySelector("small").textContent = si ? label.querySelector("small").dataset.text : "Próximamente.";
-    if (!si && input.checked && other) other.checked = true;
-}
-
 /** El registro de club, si las cuentas de club todavía no se habilitaron: avisa y no deja enviarlo. */
 function clubAvailable() {
     if (role() !== "CLUB" || signupOpts.club) return;
@@ -48,24 +39,12 @@ function clubAvailable() {
 }
 
 /**
- * RinkReports: las cuentas de club, y los jugadores de la AMP, solo si están habilitados. Con las dos federaciones no
- * se elige ninguna de antemano (que nadie de Mendoza quede en la FPP sin darse cuenta); si la AMP no está disponible
- * para este registro, es la FPP sin preguntar.
+ * RinkReports: las cuentas de club, solo si están habilitadas. No se elige federación de antemano (que nadie de Mendoza
+ * quede en la FPP sin darse cuenta).
  */
 function rules() {
     if (SECTION === "dt") return;
-    const fpp = document.querySelector("input[name=federacion][value=FPP]");
-    // Sin la AMP (oculta hasta nuevo aviso) la federación es la FPP y no hay nada que elegir.
-    if (!signupOpts.amp) {
-        document.querySelector("input[name=federacion][value=AMP]")?.closest("label").remove();
-        fpp.closest(".field").hidden = true;
-        fpp.checked = true;
-        return clubAvailable();
-    }
     clubAvailable();
-    const ampForThis = role() !== "PLAYER" || signupOpts.playerAmp;
-    enable(document.querySelector("input[name=federacion][value=AMP]"), ampForThis, fpp);
-    if (!ampForThis) fpp.checked = true;
 }
 
 // Primero la federación y después el perfil: Club, Jugador o DT de esa federación (CLUBAMP, PLAYERFPP, COACHAMP...).
@@ -293,16 +272,12 @@ function toggleProfile() {
 }
 
 /**
- * DT: elige la federación y el combo trae solo sus clubes (como en RinkReports): la FPP, la AMP si está habilitada, u
- * Otra, sin club de SIDGAD (lo escribe).
+ * DT: elige la federación y el combo trae solo sus clubes (como en RinkReports): la FPP, la AMP u Otra, sin club de
+ * SIDGAD (lo escribe).
  */
 function coachFederation() {
-    if (!signupOpts.amp) {
-        document.querySelector("input[name=federacion][value=AMP]").closest("label").remove();
-        document.querySelector("input[name=federacion]").closest(".profiles").classList.remove("three");
-    }
-    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes. Si no es "
-        + (signupOpts.amp ? "la FPP ni la AMP" : "la FPP") + ", elegí Otra y cargás tus equipos a mano.";
+    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes. Si no es la FPP ni la AMP, elegí Otra y "
+        + "cargás tus equipos a mano.";
     $("fed-hint").hidden = false;
     const sel = $("club");
     sel.innerHTML = "";
@@ -323,7 +298,7 @@ if (SECTION === "dt") {
     fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
         .then(o => { signupOpts = o; coachFederation(); });
 } else {
-    // Con lo que hoy se puede registrar: sin la AMP, la FPP con sus clubes y planes; con ella, a elegir.
+    // Con lo que hoy se puede registrar (las cuentas de club, según la configuración).
     fetch("/api/signup/options").then(r => r.ok ? r.json() : signupOpts).catch(() => signupOpts)
         .then(o => { signupOpts = o; toggleProfile(); });
 }

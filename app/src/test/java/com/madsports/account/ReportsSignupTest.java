@@ -23,12 +23,11 @@ import static org.mockito.Mockito.when;
 
 /**
  * El alta de cuentas con la configuración de la app: abierta para jugadores (Informes) y DT, cerrada para clubes. El
- * jugador (solo de la FPP, por ahora) empieza con el plan Jugador free (hasta el 31/12/2026); el mensual figura como
+ * jugador empieza con el plan Jugador free (hasta el 31/12/2026); el mensual figura como
  * "Próximamente".
  */
 @SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:alta-informes;DB_CLOSE_DELAY=-1",
-        "madsports.signup.club=false", "madsports.signup.player-paid=false",
-        "madsports.signup.player-amp=false"})
+        "madsports.signup.club=false", "madsports.signup.player-paid=false"})
 class ReportsSignupTest {
 
     @Autowired SignupService signup;
@@ -70,14 +69,6 @@ class ReportsSignupTest {
         assertThat(u.getSubscriptionPlan().getCode()).isEqualTo("PLAYER_FREE");
         assertThat(u.getSubscriptionTo()).isEqualTo(LocalDate.of(2026, 12, 31));
         assertThat(u.getPlayerId()).isEqualTo(3851);
-    }
-
-    @Test
-    void ampPlayerAccountsAreNotCreatedYet() {
-        assertThatThrownBy(() -> signup.register(new SignupService.Signup(Profile.PLAYERAMP, "juan", "clave-segura",
-                "juan@example.com", 3, "JUVENIL", "MASCULINO", 6188, "PLAYER_FREE", null)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Las cuentas de jugador de la AMP estarán disponibles próximamente. Por ahora, las de la FPP.");
     }
 
     @Test
