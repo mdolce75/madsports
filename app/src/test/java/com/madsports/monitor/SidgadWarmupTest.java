@@ -112,6 +112,28 @@ class SidgadWarmupTest {
     }
 
     @Test
+    void onStartupItSyncsInTheBackgroundUnlessTurnedOff() throws Exception {
+        CountingSite site = new CountingSite();
+        MemoryStore store = new MemoryStore();
+        SidgadWarmup w = warmup(site, store);
+
+        w.onStartup();
+        // En segundo plano: se espera a que anote la pasada.
+        for (int i = 0; i < 200 && !store.rows.containsKey(SidgadWarmup.lastSyncKey(Federation.FPP)); i++) {
+            Thread.sleep(50);
+        }
+        assertThat(store.rows).containsKey(SidgadWarmup.lastSyncKey(Federation.FPP));
+        assertThat(site.refreshed).hasSize(3 * 24);
+
+        CountingSite off = new CountingSite();
+        SidgadWarmup quiet = warmup(off, new MemoryStore());
+        quiet.setSyncOnStartup(false);
+        quiet.onStartup();
+        Thread.sleep(300);
+        assertThat(off.refreshed).isEmpty();
+    }
+
+    @Test
     void theFirstPassRenewsEveryCompetitionReadsTheSheetsAndEveryPlayersProfile() {
         CountingSite site = new CountingSite();
         MemoryStore store = new MemoryStore();

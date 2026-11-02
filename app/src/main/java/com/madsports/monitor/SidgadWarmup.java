@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +33,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Sincronización de madrugada con SIDGAD: deja en la base (copias de {@link SidgadClient}) lo que leen los informes, así
@@ -84,18 +87,51 @@ public class SidgadWarmup {
         this.concurrency = Math.max(1, concurrency);
     }
 
+    /** Una pasada a la vez: la del arranque, la de la madrugada y las de días de partido no se pisan. */
+    private final ReentrantLock running = new ReentrantLock();
+    private volatile boolean syncOnStartup = true;
+
+    /** {@code madsports.sidgad.sync-on-startup}: sincronizar al arrancar (cada deploy), además de lo programado. */
+    @Autowired
+    void setSyncOnStartup(@Value("${madsports.sidgad.sync-on-startup:true}") boolean on) {
+        this.syncOnStartup = on;
+    }
+
+    /**
+     * Al arrancar (cada deploy), una sincronización completa en segundo plano: el esquema ya lo migró Flyway antes de
+     * que la app atienda, y así los datos de SIDGAD no esperan a la madrugada. No demora el arranque.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void onStartup() {
+        if (syncOnStartup) {
+            Thread.ofVirtual().name("sidgad-sync-arranque").start(() -> {
+                log.info("Sincronización de SIDGAD al arrancar");
+                run();
+            });
+        }
+    }
+
     @Scheduled(cron = "${madsports.sidgad.warmup-cron:0 0 5 * * *}", zone = "America/Argentina/Buenos_Aires")
     public void run() {
-        refreshCatalog();
-        for (Federation f : federations) {
-            try {
-                Result r = warm(f, catalog.defaultYear());
-                log.info("Sincronización de SIDGAD ({}): {} competiciones; {} tablas, calendarios y estadísticas ({}"
-                                + " cambiaron); {} actas; {} fichas de jugador; {} errores; en {} s", f, r.competitions(),
-                        r.fragments(), r.changed(), r.sheets(), r.profiles(), r.errors(), r.took().toSeconds());
-            } catch (RuntimeException e) {
-                log.warn("Falló la sincronización de SIDGAD ({}): {}", f, e.getMessage());
+        if (!running.tryLock()) {
+            log.info("Ya hay una sincronización de SIDGAD en curso: se saltea esta");
+            return;
+        }
+        try {
+            refreshCatalog();
+            for (Federation f : federations) {
+                try {
+                    Result r = warm(f, catalog.defaultYear());
+                    log.info("Sincronización de SIDGAD ({}): {} competiciones; {} tablas, calendarios y estadísticas ({}"
+                                    + " cambiaron); {} actas; {} fichas de jugador; {} errores; en {} s", f,
+                            r.competitions(), r.fragments(), r.changed(), r.sheets(), r.profiles(), r.errors(),
+                            r.took().toSeconds());
+                } catch (RuntimeException e) {
+                    log.warn("Falló la sincronización de SIDGAD ({}): {}", f, e.getMessage());
+                }
             }
+        } finally {
+            running.unlock();
         }
     }
 
@@ -136,18 +172,26 @@ public class SidgadWarmup {
      */
     @Scheduled(cron = "${madsports.sidgad.matchday-cron:0 0 12,15,18,21 * * SAT,SUN}", zone = "America/Argentina/Buenos_Aires")
     public void runMatchDay() {
-        for (Federation f : federations) {
-            try {
-                Result r = matchDay(f, catalog.defaultYear());
-                if (r.competitions() > 0) {
-                    log.info("Pasada de día de partido de SIDGAD ({}): {} competiciones con partidos hoy; {} tablas,"
-                                    + " calendarios y estadísticas ({} cambiaron); {} fichas de jugador; {} errores; en {} s",
-                            f, r.competitions(), r.fragments(), r.changed(), r.profiles(), r.errors(),
-                            r.took().toSeconds());
+        if (!running.tryLock()) {
+            log.info("Ya hay una sincronización de SIDGAD en curso: se saltea la de día de partido");
+            return;
+        }
+        try {
+            for (Federation f : federations) {
+                try {
+                    Result r = matchDay(f, catalog.defaultYear());
+                    if (r.competitions() > 0) {
+                        log.info("Pasada de día de partido de SIDGAD ({}): {} competiciones con partidos hoy; {} tablas,"
+                                        + " calendarios y estadísticas ({} cambiaron); {} fichas de jugador; {} errores;"
+                                        + " en {} s", f, r.competitions(), r.fragments(), r.changed(), r.profiles(),
+                                r.errors(), r.took().toSeconds());
+                    }
+                } catch (RuntimeException e) {
+                    log.warn("Falló la pasada de día de partido de SIDGAD ({}): {}", f, e.getMessage());
                 }
-            } catch (RuntimeException e) {
-                log.warn("Falló la pasada de día de partido de SIDGAD ({}): {}", f, e.getMessage());
             }
+        } finally {
+            running.unlock();
         }
     }
 
