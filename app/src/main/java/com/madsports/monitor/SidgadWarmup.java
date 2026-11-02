@@ -59,6 +59,7 @@ public class SidgadWarmup {
 
     @Scheduled(cron = "${madsports.sidgad.warmup-cron:0 0 5 * * *}", zone = "America/Argentina/Buenos_Aires")
     public void run() {
+        refreshCatalog();
         for (Federation f : federations) {
             try {
                 Result r = warm(f, catalog.defaultYear());
@@ -67,6 +68,19 @@ public class SidgadWarmup {
             } catch (RuntimeException e) {
                 log.warn("Falló la precarga de SIDGAD ({}): {}", f, e.getMessage());
             }
+        }
+    }
+
+    /** La bajada del día del catálogo (competiciones, clubes, equipos): se guarda y se registra qué cambió. */
+    void refreshCatalog() {
+        SidgadClient.CatalogRefresh r = sidgad.refreshCatalog();
+        if (!r.downloaded()) {
+            log.warn("No se pudo actualizar el catálogo de SIDGAD: se sigue con la copia guardada");
+        } else if (r.changes().isEmpty()) {
+            log.info("Catálogo de SIDGAD actualizado, sin cambios en competiciones ni equipos");
+        } else {
+            log.info("Catálogo de SIDGAD actualizado, {} cambio(s):\n  {}", r.changes().size(),
+                    String.join("\n  ", r.changes()));
         }
     }
 
