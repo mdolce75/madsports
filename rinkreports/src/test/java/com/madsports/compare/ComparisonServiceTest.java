@@ -34,7 +34,7 @@ class ComparisonServiceTest {
                 return Fixtures.read("catalogo.html");
             }
         };
-        return new ComparisonService(new CatalogService(client, props), client, Clock.systemUTC());
+        return new ComparisonService(new CatalogService(client, props), client, null, null, Clock.systemUTC());
     }
 
     private static Request request(int clubA, String categoryA, int clubB, String categoryB) {

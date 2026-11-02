@@ -1,5 +1,6 @@
 package com.madsports.report;
 
+import com.madsports.compare.Comparison;
 import com.madsports.player.PlayerReport;
 import com.madsports.stats.ReportData.FoulSituation;
 import com.madsports.stats.ReportData.MatchLine;
@@ -219,6 +220,47 @@ public class Charts {
                 b.stream().mapToInt(TimeBucket::foulsOwn).toArray(),
                 b.stream().mapToInt(TimeBucket::foulsRival).toArray(),
                 OWN, RIVAL_HALF, "Faltas propias", "Faltas de los rivales");
+    }
+
+    // ---------- Comparativo ----------
+
+    /**
+     * Tarjetas de jugadores por tramo de 5', apiladas por cómo iba el partido: ganando, empatando y perdiendo (las del
+     * cuerpo técnico no van). Los tramos son los del perfil por minuto del equipo.
+     */
+    public String cardsByState(TimeProfile tp, List<Comparison.CardLine> cards) {
+        if (tp == null || !tp.hasData() || cards == null || cards.stream().noneMatch(c -> !c.staff())) {
+            return null;
+        }
+        List<TimeBucket> b = tp.buckets();
+        int[][] series = new int[3][b.size()];
+        for (Comparison.CardLine c : cards) {
+            if (c.staff()) {
+                continue;
+            }
+            int i = bucket(b, c.period(), c.minute());
+            if (i >= 0) {
+                series[c.state().ordinal()][i]++;
+            }
+        }
+        return stackedColumns(b.stream().map(TimeBucket::label).toList(), series, new Color[]{WIN, DRAW, LOSS},
+                new String[]{"Ganando", "Empatando", "Perdiendo"});
+    }
+
+    /** El tramo del minuto en su período (el último tramo se queda con el tiempo agregado); -1 si no es 1T ni 2T. */
+    static int bucket(List<TimeBucket> buckets, int period, int minute) {
+        int last = -1;
+        for (int i = 0; i < buckets.size(); i++) {
+            TimeBucket t = buckets.get(i);
+            if (t.period() != period) {
+                continue;
+            }
+            last = i;
+            if (minute >= t.fromMinute() && minute < t.toMinute()) {
+                return i;
+            }
+        }
+        return last;
     }
 
     // ---------- Informe de jugador ----------

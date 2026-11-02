@@ -4,9 +4,15 @@
 import {expect, test} from "@playwright/test";
 
 const CATALOGS = {
+    // Las categorías del catálogo son las que se ofrecen para comparar (equipos de la misma categoría y rama).
     FPP: {available: true, year: 2026, years: [2026], clubs: [
-        {id: 74, code: "CAVS", name: "VELEZ", categories: []},
-        {id: 94, code: "AAAJ", name: "ARGENTINOS JUNIORS", categories: []}]},
+        {id: 74, code: "CAVS", name: "VELEZ", categories: [
+            {key: "PRIMERA", label: "Primera", branches: ["MASCULINO", "FEMENINO"]},
+            {key: "INFANTIL:A", label: "Infantil A", branches: ["FEMENINO"]},
+            {key: "INFANTIL:B", label: "Infantil B", branches: ["FEMENINO"]}]},
+        {id: 94, code: "AAAJ", name: "ARGENTINOS JUNIORS", categories: [
+            {key: "PRIMERA", label: "Primera", branches: ["MASCULINO"]},
+            {key: "JUVENIL", label: "Juvenil", branches: ["MASCULINO"]}]}]},
     AMP: {available: true, year: 2026, years: [2026], clubs: [
         {id: 15, code: "GC", name: "GODOY CRUZ", categories: []}]},
 };
@@ -36,6 +42,7 @@ async function api(page) {
             case "/api/history": return json([]);
             case "/api/reports":
             case "/api/player/reports":
+            case "/api/compare/reports":
                 sent.push({url: url.pathname, body: route.request().postDataJSON()});
                 return json({detail: "Pedido recibido (prueba)."}, 400);
             default: return json({});
@@ -102,4 +109,44 @@ test("cascada: federación, club, categoría y jugador; con el club ya se genera
     await expect(page.locator("#categoria")).toHaveValue("ALL");
     await expect(options(page, "jugador")).toHaveText(["Todos los jugadores"]);
     await expect(page.locator("#go")).toBeEnabled();
+});
+
+test("comparar con otro equipo de la misma categoría y rama", async ({page}) => {
+    const sent = await api(page);
+    await page.goto("/rinkreports/reports.html");
+    await page.locator("#federacion").selectOption("FPP");
+    await page.locator("#club").selectOption("74");
+    // Sin categoría (club completo) no hay con quién comparar.
+    await expect(page.locator("#rival")).toBeDisabled();
+
+    // Primera Masculino: Argentinos tiene equipo; Primera Femenino, nadie más.
+    await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
+    await expect(options(page, "rival")).toHaveText(["Sin comparar", "ARGENTINOS JUNIORS"]);
+    await expect(page.locator("#rival")).toBeEnabled();
+    await page.locator("#categoria").selectOption("PRIMERA|FEMENINO");
+    await expect(options(page, "rival")).toHaveText(["No hay otros equipos en la categoría"]);
+    await expect(page.locator("#rival")).toBeDisabled();
+    // Infantil B: el otro equipo del mismo club (Infantil A) también se puede comparar.
+    await page.locator("#categoria").selectOption("INFANTIL:B|FEMENINO");
+    await expect(options(page, "rival")).toHaveText(["Sin comparar", "VELEZ A"]);
+
+    // Con un rival: sin período ni jugador, y el botón lo dice.
+    await page.locator("#categoria").selectOption("PRIMERA|MASCULINO");
+    await page.locator("#jugador").selectOption("1");
+    await page.locator("#rival").selectOption("94|PRIMERA");
+    await expect(page.locator("#jugador")).toHaveValue("");
+    await expect(page.locator("#periodo")).toBeDisabled();
+    await expect(page.locator("#compare-hint")).toBeVisible();
+    await expect(page.locator("#go")).toHaveText("Generar comparativo");
+
+    await page.locator("#go").click();
+    await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
+    expect(sent.pop()).toEqual({url: "/api/compare/reports", body: {federation: "FPP", year: 2026,
+        branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA"}});
+
+    // Elegir un jugador saca el rival: vuelve el informe de jugador.
+    await page.locator("#jugador").selectOption("2");
+    await expect(page.locator("#rival")).toHaveValue("");
+    await expect(page.locator("#periodo")).toBeEnabled();
+    await expect(page.locator("#go")).toHaveText("Generar informe");
 });
