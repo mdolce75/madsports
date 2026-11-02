@@ -102,6 +102,9 @@ madsports:
     warmup-federations: ${SIDGAD_WARMUP_FEDERATIONS:FPP}
     # Pedidos a la vez de la sincronización: va despacio, sin apuro y sin competir con los informes.
     sync-concurrency: ${SIDGAD_SYNC_CONCURRENCY:2}
+    # Al arrancar (cada deploy), una sincronización completa en segundo plano, después de que Flyway migra el esquema:
+    # los datos de SIDGAD no esperan a la madrugada.
+    sync-on-startup: ${SIDGAD_SYNC_ON_STARTUP:true}
     # Pasadas extra en días de partido (hora argentina; "-" las apaga): solo las competiciones con partidos ese día,
     # para que un resultado de la tarde no espere a la madrugada.
     matchday-cron: ${SIDGAD_MATCHDAY_CRON:0 0 12,15,18,21 * * SAT,SUN}

@@ -98,8 +98,10 @@ Cuando aparezca `Started MadSportsApplication`, salir con `Ctrl+C` (la app sigue
 - Estado de la app: `curl -s localhost:80 -o /dev/null -w "%{http_code}\n"` y
   `docker compose -f docker-compose.prod.yml ps` (los tres servicios `Up`).
 
-La base arranca vacía (las migraciones crean todo). La primera noche, a las 5:00, la precarga baja las actas de
-SIDGAD (unos 4 minutos); hasta entonces, el primer informe de club tarda ~70 s.
+La base arranca vacía (las migraciones de Flyway crean todo al arrancar, antes de que la app atienda; si una falla, la
+app no arranca). Apenas arranca, en segundo plano, la app sincroniza SIDGAD (catálogo, tablas, calendarios,
+estadísticas, actas y fichas: la primera vez tarda unos minutos); después, todas las madrugadas a las 5:00 y los fines
+de semana en las pasadas de días de partido. Los informes leen esas copias guardadas.
 
 ## 9. Respaldos diarios
 
@@ -126,7 +128,9 @@ scp root@IP_DEL_SERVIDOR:/var/backups/madsports/base-*.sql.gz .
 /opt/madsports/deploy/actualizar.sh
 ```
 
-Baja lo último, reconstruye y reinicia la app (la base y los informes no se tocan; las migraciones corren solas).
+Baja lo último, reconstruye y reinicia la app (la base y los informes no se tocan). En cada arranque, Flyway aplica las
+migraciones pendientes antes de que la app atienda (y Hibernate valida el esquema: si algo no se migró, no arranca) y,
+en segundo plano, se sincroniza SIDGAD (`SIDGAD_SYNC_ON_STARTUP`, encendido por defecto).
 Con el paso 11 esto pasa solo en cada merge a main.
 
 ## 11. Desplegar solo en cada merge a main
