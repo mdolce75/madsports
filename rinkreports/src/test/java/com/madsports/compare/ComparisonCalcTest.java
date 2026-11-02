@@ -187,6 +187,34 @@ class ComparisonCalcTest {
     }
 
     @Test
+    void inTheLastFiveThePlayerNumbersAreThoseOfThoseMatchesFromTheSeasonProfiles() {
+        List<CompetitionData> data = season();
+        // Fichas de temporada simuladas: 10 goles por partido de los pedidos, para ver qué partidos se cuentan.
+        java.util.Map<Integer, Set<Integer>> asked = new java.util.concurrent.ConcurrentHashMap<>();
+        com.madsports.report.CategoryExtractor.PlayersByMatch alfa = (cd, idps) -> {
+            asked.put(cd.competition().id(), idps);
+            int team = cd.competition().id() == 500 ? 101 : 201;
+            return List.of(new PlayerStats(11, team, "AAA", 1, "Ana Alfa", 10 * idps.size(), idps.size(), 0, 1, 2, 0,
+                    0, 0, 0));
+        };
+        com.madsports.report.CategoryExtractor.PlayersByMatch beta = (cd, idps) -> List.of(new PlayerStats(21,
+                cd.competition().id() == 500 ? 102 : 202, "BBB", 2, "Bea Beta", idps.size(), idps.size(), 0, 0, 0, 0, 0,
+                0, 0));
+        Comparison c = ComparisonCalc.build(Federation.FPP, 2026, "Primera Femenino", Scope.LAST_5,
+                new Input(A, "AAA", data, null, alfa), new Input(B, "BBB", data, null, beta),
+                LocalDate.of(2026, 11, 2), List.of());
+
+        assertThat(c.playerTops()).isTrue();
+        // Los partidos de Alfa: los del Apertura (actas 1 y 2) y los del Clausura (4 y 5).
+        assertThat(asked).containsEntry(500, Set.of(1, 2)).containsEntry(600, Set.of(4, 5));
+        assertThat(c.a().view().topScorers()).singleElement()
+                .satisfies(p -> assertThat(p.goals()).isEqualTo(40))
+                .satisfies(p -> assertThat(p.games()).isEqualTo(4));
+        assertThat(c.a().view().topPenalties()).singleElement()
+                .satisfies(p -> assertThat(p.penaltiesTaken()).isEqualTo(4));
+    }
+
+    @Test
     void eachCardWithTheScoreAndTheStaffApart() {
         Comparison c = built(Scope.SEASON);
 
