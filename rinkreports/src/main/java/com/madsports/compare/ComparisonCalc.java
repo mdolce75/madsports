@@ -6,6 +6,7 @@ import com.madsports.compare.Comparison.HeadToHead;
 import com.madsports.compare.Comparison.Scorer;
 import com.madsports.compare.Comparison.Side;
 import com.madsports.compare.Comparison.View;
+import com.madsports.report.ReportService.Scope;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.EventType;
@@ -45,66 +46,101 @@ public final class ComparisonCalc {
     public record Input(ClubView club, String teamKey, List<CompetitionData> data, String logo) {
     }
 
+    /** El comparativo del año completo. */
     public static Comparison build(Federation federation, int year, String category, Input a, Input b,
                                    LocalDate today, List<String> notPublished) {
-        Side sa = side(a, category, year, today);
-        Side sb = side(b, category, year, today);
-        List<HeadToHead> h2h = headToHead(a, b);
-        List<String> notes = new ArrayList<>();
-        Competition ca = currentCompetition(a);
-        Competition cb = currentCompetition(b);
-        if (ca != null && cb != null && ca.id() != cb.id()) {
-            notes.add(sa.name() + " juega " + ca.name() + " y " + sb.name() + " juega " + cb.name()
-                    + ": las cifras del torneo actual no son del mismo torneo.");
-        }
-        return new Comparison(federation == null ? null : federation.name(), year, category, today, sa, sb, h2h,
-                summary(sa, sb, h2h), notes, notPublished);
+        return build(federation, year, category, Scope.SEASON, a, b, today, notPublished);
     }
 
-    private static Side side(Input in, String category, int year, LocalDate today) {
+    /**
+     * El comparativo en un período: un torneo (solo sus partidos y sus enfrentamientos), los últimos 5 partidos de cada
+     * equipo o el año. Solo va lo del período elegido.
+     */
+    public static Comparison build(Federation federation, int year, String category, Scope scope, Input a, Input b,
+                                   LocalDate today, List<String> notPublished) {
+        String period = period(scope, year);
+        Side sa = side(a, category, year, scope, period, today);
+        Side sb = side(b, category, year, scope, period, today);
+        // Los enfrentamientos: los del torneo elegido; con los últimos 5 o el año, los del año.
+        List<HeadToHead> h2h = headToHead(inTournament(a, scope), inTournament(b, scope));
+        List<String> notes = new ArrayList<>();
+        if (scope.tournament() != null) {
+            List<Competition> ca = inTournament(a, scope).data().stream().map(CompetitionData::competition).toList();
+            List<Competition> cb = inTournament(b, scope).data().stream().map(CompetitionData::competition).toList();
+            if (ca.stream().noneMatch(c -> cb.stream().anyMatch(o -> o.id() == c.id()))) {
+                notes.add(sa.name() + " juega " + names(ca) + " y " + sb.name() + " juega " + names(cb)
+                        + ": las cifras del " + period + " no son del mismo torneo.");
+            }
+        }
+        return new Comparison(federation == null ? null : federation.name(), year, category, period,
+                scope == Scope.LAST_5, today, sa, sb, h2h, summary(sa, sb, h2h, scope, period), notes, notPublished);
+    }
+
+    /** "Apertura", "Últimos 5 partidos", "Año 2026". */
+    static String period(Scope scope, int year) {
+        if (scope.tournament() != null) {
+            return scope.tournament().label();
+        }
+        return scope == Scope.LAST_5 ? "Últimos " + Comparison.LAST_MATCHES + " partidos" : "Año " + year;
+    }
+
+    private static String names(List<Competition> comps) {
+        return comps.stream().map(Competition::name).collect(Collectors.joining(" y "));
+    }
+
+    /** Lo del equipo en el torneo del período (todo el año si el período no es un torneo). */
+    private static Input inTournament(Input in, Scope scope) {
+        if (scope.tournament() == null) {
+            return in;
+        }
+        return new Input(in.club(), in.teamKey(), in.data().stream()
+                .filter(cd -> cd.competition().tournament() == scope.tournament()).toList(), in.logo());
+    }
+
+    /** Lo del equipo en el período: el torneo, o el año con solo sus últimos 5 partidos jugados, o el año. */
+    static Input scoped(Input in, Scope scope) {
+        if (scope != Scope.LAST_5) {
+            return inTournament(in, scope);
+        }
+        Map<Competition, TeamRef> teams = StatsEngine.teamsOf(in.data(), in.club(), in.teamKey());
+        List<Match> played = new ArrayList<>();
+        for (CompetitionData cd : in.data()) {
+            TeamRef t = teams.get(cd.competition());
+            if (t != null) {
+                cd.matches().stream().filter(m -> m.played() && m.involves(t.teamId())).forEach(played::add);
+            }
+        }
+        played.sort(StatsEngine.CHRONO);
+        Set<Match> last = new HashSet<>(played.subList(Math.max(0, played.size() - Comparison.LAST_MATCHES),
+                played.size()));
+        List<CompetitionData> data = in.data().stream().map(cd -> new CompetitionData(cd.competition(), cd.standings(),
+                cd.standingsDate(), cd.matches().stream().filter(last::contains).toList(), cd.players(), cd.sheets(),
+                cd.goalkeepers(), cd.startingKeepers())).toList();
+        return new Input(in.club(), in.teamKey(), data, in.logo());
+    }
+
+    private static Side side(Input in, String category, int year, Scope scope, String period, LocalDate today) {
         TeamReport season = report(in, category, "Temporada " + year, in.data(), today, 0);
         if (season == null) {
             throw new IllegalArgumentException(in.club().name() + " no juega en " + category + " en " + year + ".");
         }
-        Competition current = currentCompetition(in);
-        List<CompetitionData> currentData = current == null ? in.data()
-                : in.data().stream().filter(cd -> cd.competition().id() == current.id()).toList();
+        Input chosen = scoped(in, scope);
+        TeamReport report = report(chosen, category, period, chosen.data(), today, 0);
+        if (report == null) {
+            throw new IllegalArgumentException(in.club().name() + " no juega el " + period + " en " + category + " en "
+                    + year + ".");
+        }
+        // El plantel del año dice quién es jugador y quién del cuerpo técnico.
         List<Competition> all = in.data().stream().map(CompetitionData::competition).toList();
-        String currentLabel = current == null ? "Temporada " + year : current.tournamentLabel(all);
-        TeamReport currentReport = report(in, category, currentLabel, currentData, today, 0);
-        TeamReport last5 = report(in, category, "Últimos " + Comparison.LAST_MATCHES + " partidos", in.data(), today,
-                Comparison.LAST_MATCHES);
-        List<CardLine> cards = cards(in, season.squad(), all);
-        List<CardLine> currentCards = cards(new Input(in.club(), in.teamKey(), currentData, in.logo()), season.squad(), all);
+        List<CardLine> cards = cards(chosen, season.squad(), all);
         ReportData.ClubInfo club = new ReportData.ClubInfo(in.club().id(), in.club().code(), in.club().name(), in.logo());
-        return new Side(club, in.teamKey(), season.name(), currentLabel, new View(currentReport, currentCards),
-                new View(season, cards), last5);
+        return new Side(club, in.teamKey(), season.name(), new View(report, cards));
     }
 
     private static TeamReport report(Input in, String category, String label, List<CompetitionData> data,
                                      LocalDate today, int lastMatches) {
         return StatsEngine.build(in.club(), category, label, data, today, lastMatches, in.teamKey()).teams().stream()
                 .findFirst().orElse(null);
-    }
-
-    /** La competición del último partido jugado del equipo; null si todavía no jugó. */
-    static Competition currentCompetition(Input in) {
-        Map<Competition, TeamRef> teams = StatsEngine.teamsOf(in.data(), in.club(), in.teamKey());
-        Competition best = null;
-        Match last = null;
-        for (CompetitionData cd : in.data()) {
-            TeamRef t = teams.get(cd.competition());
-            if (t == null) {
-                continue;
-            }
-            for (Match m : cd.matches()) {
-                if (m.played() && m.involves(t.teamId()) && (last == null || StatsEngine.CHRONO.compare(m, last) > 0)) {
-                    last = m;
-                    best = cd.competition();
-                }
-            }
-        }
-        return best;
     }
 
     /**
@@ -214,27 +250,30 @@ public final class ComparisonCalc {
                 .toList();
     }
 
-    /** El resumen: quién llega mejor, la tabla, los enfrentamientos y el próximo partido entre los dos. */
-    static List<String> summary(Side a, Side b, List<HeadToHead> h2h) {
+    /** El resumen del período: a quién le va mejor, la tabla, los enfrentamientos y el próximo partido entre los dos. */
+    static List<String> summary(Side a, Side b, List<HeadToHead> h2h, Scope scope, String period) {
         List<String> out = new ArrayList<>();
-        ReportData.TeamRecord ra = a.last5().total();
-        ReportData.TeamRecord rb = b.last5().total();
-        String form = "en sus últimos " + Comparison.LAST_MATCHES + " partidos " + a.name() + " " + record(ra)
-                + " y " + b.name() + " " + record(rb) + ".";
+        ReportData.TeamRecord ra = a.view().report().total();
+        ReportData.TeamRecord rb = b.view().report().total();
+        boolean last = scope == Scope.LAST_5;
+        String where = last ? "en sus últimos " + Comparison.LAST_MATCHES + " partidos"
+                : scope.tournament() != null ? "en el " + period : "en el año";
+        String form = where + " " + a.name() + " " + record(ra) + " y " + b.name() + " " + record(rb) + ".";
         int byPoints = Integer.compare(ra.points(), rb.points());
         int cmp = byPoints != 0 ? byPoints : Integer.compare(ra.goalDiff(), rb.goalDiff());
-        out.add(cmp == 0 ? "Llegan parejos: " + form
-                : (cmp > 0 ? a.name() : b.name()) + " llega mejor: " + form);
+        out.add(cmp == 0 ? (last ? "Llegan parejos: " : "Van parejos: ") + form
+                : (cmp > 0 ? a.name() : b.name()) + (last ? " llega mejor: " : " viene mejor: ") + form);
 
-        position(a).ifPresent(pa -> position(b).ifPresent(pb -> out.add(
-                a.currentTournament().equals(b.currentTournament())
-                        ? "En el " + a.currentTournament() + ", " + a.name() + " está " + pa + " y " + b.name() + " " + pb + "."
-                        : a.name() + " está " + pa + " en el " + a.currentTournament() + " y " + b.name() + " " + pb
-                        + " en el " + b.currentTournament() + ".")));
+        // La tabla, solo en un torneo (la del torneo elegido).
+        if (scope.tournament() != null) {
+            position(a).ifPresent(pa -> position(b).ifPresent(pb -> out.add("En el " + period + ", " + a.name()
+                    + " está " + pa + " y " + b.name() + " " + pb + ".")));
+        }
 
+        String in = scope.tournament() != null ? "en el " + period : "en el año";
         List<HeadToHead> played = h2h.stream().filter(HeadToHead::played).toList();
         if (played.isEmpty()) {
-            out.add("Todavía no se enfrentaron en el año.");
+            out.add("Todavía no se enfrentaron " + in + ".");
         } else {
             int winsA = 0;
             int winsB = 0;
@@ -249,7 +288,7 @@ public final class ComparisonCalc {
                 winsB += gb > ga ? 1 : 0;
             }
             int draws = played.size() - winsA - winsB;
-            out.add("Se enfrentaron " + times(played.size()) + " en el año: " + tally(a.name(), winsA, b.name(), winsB, draws)
+            out.add("Se enfrentaron " + times(played.size()) + " " + in + ": " + tally(a.name(), winsA, b.name(), winsB, draws)
                     + ", con " + goalsA + " goles de " + a.name() + " y " + goalsB + " de " + b.name() + ".");
         }
         h2h.stream().filter(m -> !m.played()).findFirst().ifPresent(m -> out.add("El próximo enfrentamiento es por la fecha "
@@ -260,7 +299,7 @@ public final class ComparisonCalc {
     }
 
     private static java.util.Optional<String> position(Side s) {
-        return s.current().report().standings().stream().findFirst()
+        return s.view().report().standings().stream().findFirst()
                 .map(st -> st.position() + "º de " + st.groupSize());
     }
 

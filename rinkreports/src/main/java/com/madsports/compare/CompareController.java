@@ -7,6 +7,7 @@ import com.madsports.report.Downloads;
 import com.madsports.report.JobView;
 import com.madsports.report.ReportFederations;
 import com.madsports.report.ReportQuota;
+import com.madsports.report.ReportService;
 import com.madsports.report.ReportService.Status;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SidgadClient.SidgadException;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -42,7 +44,7 @@ public class CompareController {
      * @param federation FPP o AMP; si falta, la del perfil del usuario
      */
     public record CompareRequest(Integer year, String federation, String branch, Integer clubA, String categoryA,
-                                 Integer clubB, String categoryB) {
+                                 Integer clubB, String categoryB, String period) {
     }
 
     private final ComparisonService comparisons;
@@ -70,13 +72,32 @@ public class CompareController {
         }
         Federation fed = federations.resolve(req.federation(), u);
         int year = catalog.checkYear(req.year());
+        ReportService.Scope scope = ReportService.Scope.parse(req.period());
         ComparisonService.Request r = new ComparisonService.Request(fed, year,
-                req.branch().trim().toUpperCase(Locale.ROOT), req.clubA(), req.categoryA(), req.clubB(), req.categoryB());
+                req.branch().trim().toUpperCase(Locale.ROOT), req.clubA(), req.categoryA(), req.clubB(), req.categoryB(),
+                scope);
         List<ComparisonService.Team> teams = comparisons.validate(r);
         String detail = "Comparativo · " + teams.get(0).club().name() + " vs " + teams.get(1).club().name() + " · "
-                + teams.get(0).category().label() + " " + year;
+                + teams.get(0).category().label() + " · " + ComparisonCalc.period(scope, year)
+                + (scope == ReportService.Scope.SEASON ? "" : " " + year);
         ComparisonService.Job job = quota.consume(u, detail, () -> comparisons.submit(r, u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
+    }
+
+    /**
+     * Los períodos que se pueden elegir para la categoría: cada torneo que tenga en el año, los últimos 5 partidos y el
+     * año completo.
+     */
+    @GetMapping("/periods")
+    public List<ComparisonService.PeriodOption> periods(@RequestParam String category, @RequestParam String branch,
+                                                        @RequestParam(required = false) Integer year,
+                                                        @RequestParam(required = false) String federation,
+                                                        Authentication auth) {
+        UserAccount u = users.findByPrincipal(auth.getName())
+                .orElseThrow(() -> new AccessDeniedException("Sesión inválida."));
+        Federation fed = federations.resolve(federation, u);
+        return comparisons.periods(fed, catalog.checkYear(year), category.split(":")[0].trim().toUpperCase(Locale.ROOT),
+                branch.trim().toUpperCase(Locale.ROOT));
     }
 
     private static boolean blank(String s) {

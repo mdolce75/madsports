@@ -283,20 +283,19 @@ public class ExcelExporter {
             Sheet summary = new Sheet(book, "Resumen");
             summary.title("Comparativo · " + a.name() + " vs " + b.name());
             summary.meta("Categoría", r.category());
-            summary.meta("Temporada", r.year());
+            summary.meta("Período", r.periodTitle());
             summary.meta("Generado", r.generatedOn());
             dataAsOf(summary, r.dataAsOf());
             summary.blank();
             r.summary().forEach(summary::text);
             r.notes().forEach(summary::text);
-            scope(summary, "Torneo actual · " + a.currentTournament(), a.current(), b.current(), a.name(), b.name());
-            scope(summary, "Año " + r.year(), a.season(), b.season(), a.name(), b.name());
+            scope(summary, r.periodTitle(), a.view(), b.view(), a.name(), b.name());
             summary.widths(34, 18, 18);
 
-            Sheet last = new Sheet(book, "Últimos 5");
+            Sheet last = new Sheet(book, "Partidos");
             last.header("Equipo", "Fecha", "Torneo", "Rival", "Condición", "GF", "GC", "Resultado");
             for (Comparison.Side s : List.of(a, b)) {
-                for (ReportData.MatchLine m : s.last5().results()) {
+                for (ReportData.MatchLine m : s.view().report().results()) {
                     last.row(s.name(), m.date(), m.tournament(), m.opponent(), m.home() ? "Local" : "Visitante",
                             m.goalsFor(), m.goalsAgainst(), m.outcome());
                 }
@@ -304,23 +303,27 @@ public class ExcelExporter {
             last.widths(24, 12, 14, 30, 11, 6, 6, 10);
             last.freezeHeader();
 
-            Sheet players = new Sheet(book, "Jugadores");
-            players.header("Equipo", "Jugador", "PJ", "Goles", "Penales conv.", "Penales tir.", "Libres conv.",
-                    "Libres tir.", "Amarillas", "Azules", "Rojas");
-            for (Comparison.Side s : List.of(a, b)) {
-                for (PlayerLine p : s.season().report().squad()) {
-                    players.row(s.name(), p.name(), p.games(), p.goals(), p.penaltiesScored(), p.penaltiesTaken(),
-                            p.directFreeScored(), p.directFreeTaken(), p.yellowCards(), p.blueCards(), p.redCards());
+            // Los números por jugador son de las tablas por torneo: en los últimos 5 partidos no van.
+            if (r.playerTops()) {
+                Sheet players = new Sheet(book, "Jugadores");
+                players.header("Equipo", "Jugador", "PJ", "Goles", "Penales conv.", "Penales tir.", "Libres conv.",
+                        "Libres tir.", "Amarillas", "Azules", "Rojas");
+                for (Comparison.Side s : List.of(a, b)) {
+                    for (PlayerLine p : s.view().report().squad()) {
+                        players.row(s.name(), p.name(), p.games(), p.goals(), p.penaltiesScored(), p.penaltiesTaken(),
+                                p.directFreeScored(), p.directFreeTaken(), p.yellowCards(), p.blueCards(),
+                                p.redCards());
+                    }
                 }
+                players.widths(24, 30, 6, 7, 13, 12, 12, 11, 10, 8, 7);
+                players.freezeHeader();
             }
-            players.widths(24, 30, 6, 7, 13, 12, 12, 11, 10, 8, 7);
-            players.freezeHeader();
 
             Sheet cards = new Sheet(book, "Tarjetas");
             cards.header("Equipo", "Fecha", "Torneo", "Rival", "Jugador", "Cuerpo técnico", "Tarjeta", "Minuto",
                     "Marcador", "Iba");
             for (Comparison.Side s : List.of(a, b)) {
-                for (Comparison.CardLine c : s.season().cards()) {
+                for (Comparison.CardLine c : s.view().cards()) {
                     cards.row(s.name(), c.date(), c.tournament(), c.opponent(), c.player(), c.staff() ? "Sí" : "",
                             c.card(), c.minuteLabel(), c.score(), c.state().label());
                 }
@@ -329,11 +332,11 @@ public class ExcelExporter {
             cards.freezeHeader();
 
             Sheet minutes = new Sheet(book, "Minutos");
-            minutes.title("Goles del año por tramo de 5 minutos");
+            minutes.title("Goles por tramo de 5 minutos · " + r.periodTitle());
             minutes.header("Tramo", a.name() + " a favor", a.name() + " en contra", b.name() + " a favor",
                     b.name() + " en contra");
-            List<ReportData.TimeBucket> ba = a.season().report().timeProfile().buckets();
-            List<ReportData.TimeBucket> bb = b.season().report().timeProfile().buckets();
+            List<ReportData.TimeBucket> ba = a.view().report().timeProfile().buckets();
+            List<ReportData.TimeBucket> bb = b.view().report().timeProfile().buckets();
             for (int i = 0; i < Math.max(ba.size(), bb.size()); i++) {
                 ReportData.TimeBucket x = i < ba.size() ? ba.get(i) : null;
                 ReportData.TimeBucket y = i < bb.size() ? bb.get(i) : null;

@@ -13,6 +13,7 @@ import com.madsports.report.ReportService;
 import com.madsports.report.ReportService.Scope;
 import com.madsports.report.ReportService.Status;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.sidgad.model.Federation;
 import org.slf4j.Logger;
@@ -50,7 +51,32 @@ public class ComparisonService {
      * @param categoryB la del club B: tiene que ser del mismo nivel
      */
     public record Request(Federation federation, int year, String branch, int clubA, String categoryA, int clubB,
-                          String categoryB) {
+                          String categoryB, Scope scope) {
+
+        /** El del año completo. */
+        public Request(Federation federation, int year, String branch, int clubA, String categoryA, int clubB,
+                       String categoryB) {
+            this(federation, year, branch, clubA, categoryA, clubB, categoryB, Scope.SEASON);
+        }
+    }
+
+    /** Un período del comparativo, para elegirlo: "OPENING", "Apertura". */
+    public record PeriodOption(String value, String label) {
+    }
+
+    /**
+     * Los períodos de la categoría en el año: cada torneo que tenga (Apertura, Clausura), los últimos 5 partidos y el año
+     * completo.
+     */
+    public List<PeriodOption> periods(Federation fed, int year, String level, String branch) {
+        Category category = catalog.category(fed, level, branch);
+        List<PeriodOption> out = new ArrayList<>();
+        catalog.competitions(fed, year).stream().filter(c -> category.equals(c.category()))
+                .map(Competition::tournament).filter(Objects::nonNull).distinct().sorted()
+                .forEach(t -> out.add(new PeriodOption(t.name(), t.label())));
+        out.add(new PeriodOption(Scope.LAST_5.name(), ComparisonCalc.period(Scope.LAST_5, year)));
+        out.add(new PeriodOption(Scope.SEASON.name(), "Año completo"));
+        return out;
     }
 
     /** Un equipo validado: el club, la categoría y la opción elegida (con la letra del equipo). */
@@ -161,7 +187,8 @@ public class ComparisonService {
             job.pdf = renderer.comparePdf(c);
             job.xlsx = excel.compare(c);
             job.fileName = "comparativo-" + slug(teams.get(0).club().code()) + "-vs-" + slug(teams.get(1).club().code())
-                    + "-" + slug(c.category()) + "-" + r.year() + ".pdf";
+                    + "-" + slug(c.category()) + "-" + slug(c.period()) + (r.scope() == Scope.SEASON ? "" : "-" + r.year())
+                    + ".pdf";
             job.update(Status.READY, "Comparativo listo");
         } catch (RuntimeException e) {
             log.error("Falló el comparativo {}", job.id(), e);
@@ -189,7 +216,18 @@ public class ComparisonService {
         if (r.clubA() == r.clubB() && oa.key().equals(ob.key())) {
             throw new IllegalArgumentException("Elegí dos equipos distintos.");
         }
-        return List.of(team(fed, r.year(), r.clubA(), oa, r.branch()), team(fed, r.year(), r.clubB(), ob, r.branch()));
+        List<Team> teams = List.of(team(fed, r.year(), r.clubA(), oa, r.branch()),
+                team(fed, r.year(), r.clubB(), ob, r.branch()));
+        // En un torneo, los dos tienen que jugarlo.
+        if (r.scope().tournament() != null) {
+            for (Team t : teams) {
+                if (catalog.competitionsFor(fed, t.club().id(), t.category(), r.scope().tournament(), r.year()).isEmpty()) {
+                    throw new IllegalArgumentException(t.club().name() + " no juega el " + r.scope().tournament().label()
+                            + " en " + ReportService.label(t.category(), t.option()) + " en " + r.year() + ".");
+                }
+            }
+        }
+        return teams;
     }
 
     private Team team(Federation fed, int year, int clubId, CategoryOption option, String branch) {
@@ -233,7 +271,7 @@ public class ComparisonService {
         }
         Team a = teams.getFirst();
         String category = a.category().levelLabel() + " " + a.category().branchLabel();
-        return ComparisonCalc.build(r.federation(), r.year(), category, inputs.get(0), inputs.get(1),
+        return ComparisonCalc.build(r.federation(), r.year(), category, r.scope(), inputs.get(0), inputs.get(1),
                 LocalDate.now(clock), notPublished).withDataAsOf(dataAsOf);
     }
 

@@ -5,6 +5,7 @@ import com.madsports.compare.Comparison.CardLine;
 import com.madsports.compare.Comparison.HeadToHead;
 import com.madsports.compare.Comparison.State;
 import com.madsports.compare.ComparisonCalc.Input;
+import com.madsports.report.ReportService.Scope;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.EventType;
@@ -35,8 +36,12 @@ class ComparisonCalcTest {
     static final ClubView AAAJ = new ClubView(94, "AAAJ", "ARGENTINOS JUNIORS", List.of());
 
     private static Comparison real(ClubView a, String keyA, ClubView b, String keyB) {
+        return real(Scope.SEASON, a, keyA, b, keyB);
+    }
+
+    private static Comparison real(Scope scope, ClubView a, String keyA, ClubView b, String keyB) {
         List<CompetitionData> data = List.of(StatsEngineTest.data(779));
-        return ComparisonCalc.build(Federation.FPP, 2026, "Primera Masculino", new Input(a, keyA, data, null),
+        return ComparisonCalc.build(Federation.FPP, 2026, "Primera Masculino", scope, new Input(a, keyA, data, null),
                 new Input(b, keyB, data, null), StatsEngineTest.TODAY, List.of());
     }
 
@@ -44,11 +49,16 @@ class ComparisonCalcTest {
     void withRealSidgadDataTheNumbersAreThoseOfEachTeamReport() {
         Comparison c = real(VELEZ, "CAVS", COMU, "COMU");
 
-        assertThat(c.a().currentTournament()).isEqualTo("Clausura");
-        assertThat(c.b().currentTournament()).isEqualTo("Clausura");
-        // Un solo torneo en los datos: torneo actual y año son lo mismo.
-        assertThat(c.a().current().report().total()).isEqualTo(c.a().season().report().total());
-        assertThat(c.a().last5().total().played()).isLessThanOrEqualTo(Comparison.LAST_MATCHES);
+        assertThat(c.period()).isEqualTo("Año 2026");
+        assertThat(c.periodTitle()).isEqualTo("Año 2026");
+        // Un solo torneo en los datos (el Clausura): el torneo y el año son lo mismo.
+        Comparison clausura = real(Scope.CLOSING, VELEZ, "CAVS", COMU, "COMU");
+        assertThat(clausura.periodTitle()).isEqualTo("Clausura 2026");
+        assertThat(clausura.a().view().report().total()).isEqualTo(c.a().view().report().total());
+        Comparison last = real(Scope.LAST_5, VELEZ, "CAVS", COMU, "COMU");
+        assertThat(last.a().view().report().total().played()).isLessThanOrEqualTo(Comparison.LAST_MATCHES)
+                .isEqualTo(last.a().view().report().results().size());
+        assertThat(last.playerTops()).isFalse();
         assertThat(c.notes()).isEmpty();
 
         // Vélez 7-0 Comunicaciones (acta 26396): los 7 goles con sus goleadores, todos de Vélez (local).
@@ -149,31 +159,38 @@ class ComparisonCalcTest {
         return new ArrayList<>(List.of(ap, cl));
     }
 
-    private static Comparison built() {
+    private static Comparison built(Scope scope) {
         List<CompetitionData> data = season();
-        return ComparisonCalc.build(Federation.FPP, 2026, "Primera Femenino", new Input(A, "AAA", data, null),
+        return ComparisonCalc.build(Federation.FPP, 2026, "Primera Femenino", scope, new Input(A, "AAA", data, null),
                 new Input(B, "BBB", data, null), LocalDate.of(2026, 11, 2), List.of());
     }
 
     @Test
-    void currentTournamentSeasonAndLastFive() {
-        Comparison c = built();
+    void onlyThePeriodChosen() {
+        Comparison clausura = built(Scope.CLOSING);
+        assertThat(clausura.period()).isEqualTo("Clausura");
+        assertThat(clausura.a().view().report().total().played()).isEqualTo(2);
+        assertThat(clausura.a().view().report().total().won()).isEqualTo(1);
+        assertThat(clausura.a().view().report().total().drawn()).isEqualTo(1);
 
-        assertThat(c.a().currentTournament()).isEqualTo("Clausura");
-        assertThat(c.a().current().report().total().played()).isEqualTo(2);
-        assertThat(c.a().current().report().total().won()).isEqualTo(1);
-        assertThat(c.a().current().report().total().drawn()).isEqualTo(1);
-        assertThat(c.a().season().report().total().played()).isEqualTo(4);
-        assertThat(c.a().season().report().total().goalsFor()).isEqualTo(11);
-        assertThat(c.b().season().report().total().played()).isEqualTo(4);
-        assertThat(c.a().last5().total().played()).isEqualTo(4);
+        Comparison year = built(Scope.SEASON);
+        assertThat(year.a().view().report().total().played()).isEqualTo(4);
+        assertThat(year.a().view().report().total().goalsFor()).isEqualTo(11);
+        assertThat(year.b().view().report().total().played()).isEqualTo(4);
+
+        // Los últimos 5: Alfa jugó 4, son todos; sin los números por jugador (son de las tablas por torneo).
+        Comparison last = built(Scope.LAST_5);
+        assertThat(last.lastMatches()).isTrue();
+        assertThat(last.a().view().report().total().played()).isEqualTo(4);
+        assertThat(last.playerTops()).isFalse();
+        assertThat(year.playerTops()).isTrue();
     }
 
     @Test
     void eachCardWithTheScoreAndTheStaffApart() {
-        Comparison c = built();
+        Comparison c = built(Scope.SEASON);
 
-        List<CardLine> alfa = c.a().season().cards();
+        List<CardLine> alfa = c.a().view().cards();
         assertThat(alfa).extracting(CardLine::player, CardLine::card, CardLine::score, CardLine::state, CardLine::staff)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple("Ana Alfa", "Amarilla", "1-1", State.LEVEL, false),
@@ -182,17 +199,17 @@ class ComparisonCalcTest {
         assertThat(alfa.get(2).minuteLabel()).isEqualTo("1T 06:00");
         assertThat(alfa.get(2).opponent()).isEqualTo("BETA");
         // El técnico va en la lista pero no en los conteos de jugadores.
-        assertThat(c.a().season().cardStates()).containsExactly(0, 1, 1);
-        // En el torneo actual, solo la roja del Clausura.
-        assertThat(c.a().current().cards()).extracting(CardLine::card).containsExactly("Roja");
+        assertThat(c.a().view().cardStates()).containsExactly(0, 1, 1);
+        // En el Clausura, solo la roja del Clausura.
+        assertThat(built(Scope.CLOSING).a().view().cards()).extracting(CardLine::card).containsExactly("Roja");
 
-        assertThat(c.b().season().cards()).singleElement()
+        assertThat(c.b().view().cards()).singleElement()
                 .satisfies(card -> assertThat(card.state()).isEqualTo(State.BEHIND));
     }
 
     @Test
     void headToHeadAndSummary() {
-        Comparison c = built();
+        Comparison c = built(Scope.SEASON);
 
         assertThat(c.headToHead()).extracting(HeadToHead::tournament, HeadToHead::goalsA, HeadToHead::goalsB)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple("Apertura", 3, 1),
@@ -202,11 +219,19 @@ class ComparisonCalcTest {
                 .containsExactly(org.assertj.core.groups.Tuple.tuple("Ana Alfa", 2),
                         org.assertj.core.groups.Tuple.tuple("Clara Alfa", 1),
                         org.assertj.core.groups.Tuple.tuple("Bea Beta", 1));
+        assertThat(c.headToHeadTitle()).isEqualTo("Enfrentamientos del año");
         assertThat(c.summary()).containsExactly(
-                "ALFA llega mejor: en sus últimos 5 partidos ALFA ganó 3, empató 1 y perdió 0 (11 goles a favor, 3 en"
+                "ALFA viene mejor: en el año ALFA ganó 3, empató 1 y perdió 0 (11 goles a favor, 3 en"
                         + " contra) y BETA ganó 0, empató 2 y perdió 2 (5 goles a favor, 8 en contra).",
                 "Se enfrentaron 2 veces en el año: ALFA ganó 1 y empataron 1, con 5 goles de ALFA y 3 de BETA.",
                 "El próximo enfrentamiento es por la fecha 4 del Clausura, el 20/11, en cancha de ALFA.");
+        assertThat(built(Scope.LAST_5).summary().getFirst()).startsWith("ALFA llega mejor: en sus últimos 5 partidos");
+
+        // En el Apertura, solo sus enfrentamientos.
+        Comparison apertura = built(Scope.OPENING);
+        assertThat(apertura.headToHead()).extracting(HeadToHead::tournament).containsExactly("Apertura");
+        assertThat(apertura.headToHeadTitle()).isEqualTo("Enfrentamientos del Apertura");
+        assertThat(apertura.summary()).anyMatch(l -> l.startsWith("Se enfrentaron una vez en el Apertura:"));
     }
 
     @Test
@@ -217,7 +242,7 @@ class ComparisonCalcTest {
         Competition other = competition(700, "CLAUSURA", 300);
         CompetitionData betaZone = new CompetitionData(other, List.of(), null,
                 List.of(match(8, 1, LocalDate.of(2026, 9, 1), 302, 303, 1, 0)), List.of(), new HashMap<>(), Set.of());
-        Comparison c = ComparisonCalc.build(Federation.FPP, 2026, "Primera Femenino",
+        Comparison c = ComparisonCalc.build(Federation.FPP, 2026, "Primera Femenino", Scope.CLOSING,
                 new Input(A, "AAA", List.of(data.get(0), cl), null),
                 new Input(B, "BBB", List.of(data.get(0), betaZone), null), LocalDate.of(2026, 11, 2), List.of());
 

@@ -57,6 +57,9 @@ async function api(page, {teamReady} = {}) {
             }
             case "/api/catalog/players": return json([{id: 2, name: "Zoe Diaz"}, {id: 1, name: "Ana Perez"}]);
             case "/api/history": return json([]);
+            case "/api/compare/periods": return json([{value: "OPENING", label: "Apertura"},
+                {value: "CLOSING", label: "Clausura"}, {value: "LAST_5", label: "Últimos 5 partidos"},
+                {value: "SEASON", label: "Año completo"}]);
             case "/api/reports":
             case "/api/player/reports":
             case "/api/compare/reports":
@@ -159,10 +162,15 @@ test("comparar: solo equipos de la categoría elegida, de los clubes que la tien
     await page.locator("#equipo-b").selectOption("94|PRIMERA");
     await expect(page.locator("#go")).toBeEnabled();
 
+    // El período: los torneos de la categoría, los últimos 5 y el año completo (de entrada).
+    await expect(options(page, "periodo")).toHaveText(["Apertura", "Clausura", "Últimos 5 partidos", "Año completo"]);
+    await expect(page.locator("#periodo")).toHaveValue("SEASON");
+    await page.locator("#periodo").selectOption("CLOSING");
+
     await page.locator("#go").click();
     await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
     expect(sent.pop()).toEqual({url: "/api/compare/reports", body: {federation: "FPP", year: 2026,
-        branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA"}});
+        branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA", period: "CLOSING"}});
 });
 
 test("desde el informe de una categoría, al comparativo con el próximo rival ya elegido", async ({page}) => {
@@ -181,10 +189,11 @@ test("desde el informe de una categoría, al comparativo con el próximo rival y
     await expect(page.locator("#categoria")).toHaveValue("PRIMERA|MASCULINO");
     await expect(page.locator("#equipo-a")).toHaveValue("74|PRIMERA");
     await expect(page.locator("#equipo-b")).toHaveValue("94|PRIMERA");
+    await expect(page.locator("#periodo")).toHaveValue("SEASON");
     await page.locator("#go").click();
     await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
     expect(sent.pop()).toEqual({url: "/api/compare/reports", body: {federation: "FPP", year: 2026,
-        branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA"}});
+        branch: "MASCULINO", clubA: 74, categoryA: "PRIMERA", clubB: 94, categoryB: "PRIMERA", period: "SEASON"}});
 });
 
 test("sin el próximo rival en la categoría, solo «Comparar con otro equipo»", async ({page}) => {

@@ -13,41 +13,58 @@ import java.util.List;
 import java.util.function.ToIntFunction;
 
 /**
- * Comparativo de dos equipos de la misma categoría: cada uno en el torneo actual y en el año, cómo llega (sus últimos 5
- * partidos), sus tarjetas con el marcador del momento y los enfrentamientos del año entre los dos.
+ * Comparativo de dos equipos de la misma categoría en un período (un torneo, los últimos 5 partidos o el año): sus
+ * números lado a lado, sus tarjetas con el marcador del momento y los enfrentamientos entre los dos.
  *
+ * @param period        el período elegido: "Apertura", "Últimos 5 partidos", "Año 2026"
+ * @param lastMatches   true si es el de los últimos {@link #LAST_MATCHES} partidos
  * @param summary       el resumen escrito (quién llega mejor y por qué), un renglón por idea
  * @param notes         aclaraciones (p. ej. que juegan en divisiones distintas)
  * @param notPublished  lo que la fuente no publicó, de los dos equipos
  */
-public record Comparison(String federation, int year, String category, LocalDate generatedOn, Side a, Side b,
-                         List<HeadToHead> headToHead, List<String> summary, List<String> notes,
-                         List<String> notPublished, java.time.Instant dataAsOf) {
+public record Comparison(String federation, int year, String category, String period, boolean lastMatches,
+                         LocalDate generatedOn, Side a, Side b, List<HeadToHead> headToHead, List<String> summary,
+                         List<String> notes, List<String> notPublished, java.time.Instant dataAsOf) {
 
-    public Comparison(String federation, int year, String category, LocalDate generatedOn, Side a, Side b,
-                      List<HeadToHead> headToHead, List<String> summary, List<String> notes, List<String> notPublished) {
-        this(federation, year, category, generatedOn, a, b, headToHead, summary, notes, notPublished, null);
+    public Comparison(String federation, int year, String category, String period, boolean lastMatches,
+                      LocalDate generatedOn, Side a, Side b, List<HeadToHead> headToHead, List<String> summary,
+                      List<String> notes, List<String> notPublished) {
+        this(federation, year, category, period, lastMatches, generatedOn, a, b, headToHead, summary, notes,
+                notPublished, null);
     }
 
     /** El mismo comparativo con la fecha de los datos de SIDGAD que usa (null si no se sabe). */
     public Comparison withDataAsOf(java.time.Instant at) {
-        return new Comparison(federation, year, category, generatedOn, a, b, headToHead, summary, notes, notPublished, at);
+        return new Comparison(federation, year, category, period, lastMatches, generatedOn, a, b, headToHead, summary,
+                notes, notPublished, at);
+    }
+
+    /**
+     * ¿Van los goleadores, penales, libres y disciplina por jugador? Salen de las tablas de la federación por torneo:
+     * en los últimos 5 partidos no se pueden recortar, y no van.
+     */
+    public boolean playerTops() {
+        return !lastMatches;
+    }
+
+    /** El período con su año: "Apertura 2026", "Últimos 5 partidos 2026", "Año 2026". */
+    public String periodTitle() {
+        return period.startsWith("Año") ? period : period + " " + year;
+    }
+
+    /** "Enfrentamientos del Apertura", o "del año" si el período no es un torneo. */
+    public String headToHeadTitle() {
+        return "Enfrentamientos " + (lastMatches || period.startsWith("Año") ? "del año" : "del " + period);
     }
 
     /** Últimos partidos con que se mide cómo llega cada equipo. */
     public static final int LAST_MATCHES = 5;
 
-    /**
-     * Un equipo del comparativo.
-     *
-     * @param currentTournament el torneo de su último partido jugado ("Clausura"); el año entero si no jugó
-     * @param last5             sus últimos {@link #LAST_MATCHES} partidos (récord, resultados, goles por tramo)
-     */
-    public record Side(ClubInfo club, String teamKey, String name, String currentTournament, View current, View season,
-                       TeamReport last5) {
+    /** Un equipo del comparativo, en el período elegido ({@link Comparison#period}). */
+    public record Side(ClubInfo club, String teamKey, String name, View view) {
     }
 
-    /** El equipo en un alcance (torneo actual o año): el informe de equipo y sus tarjetas una por una. */
+    /** El equipo en el período: el informe de equipo y sus tarjetas una por una. */
     public record View(TeamReport report, List<CardLine> cards) {
 
         /** Los 3 que más goles hicieron (a igualdad, el de menos partidos). */
