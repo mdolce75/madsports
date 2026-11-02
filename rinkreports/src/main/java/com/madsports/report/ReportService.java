@@ -342,6 +342,7 @@ public class ReportService {
             List<String> notPublished = new ArrayList<>();
             List<ReportData.Source> sources = new ArrayList<>();
             String logo = null;
+            java.time.Instant dataAsOf = null;   // la más vieja de las categorías
             for (Future<CategoryPart> f : parts) {
                 CategoryPart p = CategoryExtractor.await(f);
                 ReportData data = p.data();
@@ -355,13 +356,16 @@ public class ReportService {
                 data.notPublished().forEach(np -> notPublished.add(label + ": " + np));
                 sources.addAll(data.sources());
                 logo = logo != null ? logo : data.club().logo();
+                if (data.dataAsOf() != null && (dataAsOf == null || data.dataAsOf().isBefore(dataAsOf))) {
+                    dataAsOf = data.dataAsOf();
+                }
             }
             job.update(Status.RENDERING, "Generando el PDF");
             ReportData.ClubInfo info = new ReportData.ClubInfo(club.id(), club.code(), club.name(), logo);
             ClubReport report = new ClubReport(info, clubPeriod(job.request()), LocalDate.now(clock),
                     job.request().federation(),
                     byBranch.entrySet().stream().map(e -> new ClubReport.Branch(e.getKey(), e.getValue())).toList(),
-                    notPublished, sources);
+                    notPublished, sources, dataAsOf);
             job.pdf = renderer.clubPdf(report);
             job.html = renderer.clubHtml(report, false);
             job.xlsx = excel.club(report);
@@ -414,7 +418,7 @@ public class ReportService {
             job.xlsx = excel.club(new ClubReport(data.club(), data.tournament(), data.generatedOn(),
                     job.request().federation(), List.of(new ClubReport.Branch(category.branchLabel(),
                     List.of(new ClubReport.CategoryBlock(level, data, data.teams().getFirst(), analysis)))),
-                    data.notPublished(), data.sources()));
+                    data.notPublished(), data.sources(), data.dataAsOf()));
             job.fileName = fileName(club, category, option, job.request().scope());
             job.nextOpponent = data.teams().getFirst().upcoming().stream().findFirst()
                     .map(ReportData.MatchLine::opponent).orElse(null);

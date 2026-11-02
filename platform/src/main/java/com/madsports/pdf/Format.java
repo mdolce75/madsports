@@ -2,13 +2,17 @@ package com.madsports.pdf;
 
 import com.madsports.stats.ReportData;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /** Formateo usado desde la plantilla. */
 public class Format {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final ZoneId AR = ZoneId.of("America/Argentina/Buenos_Aires");
 
     public String dec(double v) {
         return String.format(Locale.forLanguageTag("es-AR"), "%.2f", v);
@@ -16,6 +20,11 @@ public class Format {
 
     public String pct(double v) {
         return String.format(Locale.forLanguageTag("es-AR"), "%.0f%%", v);
+    }
+
+    /** "02/11/2026 06:00", en hora argentina. */
+    public String dateTime(Instant i) {
+        return i == null ? "" : i.atZone(AR).format(DATE_TIME);
     }
 
     public String date(LocalDate d) {

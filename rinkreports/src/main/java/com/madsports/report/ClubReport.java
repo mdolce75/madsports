@@ -26,7 +26,13 @@ import java.util.stream.Collectors;
  * @param period "Temporada 2026 · Apertura + Clausura"
  */
 public record ClubReport(ReportData.ClubInfo club, String period, LocalDate generatedOn, Federation federation,
-                         List<Branch> branches, List<String> notPublished, List<ReportData.Source> sources) {
+                         List<Branch> branches, List<String> notPublished, List<ReportData.Source> sources,
+                         java.time.Instant dataAsOf) {
+
+    public ClubReport(ReportData.ClubInfo club, String period, LocalDate generatedOn, Federation federation,
+                      List<Branch> branches, List<String> notPublished, List<ReportData.Source> sources) {
+        this(club, period, generatedOn, federation, branches, notPublished, sources, null);
+    }
 
     /**
      * Semillero: los jugadores que, además de su categoría (la más baja en que jugó), ya juegan en categorías de arriba

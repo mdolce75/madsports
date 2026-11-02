@@ -214,6 +214,7 @@ public class ComparisonService {
                 r.federation());
         List<ComparisonCalc.Input> inputs = new ArrayList<>();
         List<String> notPublished = new ArrayList<>();
+        java.time.Instant dataAsOf = null;   // la más vieja de los dos
         progress.accept("Leyendo los dos equipos");
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<CategoryExtractor.Read>> reads = teams.stream()
@@ -225,12 +226,15 @@ public class ComparisonService {
                 inputs.add(new ComparisonCalc.Input(t.club(), t.option().teamKey(t.club().code()), read.data(),
                         read.logo()));
                 read.notPublished().forEach(n -> notPublished.add(t.club().name() + ": " + n));
+                if (read.dataAsOf() != null && (dataAsOf == null || read.dataAsOf().isBefore(dataAsOf))) {
+                    dataAsOf = read.dataAsOf();
+                }
             }
         }
         Team a = teams.getFirst();
         String category = a.category().levelLabel() + " " + a.category().branchLabel();
         return ComparisonCalc.build(r.federation(), r.year(), category, inputs.get(0), inputs.get(1),
-                LocalDate.now(clock), notPublished);
+                LocalDate.now(clock), notPublished).withDataAsOf(dataAsOf);
     }
 
     private static <T> T await(Future<T> f) {

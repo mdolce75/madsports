@@ -89,7 +89,7 @@
                 <div class="brandline">RinkReports · Hockey sobre patines</div>
                 <h1 th:text="${d.teams.size() == 1 ? d.teams[0].name + ' (' + d.teams[0].code + ')' : d.club.name + ' (' + d.club.code + ')'}">Club</h1>
                 <div class="subtitle" th:text="|${d.category} · ${d.tournament}|">Categoría · Torneo</div>
-                <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(d.generatedOn)}|">fecha</div>
+                <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(d.generatedOn)}${d.dataAsOf == null ? '' : ' · Datos de SIDGAD al ' + f.dateTime(d.dataAsOf)}|">fecha</div>
             </td>
         </tr>
     </table>

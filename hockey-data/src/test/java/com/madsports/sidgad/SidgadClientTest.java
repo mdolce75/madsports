@@ -335,6 +335,19 @@ class SidgadClientTest {
     // --- Copias de los datos de cada competición y de las fichas de temporada (vigentes 5 min en estos tests).
 
     @Test
+    void theDateOfTheDataIsTheOldestSavedCopyOfThoseCompetitions() {
+        MemorySnapshotStore store = new MemorySnapshotStore();
+        store.put(SidgadClient.Fragment.CALENDAR.key(30), "<table></table>");
+        store.now = store.now.plusSeconds(3600);
+        store.put(SidgadClient.Fragment.STANDINGS.key(31), "<table></table>");
+        SidgadClient c = restarted(store, store.now);
+
+        assertThat(c.oldestCopy(List.of(30, 31))).contains(Instant.parse("2026-11-02T08:00:00Z"));
+        assertThat(c.oldestCopy(List.of(31))).contains(Instant.parse("2026-11-02T09:00:00Z"));
+        assertThat(c.oldestCopy(List.of(32))).isEmpty();
+    }
+
+    @Test
     void withSavedCopiesNothingIsAskedToSidgad() {
         MemorySnapshotStore store = new MemorySnapshotStore();
         store.put(SidgadClient.Fragment.STANDINGS.key(5), "<table>tabla</table>");

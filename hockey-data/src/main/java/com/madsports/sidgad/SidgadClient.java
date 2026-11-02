@@ -15,6 +15,9 @@ import java.io.UncheckedIOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -286,6 +289,22 @@ public class SidgadClient {
                     ? Map.of("idc", String.valueOf(idc), "tipo_stats", "goles", "site_lang", "es")
                     : Map.of("idc", String.valueOf(idc));
         }
+    }
+
+    /** Cuándo se bajó la copia guardada de ese dato de la competición; vacío si no hay copia. */
+    public Optional<Instant> fetchedAt(Fragment f, int idc) {
+        return stored(f.key(idc)).map(SnapshotStore.Stored::fetchedAt);
+    }
+
+    /**
+     * La fecha de los datos de un informe: la más vieja de las copias de tabla, calendario y estadísticas de esas
+     * competiciones. Vacío si no hay copias guardadas (sin base, o leyendo de SIDGAD en el momento).
+     */
+    public Optional<Instant> oldestCopy(Collection<Integer> competitions) {
+        return competitions.stream()
+                .flatMap(idc -> Arrays.stream(Fragment.values()).map(f -> fetchedAt(f, idc)))
+                .flatMap(Optional::stream)
+                .min(Comparator.naturalOrder());
     }
 
     /** La tabla de posiciones de la competición. */

@@ -76,7 +76,7 @@
                 <div class="brandline">RinkReports · Hockey sobre patines · Comparativo de equipos</div>
                 <h1 th:text="|${r.a.name} vs ${r.b.name}|">A vs B</h1>
                 <div class="subtitle" th:text="|${r.category} · ${r.federation} · Temporada ${r.year}|">Categoría</div>
-                <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(r.generatedOn)}|">fecha</div>
+                <div class="meta" th:text="|Informe elaborado por RinkReports · ${f.date(r.generatedOn)}${r.dataAsOf == null ? '' : ' · Datos de SIDGAD al ' + f.dateTime(r.dataAsOf)}|">fecha</div>
             </td>
             <td class="crest right" th:if="${r.b.club.logo != null}"><img th:src="${r.b.club.logo}" th:alt="|Escudo de ${r.b.name}|"/></td>
         </tr>

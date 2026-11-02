@@ -6,12 +6,14 @@ import com.madsports.account.Product;
 import com.madsports.catalog.CatalogService;
 import com.madsports.config.SiteUrls;
 import com.madsports.sidgad.SidgadClient;
+import com.madsports.sidgad.SnapshotStore;
 import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.parse.SidgadParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
@@ -19,6 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -53,6 +56,15 @@ public class SidgadMonitor implements HealthIndicator {
     private final SiteUrls urls;
     private final List<Federation> federations;
     private volatile Outcome last;
+    /** Dónde la sincronización anota su última pasada sin errores (null sin base). */
+    private volatile SnapshotStore store;
+    /** Más vieja que esto, la última sincronización sin errores es una falla: los informes leen datos viejos. */
+    static final Duration MAX_SYNC_AGE = Duration.ofHours(26);
+
+    @Autowired(required = false)
+    void setSnapshotStore(SnapshotStore store) {
+        this.store = store;
+    }
 
     public SidgadMonitor(SidgadClient client, CatalogService catalog, Mailer mailer, Clock clock,
                          @Value("${madsports.alerts.email:}") String alerts,
@@ -106,9 +118,32 @@ public class SidgadMonitor implements HealthIndicator {
                         + catalog.years() + " (leídas: " + seasons.keySet() + ")."));
         List<String> reviewed = new ArrayList<>();
         for (Federation f : federations) {
-            reviewed.add(review(f, year));
+            reviewed.add(review(f, year) + synced(f));
         }
         return String.join(" · ", reviewed);
+    }
+
+    /**
+     * La última sincronización sin errores de la federación: si tiene más de {@link #MAX_SYNC_AGE} (o no hubo
+     * ninguna), los informes están leyendo datos viejos y es una falla.
+     */
+    private String synced(Federation f) {
+        SnapshotStore s = store;
+        if (s == null) {
+            return "";
+        }
+        Optional<Instant> at = s.get(SidgadWarmup.lastSyncKey(f)).map(x -> Instant.parse(x.body().trim()));
+        if (at.isEmpty()) {
+            throw new IllegalStateException("Todavía no hubo una sincronización de SIDGAD sin errores para la " + f
+                    + ": los informes leen de SIDGAD en el momento o de copias viejas.");
+        }
+        Duration age = Duration.between(at.get(), clock.instant());
+        if (age.compareTo(MAX_SYNC_AGE) > 0) {
+            throw new IllegalStateException("La última sincronización de SIDGAD sin errores de la " + f + " fue hace "
+                    + age.toHours() + " h (" + at.get() + "): los informes leen datos viejos. Ver el log de"
+                    + " SidgadWarmup.");
+        }
+        return " Sincronizada hace " + age.toHours() + " h.";
     }
 
     /** El camino de un informe de una federación en ese año. */

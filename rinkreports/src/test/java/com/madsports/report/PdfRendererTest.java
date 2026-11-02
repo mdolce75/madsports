@@ -43,6 +43,10 @@ class PdfRendererTest {
                 "Top 3 · Penales", "Cometidas", "Recibidas");
 
         assertThat(html).doesNotContain("no tenía publicados");
+        // La fecha de los datos de SIDGAD (la más vieja de las copias guardadas), en hora argentina.
+        assertThat(html).doesNotContain("Datos de SIDGAD al");
+        assertThat(renderer.html(data.withDataAsOf(java.time.Instant.parse("2026-11-02T09:00:00Z")), analysis))
+                .contains("Datos de SIDGAD al 02/11/2026 06:00");
         assertThat(renderer.html(data.withNotPublished(List.of("Actas de partido: 9 de 9")), analysis))
                 .contains("no tenía publicados", "Actas de partido: 9 de 9");
 
