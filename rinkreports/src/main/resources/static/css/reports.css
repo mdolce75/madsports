@@ -84,3 +84,17 @@ body[data-product="reports"] .cintillo { background: var(--lime); color: #1d1300
 .badge-new { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 999px; background: var(--lime);
              color: #1d1300; font: 700 .64rem/1.3 var(--display); letter-spacing: .1em; text-transform: uppercase;
              vertical-align: middle; }
+/* Al llegar desde el menú o desde un informe, el paso parpadea una vez para encontrarlo. */
+.field.compare.flash { animation: compare-flash 1.6s ease-out; }
+@keyframes compare-flash { 0%, 40% { box-shadow: 0 0 0 4px rgba(255, 193, 69, .55); } 100% { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .field.compare.flash { animation: none; outline: 2px solid var(--lime); } }
+/* Debajo del informe de una categoría: pasar al comparativo. */
+.rr-compare-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 16px;
+                  background: rgba(255, 193, 69, .08); border-bottom: 1px solid var(--line); }
+.rr-compare-cta .badge-new { margin-left: 0; }
+.rr-compare-cta .text { flex: 1 1 220px; color: var(--ink-2); }
+/* La tarjeta del comparativo en la portada. */
+.example.compare-card { border-color: var(--lime); margin-top: 18px; }
+.example.compare-card > .tag { background: var(--lime); color: #1d1300; }
+.example.compare-card ul { margin: 8px 0; padding-left: 18px; }
+.example.compare-card li { margin: 4px 0; }

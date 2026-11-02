@@ -358,13 +358,59 @@
             }
             status("Informe listo.");
             rrHistory();
-            rrShowReport($("visor"), job, title);
+            const shown = rrShowReport($("visor"), job, title);
+            // Del informe de una categoría se pasa al comparativo: con otro equipo, o directo con el próximo rival.
+            if (!rival && !playerId && cat !== ALL) offerCompare(job.nextOpponent);
+            await shown;
         } catch (e) {
             status(e.message, true);
         } finally {
             updateGo();
         }
     });
+
+    /** Lleva al paso «Comparar con» y lo resalta (menú «Comparar equipos», enlace #comparar o desde un informe). */
+    function goCompare() {
+        const field = $("rival").closest(".field");
+        field.scrollIntoView({behavior: "smooth", block: "center"});
+        field.classList.remove("flash");
+        void field.offsetWidth;
+        field.classList.add("flash");
+        if (!$("rival").disabled) $("rival").focus();
+        else status("Elegí la federación, el club y la categoría: después, el equipo con que compararlo.");
+    }
+
+    /** Debajo del informe de una categoría: comparar con otro equipo y, si está en la lista, con el próximo rival. */
+    function offerCompare(nextOpponent) {
+        const bar = document.createElement("div");
+        bar.className = "rr-compare-cta";
+        bar.innerHTML = `<span class="badge-new">Nuevo</span><span class="text">Comparalo con otro equipo de la
+            categoría, cara a cara.</span>`;
+        const other = document.createElement("button");
+        other.type = "button";
+        other.className = "btn ghost";
+        other.textContent = "Comparar con otro equipo";
+        other.addEventListener("click", goCompare);
+        bar.append(other);
+        const rival = nextOpponent && [...$("rival").options]
+            .find(o => o.value && o.text.localeCompare(nextOpponent, "es", {sensitivity: "base"}) === 0);
+        if (rival) {
+            const next = document.createElement("button");
+            next.type = "button";
+            next.className = "btn primary";
+            next.textContent = `Comparar con el próximo rival: ${rival.text}`;
+            next.addEventListener("click", () => {
+                $("rival").value = rival.value;
+                $("rival").dispatchEvent(new Event("change"));
+                $("form").requestSubmit();
+            });
+            bar.append(next);
+        }
+        $("visor").querySelector(".bar").after(bar);
+    }
+
+    // «Comparar equipos» del menú (o un enlace con #comparar): al paso del comparativo.
+    window.addEventListener("hashchange", () => { if (location.hash === "#comparar") goCompare(); });
 
     async function showQuota(s) {
         s = s || await session();
@@ -376,6 +422,7 @@
         showQuota(s);
         loadFederations();
         rrHistory();
+        if (location.hash === "#comparar") goCompare();
     });
 </script>
 </body>

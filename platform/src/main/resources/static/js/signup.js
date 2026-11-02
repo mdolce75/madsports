@@ -187,7 +187,8 @@ async function loadPlayers() {
 // Beneficios de cada perfil (los planes cambian en informes por mes y precio).
 const BENEFITS = {
     CLUB: ["Informes de todos los equipos de tu club", "Análisis escrito con IA",
-        "Goles, tarjetas y faltas por tramos de 5'", "Fortalezas y debilidades"],
+        "Goles, tarjetas y faltas por tramos de 5'", "Fortalezas y debilidades",
+        "Comparativo de dos equipos, cara a cara"],
     PLAYER: ["Tu informe en cada categoría en que jugás", "Goles, tarjetas, penales y libres",
         "Minuto a minuto y goles con uno menos", "Fortalezas y debilidades vs. tus compañeros"],
     COACH: ["Métricas en vivo desde el celular", "Cada acción por jugador, con el minuto",
