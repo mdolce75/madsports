@@ -40,7 +40,7 @@
     <p class="muted">Faltas y tarjetas, de las actas publicadas. Las tarjetas del cuerpo técnico no se cuentan acá.</p>
 
     <th:block th:if="${tops}">
-    <h4>Goleadores</h4>
+    <h4>Top 3 · Goles</h4>
     <table class="two nobreak">
         <tr>
             <td th:each="v, i : ${ {a, b} }">
@@ -53,42 +53,46 @@
         </tr>
     </table>
 
-    <th:block th:if="${!a.topPenalties().isEmpty() or !b.topPenalties().isEmpty() or !a.topFreeHits().isEmpty() or !b.topFreeHits().isEmpty()}">
-        <h4>Penales y libres directos (convertidos / tirados)</h4>
-        <table class="two nobreak">
-            <tr>
-                <td th:each="v, i : ${ {a, b} }">
-                    <table>
-                        <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th><th>Penales</th><th>Libres</th></tr>
-                        <tr th:each="p : ${v.topPenalties()}"><td class="l" th:text="${p.name}">Jugador</td>
-                            <td th:text="${f.fraction(p.penaltiesScored, p.penaltiesTaken)}">0/0</td>
-                            <td th:text="${p.directFreeTaken == 0 ? '-' : f.fraction(p.directFreeScored, p.directFreeTaken)}">-</td></tr>
-                        <tr th:each="p : ${v.topFreeHits()}" th:unless="${v.topPenalties().contains(p)}"><td class="l" th:text="${p.name}">Jugador</td>
-                            <td th:text="${p.penaltiesTaken == 0 ? '-' : f.fraction(p.penaltiesScored, p.penaltiesTaken)}">-</td>
-                            <td th:text="${f.fraction(p.directFreeScored, p.directFreeTaken)}">0/0</td></tr>
-                        <tr th:if="${v.topPenalties().isEmpty() and v.topFreeHits().isEmpty()}"><td class="l muted" colspan="3">Sin penales ni libres</td></tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </th:block>
-
-    <h4>Disciplina</h4>
+    <h4>Top 3 · Tarjetas</h4>
     <table class="two nobreak">
         <tr>
             <td th:each="v, i : ${ {a, b} }">
                 <table>
-                    <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th>
-                        <th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th></tr>
-                    <tr th:each="p : ${v.topDiscipline()}"><td class="l" th:text="${p.name}">Jugador</td>
-                        <td th:text="${p.yellowCards}">0</td><td th:text="${p.blueCards}">0</td><td th:text="${p.redCards}">0</td></tr>
+                    <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th><th><span class="card y"></span></th><th><span class="card b"></span></th><th><span class="card r"></span></th></tr>
+                    <tr th:each="p : ${v.topDiscipline()}"><td class="l" th:text="${p.name}">Jugador</td><td th:text="${p.yellowCards}">0</td><td th:text="${p.blueCards}">0</td><td th:text="${p.redCards}">0</td></tr>
                     <tr th:if="${v.topDiscipline().isEmpty()}"><td class="l muted" colspan="4">Sin tarjetas</td></tr>
                 </table>
             </td>
         </tr>
     </table>
+
+    <h4>Top 3 · Penales (convertidos / tirados)</h4>
+    <table class="two nobreak">
+        <tr>
+            <td th:each="v, i : ${ {a, b} }">
+                <table>
+                    <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th><th>Penales</th><th>%</th></tr>
+                    <tr th:each="p : ${v.topPenalties()}"><td class="l" th:text="${p.name}">Jugador</td><td th:text="${f.fraction(p.penaltiesScored, p.penaltiesTaken)}">0/0</td><td th:text="${f.pct(100.0 * p.penaltiesScored / p.penaltiesTaken)}">0</td></tr>
+                    <tr th:if="${v.topPenalties().isEmpty()}"><td class="l muted" colspan="3">Sin penales</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <h4>Top 3 · Libres directos (convertidos / tirados)</h4>
+    <table class="two nobreak">
+        <tr>
+            <td th:each="v, i : ${ {a, b} }">
+                <table>
+                    <tr><th class="l" th:classappend="${i.index == 0 ? 'ta' : 'tb'}" th:text="${i.index == 0 ? na : nb}">Equipo</th><th>Libres</th><th>%</th></tr>
+                    <tr th:each="p : ${v.topFreeHits()}"><td class="l" th:text="${p.name}">Jugador</td><td th:text="${f.fraction(p.directFreeScored, p.directFreeTaken)}">0/0</td><td th:text="${f.pct(100.0 * p.directFreeScored / p.directFreeTaken)}">0</td></tr>
+                    <tr th:if="${v.topFreeHits().isEmpty()}"><td class="l muted" colspan="3">Sin libres</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
     </th:block>
-    <p class="muted" th:unless="${tops}">Goleadores, penales, libres y disciplina por jugador salen de las tablas de la
+    <p class="muted" th:unless="${tops}">Los top 3 de goles, tarjetas, penales y libres salen de las tablas de la
         federación por torneo: no se pueden recortar a los últimos 5 partidos.</p>
 
     <th:block th:with="ga=${c.goalsByBucket(a.report.timeProfile)}, gb=${c.goalsByBucket(b.report.timeProfile)}">
