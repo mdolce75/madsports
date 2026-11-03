@@ -47,8 +47,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * estadísticas por jugador; baja las actas de los partidos jugados que faltan (y las de sus primeros días, que SIDGAD
  * puede corregir) y la ficha de temporada de los jugadores que jugaron desde la última pasada. Va despacio
  * ({@code madsports.sidgad.sync-concurrency} pedidos a la vez) y un error no la corta: queda la copia anterior.
- * {@code madsports.sidgad.warmup-cron} ("-" la apaga); siempre las dos federaciones, FPP y AMP. Al terminar la del arranque (cada deploy), y
- * la de madrugada si tuvo errores, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
+ * {@code madsports.sidgad.warmup-cron} ("-" la apaga); siempre las dos federaciones, FPP y AMP. Al terminar la del arranque (cada deploy) y
+ * la de madrugada, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
  */
 @Component
 public class SidgadWarmup {
@@ -139,7 +139,7 @@ public class SidgadWarmup {
         run(false);
     }
 
-    /** La pasada completa; {@code startup}: la del arranque, que siempre avisa al terminar (la de madrugada, si falla). */
+    /** La pasada completa; {@code startup}: la del arranque (cada deploy) o la de madrugada. Las dos avisan al terminar. */
     void run(boolean startup) {
         // La sincronización es la única que va a SIDGAD: los informes leen lo que deja guardado.
         sidgad.syncing(() -> sync(startup));
@@ -170,9 +170,7 @@ public class SidgadWarmup {
                     lines.add(f + ": falló (" + e.getMessage() + "). Los informes siguen con la copia anterior.");
                 }
             }
-            if (startup || !ok) {
-                notify(startup, ok, start, catalogLine, lines);
-            }
+            notify(startup, ok, start, catalogLine, lines);
         } finally {
             running.unlock();
         }

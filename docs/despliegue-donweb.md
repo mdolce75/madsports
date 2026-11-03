@@ -134,7 +134,7 @@ Baja lo último, reconstruye y reinicia la app (la base y los informes no se toc
 migraciones pendientes antes de que la app atienda (y Hibernate valida el esquema: si algo no se migró, no arranca) y,
 en segundo plano, se sincroniza SIDGAD (`SIDGAD_SYNC_ON_STARTUP`, encendido por defecto), FPP y AMP. Cuando termina
 llega un mail a info@madsports.com.ar (`SIDGAD_SYNC_NOTIFY_EMAIL`) con cómo quedó cada federación; la de madrugada
-avisa solo si tuvo errores.
+también avisa al terminar, bien o con errores.
 Con el paso 11 esto pasa solo en cada merge a main.
 
 ## 11. Desplegar solo en cada merge a main

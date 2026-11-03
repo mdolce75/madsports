@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /** La sincronización de madrugada, contra el SIDGAD simulado con páginas guardadas (las del monitor). */
@@ -168,19 +169,22 @@ class SidgadWarmupTest {
     }
 
     @Test
-    void theNightlySyncOnlyMailsIfItHadErrors() {
+    void theNightlySyncMailsEveryNightWellOrWithErrors() {
         Mailer mailer = mock(Mailer.class);
         CountingSite site = new CountingSite();
         SidgadWarmup w = warmup(site, new MemoryStore());
         w.setNotify(mailer, null, "info@madsports.com.ar");
 
         w.run();
-        verify(mailer, never()).send(any());
+        ArgumentCaptor<MailContent> ok = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer).send(ok.capture());
+        assertThat(ok.getValue().subject()).endsWith("de madrugada: terminó bien");
+        assertThat(ok.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: OK."));
 
         site.failing.add(779);
         w.run();
         ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
-        verify(mailer).send(mail.capture());
+        verify(mailer, times(2)).send(mail.capture());
         assertThat(mail.getValue().subject()).endsWith("de madrugada: terminó con errores");
         assertThat(mail.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: con 3 errores"));
 
