@@ -103,8 +103,7 @@ madsports:
     # Al arrancar (cada deploy), una sincronización completa en segundo plano, después de que Flyway migra el esquema:
     # los datos de SIDGAD no esperan a la madrugada.
     sync-on-startup: ${SIDGAD_SYNC_ON_STARTUP:true}
-    # Al terminar la del arranque (y la de madrugada si tuvo errores), un mail con cómo quedó cada federación. Vacío = a
-    # nadie.
+    # Al terminar la del arranque y la de madrugada, un mail con cómo quedó cada federación. Vacío = a nadie.
     sync-notify: ${SIDGAD_SYNC_NOTIFY_EMAIL:info@madsports.com.ar}
     # Pasadas extra en días de partido (hora argentina; "-" las apaga): solo las competiciones con partidos ese día,
     # para que un resultado de la tarde no espere a la madrugada.
