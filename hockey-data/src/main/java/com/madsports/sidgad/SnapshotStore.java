@@ -1,6 +1,7 @@
 package com.madsports.sidgad;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -33,4 +34,9 @@ public interface SnapshotStore {
      * @return true si es nueva o su contenido cambió
      */
     boolean put(String key, String body);
+
+    /** Las claves de las copias cuyo contenido cambió desde ese momento (para pasarlas a las tablas propias). */
+    default List<String> changedSince(Instant since) {
+        return List.of();
+    }
 }

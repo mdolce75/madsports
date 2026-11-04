@@ -14,6 +14,7 @@ import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.TeamRef;
 import com.madsports.sidgad.parse.SidgadParser;
+import com.madsports.sidgad.tables.SidgadTablesLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -106,6 +107,14 @@ public class SidgadWarmup {
     private final ReentrantLock running = new ReentrantLock();
     private volatile boolean syncOnStartup;
 
+    private SidgadTablesLoader tables;
+
+    /** Al terminar cada sincronización, lo nuevo pasa a las tablas propias (sin él, los tests sin base, no). */
+    @Autowired(required = false)
+    void setTables(SidgadTablesLoader tables) {
+        this.tables = tables;
+    }
+
     private Mailer mailer;
     private SiteUrls urls;
     private String notifyTo = "";
@@ -180,6 +189,9 @@ public class SidgadWarmup {
                     ok = false;
                     lines.add(f + ": falló (" + e.getMessage() + "). Los informes siguen con la copia anterior.");
                 }
+            }
+            if (tables != null) {
+                tables.catchUp().ifPresent(load -> lines.add(load.summary()));
             }
             notify(startup, ok, start, catalogLine, lines);
         } finally {
