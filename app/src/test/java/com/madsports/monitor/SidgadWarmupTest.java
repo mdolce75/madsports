@@ -146,10 +146,11 @@ class SidgadWarmupTest {
     }
 
     @Test
-    void onStartupItSyncsInTheBackgroundUnlessTurnedOff() throws Exception {
+    void onStartupItSyncsInTheBackgroundOnlyIfTurnedOn() throws Exception {
         CountingSite site = new CountingSite();
         MemoryStore store = new MemoryStore();
         SidgadWarmup w = warmup(site, store);
+        w.setSyncOnStartup(true);
 
         w.onStartup();
         // En segundo plano: se espera a que anote la pasada.
@@ -159,9 +160,9 @@ class SidgadWarmupTest {
         assertThat(store.rows).containsKey(SidgadWarmup.lastSyncKey(Federation.FPP));
         assertThat(site.refreshed).hasSize(3 * 24);
 
+        // Por defecto, apagada: el deploy no va a SIDGAD.
         CountingSite off = new CountingSite();
         SidgadWarmup quiet = warmup(off, new MemoryStore());
-        quiet.setSyncOnStartup(false);
         quiet.onStartup();
         Thread.sleep(300);
         assertThat(off.refreshed).isEmpty();

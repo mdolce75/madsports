@@ -104,9 +104,9 @@ madsports:
     warmup-cron: ${SIDGAD_WARMUP_CRON:0 0 5 * * *}
     # Pedidos a la vez de la sincronización: va despacio, sin apuro y sin competir con los informes.
     sync-concurrency: ${SIDGAD_SYNC_CONCURRENCY:2}
-    # Al arrancar (cada deploy), una sincronización completa en segundo plano, después de que Flyway migra el esquema:
-    # los datos de SIDGAD no esperan a la madrugada.
-    sync-on-startup: ${SIDGAD_SYNC_ON_STARTUP:true}
+    # Al arrancar (cada deploy), una sincronización en segundo plano, después de que Flyway migra el esquema. Apagada:
+    # los deploys no le piden nada a SIDGAD y los datos se renuevan a la madrugada. true = también al arrancar.
+    sync-on-startup: ${SIDGAD_SYNC_ON_STARTUP:false}
     # Al terminar la del arranque y la de madrugada, un mail con cómo quedó cada federación. Vacío = a nadie.
     sync-notify: ${SIDGAD_SYNC_NOTIFY_EMAIL:info@madsports.com.ar}
     # Pasadas extra en días de partido (hora argentina; "-" las apaga): solo las competiciones con partidos ese día,

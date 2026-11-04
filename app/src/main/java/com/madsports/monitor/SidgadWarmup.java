@@ -50,7 +50,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * tuvieron partidos o cambios; las actas de esos partidos (bajadas de nuevo, por si SIDGAD las corrigió) y la ficha de
  * temporada de quienes jugaron. Lo anterior queda como está guardado. Va despacio
  * ({@code madsports.sidgad.sync-concurrency} pedidos a la vez) y un error no la corta: queda la copia anterior.
- * {@code madsports.sidgad.warmup-cron} ("-" la apaga); las federaciones habilitadas ({@link EnabledFederations}). Al terminar la del arranque (cada deploy) y
+ * {@code madsports.sidgad.warmup-cron} ("-" la apaga); las federaciones habilitadas ({@link EnabledFederations}). La
+ * del arranque (cada deploy), solo con {@code madsports.sidgad.sync-on-startup}. Al terminar la del arranque y
  * la de madrugada, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
  */
 @Component
@@ -103,7 +104,7 @@ public class SidgadWarmup {
 
     /** Una pasada a la vez: la del arranque, la de la madrugada y las de días de partido no se pisan. */
     private final ReentrantLock running = new ReentrantLock();
-    private volatile boolean syncOnStartup = true;
+    private volatile boolean syncOnStartup;
 
     private Mailer mailer;
     private SiteUrls urls;
@@ -121,9 +122,12 @@ public class SidgadWarmup {
         this.notifyTo = to == null ? "" : to.trim();
     }
 
-    /** {@code madsports.sidgad.sync-on-startup}: sincronizar al arrancar (cada deploy), además de lo programado. */
+    /**
+     * {@code madsports.sidgad.sync-on-startup} ({@code SIDGAD_SYNC_ON_STARTUP}): sincronizar al arrancar (cada deploy),
+     * además de lo programado. Apagado por defecto: los deploys no le piden nada a SIDGAD.
+     */
     @Autowired
-    void setSyncOnStartup(@Value("${madsports.sidgad.sync-on-startup:true}") boolean on) {
+    void setSyncOnStartup(@Value("${madsports.sidgad.sync-on-startup:false}") boolean on) {
         this.syncOnStartup = on;
     }
 

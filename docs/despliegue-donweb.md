@@ -99,9 +99,11 @@ Cuando aparezca `Started MadSportsApplication`, salir con `Ctrl+C` (la app sigue
   `docker compose -f docker-compose.prod.yml ps` (los tres servicios `Up`).
 
 La base arranca vacía (las migraciones de Flyway crean todo al arrancar, antes de que la app atienda; si una falla, la
-app no arranca). Apenas arranca, en segundo plano, la app sincroniza SIDGAD (catálogo, tablas, calendarios,
-estadísticas, actas y fichas: la primera vez baja todo el año); después, todas las madrugadas a las 5:00 y los fines
-de semana en las pasadas de días de partido, solo lo jugado desde la última pasada. Los informes leen solo esas copias guardadas: a SIDGAD va únicamente
+app no arranca). La app sincroniza SIDGAD (catálogo, tablas, calendarios, estadísticas, actas y fichas: la primera
+vez baja todo el año) todas las madrugadas a las 5:00 y los fines
+de semana en las pasadas de días de partido, solo lo jugado desde la última pasada. Al arrancar (cada deploy) no
+sincroniza, salvo con `SIDGAD_SYNC_ON_STARTUP=true`: en el primer deploy conviene encenderla una vez para no esperar a
+la madrugada. Los informes leen solo esas copias guardadas: a SIDGAD va únicamente
 la sincronización (y el chequeo diario). Lo que todavía no se bajó (la primera vez, mientras corre) avisa que se
 prueba en unos minutos. Para volver a leer de SIDGAD: `SIDGAD_READ=snapshot` (copias, y SIDGAD si faltan) o `live`.
 
@@ -131,10 +133,10 @@ scp root@IP_DEL_SERVIDOR:/var/backups/madsports/base-*.sql.gz .
 ```
 
 Baja lo último, reconstruye y reinicia la app (la base y los informes no se tocan). En cada arranque, Flyway aplica las
-migraciones pendientes antes de que la app atienda (y Hibernate valida el esquema: si algo no se migró, no arranca) y,
-en segundo plano, se sincroniza SIDGAD (`SIDGAD_SYNC_ON_STARTUP`, encendido por defecto), FPP y AMP. Cuando termina
-llega un mail a info@madsports.com.ar (`SIDGAD_SYNC_NOTIFY_EMAIL`) con cómo quedó cada federación; la de madrugada
-también avisa al terminar, bien o con errores.
+migraciones pendientes antes de que la app atienda (y Hibernate valida el esquema: si algo no se migró, no arranca).
+SIDGAD no se sincroniza en el deploy (`SIDGAD_SYNC_ON_STARTUP`, apagado por defecto): lo hace la pasada de las 5:00, y
+al terminar llega un mail a info@madsports.com.ar (`SIDGAD_SYNC_NOTIFY_EMAIL`) con cómo quedó cada federación. Con
+`SIDGAD_SYNC_ON_STARTUP=true` también sincroniza al arrancar y avisa al terminar.
 Con el paso 11 esto pasa solo en cada merge a main.
 
 ## 11. Desplegar solo en cada merge a main
