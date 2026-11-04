@@ -43,14 +43,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Sincronización de madrugada con SIDGAD: deja en la base (copias de {@link SidgadClient}) lo que leen los informes, así
+ * Sincronización de madrugada (3:00) con SIDGAD: deja en la base (copias de {@link SidgadClient}) lo que leen los informes, así
  * no dependen de SIDGAD cuando alguien pide uno. La primera vez (sin pasada anterior) baja todo el año. Después es
  * incremental: solo suma lo jugado desde la última pasada sin errores. Renueva el calendario de cada competición en
  * curso (las terminadas hace más de {@link #DORMANT} días no se tocan); la tabla y las estadísticas, solo de las que
  * tuvieron partidos o cambios; las actas de esos partidos (bajadas de nuevo, por si SIDGAD las corrigió) y la ficha de
  * temporada de quienes jugaron. Lo anterior queda como está guardado. Va despacio
  * ({@code madsports.sidgad.sync-concurrency} pedidos a la vez) y un error no la corta: queda la copia anterior.
- * {@code madsports.sidgad.warmup-cron} ("-" la apaga); las federaciones habilitadas ({@link EnabledFederations}). Al terminar la del arranque (cada deploy) y
+ * {@code madsports.sidgad.warmup-cron} ("-" la apaga); las federaciones habilitadas ({@link EnabledFederations}). La
+ * del arranque (cada deploy), solo con {@code madsports.sidgad.sync-on-startup}. Al terminar la del arranque y
  * la de madrugada, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
  */
 @Component
@@ -101,9 +102,9 @@ public class SidgadWarmup {
         this.concurrency = Math.max(1, concurrency);
     }
 
-    /** Una pasada a la vez: la del arranque, la de la madrugada y las de días de partido no se pisan. */
+    /** Una pasada a la vez: la del arranque y la de la madrugada no se pisan. */
     private final ReentrantLock running = new ReentrantLock();
-    private volatile boolean syncOnStartup = true;
+    private volatile boolean syncOnStartup;
 
     private Mailer mailer;
     private SiteUrls urls;
@@ -121,9 +122,12 @@ public class SidgadWarmup {
         this.notifyTo = to == null ? "" : to.trim();
     }
 
-    /** {@code madsports.sidgad.sync-on-startup}: sincronizar al arrancar (cada deploy), además de lo programado. */
+    /**
+     * {@code madsports.sidgad.sync-on-startup} ({@code SIDGAD_SYNC_ON_STARTUP}): sincronizar al arrancar (cada deploy),
+     * además de lo programado. Apagado por defecto: los deploys no le piden nada a SIDGAD.
+     */
     @Autowired
-    void setSyncOnStartup(@Value("${madsports.sidgad.sync-on-startup:true}") boolean on) {
+    void setSyncOnStartup(@Value("${madsports.sidgad.sync-on-startup:false}") boolean on) {
         this.syncOnStartup = on;
     }
 
@@ -141,7 +145,7 @@ public class SidgadWarmup {
         }
     }
 
-    @Scheduled(cron = "${madsports.sidgad.warmup-cron:0 0 5 * * *}", zone = "America/Argentina/Buenos_Aires")
+    @Scheduled(cron = "${madsports.sidgad.warmup-cron:0 0 3 * * *}", zone = "America/Argentina/Buenos_Aires")
     public void run() {
         run(false);
     }
@@ -261,75 +265,20 @@ public class SidgadWarmup {
     }
 
     /**
-     * Pasadas extra en días de partido ({@code madsports.sidgad.matchday-cron}; "-" las apaga): solo las competiciones
-     * con partidos hoy según el calendario guardado, así un resultado de la tarde aparece sin esperar a la madrugada.
-     */
-    @Scheduled(cron = "${madsports.sidgad.matchday-cron:0 0 12,15,18,21 * * SAT,SUN}", zone = "America/Argentina/Buenos_Aires")
-    public void runMatchDay() {
-        sidgad.syncing(this::syncMatchDay);
-    }
-
-    private void syncMatchDay() {
-        if (!running.tryLock()) {
-            log.info("Ya hay una sincronización de SIDGAD en curso: se saltea la de día de partido");
-            return;
-        }
-        try {
-            for (Federation f : federations) {
-                try {
-                    Result r = matchDay(f, catalog.defaultYear());
-                    if (r.competitions() > 0) {
-                        log.info("Pasada de día de partido de SIDGAD ({}): {} competiciones con partidos hoy; {} tablas,"
-                                        + " calendarios y estadísticas ({} cambiaron); {} fichas de jugador; {} errores;"
-                                        + " en {} s", f, r.competitions(), r.fragments(), r.changed(), r.profiles(),
-                                r.errors(), r.took().toSeconds());
-                    }
-                } catch (RuntimeException e) {
-                    log.warn("Falló la pasada de día de partido de SIDGAD ({}): {}", f, e.getMessage());
-                }
-            }
-        } finally {
-            running.unlock();
-        }
-    }
-
-    /**
-     * La pasada de día de partido: las competiciones con algún partido hoy (según su calendario guardado), con las fichas
-     * de quienes jugaron hoy. No se anota como pasada: la de la madrugada sigue cubriendo desde la anterior.
-     */
-    public Result matchDay(Federation f, int year) {
-        LocalDate today = clock.instant().atZone(AR).toLocalDate();
-        List<Competition> playing = catalog.competitions(f, year).stream()
-                .filter(c -> playsOn(c, today))
-                .toList();
-        return pass(f, playing, Optional.of(today), false);
-    }
-
-    /** ¿La competición tiene algún partido ese día? Se mira el calendario guardado; si no se puede leer, no. */
-    private boolean playsOn(Competition c, LocalDate day) {
-        try {
-            return SidgadParser.calendar(sidgad.calendar(c.id())).stream().anyMatch(m -> day.equals(m.date()));
-        } catch (RuntimeException e) {
-            log.info("No se pudo leer el calendario de {} para la pasada de hoy: {}", c.id(), e.getMessage());
-            return false;
-        }
-    }
-
-    /**
      * La pasada de la madrugada (y la del arranque): sin pasada anterior, todo el año; si no, lo jugado desde el día de la
      * última pasada sin errores.
      */
     public Result warm(Federation f, int year) {
-        return pass(f, catalog.competitions(f, year), since(f), true);
+        return pass(f, catalog.competitions(f, year), since(f));
     }
 
     /**
      * Una pasada sobre esas competiciones. Sin {@code since}, completa: renueva tabla, calendario y estadísticas de cada
      * una, baja las actas que falten y la ficha de todos los jugadores. Con {@code since}, incremental: solo las
-     * competiciones en curso, y de ellas los partidos jugados desde ese día. Con {@code note}, si no hubo errores queda
-     * anotada como la última pasada.
+     * competiciones en curso, y de ellas los partidos jugados desde ese día. Si no hubo errores queda anotada como la
+     * última pasada.
      */
-    private Result pass(Federation f, List<Competition> comps, Optional<LocalDate> since, boolean note) {
+    private Result pass(Federation f, List<Competition> comps, Optional<LocalDate> since) {
         Instant start = clock.instant();
         long t0 = System.nanoTime();
         boolean full = since.isEmpty();
@@ -398,7 +347,7 @@ public class SidgadWarmup {
             errors.addAndGet(waitAll(profiles));
         }
         // Sin errores, la próxima pasada suma lo jugado desde hoy; con errores, vuelve a cubrir desde la anterior.
-        if (note && errors.get() == 0 && store != null) {
+        if (errors.get() == 0 && store != null) {
             try {
                 store.put(lastSyncKey(f), start.toString());
             } catch (RuntimeException e) {
