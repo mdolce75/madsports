@@ -1,7 +1,9 @@
 package com.madsports.sidgad.tables;
 
 import com.madsports.sidgad.model.Competition;
+import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
+import com.madsports.sidgad.model.Models.MatchEvent;
 import com.madsports.sidgad.parse.SidgadParser;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,13 +11,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Pasa el HTML guardado de SIDGAD a las tablas propias, con {@link SidgadParser}: no pide nada a SIDGAD. Es
  * idempotente: normalizar dos veces lo mismo deja las mismas filas (las competiciones se actualizan por idc; los
- * equipos y los partidos de una competición se reemplazan).
+ * equipos y los partidos de una competición, y la planilla y los eventos de un acta, se reemplazan).
  */
 @Component
 public class SidgadNormalizer {
@@ -23,13 +28,20 @@ public class SidgadNormalizer {
     private final SidgadCompetitionRepository competitions;
     private final SidgadTeamRepository teams;
     private final SidgadMatchRepository matches;
+    private final SidgadPlayerRepository players;
+    private final SidgadMatchLineupRepository lineups;
+    private final SidgadMatchEventRepository events;
     private final Clock clock;
 
     public SidgadNormalizer(SidgadCompetitionRepository competitions, SidgadTeamRepository teams,
-                            SidgadMatchRepository matches, Clock clock) {
+                            SidgadMatchRepository matches, SidgadPlayerRepository players,
+                            SidgadMatchLineupRepository lineups, SidgadMatchEventRepository events, Clock clock) {
         this.competitions = competitions;
         this.teams = teams;
         this.matches = matches;
+        this.players = players;
+        this.lineups = lineups;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -55,7 +67,7 @@ public class SidgadNormalizer {
             // Los borrados antes que las altas (Hibernate inserta primero): si no, choca el (competición, equipo) único.
             teams.flush();
             // Un equipo por id (por si el catálogo lo repite).
-            Map<Integer, SidgadTeam> unique = new java.util.LinkedHashMap<>();
+            Map<Integer, SidgadTeam> unique = new LinkedHashMap<>();
             c.teams().forEach(t -> unique.putIfAbsent(t.teamId(), new SidgadTeam(c.id(), t)));
             teams.saveAll(unique.values());
         }
@@ -78,5 +90,34 @@ public class SidgadNormalizer {
         matches.flush();
         matches.saveAll(parsed.stream().map(m -> new SidgadMatch(idc, m)).toList());
         return parsed.size();
+    }
+
+    /**
+     * El acta de un partido ({@code sidgad_game_sheet}): reemplaza su planilla y sus eventos, y actualiza el nombre de
+     * cada jugador. Un acta sin publicar ("File not found.", vacía) deja el partido sin planilla ni eventos.
+     *
+     * @return los jugadores de la planilla
+     */
+    @Transactional
+    public int sheet(int idp, String sheet) {
+        List<LineupPlayer> lineup = SidgadParser.lineups(sheet);
+        List<MatchEvent> parsed = SidgadParser.gameEvents(sheet);
+        lineups.deleteByIdp(idp);
+        events.deleteByIdp(idp);
+        lineups.flush();
+        lineups.saveAll(lineup.stream().map(p -> new SidgadMatchLineup(idp, p)).toList());
+        events.saveAll(parsed.stream().map(e -> new SidgadMatchEvent(idp, e)).toList());
+        // Los jugadores, una vez cada uno: los que ya están, con el nombre al día.
+        Map<Integer, LineupPlayer> byId = new LinkedHashMap<>();
+        lineup.stream().filter(p -> p.playerId() > 0).forEach(p -> byId.putIfAbsent(p.playerId(), p));
+        Map<Integer, SidgadPlayer> known = players.findAllById(byId.keySet()).stream()
+                .collect(Collectors.toMap(SidgadPlayer::getId, Function.identity()));
+        Instant now = clock.instant();
+        players.saveAll(byId.values().stream().map(p -> {
+            SidgadPlayer row = known.getOrDefault(p.playerId(), new SidgadPlayer(p.playerId()));
+            row.update(p.name(), p.surname(), now);
+            return row;
+        }).toList());
+        return lineup.size();
     }
 }
