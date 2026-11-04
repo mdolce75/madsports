@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +59,12 @@ public class JdbcSnapshotStore implements SnapshotStore {
         jdbc.update("update source_snapshot set body_gz = ?, fetched_at = ?, changed_at = ? where snapshot_key = ?",
                 gz, now, now, key);
         return true;
+    }
+
+    @Override
+    public List<String> changedSince(Instant since) {
+        return jdbc.queryForList("select snapshot_key from source_snapshot where changed_at >= ? order by snapshot_key",
+                String.class, Timestamp.from(since));
     }
 
     /** Copias guardadas (para el registro de la sincronización). */

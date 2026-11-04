@@ -12,6 +12,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
@@ -53,6 +54,12 @@ public class JdbcSheetStore implements SheetStore {
                 // Otro informe la guardó recién: queda la suya.
             }
         }
+    }
+
+    @Override
+    public List<Integer> changedSince(Instant since) {
+        return jdbc.queryForList("select idp from sidgad_game_sheet where fetched_at >= ? order by idp", Integer.class,
+                Timestamp.from(since));
     }
 
     /** Actas guardadas (para el registro de la precarga). */

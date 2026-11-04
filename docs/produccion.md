@@ -127,6 +127,46 @@ de nuevo, por si SIDGAD las corrigió) y la ficha de temporada de quienes jugaro
 guardado. El catálogo (competiciones y equipos) se renueva igual en cada pasada: son dos pedidos y es como aparecen
 los torneos nuevos.
 
+## Datos de SIDGAD en tablas propias
+
+Además del HTML guardado (la fuente de verdad), los datos de SIDGAD están en tablas normalizadas para consultarlos con
+SQL: `sidgad_competition`, `sidgad_team`, `sidgad_match`, `sidgad_player`, `sidgad_match_lineup`,
+`sidgad_match_event`, `sidgad_standing`, `sidgad_player_stats` y `sidgad_player_season_match`. Las llena
+`SidgadTablesLoader` parseando lo guardado, **sin pedir nada a SIDGAD**:
+
+- **Al arrancar:** en segundo plano (`SIDGAD_TABLES_ON_STARTUP`, encendido por defecto). La primera vez recorre todo lo
+  guardado: es la carga inicial.
+- **Después de cada sincronización:** solo lo que cambió desde la última carga sin errores (la marca
+  `sidgad:tables:loaded` en `source_snapshot`). El mail de la sincronización suma una línea con lo cargado.
+- **Para recargar todo** (por ejemplo, después de corregir un parser): borrar la marca y reiniciar la app.
+
+  ```sql
+  delete from source_snapshot where snapshot_key = 'sidgad:tables:loaded';
+  ```
+
+Consultas de ejemplo:
+
+```sql
+-- Categorías de un club en un año (Petroleros, club 98, 2026)
+select distinct c.federation, c.level, c.branch
+from sidgad_team t join sidgad_competition c on c.id = t.competition_id
+where t.club_id = 98 and c.season_year = 2026 and c.level is not null;
+
+-- Goleadores de una competición, según las actas
+select p.name, sum(l.goals) goles
+from sidgad_match m
+join sidgad_match_lineup l on l.idp = m.idp
+join sidgad_player p on p.id = l.player_id
+where m.competition_id = 779
+group by p.name order by goles desc;
+
+-- Tarjetas por tramo de 5 minutos en una competición
+select e.period, e.event_minute / 5 * 5 desde, e.event_type, count(*)
+from sidgad_match_event e join sidgad_match m on m.idp = e.idp
+where m.competition_id = 779 and e.event_type <> 'GOAL' and e.event_type <> 'FOUL'
+group by 1, 2, 3 order by 1, 2;
+```
+
 ## Informes guardados
 
 Cada informe que pide un club o un jugador se guarda (PDF, Excel y la versión para pantalla) para verlo y bajarlo

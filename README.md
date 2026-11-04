@@ -494,6 +494,7 @@ Abrir http://localhost:8080.
 | `SIDGAD_WARMUP_CRON` | `0 0 3 * * *` | Sincronización de madrugada, la única (hora argentina; `-` la apaga): la primera vez, todo el año; después, solo lo jugado desde la última pasada (calendarios en curso; tabla, estadísticas, actas y fichas de las competiciones con partidos) |
 | `SIDGAD_READ` | `stored` | De dónde leen los informes: `stored` (solo las copias guardadas; a SIDGAD va únicamente la sincronización), `snapshot` (copias, y SIDGAD si faltan o vencieron) o `live` |
 | `SIDGAD_SYNC_ON_STARTUP` | `false` | Sincronizar SIDGAD también al arrancar (cada deploy), en segundo plano. Apagado: los deploys no le piden nada a SIDGAD y los datos se renuevan a la madrugada |
+| `SIDGAD_TABLES_ON_STARTUP` | `true` | Al arrancar, pone al día las tablas propias de SIDGAD (`sidgad_*`) con lo guardado, sin pedir nada a SIDGAD (la primera vez, la carga inicial). Ver `docs/produccion.md` |
 | `SIDGAD_SYNC_NOTIFY_EMAIL` | `info@madsports.com.ar` | A quién avisa por mail que terminó la sincronización del arranque y la de madrugada, con el estado de cada federación; vacío = a nadie |
 | `REPORTS_DIR` | `./data/informes` | Carpeta donde se guardan los informes generados (PDF, Excel y HTML de cada pedido) para verlos y bajarlos desde el historial. En el servidor, un volumen |
 | `REPORTS_RETENTION_MONTHS` | `12` | Meses que se conservan los informes guardados; todos los días a las 4:30 se borran los más viejos (el pedido queda en el historial) |
