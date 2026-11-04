@@ -4,6 +4,9 @@ import com.madsports.sidgad.model.Competition;
 import com.madsports.sidgad.model.Models.LineupPlayer;
 import com.madsports.sidgad.model.Models.Match;
 import com.madsports.sidgad.model.Models.MatchEvent;
+import com.madsports.sidgad.model.Models.PlayerStats;
+import com.madsports.sidgad.model.Models.SeasonMatch;
+import com.madsports.sidgad.model.Models.StandingRow;
 import com.madsports.sidgad.parse.SidgadParser;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +23,8 @@ import java.util.stream.Collectors;
 /**
  * Pasa el HTML guardado de SIDGAD a las tablas propias, con {@link SidgadParser}: no pide nada a SIDGAD. Es
  * idempotente: normalizar dos veces lo mismo deja las mismas filas (las competiciones se actualizan por idc; los
- * equipos y los partidos de una competición, y la planilla y los eventos de un acta, se reemplazan).
+ * equipos, los partidos, la tabla y las estadísticas de una competición, la planilla y los eventos de un acta, y los
+ * partidos de la ficha de un jugador, se reemplazan).
  */
 @Component
 public class SidgadNormalizer {
@@ -31,17 +35,25 @@ public class SidgadNormalizer {
     private final SidgadPlayerRepository players;
     private final SidgadMatchLineupRepository lineups;
     private final SidgadMatchEventRepository events;
+    private final SidgadStandingRepository standings;
+    private final SidgadPlayerStatsRepository stats;
+    private final SidgadPlayerSeasonMatchRepository seasons;
     private final Clock clock;
 
     public SidgadNormalizer(SidgadCompetitionRepository competitions, SidgadTeamRepository teams,
                             SidgadMatchRepository matches, SidgadPlayerRepository players,
-                            SidgadMatchLineupRepository lineups, SidgadMatchEventRepository events, Clock clock) {
+                            SidgadMatchLineupRepository lineups, SidgadMatchEventRepository events,
+                            SidgadStandingRepository standings, SidgadPlayerStatsRepository stats,
+                            SidgadPlayerSeasonMatchRepository seasons, Clock clock) {
         this.competitions = competitions;
         this.teams = teams;
         this.matches = matches;
         this.players = players;
         this.lineups = lineups;
         this.events = events;
+        this.standings = standings;
+        this.stats = stats;
+        this.seasons = seasons;
         this.clock = clock;
     }
 
@@ -119,5 +131,60 @@ public class SidgadNormalizer {
             return row;
         }).toList());
         return lineup.size();
+    }
+
+    /**
+     * La tabla de posiciones de una competición ({@code sidgad:standings:<idc>}): la reemplaza. Si la competición
+     * todavía no está, no hace nada.
+     *
+     * @return las filas normalizadas
+     */
+    @Transactional
+    public int standings(int idc, String standings) {
+        if (!competitions.existsById(idc)) {
+            return 0;
+        }
+        List<StandingRow> parsed = blank(standings) ? List.of() : SidgadParser.standings(standings);
+        this.standings.deleteByCompetitionId(idc);
+        this.standings.flush();
+        this.standings.saveAll(parsed.stream().map(r -> new SidgadStanding(idc, r)).toList());
+        return parsed.size();
+    }
+
+    /**
+     * Las estadísticas por jugador de una competición ({@code sidgad:stats:<idc>}): las reemplaza. Si la competición
+     * todavía no está, no hace nada.
+     *
+     * @return los jugadores normalizados
+     */
+    @Transactional
+    public int playerStats(int idc, String playerStats) {
+        if (!competitions.existsById(idc)) {
+            return 0;
+        }
+        List<PlayerStats> parsed = blank(playerStats) ? List.of() : SidgadParser.playerStats(playerStats);
+        stats.deleteByCompetitionId(idc);
+        stats.flush();
+        stats.saveAll(parsed.stream().map(p -> new SidgadPlayerStats(idc, p)).toList());
+        return parsed.size();
+    }
+
+    /**
+     * La ficha de temporada de un jugador ({@code sidgad:profile:<jugador>:<temporada>}): reemplaza sus partidos de
+     * esa temporada.
+     *
+     * @return los partidos normalizados
+     */
+    @Transactional
+    public int playerSeason(int playerId, int seasonId, String profile) {
+        List<SeasonMatch> parsed = SidgadParser.seasonMatches(profile);
+        seasons.deleteByPlayerIdAndSeasonId(playerId, seasonId);
+        seasons.flush();
+        seasons.saveAll(parsed.stream().map(m -> new SidgadPlayerSeasonMatch(playerId, seasonId, m)).toList());
+        return parsed.size();
+    }
+
+    private static boolean blank(String html) {
+        return html == null || html.isBlank();
     }
 }

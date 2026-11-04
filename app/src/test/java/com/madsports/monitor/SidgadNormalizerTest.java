@@ -11,6 +11,12 @@ import com.madsports.sidgad.tables.SidgadMatchLineupRepository;
 import com.madsports.sidgad.tables.SidgadMatchRepository;
 import com.madsports.sidgad.tables.SidgadNormalizer;
 import com.madsports.sidgad.tables.SidgadPlayerRepository;
+import com.madsports.sidgad.tables.SidgadPlayerSeasonMatch;
+import com.madsports.sidgad.tables.SidgadPlayerSeasonMatchRepository;
+import com.madsports.sidgad.tables.SidgadPlayerStats;
+import com.madsports.sidgad.tables.SidgadPlayerStatsRepository;
+import com.madsports.sidgad.tables.SidgadStanding;
+import com.madsports.sidgad.tables.SidgadStandingRepository;
 import com.madsports.sidgad.tables.SidgadTeamRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,8 +30,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * El HTML guardado de SIDGAD, pasado a las tablas propias (con las migraciones V34 y V35 de verdad): catálogo,
- * calendarios y actas.
+ * El HTML guardado de SIDGAD, pasado a las tablas propias (con las migraciones V34 a V36 de verdad): catálogo,
+ * calendarios, actas, tablas de posiciones, estadísticas por jugador y fichas de temporada.
  */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:tablas;DB_CLOSE_DELAY=-1")
 class SidgadNormalizerTest {
@@ -52,10 +58,22 @@ class SidgadNormalizerTest {
     SidgadMatchEventRepository events;
 
     @Autowired
+    SidgadStandingRepository standings;
+
+    @Autowired
+    SidgadPlayerStatsRepository stats;
+
+    @Autowired
+    SidgadPlayerSeasonMatchRepository seasons;
+
+    @Autowired
     JdbcTemplate jdbc;
 
     @BeforeEach
     void clean() {
+        standings.deleteAll();
+        stats.deleteAll();
+        seasons.deleteAll();
         lineups.deleteAll();
         events.deleteAll();
         players.deleteAll();
@@ -210,5 +228,59 @@ class SidgadNormalizerTest {
             assertThat(((Number) r.get("GOALS")).intValue()).isEqualTo(2);
         });
         assertThat(rows.stream().mapToInt(r -> ((Number) r.get("GOALS")).intValue()).sum()).isEqualTo(6);
+    }
+
+    @Test
+    void theStandingsOfACompetitionByGroup() {
+        normalizer.catalog(Fixtures.read("catalogo_2026.html"), Fixtures.read("portal.html"));
+
+        int n = normalizer.standings(779, Fixtures.read("clasif_779.html"));
+        normalizer.standings(779, Fixtures.read("clasif_779.html"));
+
+        List<SidgadStanding> rows = standings.findByCompetitionIdOrderByGroupNameAscPositionAsc(779);
+        assertThat(rows).hasSize(n).isNotEmpty();
+        assertThat(rows).extracting(SidgadStanding::getGroupName).containsOnly("IMPAR", "PAR");
+        assertThat(rows).filteredOn(r -> "CAVS".equals(r.getCode())).singleElement().satisfies(r -> {
+            assertThat(r.getClubId()).isEqualTo(74);
+            assertThat(r.getName()).isEqualTo("VELEZ");
+        });
+        assertThat(normalizer.standings(999_999, Fixtures.read("clasif_779.html"))).isZero();
+    }
+
+    @Test
+    void theStatsByPlayerOfACompetition() {
+        normalizer.catalog(Fixtures.read("catalogo_2026.html"), Fixtures.read("portal.html"));
+
+        int n = normalizer.playerStats(765, Fixtures.read("stats_765.html"));
+        normalizer.playerStats(765, Fixtures.read("stats_765.html"));
+
+        List<SidgadPlayerStats> rows = stats.findByCompetitionIdOrderByGoalsDesc(765);
+        assertThat(rows).hasSize(n).isNotEmpty();
+        assertThat(rows.getFirst()).satisfies(top -> {
+            assertThat(top.getName()).isEqualTo("Martina Lorena Granato");
+            assertThat(top.getTeamCode()).isEqualTo("HARRO");
+            assertThat(top.getGoals()).isEqualTo(53);
+            assertThat(top.getGames()).isEqualTo(7);
+            assertThat(top.getPenaltiesTaken()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void theSeasonProfileOfAPlayer() {
+        int n = normalizer.playerSeason(5037, 40, Fixtures.read("profileseason_5037.html"));
+        normalizer.playerSeason(5037, 40, Fixtures.read("profileseason_5037.html"));
+
+        List<SidgadPlayerSeasonMatch> rows = seasons.findByPlayerIdAndSeasonIdOrderByMatchDateAsc(5037, 40);
+        assertThat(rows).hasSize(n).hasSize(37);
+        List<SidgadPlayerSeasonMatch> juvenil = rows.stream()
+                .filter(m -> m.getCompetitionName().equals("TORNEO APERTURA JUVENIL MASCULINO (FPP)")).toList();
+        assertThat(juvenil).hasSize(19);
+        assertThat(juvenil.stream().mapToInt(SidgadPlayerSeasonMatch::getGoals).sum()).isEqualTo(14);
+        // Vélez 11-1 Municipalidad: sin acta publicada, pero en la ficha, con sus 3 goles.
+        assertThat(rows).filteredOn(m -> Integer.valueOf(23758).equals(m.getIdp())).singleElement().satisfies(m -> {
+            assertThat(m.getHomeName()).isEqualTo("CAVS");
+            assertThat(m.getHomeGoals()).isEqualTo(11);
+            assertThat(m.getGoals()).isEqualTo(3);
+        });
     }
 }
