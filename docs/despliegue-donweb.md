@@ -100,12 +100,11 @@ Cuando aparezca `Started MadSportsApplication`, salir con `Ctrl+C` (la app sigue
 
 La base arranca vacía (las migraciones de Flyway crean todo al arrancar, antes de que la app atienda; si una falla, la
 app no arranca). La app sincroniza SIDGAD (catálogo, tablas, calendarios, estadísticas, actas y fichas: la primera
-vez baja todo el año) todas las madrugadas a las 5:00 y los fines
-de semana en las pasadas de días de partido, solo lo jugado desde la última pasada. Al arrancar (cada deploy) no
+vez baja todo el año) una vez por día, a las 3:00: solo lo jugado desde la última pasada. Al arrancar (cada deploy) no
 sincroniza, salvo con `SIDGAD_SYNC_ON_STARTUP=true`: en el primer deploy conviene encenderla una vez para no esperar a
 la madrugada. Los informes leen solo esas copias guardadas: a SIDGAD va únicamente
-la sincronización (y el chequeo diario). Lo que todavía no se bajó (la primera vez, mientras corre) avisa que se
-prueba en unos minutos. Para volver a leer de SIDGAD: `SIDGAD_READ=snapshot` (copias, y SIDGAD si faltan) o `live`.
+la sincronización (y el chequeo diario). Lo que todavía no se bajó avisa que llega con la
+sincronización de la madrugada. Para volver a leer de SIDGAD: `SIDGAD_READ=snapshot` (copias, y SIDGAD si faltan) o `live`.
 
 ## 9. Respaldos diarios
 
@@ -134,7 +133,7 @@ scp root@IP_DEL_SERVIDOR:/var/backups/madsports/base-*.sql.gz .
 
 Baja lo último, reconstruye y reinicia la app (la base y los informes no se tocan). En cada arranque, Flyway aplica las
 migraciones pendientes antes de que la app atienda (y Hibernate valida el esquema: si algo no se migró, no arranca).
-SIDGAD no se sincroniza en el deploy (`SIDGAD_SYNC_ON_STARTUP`, apagado por defecto): lo hace la pasada de las 5:00, y
+SIDGAD no se sincroniza en el deploy (`SIDGAD_SYNC_ON_STARTUP`, apagado por defecto): lo hace la pasada de las 3:00, y
 al terminar llega un mail a info@madsports.com.ar (`SIDGAD_SYNC_NOTIFY_EMAIL`) con cómo quedó cada federación. Con
 `SIDGAD_SYNC_ON_STARTUP=true` también sincroniza al arrancar y avisa al terminar.
 Con el paso 11 esto pasa solo en cada merge a main.

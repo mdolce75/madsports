@@ -758,7 +758,7 @@ public class SidgadClient {
     /** Lo pedido todavía no está guardado (modo {@code stored}): lo baja la próxima sincronización. */
     public static class NotSyncedException extends SidgadException {
         public static final String MESSAGE = "Estos datos de SIDGAD todavía no están guardados: se bajan en la "
-                + "sincronización (al arrancar, a las 5:00 y en días de partido). Probá de nuevo en unos minutos.";
+                + "sincronización de cada madrugada (a las 3:00). Probá de nuevo mañana.";
 
         public NotSyncedException() {
             super(MESSAGE);

@@ -119,7 +119,7 @@ www.rinkmetrics.com.ar {
 
 Las actas de los partidos jugados se bajan de SIDGAD una sola vez y quedan en la base (tabla `sidgad_game_sheet`,
 comprimidas: unos 20 KB cada una, ~25 MB por año). La primera sincronización (sin una anterior) baja todo el año.
-Después es incremental: todos los días a las 5:00 (`SIDGAD_WARMUP_CRON`), y al arrancar solo con
+Después es incremental: una vez por día, a las 3:00 (`SIDGAD_WARMUP_CRON`), y al arrancar solo con
 `SIDGAD_SYNC_ON_STARTUP=true` (apagado por defecto), solo suma lo jugado
 desde la última pasada sin errores. Renueva el calendario de las competiciones en curso (las que terminaron hace más de
 14 días no se tocan) y, de las que tuvieron partidos, la tabla, las estadísticas, las actas de esos partidos (bajadas
