@@ -107,6 +107,9 @@ madsports:
     # Al arrancar (cada deploy), una sincronización en segundo plano, después de que Flyway migra el esquema. Apagada:
     # los deploys no le piden nada a SIDGAD y los datos se renuevan a la madrugada. true = también al arrancar.
     sync-on-startup: ${SIDGAD_SYNC_ON_STARTUP:false}
+    # Las tablas propias de SIDGAD (sidgad_*): al arrancar se ponen al día con lo guardado (la primera vez, la carga
+    # inicial), sin pedir nada a SIDGAD; después, al terminar cada sincronización.
+    tables-on-startup: ${SIDGAD_TABLES_ON_STARTUP:true}
     # Al terminar la del arranque y la de madrugada, un mail con cómo quedó cada federación. Vacío = a nadie.
     sync-notify: ${SIDGAD_SYNC_NOTIFY_EMAIL:info@madsports.com.ar}
   # Análisis con Google Gemini (plan gratuito de Google AI Studio). Sin API key: análisis por reglas.
