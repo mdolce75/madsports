@@ -225,6 +225,13 @@ const RR_BRAND = `<header class="brand">
     <div><b>RinkReports</b><small>Informes de hockey sobre patines</small></div>
 </header>`;
 
+/** Los textos que nombran a la AMP ([data-amp]) vienen ocultos: se muestran solo si está habilitada. */
+const ampTexts = document.querySelectorAll("[data-amp]");
+if (ampTexts.length) {
+    fetch("/api/signup/options").then(r => r.ok ? r.json() : {}).catch(() => ({}))
+        .then(o => { if (o.amp) ampTexts.forEach(e => { e.hidden = false; }); });
+}
+
 /** La marca del producto de la pantalla. */
 function brand() {
     return product() === "REPORTS" ? RR_BRAND : BRAND;

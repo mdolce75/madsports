@@ -199,8 +199,8 @@ footer { border-top: 1px solid var(--rule); padding-block: 26px 40px; display: f
       <div class="sec-head">
         <span class="eyebrow">Productos</span>
         <h2>Elegí tu producto</h2>
-        <p>Dos aplicaciones para el hockey sobre patines, con los datos de la Federación Porteña de Patín y de la Asociación
-          Mendocina de Patín. Cada
+        <p>Dos aplicaciones para el hockey sobre patines, con los datos de la Federación Porteña de Patín<span data-amp
+          hidden> y de la Asociación Mendocina de Patín</span>. Cada
           una tiene su propia cuenta.</p>
       </div>
       <div class="products">
@@ -310,6 +310,10 @@ footer { border-top: 1px solid var(--rule); padding-block: 26px 40px; display: f
 </div>
 
 <script>
+// Los textos que nombran a la AMP ([data-amp]) vienen ocultos: se muestran solo si está habilitada.
+fetch("/api/signup/options").then(r => r.ok ? r.json() : {}).catch(() => ({}))
+  .then(o => { if (o.amp) document.querySelectorAll("[data-amp]").forEach(e => { e.hidden = false; }); });
+
 // Partido de ejemplo (50 minutos, descanso a los 25'). seg = segundos desde el inicio.
 const EVENTS = [
   { seg: 4 * 60 + 12,  type: "gl", txt: "1T 4:12 · <b>Gol local</b> (1 – 0)" },

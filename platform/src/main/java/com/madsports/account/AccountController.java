@@ -3,6 +3,7 @@ package com.madsports.account;
 import com.madsports.account.SignupService.ConflictException;
 import com.madsports.account.SignupService.Signup;
 import com.madsports.catalog.CatalogService;
+import com.madsports.catalog.EnabledFederations;
 import com.madsports.sidgad.model.Federation;
 import com.madsports.config.SecurityConfig;
 import com.madsports.catalog.RosterService;
@@ -104,10 +105,13 @@ public class AccountController {
     private final ExchangeRate exchangeRate;
     private final Clock clock;
     private final ObjectProvider<MonthlyReports> reports;
+    private final EnabledFederations federations;
 
     public AccountController(SignupService signup, UserAccountRepository users, RosterService roster,
                              CatalogService catalog, AccountService account, SubscriptionPlanRepository plans,
-                             ExchangeRate exchangeRate, Clock clock, ObjectProvider<MonthlyReports> reports) {
+                             ExchangeRate exchangeRate, Clock clock, ObjectProvider<MonthlyReports> reports,
+                             EnabledFederations federations) {
+        this.federations = federations;
         this.clock = clock;
         this.reports = reports;
         this.account = account;
@@ -192,10 +196,11 @@ public class AccountController {
     public List<RosterPlayer> players(@RequestParam int clubId, @RequestParam String category,
                                         @RequestParam String branch,
                                         @RequestParam(required = false) String federation) {
-        return roster.players(Federation.parse(federation), clubId, catalog.defaultYear(), category, branch);
+        return roster.players(federations.check(Federation.parse(federation)), clubId, catalog.defaultYear(), category,
+                branch);
     }
 
-    /** Qué perfiles se pueden registrar hoy (las cuentas de club y los jugadores de la AMP se habilitan por configuración). */
+    /** Qué se puede registrar hoy: las cuentas de club y la AMP se habilitan por configuración. */
     @GetMapping("/signup/options")
     public SignupService.SignupOptions options() {
         return signup.options();

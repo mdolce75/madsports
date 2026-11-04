@@ -500,6 +500,7 @@ Abrir http://localhost:8080.
 | `DOLLAR_URL` | DolarAPI, dólar oficial | De dónde sale el tipo de cambio para los precios en pesos |
 | `DOLLAR_FALLBACK` | `1500` | Pesos por dólar si DolarAPI nunca respondió |
 | `SESSION_TIMEOUT` | `8h` | Sesión sin actividad |
+| `AMP_ENABLED` | `false` | La AMP (Mendoza): apagada no se sincroniza ni se chequea, y no aparece en el generador, los catálogos, los planteles, el registro ni los textos de las páginas. La FPP, siempre |
 | `SIGNUP_CLUB` | `false` | Habilita el alta de cuentas de club (las de jugador y DT están abiertas) |
 | `SIGNUP_PLAYER_PAID` | `false` | Habilita elegir el plan Jugador mensual (pago) |
 | `SIGNUP_COACH_PAID` | `false` | Habilita elegir el plan DT mensual (pago) |

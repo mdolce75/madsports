@@ -68,6 +68,10 @@ madsports:
     promo-from: ${REPORTS_PROMO_FROM:2026-10-27}
     promo-until: ${REPORTS_PROMO_UNTIL:2026-12-31}
     promo-limit: ${REPORTS_PROMO_LIMIT:0}
+  # La AMP (EnabledFederations): apagada, no se sincroniza ni se chequea, y no aparece en el generador, los catálogos,
+  # los planteles ni el registro. La FPP, siempre.
+  amp:
+    enabled: ${AMP_ENABLED:false}
   # Un dominio por sitio (SiteUrls, DomainFilter): https://madsports.com.ar, https://rinkreports.com.ar y
   # https://rinkmetrics.com.ar. El que queda vacío usa APP_BASE_URL; vacíos los tres, todo en una sola dirección.
   urls:

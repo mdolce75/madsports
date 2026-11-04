@@ -807,7 +807,8 @@ class SecurityTest {
     @Test
     void signupOptions() throws Exception {
         mvc.perform(get("/api/signup/options")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.club").isBoolean()).andExpect(jsonPath("$.amp").doesNotExist());
+                // La AMP, encendida en los tests (AmpOffTest la prueba apagada).
+                .andExpect(jsonPath("$.club").isBoolean()).andExpect(jsonPath("$.amp").value(true));
     }
 
     @Test

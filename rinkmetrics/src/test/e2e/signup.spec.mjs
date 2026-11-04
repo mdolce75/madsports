@@ -12,15 +12,15 @@ const CATALOGS = {
         {id: 15, code: "GC", name: "GODOY CRUZ", categories: []}]},
 };
 
-/** La API del registro; devuelve qué catálogos se pidieron. */
-async function api(page) {
+/** La API del registro (con la AMP habilitada, salvo {@code amp} false); devuelve qué catálogos se pidieron. */
+async function api(page, amp = true) {
     const asked = [];
     await page.route("**/api/**", route => {
         const url = new URL(route.request().url());
         const json = body => route.fulfill({json: body});
         switch (url.pathname) {
             case "/api/session": return json({authenticated: false});
-            case "/api/signup/options": return json({club: true});
+            case "/api/signup/options": return json({club: true, amp});
             case "/api/plans": return json([]);
             case "/api/catalog": {
                 const f = url.searchParams.get("federation");
@@ -54,6 +54,14 @@ test("DT: elige la federación y ve solo los clubes de esa federación", async (
     await page.locator("input[name=federacion][value=FPP]").check();
     await expect(clubs(page)).toHaveText(["VELEZ (CAVS)", "ARGENTINOS JUNIORS (AAAJ)"]);
     expect(asked).toEqual(["AMP", "FPP"]);
+});
+
+test("DT con la AMP apagada: solo la FPP u Otra", async ({page}) => {
+    await api(page, false);
+    await page.goto("/rinkmetrics/signup.html");
+    await expect(page.locator("input[name=federacion][value=FPP]")).toBeVisible();
+    await expect(page.locator("input[name=federacion][value=AMP]")).toHaveCount(0);
+    await expect(page.locator("#fed-hint")).not.toContainText("AMP");
 });
 
 test("DT de otra federación: escribe el nombre de su club, sin catálogo de SIDGAD", async ({page}) => {

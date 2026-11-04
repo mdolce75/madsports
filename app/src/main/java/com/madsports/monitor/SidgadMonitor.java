@@ -4,6 +4,7 @@ import com.madsports.account.MailContent;
 import com.madsports.account.Mailer;
 import com.madsports.account.Product;
 import com.madsports.catalog.CatalogService;
+import com.madsports.catalog.EnabledFederations;
 import com.madsports.config.SiteUrls;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SnapshotStore;
@@ -66,11 +67,12 @@ public class SidgadMonitor implements HealthIndicator {
         this.store = store;
     }
 
+    /** Las federaciones habilitadas: la FPP, y la AMP si está encendida. */
     @Autowired
     public SidgadMonitor(SidgadClient client, CatalogService catalog, Mailer mailer, Clock clock,
                          @Value("${madsports.alerts.email:}") String alerts,
-                         SiteUrls urls) {
-        this(client, catalog, mailer, clock, alerts, urls, List.of(Federation.values()));
+                         SiteUrls urls, EnabledFederations enabled) {
+        this(client, catalog, mailer, clock, alerts, urls, enabled.list());
     }
 
     /** Con otras federaciones (los tests, solo la FPP). */

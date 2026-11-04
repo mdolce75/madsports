@@ -4,8 +4,8 @@
 // SIDGAD: escribe el nombre de su club y después carga a mano sus equipos y jugadores.
 const SECTION = product() === "REPORTS" ? "informes" : "dt";
 $("brand").outerHTML = brand();
-// Qué se puede registrar hoy: las cuentas de club se habilitan por configuración (la FPP y la AMP, siempre).
-let signupOpts = {club: true};
+// Qué se puede registrar hoy: las cuentas de club y la AMP se habilitan por configuración.
+let signupOpts = {club: true, amp: false};
 if (SECTION === "dt") {
     document.querySelectorAll("input[name=rol]").forEach(r => {
         if (r.value === "COACH") r.checked = true; else r.closest("label").remove();
@@ -276,8 +276,11 @@ function toggleProfile() {
  * SIDGAD (lo escribe).
  */
 function coachFederation() {
-    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes. Si no es la FPP ni la AMP, elegí Otra y "
-        + "cargás tus equipos a mano.";
+    if (!signupOpts.amp) {
+        document.querySelectorAll("input[name=federacion][value=AMP]").forEach(r => r.closest("label").remove());
+    }
+    $("fed-hint").textContent = "Elegí tu federación para ver sus clubes. Si no es la FPP"
+        + (signupOpts.amp ? " ni la AMP" : "") + ", elegí Otra y cargás tus equipos a mano.";
     $("fed-hint").hidden = false;
     const sel = $("club");
     sel.innerHTML = "";

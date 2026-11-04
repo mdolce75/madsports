@@ -4,6 +4,7 @@ import com.madsports.account.MailContent;
 import com.madsports.account.Mailer;
 import com.madsports.account.Product;
 import com.madsports.catalog.CatalogService;
+import com.madsports.catalog.EnabledFederations;
 import com.madsports.config.SiteUrls;
 import com.madsports.sidgad.SidgadClient;
 import com.madsports.sidgad.SnapshotStore;
@@ -49,7 +50,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * tuvieron partidos o cambios; las actas de esos partidos (bajadas de nuevo, por si SIDGAD las corrigió) y la ficha de
  * temporada de quienes jugaron. Lo anterior queda como está guardado. Va despacio
  * ({@code madsports.sidgad.sync-concurrency} pedidos a la vez) y un error no la corta: queda la copia anterior.
- * {@code madsports.sidgad.warmup-cron} ("-" la apaga); siempre las dos federaciones, FPP y AMP. Al terminar la del arranque (cada deploy) y
+ * {@code madsports.sidgad.warmup-cron} ("-" la apaga); las federaciones habilitadas ({@link EnabledFederations}). Al terminar la del arranque (cada deploy) y
  * la de madrugada, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
  */
 @Component
@@ -81,12 +82,12 @@ public class SidgadWarmup {
     private final SnapshotStore store;
     private final int concurrency;
 
-    /** Siempre FPP y AMP. */
+    /** Las federaciones habilitadas: la FPP, y la AMP si está encendida. */
     @Autowired
-    public SidgadWarmup(CatalogService catalog, SidgadClient sidgad, Clock clock,
+    public SidgadWarmup(CatalogService catalog, SidgadClient sidgad, Clock clock, EnabledFederations enabled,
                         @Autowired(required = false) SnapshotStore store,
                         @Value("${madsports.sidgad.sync-concurrency:2}") int concurrency) {
-        this(catalog, sidgad, clock, List.of(Federation.values()), store, concurrency);
+        this(catalog, sidgad, clock, enabled.list(), store, concurrency);
     }
 
     /** Con otras federaciones (los tests, solo la FPP). */

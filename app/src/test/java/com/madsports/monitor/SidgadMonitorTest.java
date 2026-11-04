@@ -91,8 +91,8 @@ class SidgadMonitorTest {
     @Test
     void itAlwaysChecksBothFederations() {
         FakeSite site = new FakeSite();
-        SidgadMonitor.Outcome r = new SidgadMonitor(site, new CatalogService(site, PROPS), mailer, CLOCK, "", URLS)
-                .check();
+        SidgadMonitor.Outcome r = new SidgadMonitor(site, new CatalogService(site, PROPS), mailer, CLOCK, "", URLS,
+                new com.madsports.catalog.EnabledFederations(true)).check();
         assertThat(r.ok()).isTrue();
         assertThat(r.detail()).startsWith("2026: 24 competiciones FPP;").contains(" · 2026: ")
                 .contains("competiciones AMP");
