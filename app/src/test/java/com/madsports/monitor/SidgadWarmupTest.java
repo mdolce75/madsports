@@ -79,6 +79,23 @@ class SidgadWarmupTest {
             return super.refresh(f, idc);
         }
 
+        /** Actas bajadas de nuevo (la pasada incremental). */
+        final AtomicInteger resheets = new AtomicInteger();
+
+        @Override
+        public String refreshSheet(int idc, int idp) {
+            resheets.incrementAndGet();
+            return super.refreshSheet(idc, idp);
+        }
+
+        /** El calendario guardado de cada competición (para ver si terminó); null = ninguno. */
+        String storedCalendar;
+
+        @Override
+        public Optional<String> storedFragment(Fragment f, int idc) {
+            return f == Fragment.CALENDAR ? Optional.ofNullable(storedCalendar) : Optional.empty();
+        }
+
         /** Escudos pedidos (sin bajarlos). */
         final Set<String> logos = ConcurrentHashMap.newKeySet();
 
@@ -181,12 +198,13 @@ class SidgadWarmupTest {
         assertThat(ok.getValue().subject()).endsWith("de madrugada: terminó bien");
         assertThat(ok.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: OK."));
 
+        // La segunda es incremental: sin partidos nuevos, solo los calendarios; el de la 779 falla.
         site.failing.add(779);
         w.run();
         ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
         verify(mailer, times(2)).send(mail.capture());
         assertThat(mail.getValue().subject()).endsWith("de madrugada: terminó con errores");
-        assertThat(mail.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: con 3 errores"));
+        assertThat(mail.getValue().paragraphs()).anySatisfy(p -> assertThat(p).startsWith("FPP: con 1 errores"));
 
         // Sin destinatario, no avisa.
         Mailer quiet = mock(Mailer.class);
@@ -219,7 +237,7 @@ class SidgadWarmupTest {
     }
 
     @Test
-    void onlyThePlayersWhoPlayedSinceTheLastPassAreRefreshed() {
+    void withNothingPlayedSinceTheLastPassOnlyTheCalendarsAreRenewed() {
         CountingSite site = new CountingSite();
         MemoryStore store = new MemoryStore();
         // La pasada anterior fue después de todos los partidos del calendario.
@@ -227,9 +245,51 @@ class SidgadWarmupTest {
 
         SidgadWarmup.Result r = warmup(site, store).warm(Federation.FPP, 2026);
 
-        assertThat(r.sheets()).isPositive();
+        // Ni actas ni fichas ni tablas ni estadísticas: lo guardado queda como está.
+        assertThat(site.refreshed).hasSize(24).allSatisfy(k -> assertThat(k).startsWith("CALENDAR:"));
+        assertThat(r.sheets()).isZero();
+        assertThat(site.sheets.get()).isZero();
         assertThat(r.profiles()).isZero();
         assertThat(site.profiles).isEmpty();
+    }
+
+    @Test
+    void theDailyPassOnlyAddsWhatWasPlayedSinceTheLastOne() {
+        // Una pasada completa (todas las actas y fichas del año)...
+        CountingSite all = new CountingSite();
+        SidgadWarmup.Result full = warmup(all, new MemoryStore()).warm(Federation.FPP, 2026);
+        // ...y la incremental, con la anterior del 10/10: solo los partidos de ese día (el calendario tiene 03/10 y 10/10).
+        CountingSite site = new CountingSite();
+        MemoryStore store = new MemoryStore();
+        store.put(SidgadWarmup.lastSyncKey(Federation.FPP), "2026-10-10T08:00:00Z");
+
+        SidgadWarmup.Result r = warmup(site, store).warm(Federation.FPP, 2026);
+
+        // Las competiciones con partidos: calendario, tabla y estadísticas.
+        assertThat(site.refreshed).hasSize(3 * 24);
+        // Las actas de lo jugado desde el 10/10, bajadas de nuevo; menos que todas las del año.
+        assertThat(r.sheets()).isPositive().isEqualTo(site.resheets.get()).isLessThan(full.sheets());
+        // Las fichas de quienes jugaron esos partidos.
+        assertThat(r.profiles()).isPositive().isLessThanOrEqualTo(full.profiles());
+        assertThat(store.rows.get(SidgadWarmup.lastSyncKey(Federation.FPP)).body()).isEqualTo(START.toString());
+    }
+
+    @Test
+    void aCompetitionThatEndedLongAgoIsNotTouched() {
+        CountingSite site = new CountingSite();
+        // El Apertura (693): su último partido, el 20/08.
+        site.storedCalendar = com.madsports.Fixtures.read("cal_693.html");
+        MemoryStore store = new MemoryStore();
+        store.put(SidgadWarmup.lastSyncKey(Federation.FPP), "2026-10-19T08:00:00Z");
+
+        SidgadWarmup.Result r = warmup(site, store).warm(Federation.FPP, 2026);
+
+        assertThat(r.competitions()).isZero();
+        assertThat(site.refreshed).isEmpty();
+        // Sin pasada anterior (completa), se renueva igual.
+        CountingSite first = new CountingSite();
+        first.storedCalendar = site.storedCalendar;
+        assertThat(warmup(first, new MemoryStore()).warm(Federation.FPP, 2026).competitions()).isEqualTo(24);
     }
 
     @Test

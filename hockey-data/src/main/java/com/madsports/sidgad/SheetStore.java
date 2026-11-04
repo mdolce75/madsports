@@ -5,11 +5,11 @@ import java.util.Optional;
 /**
  * Las actas de partido ya leídas de SIDGAD, guardadas de forma permanente: un partido jugado no cambia, así que cada
  * acta se baja una vez y la usan todos los informes (de club y de jugador), también después de reiniciar la app. La
- * implementación decide cuándo conviene volver a bajarla (en los primeros días SIDGAD puede corregirla).
+ * sincronización vuelve a bajar las de los partidos recientes (SIDGAD puede corregirlas).
  */
 public interface SheetStore {
 
-    /** El acta guardada, si la hay y todavía sirve; vacío si hay que bajarla de nuevo. */
+    /** El acta guardada; vacío si no está. */
     Optional<String> get(int idp);
 
     /** Guarda (o actualiza) el acta de un partido. */

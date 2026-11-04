@@ -16,7 +16,7 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Actas guardadas en la base (con la migración V29 de verdad), comprimidas, y cuándo se vuelven a bajar. */
+/** Actas guardadas en la base (con la migración V29 de verdad), comprimidas. */
 class JdbcSheetStoreTest {
 
     /** Un reloj que se puede adelantar. */
@@ -67,16 +67,12 @@ class JdbcSheetStoreTest {
     }
 
     @Test
-    void inItsFirstDaysItIsRecheckedDailyAndThenItStaysFixed() {
+    void onceSavedItIsAlwaysReadFromTheBaseAndASecondPutReplacesIt() {
         store.put(5, "v1");
-        clock.now = clock.now.plus(Duration.ofHours(23));
+        // Aunque pasen días: la que vale es la guardada (la sincronización baja de nuevo las recientes).
+        clock.now = clock.now.plus(Duration.ofDays(3));
         assertThat(store.get(5)).contains("v1");
-        // Más de 24 h y todavía en la primera semana: se vuelve a bajar (SIDGAD puede haberla corregido).
-        clock.now = clock.now.plus(Duration.ofHours(2));
-        assertThat(store.get(5)).isEmpty();
         store.put(5, "v2");
-        assertThat(store.get(5)).contains("v2");
-        // Pasada la semana desde que se bajó la primera vez: queda fija, aunque la última lectura sea vieja.
         clock.now = clock.now.plus(Duration.ofDays(30));
         assertThat(store.get(5)).contains("v2");
         // Volver a guardarla conserva la fecha de la primera vez.
