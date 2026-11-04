@@ -43,9 +43,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Sincronización de madrugada con SIDGAD: deja en la base (copias de {@link SidgadClient}) lo que leen los informes, así
- * no dependen de SIDGAD cuando alguien pide uno. Por cada competición del año renueva la tabla, el calendario y las
- * estadísticas por jugador; baja las actas de los partidos jugados que faltan (y las de sus primeros días, que SIDGAD
- * puede corregir) y la ficha de temporada de los jugadores que jugaron desde la última pasada. Va despacio
+ * no dependen de SIDGAD cuando alguien pide uno. La primera vez (sin pasada anterior) baja todo el año. Después es
+ * incremental: solo suma lo jugado desde la última pasada sin errores. Renueva el calendario de cada competición en
+ * curso (las terminadas hace más de {@link #DORMANT} días no se tocan); la tabla y las estadísticas, solo de las que
+ * tuvieron partidos o cambios; las actas de esos partidos (bajadas de nuevo, por si SIDGAD las corrigió) y la ficha de
+ * temporada de quienes jugaron. Lo anterior queda como está guardado. Va despacio
  * ({@code madsports.sidgad.sync-concurrency} pedidos a la vez) y un error no la corta: queda la copia anterior.
  * {@code madsports.sidgad.warmup-cron} ("-" la apaga); siempre las dos federaciones, FPP y AMP. Al terminar la del arranque (cada deploy) y
  * la de madrugada, avisa por mail cómo quedó cada federación ({@code madsports.sidgad.sync-notify}).
@@ -56,9 +58,13 @@ public class SidgadWarmup {
     private static final Logger log = LoggerFactory.getLogger(SidgadWarmup.class);
     private static final ZoneId AR = ZoneId.of("America/Argentina/Buenos_Aires");
 
+    /** Una competición cuyo último partido es de hace más de esto ya no se renueva. */
+    static final int DORMANT = 14;
+
     /**
      * Lo que hizo una pasada.
      *
+     * @param competitions competiciones revisadas (en la incremental, las en curso)
      * @param fragments tablas, calendarios y estadísticas renovados
      * @param changed   de esos, los que cambiaron
      * @param profiles  fichas de temporada bajadas (las de quienes jugaron desde la pasada anterior)
@@ -308,19 +314,28 @@ public class SidgadWarmup {
         }
     }
 
-    /** Renueva los datos de cada competición del año, baja las actas que faltan y las fichas de quienes jugaron. */
+    /**
+     * La pasada de la madrugada (y la del arranque): sin pasada anterior, todo el año; si no, lo jugado desde el día de la
+     * última pasada sin errores.
+     */
     public Result warm(Federation f, int year) {
         return pass(f, catalog.competitions(f, year), since(f), true);
     }
 
     /**
-     * Una pasada sobre esas competiciones: renueva sus datos, baja las actas que faltan y las fichas de quienes jugaron
-     * desde {@code since} (vacío: todos). Con {@code note}, si no hubo errores queda anotada como la última pasada.
+     * Una pasada sobre esas competiciones. Sin {@code since}, completa: renueva tabla, calendario y estadísticas de cada
+     * una, baja las actas que falten y la ficha de todos los jugadores. Con {@code since}, incremental: solo las
+     * competiciones en curso, y de ellas los partidos jugados desde ese día. Con {@code note}, si no hubo errores queda
+     * anotada como la última pasada.
      */
     private Result pass(Federation f, List<Competition> comps, Optional<LocalDate> since, boolean note) {
         Instant start = clock.instant();
         long t0 = System.nanoTime();
+        boolean full = since.isEmpty();
+        LocalDate today = start.atZone(AR).toLocalDate();
+        List<Competition> active = full ? comps : comps.stream().filter(c -> !dormant(c, today)).toList();
         Set<Long> players = ConcurrentHashMap.newKeySet();   // jugador y temporada: id * 100_000 + temporada
+        Set<Integer> calendarChanged = ConcurrentHashMap.newKeySet();
         AtomicInteger fragments = new AtomicInteger();
         AtomicInteger changed = new AtomicInteger();
         AtomicInteger sheets = new AtomicInteger();
@@ -328,24 +343,21 @@ public class SidgadWarmup {
         Semaphore slots = new Semaphore(concurrency);
         try (ExecutorService io = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> work = new ArrayList<>();
-            for (Competition c : comps) {
-                // Tabla, calendario y estadísticas, renovados: las copias guardadas valen para el día.
-                for (SidgadClient.Fragment fr : SidgadClient.Fragment.values()) {
-                    work.add(io.submit(() -> paced(slots, () -> {
-                        if (sidgad.refresh(fr, c.id())) {
-                            changed.incrementAndGet();
-                        }
-                        fragments.incrementAndGet();
-                    })));
-                }
+            // Primero los calendarios: dicen qué se jugó.
+            for (Competition c : active) {
+                work.add(io.submit(() -> paced(slots, () -> {
+                    if (renew(SidgadClient.Fragment.CALENDAR, c, fragments, changed)) {
+                        calendarChanged.add(c.id());
+                    }
+                })));
             }
             // Los escudos de los equipos (casi no cambian): los que todavía no están guardados.
-            comps.stream().flatMap(c -> c.teams().stream()).map(TeamRef::logo)
+            active.stream().flatMap(c -> c.teams().stream()).map(TeamRef::logo)
                     .filter(l -> l != null && !l.isBlank()).distinct()
                     .forEach(logo -> work.add(io.submit(() -> paced(slots, () -> sidgad.clubLogo(logo)))));
             errors.addAndGet(waitAll(work));
             work.clear();
-            for (Competition c : comps) {
+            for (Competition c : active) {
                 List<Match> played;
                 try {
                     played = SidgadParser.calendar(sidgad.calendar(c.id())).stream()
@@ -354,13 +366,20 @@ public class SidgadWarmup {
                     errors.incrementAndGet();
                     continue;
                 }
-                for (Match m : played) {
-                    // Las actas guardadas no se vuelven a bajar (salvo en sus primeros días); de quienes jugaron desde
-                    // la pasada anterior, la ficha.
-                    boolean recent = since.isEmpty() || m.date() == null || !m.date().isBefore(since.get());
+                List<Match> recent = full ? played : played.stream()
+                        .filter(m -> m.date() == null || !m.date().isBefore(since.get())).toList();
+                // Tabla y estadísticas, solo si hubo partidos o cambió el calendario.
+                if (full || !recent.isEmpty() || calendarChanged.contains(c.id())) {
+                    for (SidgadClient.Fragment fr : List.of(SidgadClient.Fragment.STANDINGS, SidgadClient.Fragment.STATS)) {
+                        work.add(io.submit(() -> paced(slots, () -> renew(fr, c, fragments, changed))));
+                    }
+                }
+                // Completa: las actas que falten. Incremental: las de lo jugado desde la última pasada, bajadas de nuevo.
+                for (Match m : recent) {
                     work.add(io.submit(() -> paced(slots, () -> {
-                        for (LineupPlayer p : SidgadParser.lineups(sidgad.gameSheet(c.id(), m.idp()))) {
-                            if (recent && p.playerId() > 0) {
+                        String sheet = full ? sidgad.gameSheet(c.id(), m.idp()) : sidgad.refreshSheet(c.id(), m.idp());
+                        for (LineupPlayer p : SidgadParser.lineups(sheet)) {
+                            if (p.playerId() > 0) {
                                 players.add(key(p.playerId(), c.seasonId()));
                             }
                         }
@@ -369,7 +388,7 @@ public class SidgadWarmup {
                 }
             }
             errors.addAndGet(waitAll(work));
-            // Las fichas, bajadas de nuevo (cambian con cada partido): desde ahora valen para el día.
+            // Las fichas de quienes jugaron, bajadas de nuevo (cambian con cada partido): desde ahora valen para el día.
             List<Future<?>> profiles = new ArrayList<>();
             for (long k : players) {
                 profiles.add(io.submit(() -> paced(slots,
@@ -377,7 +396,7 @@ public class SidgadWarmup {
             }
             errors.addAndGet(waitAll(profiles));
         }
-        // Sin errores, la próxima pasada busca quiénes jugaron desde hoy; con errores, vuelve a cubrir desde la anterior.
+        // Sin errores, la próxima pasada suma lo jugado desde hoy; con errores, vuelve a cubrir desde la anterior.
         if (note && errors.get() == 0 && store != null) {
             try {
                 store.put(lastSyncKey(f), start.toString());
@@ -385,8 +404,37 @@ public class SidgadWarmup {
                 log.warn("No se pudo anotar la sincronización de {}: {}", f, e.getMessage());
             }
         }
-        return new Result(comps.size(), fragments.get(), changed.get(), sheets.get(), players.size(), errors.get(),
+        return new Result(active.size(), fragments.get(), changed.get(), sheets.get(), players.size(), errors.get(),
                 Duration.ofNanos(System.nanoTime() - t0));
+    }
+
+    /** Renueva un dato de la competición y lo cuenta; true si cambió. */
+    private boolean renew(SidgadClient.Fragment fr, Competition c, AtomicInteger fragments, AtomicInteger changed) {
+        boolean diff = sidgad.refresh(fr, c.id());
+        fragments.incrementAndGet();
+        if (diff) {
+            changed.incrementAndGet();
+        }
+        return diff;
+    }
+
+    /**
+     * ¿Terminó hace más de {@link #DORMANT} días? Según el calendario guardado: todos sus partidos con fecha son de
+     * antes de eso (uno suspendido o sin fecha que nunca se jugó no la mantiene en curso). Sin calendario guardado, no.
+     */
+    private boolean dormant(Competition c, LocalDate today) {
+        try {
+            Optional<String> cal = sidgad.storedFragment(SidgadClient.Fragment.CALENDAR, c.id());
+            if (cal.isEmpty() || cal.get().isBlank()) {
+                return false;
+            }
+            List<LocalDate> dates = SidgadParser.calendar(cal.get()).stream().map(Match::date)
+                    .filter(java.util.Objects::nonNull).toList();
+            LocalDate limit = today.minusDays(DORMANT);
+            return !dates.isEmpty() && dates.stream().allMatch(d -> d.isBefore(limit));
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /** Corre el pedido con uno de los lugares de la sincronización (va despacio: no compite con los informes). */

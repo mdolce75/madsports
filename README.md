@@ -491,7 +491,7 @@ Abrir http://localhost:8080.
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | vacío, `587` | SMTP para los mails (Resend, Brevo, Gmail...). Sin `SMTP_HOST`, los mails se escriben en el log con su enlace |
 | `MAIL_FROM` | `MadSports <info@madsports.com.ar>` | Remitente (tiene que ser un dominio verificado en el proveedor). El nombre lo pone cada mail: el del producto de la cuenta |
 | `APP_BASE_URL` | `http://localhost:8080` | Dirección pública de la web, para los enlaces de los mails |
-| `SIDGAD_WARMUP_CRON` | `0 0 5 * * *` | Precarga de madrugada (hora argentina; `-` la apaga): las actas nuevas del año y las fichas de temporada de los jugadores, para que el primer informe del día ya encuentre todo leído |
+| `SIDGAD_WARMUP_CRON` | `0 0 5 * * *` | Sincronización de madrugada (hora argentina; `-` la apaga): la primera vez, todo el año; después, solo lo jugado desde la última pasada (calendarios en curso; tabla, estadísticas, actas y fichas de las competiciones con partidos) |
 | `SIDGAD_READ` | `stored` | De dónde leen los informes: `stored` (solo las copias guardadas; a SIDGAD va únicamente la sincronización), `snapshot` (copias, y SIDGAD si faltan o vencieron) o `live` |
 | `SIDGAD_SYNC_NOTIFY_EMAIL` | `info@madsports.com.ar` | A quién avisa por mail que terminó la sincronización del arranque y la de madrugada, con el estado de cada federación; vacío = a nadie |
 | `REPORTS_DIR` | `./data/informes` | Carpeta donde se guardan los informes generados (PDF, Excel y HTML de cada pedido) para verlos y bajarlos desde el historial. En el servidor, un volumen |

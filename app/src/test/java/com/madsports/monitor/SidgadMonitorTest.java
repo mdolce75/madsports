@@ -63,6 +63,12 @@ class SidgadMonitorTest {
             return sheet.apply(idp);
         }
 
+        /** Bajarla de nuevo es pedirla otra vez. */
+        @Override
+        public String refreshSheet(int idc, int idp) {
+            return gameSheet(idc, idp);
+        }
+
         /** Lo que se pidió renovar ("CALENDAR:779"). */
         final java.util.Set<String> refreshed = java.util.concurrent.ConcurrentHashMap.newKeySet();
 

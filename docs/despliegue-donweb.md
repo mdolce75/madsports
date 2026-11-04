@@ -100,8 +100,8 @@ Cuando aparezca `Started MadSportsApplication`, salir con `Ctrl+C` (la app sigue
 
 La base arranca vacía (las migraciones de Flyway crean todo al arrancar, antes de que la app atienda; si una falla, la
 app no arranca). Apenas arranca, en segundo plano, la app sincroniza SIDGAD (catálogo, tablas, calendarios,
-estadísticas, actas y fichas: la primera vez tarda unos minutos); después, todas las madrugadas a las 5:00 y los fines
-de semana en las pasadas de días de partido. Los informes leen solo esas copias guardadas: a SIDGAD va únicamente
+estadísticas, actas y fichas: la primera vez baja todo el año); después, todas las madrugadas a las 5:00 y los fines
+de semana en las pasadas de días de partido, solo lo jugado desde la última pasada. Los informes leen solo esas copias guardadas: a SIDGAD va únicamente
 la sincronización (y el chequeo diario). Lo que todavía no se bajó (la primera vez, mientras corre) avisa que se
 prueba en unos minutos. Para volver a leer de SIDGAD: `SIDGAD_READ=snapshot` (copias, y SIDGAD si faltan) o `live`.
 

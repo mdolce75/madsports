@@ -390,6 +390,11 @@ public class SidgadClient {
         return save(f.key(idc), body);
     }
 
+    /** La copia guardada de un dato de la competición, sin ir a SIDGAD; vacía si no hay. */
+    public Optional<String> storedFragment(Fragment f, int idc) {
+        return stored(f.key(idc)).map(SnapshotStore.Stored::body);
+    }
+
     /** Las actas se guardan de forma permanente en este almacén (lo registra la app; sin él, solo en memoria). */
     @Autowired(required = false)
     public void setSheetStore(SheetStore store) {
@@ -446,6 +451,29 @@ public class SidgadClient {
                 } catch (RuntimeException e) {
                     log.warn("No se pudo guardar el acta {}: {}", idp, e.getMessage());
                 }
+            }
+        }
+        return body;
+    }
+
+    /**
+     * Baja de nuevo el acta aunque esté guardada (la sincronización, para los partidos recientes: SIDGAD puede haberla
+     * corregido) y la guarda. Si SIDGAD no la publicó, sigue la guardada.
+     */
+    public String refreshSheet(int idc, int idp) {
+        String body = post("cap_gr_" + idp + "_1.php", Map.of(
+                "idm", "1", "idc", String.valueOf(idc), "idp", String.valueOf(idp), "tab", "tab_ficha_resumen"));
+        if (body.equals(NOT_PUBLISHED)) {
+            sheetCache.invalidate(idp);
+            return gameSheet(idc, idp);
+        }
+        sheetCache.put(idp, body);
+        SheetStore store = sheetStore;
+        if (store != null) {
+            try {
+                store.put(idp, body);
+            } catch (RuntimeException e) {
+                log.warn("No se pudo guardar el acta {}: {}", idp, e.getMessage());
             }
         }
         return body;
