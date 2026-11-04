@@ -2,6 +2,7 @@ package com.madsports.account;
 
 import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.ClubView;
+import com.madsports.catalog.EnabledFederations;
 import com.madsports.catalog.RosterService;
 import com.madsports.catalog.RosterService.RosterPlayer;
 import com.madsports.sidgad.model.Federation;
@@ -46,6 +47,7 @@ public class SignupService {
     private final SubscriptionPlanRepository plans;
     private final CatalogService catalog;
     private final RosterService roster;
+    private final EnabledFederations federations;
     private final PasswordEncoder encoder;
     private final Clock clock;
     /** ¿Se pueden crear cuentas de club en RinkReports? */
@@ -57,7 +59,7 @@ public class SignupService {
     private final boolean clubPaid;
 
     public SignupService(UserAccountRepository users, SubscriptionPlanRepository plans, CatalogService catalog,
-                           RosterService roster, PasswordEncoder encoder, Clock clock,
+                           RosterService roster, EnabledFederations federations, PasswordEncoder encoder, Clock clock,
                            @Value("${madsports.signup.club:true}") boolean clubSignup,
                            @Value("${madsports.signup.coach-paid:false}") boolean coachPaid,
                            @Value("${madsports.signup.player-paid:false}") boolean playerPaid,
@@ -70,6 +72,7 @@ public class SignupService {
         this.plans = plans;
         this.catalog = catalog;
         this.roster = roster;
+        this.federations = federations;
         this.encoder = encoder;
         this.clock = clock;
     }
@@ -78,6 +81,9 @@ public class SignupService {
     public UserAccount register(Signup r) {
         if (r.profile() == null) {
             throw new IllegalArgumentException("Elegí el perfil: Club, Jugador o DT, de la FPP o de la AMP.");
+        }
+        if (r.profile().federation() == Federation.AMP && !federations.enabled(Federation.AMP)) {
+            throw new IllegalArgumentException("La AMP todavía no está disponible.");
         }
         if (r.profile() != Profile.REPORTS && !r.profile().coach() && !r.profile().player() && !clubSignup) {
             throw new IllegalArgumentException("Las cuentas de club estarán disponibles próximamente. Por ahora podés "
@@ -167,12 +173,15 @@ public class SignupService {
      * {@code madsports.signup.coach-paid}, y los del jugador, con {@code madsports.signup.player-paid}: hasta
      * que se habilite el cobro figuran como "Próximamente".
      */
-    /** Qué se puede registrar hoy: las cuentas de club, según la configuración (la FPP y la AMP, siempre). */
-    public record SignupOptions(boolean club) {
+    /**
+     * Qué se puede registrar hoy: las cuentas de club, según la configuración; la AMP, si está habilitada (sin ella,
+     * el registro del DT no la ofrece y las páginas no la mencionan).
+     */
+    public record SignupOptions(boolean club, boolean amp) {
     }
 
     public SignupOptions options() {
-        return new SignupOptions(clubSignup);
+        return new SignupOptions(clubSignup, federations.enabled(Federation.AMP));
     }
 
     public boolean available(SubscriptionPlan plan) {

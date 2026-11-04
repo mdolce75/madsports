@@ -80,7 +80,7 @@ public class ApiController {
     @GetMapping("/catalog")
     public CatalogView catalog(@RequestParam(required = false) Integer year,
                                 @RequestParam(required = false) String federation) {
-        return catalog.view(Federation.parse(federation), catalog.checkYear(year));
+        return catalog.view(federations.enabled(federation), catalog.checkYear(year));
     }
 
     /**
@@ -90,7 +90,7 @@ public class ApiController {
     @GetMapping("/catalog/club")
     public CatalogService.ClubView club(@RequestParam int clubId, @RequestParam(required = false) Integer year,
                                         @RequestParam(required = false) String federation) {
-        Federation fed = Federation.parse(federation);
+        Federation fed = federations.enabled(federation);
         int y = catalog.checkYear(year);
         return roster.withPlayers(fed, catalog.club(fed, clubId, y), y);
     }
@@ -107,7 +107,7 @@ public class ApiController {
                                                              @RequestParam String branch,
                                                              @RequestParam(required = false) Integer year,
                                                              @RequestParam(required = false) String federation) {
-        return roster.players(Federation.parse(federation), clubId, catalog.checkYear(year), category, branch);
+        return roster.players(federations.enabled(federation), clubId, catalog.checkYear(year), category, branch);
     }
 
     /** Informe de una categoría, de cualquier club de las federaciones ofrecidas. */
