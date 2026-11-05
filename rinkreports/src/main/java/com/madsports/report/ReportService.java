@@ -419,7 +419,7 @@ public class ReportService {
                     job.request().federation(), List.of(new ClubReport.Branch(category.branchLabel(),
                     List.of(new ClubReport.CategoryBlock(level, data, data.teams().getFirst(), analysis)))),
                     data.notPublished(), data.sources(), data.dataAsOf()));
-            job.fileName = fileName(club, category, option);
+            job.fileName = fileName(club, category, option, job.request().scope());
             job.nextOpponent = data.teams().getFirst().upcoming().stream().findFirst()
                     .map(ReportData.MatchLine::opponent).orElse(null);
             job.update(Status.READY, "Informe listo");
@@ -429,9 +429,13 @@ public class ReportService {
         }
     }
 
-    /** "RinkReports-Femenino-CAVS-InfantilB.pdf": rama, club y categoría (con la letra del equipo, si tiene). */
-    static String fileName(ClubView club, Category category, CategoryOption option) {
+    /**
+     * "RinkReports-Femenino-CAVS-InfantilB-Apertura.pdf": rama, club, categoría (con la letra del equipo, si tiene) y
+     * período.
+     */
+    static String fileName(ClubView club, Category category, CategoryOption option, Scope scope) {
         return FileNames.of("pdf", FileNames.part(category.branchLabel()), FileNames.club(club.code()),
-                FileNames.part(category.levelLabel() + (option.letter() == null ? "" : " " + option.letter())));
+                FileNames.part(category.levelLabel() + (option.letter() == null ? "" : " " + option.letter())),
+                FileNames.scope(scope));
     }
 }

@@ -5,6 +5,7 @@ import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.CategoryOption;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.compare.ComparisonService.Team;
+import com.madsports.report.ReportService.Scope;
 import com.madsports.sidgad.model.Competition.Category;
 import com.madsports.compare.ComparisonService.Request;
 import com.madsports.sidgad.SidgadClient;
@@ -81,14 +82,16 @@ class ComparisonServiceTest {
                 .hasMessageContaining("no tiene equipo en Primera B Masculino");
     }
 
-    /** RinkReports-Rama-Categoria-Club1-vs-Club2 (con la letra del equipo, si el club tiene más de uno). */
+    /** RinkReports-Rama-Categoria-Club1-vs-Club2-Periodo (con la letra del equipo, si el club tiene más de uno). */
     @Test
     void fileName() {
         Category primera = new Category("PRIMERA", "FEMENINO");
         Team velez = new Team(new ClubView(74, "CAVS", "Vélez", List.of()), primera, new CategoryOption("PRIMERA", null));
         Team huracan = new Team(new ClubView(98, "HURACAN", "Huracán", List.of()), primera,
                 new CategoryOption("PRIMERA", "B"));
-        assertThat(ComparisonService.fileName(velez, huracan))
-                .isEqualTo("RinkReports-Femenino-Primera-CAVS-vs-HURACANB.pdf");
+        assertThat(ComparisonService.fileName(velez, huracan, Scope.SEASON))
+                .isEqualTo("RinkReports-Femenino-Primera-CAVS-vs-HURACANB-Temporada.pdf");
+        assertThat(ComparisonService.fileName(velez, huracan, Scope.LAST_5))
+                .isEqualTo("RinkReports-Femenino-Primera-CAVS-vs-HURACANB-Ultimos5.pdf");
     }
 }

@@ -366,8 +366,8 @@ public class PlayerReportService {
 
 
     /**
-     * "RinkReports-Femenino-CAVS-Primera-PerezBarbosa-JuanIgnacio.pdf": rama, club, su categoría (la más baja en que
-     * jugó; si no jugó, la elegida), apellido y nombre.
+     * "RinkReports-Femenino-CAVS-Primera-PerezBarbosa-JuanIgnacio-Clausura.pdf": rama, club, su categoría (la más baja
+     * en que jugó), apellido, nombre y período.
      */
     static String fileName(Query q, String clubCode) {
         String name = q.playerName() == null ? "" : q.playerName().trim();
@@ -380,7 +380,7 @@ public class PlayerReportService {
                 branch == null ? null : FileNames.part(new Competition.Category("", branch).branchLabel()),
                 FileNames.club(clubCode),
                 level == null ? null : FileNames.part(new Competition.Category(level, "").levelLabel()),
-                FileNames.part(surname), FileNames.part(first));
+                FileNames.part(surname), FileNames.part(first), FileNames.scope(q.scope()));
     }
 
 }

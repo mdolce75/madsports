@@ -32,6 +32,16 @@ public final class FileNames {
                 .collect(Collectors.joining());
     }
 
+    /** El período del informe, al final del nombre: "Apertura", "Clausura", "Temporada" o "Ultimos5". */
+    public static String scope(ReportService.Scope scope) {
+        return switch (scope) {
+            case OPENING -> "Apertura";
+            case CLOSING -> "Clausura";
+            case SEASON -> "Temporada";
+            case LAST_5 -> "Ultimos5";
+        };
+    }
+
     /** El código del club tal cual, sin lo que no sea letra o número ("CAVS"). */
     public static String club(String code) {
         String n = Normalizer.normalize(code == null ? "" : code, Normalizer.Form.NFD).replaceAll("\\p{M}", "");

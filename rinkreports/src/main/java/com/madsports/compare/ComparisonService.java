@@ -185,7 +185,7 @@ public class ComparisonService {
             job.html = renderer.compareHtml(c);
             job.pdf = renderer.comparePdf(c);
             job.xlsx = excel.compare(c);
-            job.fileName = fileName(teams.get(0), teams.get(1));
+            job.fileName = fileName(teams.get(0), teams.get(1), r.scope());
             job.update(Status.READY, "Comparativo listo");
         } catch (RuntimeException e) {
             log.error("Falló el comparativo {}", job.id(), e);
@@ -194,13 +194,13 @@ public class ComparisonService {
     }
 
     /**
-     * "RinkReports-Femenino-Primera-CAVS-vs-HURACAN.pdf": rama, categoría y los dos clubes (con la letra del equipo, si
-     * tiene: "CAVSB").
+     * "RinkReports-Femenino-Primera-CAVS-vs-HURACAN-Temporada.pdf": rama, categoría, los dos clubes (con la letra del
+     * equipo, si tiene: "CAVSB") y período.
      */
-    static String fileName(Team a, Team b) {
+    static String fileName(Team a, Team b, Scope scope) {
         return FileNames.of("pdf", FileNames.part(a.category().branchLabel()), FileNames.part(a.category().levelLabel()),
                 FileNames.club(a.option().teamKey(a.club().code())), "vs",
-                FileNames.club(b.option().teamKey(b.club().code())));
+                FileNames.club(b.option().teamKey(b.club().code())), FileNames.scope(scope));
     }
 
     /** Valida los dos equipos (falla rápido, con un mensaje para mostrar) y devuelve lo que se va a comparar. */
