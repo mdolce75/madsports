@@ -6,6 +6,7 @@ import com.madsports.catalog.CatalogService;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.madsports.report.CategoryExtractor;
 import com.madsports.report.Crests;
+import com.madsports.report.FileNames;
 import com.madsports.report.ExcelExporter;
 import com.madsports.report.PdfRenderer;
 import com.madsports.report.ReportService.Scope;
@@ -27,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -67,9 +67,22 @@ public class PlayerReportService {
      * @param branch     rama del jugador (MASCULINO o FEMENINO); null = ambas
      * @param base       su categoría real, ya determinada (la más baja en que jugó); null si todavía no se sabe
      * @param federacion federación del jugador (la de su perfil: FPP o AMP)
+     * @param surname    su apellido, si se sabe, para separarlo del nombre en el nombre del archivo; null = la última
+     *                   palabra de {@code playerName}
      */
     public record Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
-                        List<String> levels, String branch, String base, Federation federation) {
+                        List<String> levels, String branch, String base, Federation federation, String surname) {
+
+        public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope,
+                     List<String> levels, String branch, String base, Federation federation) {
+            this(playerId, playerName, fullName, clubId, year, scope, levels, branch, base, federation, null);
+        }
+
+        /** El mismo pedido sabiendo su apellido. */
+        public Query withSurname(String surname) {
+            return new Query(playerId, playerName, fullName, clubId, year, scope, levels, branch, base, federation,
+                    surname);
+        }
 
         public Query(int playerId, String playerName, String fullName, int clubId, int year, Scope scope) {
             this(playerId, playerName, fullName, clubId, year, scope, List.of(), null, null, Federation.FPP);
@@ -88,7 +101,7 @@ public class PlayerReportService {
         /** Con su categoría real: se revisan solo las categorías en que puede jugar un jugador de esa categoría. */
         Query withBase(String level) {
             return new Query(playerId, playerName, fullName, clubId, year, scope,
-                    Eligibility.levels(federation, level), branch, level, federation);
+                    Eligibility.levels(federation, level), branch, level, federation, surname);
         }
 
         boolean eligible(Competition c) {
@@ -118,6 +131,9 @@ public class PlayerReportService {
         private volatile String html;
         private volatile byte[] xlsx;
         private volatile String fileName;
+        /** El pedido con su categoría real (la determina el armado) y el código del club: para el nombre del archivo. */
+        private volatile Query resolved;
+        private volatile String clubCode;
 
         Job(String owner) {
             this.owner = owner;
@@ -217,8 +233,7 @@ public class PlayerReportService {
             job.pdf = renderer.playerPdf(report);
             job.html = renderer.playerHtml(report);
             job.xlsx = excel.player(report);
-            job.fileName = "informe-jugador-" + slug(q.playerName()) + "-" + q.year() + "-"
-                    + q.scope().name().toLowerCase() + ".pdf";
+            job.fileName = fileName(job.resolved == null ? q : job.resolved, job.clubCode);
             job.update(Status.READY, "Informe listo");
         } catch (RuntimeException e) {
             log.error("Falló el informe de jugador {}", job.id(), e);
@@ -286,6 +301,8 @@ public class PlayerReportService {
                 Crests.tile(sidgad.clubLogo(CategoryExtractor.logoFile(all, club.id()))));
         // Su categoría real es la más baja en que jugó; el informe se queda con las categorías que le corresponden.
         Query resolved = PlayerReportAssembler.baseLevel(q.federation(), q.playerId(), inputs).map(q::withBase).orElse(q);
+        job.resolved = resolved;
+        job.clubCode = club.code();
         List<TeamInput> own = inputs.stream().filter(in -> resolved.eligible(in.competition())).toList();
         return PlayerReportAssembler.assemble(resolved, info, LocalDate.now(clock), q.federation().levels(), own)
                 .withLeagueRanks(leagueRanks(q.playerId(), own, scorerTables))
@@ -348,8 +365,22 @@ public class PlayerReportService {
     }
 
 
-    static String slug(String s) {
-        String n = Normalizer.normalize(s == null ? "" : s, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-        return n.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+    /**
+     * "RinkReports-Femenino-CAVS-Primera-PerezBarbosa-JuanIgnacio.pdf": rama, club, su categoría (la más baja en que
+     * jugó; si no jugó, la elegida), apellido y nombre.
+     */
+    static String fileName(Query q, String clubCode) {
+        String name = q.playerName() == null ? "" : q.playerName().trim();
+        String surname = q.surname() != null && !q.surname().isBlank() && name.endsWith(q.surname().trim())
+                ? q.surname().trim() : name.substring(name.lastIndexOf(' ') + 1);
+        String first = name.substring(0, name.length() - surname.length()).trim();
+        String branch = q.branch() == null || q.branch().isBlank() ? null : q.branch();
+        String level = q.base() != null ? q.base() : q.levels().size() == 1 ? q.levels().getFirst() : null;
+        return FileNames.of("pdf",
+                branch == null ? null : FileNames.part(new Competition.Category("", branch).branchLabel()),
+                FileNames.club(clubCode),
+                level == null ? null : FileNames.part(new Competition.Category(level, "").levelLabel()),
+                FileNames.part(surname), FileNames.part(first));
     }
+
 }
