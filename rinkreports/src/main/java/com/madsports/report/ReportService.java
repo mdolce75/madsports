@@ -419,7 +419,7 @@ public class ReportService {
                     job.request().federation(), List.of(new ClubReport.Branch(category.branchLabel(),
                     List.of(new ClubReport.CategoryBlock(level, data, data.teams().getFirst(), analysis)))),
                     data.notPublished(), data.sources(), data.dataAsOf()));
-            job.fileName = fileName(club, category, option, job.request().scope());
+            job.fileName = fileName(club, category, option, job.request().scope(), job.request().year());
             job.nextOpponent = data.teams().getFirst().upcoming().stream().findFirst()
                     .map(ReportData.MatchLine::opponent).orElse(null);
             job.update(Status.READY, "Informe listo");
@@ -430,12 +430,12 @@ public class ReportService {
     }
 
     /**
-     * "RinkReports-Femenino-CAVS-InfantilB-Apertura.pdf": rama, club, categoría (con la letra del equipo, si tiene) y
-     * período.
+     * "RinkReports-Femenino-CAVS-InfantilB-Apertura-2026.pdf": rama, club, categoría (con la letra del equipo, si
+     * tiene), período y año.
      */
-    static String fileName(ClubView club, Category category, CategoryOption option, Scope scope) {
+    static String fileName(ClubView club, Category category, CategoryOption option, Scope scope, int year) {
         return FileNames.of("pdf", FileNames.part(category.branchLabel()), FileNames.club(club.code()),
                 FileNames.part(category.levelLabel() + (option.letter() == null ? "" : " " + option.letter())),
-                FileNames.scope(scope));
+                FileNames.scope(scope), String.valueOf(year));
     }
 }

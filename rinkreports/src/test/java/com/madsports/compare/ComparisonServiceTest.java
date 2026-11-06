@@ -82,16 +82,16 @@ class ComparisonServiceTest {
                 .hasMessageContaining("no tiene equipo en Primera B Masculino");
     }
 
-    /** RinkReports-Rama-Categoria-Club1-vs-Club2-Periodo (con la letra del equipo, si el club tiene más de uno). */
+    /** RinkReports-Rama-Categoria-Club1-vs-Club2-Periodo-Año (con la letra del equipo, si el club tiene más de uno). */
     @Test
     void fileName() {
         Category primera = new Category("PRIMERA", "FEMENINO");
         Team velez = new Team(new ClubView(74, "CAVS", "Vélez", List.of()), primera, new CategoryOption("PRIMERA", null));
         Team huracan = new Team(new ClubView(98, "HURACAN", "Huracán", List.of()), primera,
                 new CategoryOption("PRIMERA", "B"));
-        assertThat(ComparisonService.fileName(velez, huracan, Scope.SEASON))
-                .isEqualTo("RinkReports-Femenino-Primera-CAVS-vs-HURACANB-Temporada.pdf");
-        assertThat(ComparisonService.fileName(velez, huracan, Scope.LAST_5))
-                .isEqualTo("RinkReports-Femenino-Primera-CAVS-vs-HURACANB-Ultimos5.pdf");
+        assertThat(ComparisonService.fileName(velez, huracan, Scope.SEASON, 2026))
+                .isEqualTo("RinkReports-Femenino-Primera-CAVS-vs-HURACANB-Temporada-2026.pdf");
+        assertThat(ComparisonService.fileName(velez, huracan, Scope.LAST_5, 2026))
+                .isEqualTo("RinkReports-Femenino-Primera-CAVS-vs-HURACANB-Ultimos5-2026.pdf");
     }
 }

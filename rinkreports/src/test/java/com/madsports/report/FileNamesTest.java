@@ -9,7 +9,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Los nombres de los archivos: RinkReports-Rama-Club-Categoria-Periodo. */
+/** Los nombres de los archivos: RinkReports-Rama-Club-Categoria-Periodo-Año. */
 class FileNamesTest {
 
     @Test
@@ -27,8 +27,8 @@ class FileNamesTest {
     void categoryReport() {
         ClubView club = new ClubView(74, "CAVS", "Vélez Sarsfield", List.of());
         assertThat(ReportService.fileName(club, new Category("PRIMERA", "FEMENINO"), new CategoryOption("PRIMERA", null),
-                ReportService.Scope.OPENING)).isEqualTo("RinkReports-Femenino-CAVS-Primera-Apertura.pdf");
+                ReportService.Scope.OPENING, 2026)).isEqualTo("RinkReports-Femenino-CAVS-Primera-Apertura-2026.pdf");
         assertThat(ReportService.fileName(club, new Category("INFANTIL", "MASCULINO"), new CategoryOption("INFANTIL", "B"),
-                ReportService.Scope.CLOSING)).isEqualTo("RinkReports-Masculino-CAVS-InfantilB-Clausura.pdf");
+                ReportService.Scope.CLOSING, 2025)).isEqualTo("RinkReports-Masculino-CAVS-InfantilB-Clausura-2025.pdf");
     }
 }
