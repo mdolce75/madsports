@@ -382,9 +382,18 @@ class PlayerReportAssemblerTest {
         });
     }
 
+    /** RinkReports-Rama-Club-Categoria-Apellido-Nombre-Periodo-Año, con su categoría real y el apellido separado del nombre. */
     @Test
     void fileName() {
-        assertThat(PlayerReportService.slug("Ignacio J Graiño")).isEqualTo("ignacio-j-graino");
+        Query q = new Query(3851, "Juan Ignacio Pérez Barbosa", "X", 74, 2026, Scope.SEASON,
+                Eligibility.searchLevels("PRIMERA"), "FEMENINO").withSurname("Pérez Barbosa").withBase("PRIMERA");
+        assertThat(PlayerReportService.fileName(q, "CAVS"))
+                .isEqualTo("RinkReports-Femenino-CAVS-Primera-PerezBarbosa-JuanIgnacio-Temporada-2026.pdf");
+        // Sin apellido conocido: la última palabra.
+        Query graino = new Query(1, "Ignacio J Graiño", "X", 74, 2026, Scope.SEASON, Eligibility.levels("JUVENIL"),
+                "MASCULINO").withBase("JUVENIL");
+        assertThat(PlayerReportService.fileName(graino, "CAVS"))
+                .isEqualTo("RinkReports-Masculino-CAVS-Juvenil-Graino-IgnacioJ-Temporada-2026.pdf");
     }
 
     /** Con dos Aperturas en la categoría (el 2 al final del nombre), cada una con su número; si no, sin número. */

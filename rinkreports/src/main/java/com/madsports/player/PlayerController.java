@@ -90,7 +90,8 @@ public class PlayerController {
                 () -> reports.submit(new PlayerReportService.Query(u.getPlayerId(),
                 u.getPlayerName(), u.getName() == null ? u.getPlayerName() : u.getName() + " " + u.getLastName(),
                 u.getClubId(), year, scope,
-                Eligibility.searchLevels(fed, u.getCategory()), u.getBranch(), fed), u.principal()));
+                Eligibility.searchLevels(fed, u.getCategory()), u.getBranch(), fed).withSurname(u.getLastName()),
+                u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 
@@ -107,7 +108,8 @@ public class PlayerController {
         String level = CatalogService.CategoryOption.parse(req.category()).level();
         PlayerReportService.Job job = quota.consume(u, "Jugador · " + p.name() + " · " + scope.label() + " " + year,
                 () -> reports.submit(new PlayerReportService.Query(p.id(), p.name(), p.name(), req.clubId(), year,
-                        scope, Eligibility.searchLevels(fed, level), branch, fed), u.principal()));
+                        scope, Eligibility.searchLevels(fed, level), branch, fed).withSurname(p.lastName()),
+                        u.principal()));
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(view(job));
     }
 

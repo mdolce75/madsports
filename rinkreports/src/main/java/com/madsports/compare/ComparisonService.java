@@ -5,6 +5,7 @@ import com.madsports.catalog.CatalogService.CategoryOption;
 import com.madsports.catalog.CatalogService.ClubView;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.madsports.report.FileNames;
 import com.madsports.report.CategoryExtractor;
 import com.madsports.report.ExcelExporter;
 import com.madsports.report.PdfRenderer;
@@ -20,13 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -186,9 +185,7 @@ public class ComparisonService {
             job.html = renderer.compareHtml(c);
             job.pdf = renderer.comparePdf(c);
             job.xlsx = excel.compare(c);
-            job.fileName = "comparativo-" + slug(teams.get(0).club().code()) + "-vs-" + slug(teams.get(1).club().code())
-                    + "-" + slug(c.category()) + "-" + slug(c.period()) + (r.scope() == Scope.SEASON ? "" : "-" + r.year())
-                    + ".pdf";
+            job.fileName = fileName(teams.get(0), teams.get(1), r.scope(), r.year());
             job.update(Status.READY, "Comparativo listo");
         } catch (RuntimeException e) {
             log.error("Falló el comparativo {}", job.id(), e);
@@ -196,10 +193,15 @@ public class ComparisonService {
         }
     }
 
-    /** "Primera Femenino" -> "primera-femenino". */
-    static String slug(String s) {
-        return Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+    /**
+     * "RinkReports-Femenino-Primera-CAVS-vs-HURACAN-Temporada-2026.pdf": rama, categoría, los dos clubes (con la letra
+     * del equipo, si tiene: "CAVSB"), período y año.
+     */
+    static String fileName(Team a, Team b, Scope scope, int year) {
+        return FileNames.of("pdf", FileNames.part(a.category().branchLabel()), FileNames.part(a.category().levelLabel()),
+                FileNames.club(a.option().teamKey(a.club().code())), "vs",
+                FileNames.club(b.option().teamKey(b.club().code())), FileNames.scope(scope),
+                String.valueOf(year));
     }
 
     /** Valida los dos equipos (falla rápido, con un mensaje para mostrar) y devuelve lo que se va a comparar. */
