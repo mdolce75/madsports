@@ -456,6 +456,24 @@ public class SidgadClient {
         return body;
     }
 
+    /** El acta ya guardada (en memoria o en la base), sin pedirle nada a SIDGAD; vacío si no está. */
+    public Optional<String> storedSheet(int idp) {
+        String hit = sheetCache.getIfPresent(idp);
+        if (hit != null) {
+            return Optional.of(hit);
+        }
+        SheetStore store = sheetStore;
+        if (store == null) {
+            return Optional.empty();
+        }
+        try {
+            return store.get(idp);
+        } catch (RuntimeException e) {
+            log.warn("No se pudo leer el acta guardada {}: {}", idp, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     /**
      * Baja de nuevo el acta aunque esté guardada (la sincronización, para los partidos recientes: SIDGAD puede haberla
      * corregido) y la guarda. Si SIDGAD no la publicó, sigue la guardada.
