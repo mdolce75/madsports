@@ -34,7 +34,7 @@ import java.util.Optional;
  * Chequeo diario de SIDGAD: los informes dependen de leer su HTML, y si el sitio cambia de formato los parsers devuelven
  * listas vacías sin dar error. Una vez por día ({@code madsports.monitor.cron}) se recorre el camino de un informe con
  * datos reales (temporada del portal, catálogo de la federación, calendario con partidos jugados, acta con sus
- * planteles) de la FPP y de la AMP; el resultado queda en el health
+ * planteles, tabla de posiciones y estadísticas por jugador) de la FPP y de la AMP; el resultado queda en el health
  * check ({@code sidgad}): si falla una federación, falla el chequeo. Si falla, o si se recupera, avisa por mail a
  * {@code ALERTAS_EMAIL}.
  */
@@ -182,8 +182,21 @@ public class SidgadMonitor implements HealthIndicator {
                 throw new IllegalStateException("El acta del partido " + idp + " (" + c.name() + ") no trae "
                         + "planteles.");
             }
+            // La tabla y las estadísticas son otros fragmentos: un cambio de formato ahí deja los informes en blanco
+            // sin error, así que se leen y se exige que traigan datos (la competición tiene partidos jugados).
+            int teams = SidgadParser.standings(client.standings(c.id())).size();
+            if (teams == 0) {
+                throw new IllegalStateException("La tabla de posiciones de " + c.name() + " no trae equipos: SIDGAD "
+                        + "pudo cambiar el formato del fragmento de posiciones.");
+            }
+            int scorers = SidgadParser.playerStats(client.playerStats(c.id())).size();
+            if (scorers == 0) {
+                throw new IllegalStateException("Las estadísticas por jugador de " + c.name() + " vienen vacías: "
+                        + "SIDGAD pudo cambiar el formato del fragmento de estadísticas.");
+            }
             return year + ": " + competitions.size() + " competiciones " + f + "; " + c.name() + " con " + matches.size()
-                    + " partidos; acta " + idp + " con " + players + " jugadores.";
+                    + " partidos; acta " + idp + " con " + players + " jugadores; tabla con " + teams + " equipos; "
+                    + scorers + " jugadores en estadísticas.";
         }
         if (withCalendar == 0) {
             throw new IllegalStateException("Ningún calendario de las primeras " + COMPETITIONS_TO_TRY
