@@ -48,19 +48,34 @@ class SidgadWarmupTest {
 
     /** El SIDGAD simulado que cuenta actas y fichas; las competiciones cuyo id está en {@code failing} fallan al renovar. */
     static class CountingSite extends SidgadMonitorTest.FakeSite {
+        /** Pedidos de acta a SIDGAD (solo las que faltaban). */
         final AtomicInteger sheets = new AtomicInteger();
         final Set<String> profiles = ConcurrentHashMap.newKeySet();
         final Set<Instant> asked = ConcurrentHashMap.newKeySet();
         final Set<Integer> failing = ConcurrentHashMap.newKeySet();
+        /** Las actas ya guardadas (idp), como en la base: una pedida queda guardada y no se vuelve a pedir. */
+        final Set<Integer> saved = ConcurrentHashMap.newKeySet();
 
         @Override
         public String playerStats(int idc) {
             return "";
         }
 
+        /** Cada competición con sus propios idp (en SIDGAD son únicos); el fake repetía el mismo calendario. */
+        @Override
+        public String calendar(int idc) {
+            return super.calendar(idc).replaceAll("idp=\"(\\d+)\"", "idp=\"" + idc + "$1\"");
+        }
+
+        @Override
+        public Optional<String> storedSheet(int idp) {
+            return saved.contains(idp) ? Optional.of(super.gameSheet(0, idp)) : Optional.empty();
+        }
+
         @Override
         public String gameSheet(int idc, int idp) {
             sheets.incrementAndGet();
+            saved.add(idp);
             return super.gameSheet(idc, idp);
         }
 
@@ -77,15 +92,6 @@ class SidgadWarmupTest {
                 throw new SidgadException("SIDGAD respondió 500");
             }
             return super.refresh(f, idc);
-        }
-
-        /** Actas bajadas de nuevo (la pasada incremental). */
-        final AtomicInteger resheets = new AtomicInteger();
-
-        @Override
-        public String refreshSheet(int idc, int idp) {
-            resheets.incrementAndGet();
-            return super.refreshSheet(idc, idp);
         }
 
         /** El calendario guardado de cada competición (para ver si terminó); null = ninguno. */
@@ -197,8 +203,9 @@ class SidgadWarmupTest {
         assertThat(site.refreshed).hasSize(3 * 24).contains("CALENDAR:779", "STANDINGS:779", "STATS:779");
         // Los escudos de los equipos, cada uno una vez (los informes ya no los bajan).
         assertThat(site.logos).isNotEmpty().allSatisfy(l -> assertThat(l).endsWith(".png"));
-        // Cada partido jugado de cada competición: su acta.
+        // Cada partido jugado de cada competición: su acta, que faltaba.
         assertThat(r.sheets()).isPositive().isEqualTo(site.sheets.get());
+        assertThat(r.kept()).isZero();
         // Sin pasada anterior: la ficha de cada jugador de las planillas, bajada de nuevo desde el comienzo.
         assertThat(r.profiles()).isPositive().isEqualTo(site.profiles.size());
         assertThat(site.asked).containsExactly(START);
@@ -236,13 +243,39 @@ class SidgadWarmupTest {
 
         SidgadWarmup.Result r = warmup(site, store).warm(Federation.FPP, 2026);
 
-        // Las competiciones con partidos: calendario, tabla y estadísticas.
+        // Cada competición tuvo un acta nueva (10/10): se renuevan calendario, tabla y estadísticas.
         assertThat(site.refreshed).hasSize(3 * 24);
-        // Las actas de lo jugado desde el 10/10, bajadas de nuevo; menos que todas las del año.
-        assertThat(r.sheets()).isPositive().isEqualTo(site.resheets.get()).isLessThan(full.sheets());
+        // Las actas de lo jugado desde el 10/10, que faltaban; menos que todas las del año.
+        assertThat(r.sheets()).isPositive().isEqualTo(site.sheets.get()).isLessThan(full.sheets());
         // Las fichas de quienes jugaron esos partidos.
         assertThat(r.profiles()).isPositive().isLessThanOrEqualTo(full.profiles());
         assertThat(store.rows.get(SidgadWarmup.lastSyncKey(Federation.FPP)).body()).isEqualTo(START.toString());
+    }
+
+    @Test
+    void anAlreadyStoredSheetIsNotRequestedAgainAndFetchesNoProfile() {
+        CountingSite site = new CountingSite();
+        MemoryStore store = new MemoryStore();
+        store.put(SidgadWarmup.lastSyncKey(Federation.FPP), "2026-10-10T08:00:00Z");
+
+        // Primera pasada incremental: las actas del 10/10 faltaban, se bajan y se guardan.
+        SidgadWarmup.Result first = warmup(site, store).warm(Federation.FPP, 2026);
+        assertThat(first.sheets()).isPositive();
+        assertThat(first.profiles()).isPositive();
+        int downloaded = site.sheets.get();
+
+        // Otra pasada con la misma fecha: esas actas ya están guardadas, no se vuelven a pedir ni bajan fichas.
+        store.put(SidgadWarmup.lastSyncKey(Federation.FPP), "2026-10-10T08:00:00Z");
+        site.profiles.clear();
+        site.refreshed.clear();
+        SidgadWarmup.Result again = warmup(site, store).warm(Federation.FPP, 2026);
+
+        assertThat(again.sheets()).isZero();
+        assertThat(again.kept()).isEqualTo(first.sheets());
+        assertThat(again.profiles()).isZero();
+        assertThat(site.sheets.get()).isEqualTo(downloaded);   // no hubo descargas nuevas
+        // Sin actas nuevas, solo se renuevan los calendarios; no la tabla ni las estadísticas.
+        assertThat(site.refreshed).isNotEmpty().allSatisfy(k -> assertThat(k).startsWith("CALENDAR:"));
     }
 
     @Test
