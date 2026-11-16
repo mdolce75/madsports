@@ -37,6 +37,8 @@ class SidgadMonitorTest {
     static class FakeSite extends SidgadClient {
         String portal = Fixtures.read("portal.html");
         String calendarOf = Fixtures.read("cal_779.html");
+        String standingsOf = Fixtures.read("clasif_779.html");
+        String statsOf = Fixtures.read("stats_779.html");
         IntFunction<String> sheet = idp -> Fixtures.read("gr_26389.html");
 
         FakeSite() {
@@ -56,6 +58,16 @@ class SidgadMonitorTest {
         @Override
         public String calendar(int idc) {
             return calendarOf;
+        }
+
+        @Override
+        public String standings(int idc) {
+            return standingsOf;
+        }
+
+        @Override
+        public String playerStats(int idc) {
+            return statsOf;
         }
 
         @Override
@@ -156,6 +168,41 @@ class SidgadMonitorTest {
         // Un día bien después de otro bien no manda nada.
         m.check();
         verify(mailer, times(2)).send(any());
+    }
+
+    @Test
+    void aFormatChangeInTheStandingsFragmentIsAFailureAndAlerts() {
+        FakeSite site = new FakeSite();
+        site.standingsOf = "<html><body><table class='otro-formato'></table></body></html>";
+        SidgadMonitor m = monitor(site, "alertas@example.com");
+
+        SidgadMonitor.Outcome r = m.check();
+
+        assertThat(r.ok()).isFalse();
+        assertThat(r.detail()).contains("tabla de posiciones").contains("no trae equipos");
+        ArgumentCaptor<MailContent> mail = ArgumentCaptor.forClass(MailContent.class);
+        verify(mailer).send(mail.capture());
+        assertThat(mail.getValue().subject()).isEqualTo("RinkMetrics: Falla en la lectura de SIDGAD");
+    }
+
+    @Test
+    void aFormatChangeInTheStatsFragmentIsAFailureAndAlerts() {
+        FakeSite site = new FakeSite();
+        site.statsOf = "<html><body><table class='otro-formato'></table></body></html>";
+        SidgadMonitor m = monitor(site, "alertas@example.com");
+
+        SidgadMonitor.Outcome r = m.check();
+
+        assertThat(r.ok()).isFalse();
+        assertThat(r.detail()).contains("estadísticas por jugador").contains("vienen vacías");
+        verify(mailer).send(any());
+    }
+
+    @Test
+    void withTheCurrentFormatTheDetailNamesTheStandingsAndStats() {
+        SidgadMonitor.Outcome r = monitor(new FakeSite(), "").check();
+        assertThat(r.ok()).isTrue();
+        assertThat(r.detail()).contains("tabla con").contains("equipos").contains("en estadísticas");
     }
 
     @Test
