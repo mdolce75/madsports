@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 /**
  * Catálogo por año y federación ({@link Federation}: FPP = id_fede_3, AMP = id_fede_4), limitado a sus categorías
  * relevadas (de Infantil para arriba) y a los años ofrecidos ({@code madsports.sidgad.years}). El año se traduce al id de
- * temporada de SIDGAD con el selector de temporadas del portal (es el mismo para todas las federaciones).
+ * temporada de SIDGAD con {@link #seasons()} (es el mismo para todas las federaciones).
  */
 @Service
 public class CatalogService {
@@ -81,10 +81,24 @@ public class CatalogService {
 
     private final SidgadClient client;
     private final List<Integer> years;
+    /** Mapeo año → id de temporada de respaldo, cuando el portal ya no expone el selector ({@code madsports.sidgad.seasons}). */
+    private final Map<Integer, Integer> configuredSeasons;
 
     public CatalogService(SidgadClient client, SidgadProperties props) {
         this.client = client;
         this.years = List.copyOf(props.years());
+        this.configuredSeasons = props.seasons() == null ? Map.of() : Map.copyOf(props.seasons());
+    }
+
+    /**
+     * Año → id de temporada de SIDGAD. Base: el mapeo configurado ({@code madsports.sidgad.seasons}). Encima, el selector
+     * del portal si todavía lo trae (tiene prioridad, por si SIDGAD lo restituye). Hoy el portal no lo trae, así que
+     * queda el configurado.
+     */
+    public Map<Integer, Integer> seasons() {
+        Map<Integer, Integer> merged = new HashMap<>(configuredSeasons);
+        merged.putAll(SidgadParser.seasons(client.portal()));
+        return merged;
     }
 
     /** Años que se ofrecen (configuración {@code madsports.sidgad.years}). */
@@ -120,10 +134,10 @@ public class CatalogService {
 
     /**
      * Competiciones de la federación en el año, en sus categorías relevadas. El año se traduce al id de temporada de
-     * SIDGAD con el selector de temporadas del portal; si el año no existe ahí, no hay competiciones.
+     * SIDGAD con {@link #seasons()}; si el año no está mapeado, no hay competiciones.
      */
     public List<Competition> competitions(Federation f, int year) {
-        Integer seasonId = SidgadParser.seasons(client.portal()).get(year);
+        Integer seasonId = seasons().get(year);
         if (seasonId == null) {
             return List.of();
         }

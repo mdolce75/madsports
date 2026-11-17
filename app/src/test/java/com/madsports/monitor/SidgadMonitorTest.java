@@ -209,7 +209,7 @@ class SidgadMonitorTest {
     void portalWithoutSeasonsOrEmptyCalendarAreFailures() {
         FakeSite site = new FakeSite();
         site.portal = "<html><body>Mantenimiento</body></html>";
-        assertThat(monitor(site, "").check().detail()).startsWith("El portal no trae temporadas");
+        assertThat(monitor(site, "").check().detail()).startsWith("No hay temporada mapeada");
 
         FakeSite empty = new FakeSite();
         empty.calendarOf = "<html><body><table></table></body></html>";

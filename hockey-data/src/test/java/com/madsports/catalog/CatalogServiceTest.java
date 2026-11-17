@@ -141,4 +141,51 @@ class CatalogServiceTest {
         assertThatThrownBy(() -> catalog.checkYear(2019))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Año no ofrecido");
     }
+
+    /**
+     * SIDGAD rediseñó la home y el portal ya no trae el selector de temporadas: con el mapeo configurado
+     * ({@code madsports.sidgad.seasons}) igual se traduce el año y aparecen las competiciones.
+     */
+    @Test
+    void withoutThePortalSelectorTheConfiguredSeasonMapIsUsed() {
+        SidgadProperties props = new SidgadProperties("http://localhost/", "http://localhost", Duration.ZERO, 1,
+                Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(1), List.of(2026, 2027), 1,
+                java.util.Map.of(2026, 40));
+        SidgadClient portalRediseñada = new SidgadClient(props) {
+            @Override
+            public String portal() {
+                return "<html><body>PORTEÑA - Hockey Patines</body></html>";   // sin a.select_temporada
+            }
+
+            @Override
+            public String catalog() {
+                return Fixtures.read("catalogo.html");
+            }
+        };
+        CatalogService catalog = new CatalogService(portalRediseñada, props);
+
+        assertThat(catalog.seasons()).containsEntry(2026, 40);
+        assertThat(catalog.competitions(Federation.FPP, 2026)).hasSize(24);
+        assertThat(catalog.view(Federation.FPP, 2026).available()).isTrue();
+        assertThat(catalog.defaultYear()).isEqualTo(2026);
+    }
+
+    @Test
+    void thePortalSelectorStillWinsOverTheConfiguredMap() {
+        SidgadProperties props = new SidgadProperties("http://localhost/", "http://localhost", Duration.ZERO, 1,
+                Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(1), List.of(2026, 2027), 1,
+                java.util.Map.of(2026, 999));   // valor equivocado a propósito
+        SidgadClient client = new SidgadClient(props) {
+            @Override
+            public String portal() {
+                return Fixtures.read("portal.html");   // trae 2026 -> 40
+            }
+
+            @Override
+            public String catalog() {
+                return Fixtures.read("catalogo.html");
+            }
+        };
+        assertThat(new CatalogService(client, props).seasons()).containsEntry(2026, 40);
+    }
 }

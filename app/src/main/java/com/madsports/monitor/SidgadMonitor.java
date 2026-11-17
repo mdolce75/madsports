@@ -124,10 +124,11 @@ public class SidgadMonitor implements HealthIndicator {
 
     /** Recorre el camino de un informe; tira {@link IllegalStateException} con el paso que falló. */
     String review() {
-        Map<Integer, Integer> seasons = SidgadParser.seasons(client.portal());
+        Map<Integer, Integer> seasons = catalog.seasons();
         int year = catalog.years().stream().filter(seasons::containsKey).max(Comparator.naturalOrder())
-                .orElseThrow(() -> new IllegalStateException("El portal no trae temporadas de los años ofrecidos "
-                        + catalog.years() + " (leídas: " + seasons.keySet() + ")."));
+                .orElseThrow(() -> new IllegalStateException("No hay temporada mapeada para los años ofrecidos "
+                        + catalog.years() + " (ni en el portal ni en madsports.sidgad.seasons; mapeadas: "
+                        + seasons.keySet() + ")."));
         List<String> reviewed = new ArrayList<>();
         for (Federation f : federations) {
             reviewed.add(review(f, year) + synced(f));

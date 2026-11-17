@@ -98,6 +98,12 @@ madsports:
     # Federaciones (FPP, AMP) y sus categorías relevadas: ver Federation (de Infantil para arriba)
     # Años que se ofrecen; si SIDGAD todavía no tiene un año, la web lo informa
     years: [2026, 2027]
+    # Mapeo año -> id de temporada de SIDGAD. SIDGAD rediseñó la home del portal y dejó de exponer el selector de
+    # temporadas en el HTML (lo migró a su API con token), así que el mapeo ya no se puede leer de ahí y se configura
+    # acá. Al abrir una temporada nueva, agregar su año y su id (el id es el "temp_XX" del catálogo cap_ls_1.php). Si
+    # algún día el portal vuelve a traer el selector, ese tiene prioridad sobre esto.
+    seasons:
+      2026: 40
     # Sincronización de madrugada (SidgadWarmup, hora argentina; "-" la apaga): renueva tabla, calendario y
     # estadísticas de cada competición del año, baja las actas que faltan y las fichas de temporada de quienes jugaron
     # desde la pasada anterior; los informes leen esas copias. Siempre FPP y AMP, igual que en el chequeo diario.
