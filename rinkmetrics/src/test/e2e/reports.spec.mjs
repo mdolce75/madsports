@@ -58,8 +58,7 @@ async function api(page, {teamReady} = {}) {
             case "/api/catalog/players": return json([{id: 2, name: "Zoe Diaz"}, {id: 1, name: "Ana Perez"}]);
             case "/api/history": return json([]);
             case "/api/compare/periods": return json([{value: "OPENING", label: "Apertura"},
-                {value: "CLOSING", label: "Clausura"}, {value: "LAST_5", label: "Últimos 5 partidos"},
-                {value: "SEASON", label: "Año completo"}]);
+                {value: "CLOSING", label: "Clausura"}, {value: "SEASON", label: "Año completo"}]);
             case "/api/reports":
             case "/api/player/reports":
             case "/api/compare/reports":
@@ -107,9 +106,8 @@ test("cascada: federación, club, categoría y jugador; sin categoría no se gen
     expect(sent.pop()).toEqual({url: "/api/reports", body: {federation: "FPP", clubId: 74, category: "PRIMERA",
         branch: "MASCULINO", period: "SEASON", year: 2026}});
 
-    // Con un jugador, su informe (sin «Últimos 5 partidos»).
+    // Con un jugador, su informe de jugador.
     await page.locator("#jugador").selectOption("1");
-    await expect(page.locator("#last5")).toBeDisabled();
     await page.locator("#go").click();
     await expect(page.locator("#status")).toHaveText("Pedido recibido (prueba).");
     expect(sent.pop()).toEqual({url: "/api/player/reports", body: {federation: "FPP", clubId: 74,
@@ -162,8 +160,8 @@ test("comparar: solo equipos de la categoría elegida, de los clubes que la tien
     await page.locator("#equipo-b").selectOption("94|PRIMERA");
     await expect(page.locator("#go")).toBeEnabled();
 
-    // El período: los torneos de la categoría, los últimos 5 y el año completo (de entrada).
-    await expect(options(page, "periodo")).toHaveText(["Apertura", "Clausura", "Últimos 5 partidos", "Año completo"]);
+    // El período: los torneos de la categoría y el año completo (de entrada).
+    await expect(options(page, "periodo")).toHaveText(["Apertura", "Clausura", "Año completo"]);
     await expect(page.locator("#periodo")).toHaveValue("SEASON");
     await page.locator("#periodo").selectOption("CLOSING");
 
