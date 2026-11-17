@@ -264,9 +264,10 @@
         </table>
         <p class="muted" th:if="${gm != null and gm.hasData()}"
            th:text="|Goles importantes: sobre sus ${gm.withMinute} goles con minuto en actas completas. Por tiempo: ${gm.firstHalf} en el 1T y ${gm.secondHalf} en el 2T.|">Goles importantes</p></th:block>
-        <th:block th:with="sc=${b.scoring()}"><table class="kpis tres nobreak" th:if="${sc.hasData()}">
+        <th:block th:with="sc=${b.scoring()}"><table class="kpis cuatro nobreak" th:if="${sc.hasData()}">
             <tr>
-                <td><div class="kpi-v" th:text="${sc.longest}">0</div><div class="kpi-l">Partidos seguidos convirtiendo</div></td>
+                <td><div class="kpi-v" th:text="${sc.current}">0</div><div class="kpi-l">Racha actual (seguidos convirtiendo)</div></td>
+                <td><div class="kpi-v" th:text="${sc.longest}">0</div><div class="kpi-l">Racha más larga</div></td>
                 <td><div class="kpi-v" th:text="${sc.braces}">0</div><div class="kpi-l">Partidos con 2 goles</div></td>
                 <td><div class="kpi-v" th:text="${sc.hatTricks}">0</div><div class="kpi-l">Partidos con 3 goles o más</div></td>
             </tr>

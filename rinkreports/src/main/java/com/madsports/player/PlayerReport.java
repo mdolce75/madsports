@@ -188,11 +188,12 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
     /**
      * Sus rachas goleadoras.
      *
+     * @param current   partidos seguidos convirtiendo hasta su último partido (0 si no convirtió en el último)
      * @param longest   partidos seguidos convirtiendo (la más larga)
      * @param braces    partidos con exactamente 2 goles
      * @param hatTricks partidos con 3 goles o más
      */
-    public record ScoringStreaks(int longest, int braces, int hatTricks) {
+    public record ScoringStreaks(int current, int longest, int braces, int hatTricks) {
 
         static ScoringStreaks of(List<MatchRow> rows) {
             int best = 0;
@@ -206,7 +207,8 @@ public record PlayerReport(int playerId, String playerName, String fullName, Rep
                 braces += r.goals() == 2 ? 1 : 0;
                 hatTricks += r.goals() >= 3 ? 1 : 0;
             }
-            return new ScoringStreaks(best, braces, hatTricks);
+            // Los partidos ya vienen en orden de fecha: al terminar, run es la racha que sigue abierta en el último.
+            return new ScoringStreaks(run, best, braces, hatTricks);
         }
 
         public boolean hasData() {
