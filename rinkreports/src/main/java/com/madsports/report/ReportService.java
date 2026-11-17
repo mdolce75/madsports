@@ -74,7 +74,10 @@ public class ReportService {
                 return SEASON;
             }
             try {
-                return valueOf(value.trim().toUpperCase());
+                Scope scope = valueOf(value.trim().toUpperCase());
+                // La opción "últimos 5 partidos" se retiró de los informes: un pedido viejo o armado a mano con ese
+                // período se trata como temporada completa (el enum queda para ver los informes LAST_5 ya generados).
+                return scope == LAST_5 ? SEASON : scope;
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Período inválido: " + value + ". Válidos: "
                         + Arrays.toString(values()));

@@ -66,13 +66,13 @@ class ComparisonServiceTest {
     }
 
     @Test
-    void thePeriodsAreTheTournamentsOfTheCategoryTheLastFiveAndTheYear() {
+    void thePeriodsAreTheTournamentsOfTheCategoryAndTheYear() {
         List<ComparisonService.PeriodOption> periods = service.periods(Federation.FPP, 2026, "PRIMERA", "MASCULINO");
 
-        assertThat(periods).extracting(ComparisonService.PeriodOption::value).contains("CLOSING")
-                .endsWith("LAST_5", "SEASON");
-        assertThat(periods).extracting(ComparisonService.PeriodOption::label)
-                .endsWith("Últimos 5 partidos", "Año completo");
+        // La opción "últimos 5 partidos" se retiró: quedan los torneos y el año completo.
+        assertThat(periods).extracting(ComparisonService.PeriodOption::value).contains("CLOSING").endsWith("SEASON")
+                .doesNotContain("LAST_5");
+        assertThat(periods).extracting(ComparisonService.PeriodOption::label).endsWith("Año completo");
     }
 
     @Test

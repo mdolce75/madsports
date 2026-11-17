@@ -73,7 +73,6 @@ public class ComparisonService {
         catalog.competitions(fed, year).stream().filter(c -> category.equals(c.category()))
                 .map(Competition::tournament).filter(Objects::nonNull).distinct().sorted()
                 .forEach(t -> out.add(new PeriodOption(t.name(), t.label())));
-        out.add(new PeriodOption(Scope.LAST_5.name(), ComparisonCalc.period(Scope.LAST_5, year)));
         out.add(new PeriodOption(Scope.SEASON.name(), "Año completo"));
         return out;
     }
