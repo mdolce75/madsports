@@ -39,12 +39,15 @@ public class SidgadNormalizer {
     private final SidgadPlayerStatsRepository stats;
     private final SidgadPlayerSeasonMatchRepository seasons;
     private final Clock clock;
+    /** Respaldo año → id de temporada cuando el portal ya no trae el selector ({@code madsports.sidgad.seasons}). */
+    private final Map<Integer, Integer> configuredSeasons;
 
     public SidgadNormalizer(SidgadCompetitionRepository competitions, SidgadTeamRepository teams,
                             SidgadMatchRepository matches, SidgadPlayerRepository players,
                             SidgadMatchLineupRepository lineups, SidgadMatchEventRepository events,
                             SidgadStandingRepository standings, SidgadPlayerStatsRepository stats,
-                            SidgadPlayerSeasonMatchRepository seasons, Clock clock) {
+                            SidgadPlayerSeasonMatchRepository seasons, Clock clock,
+                            com.madsports.sidgad.SidgadProperties props) {
         this.competitions = competitions;
         this.teams = teams;
         this.matches = matches;
@@ -55,6 +58,7 @@ public class SidgadNormalizer {
         this.stats = stats;
         this.seasons = seasons;
         this.clock = clock;
+        this.configuredSeasons = props.seasons() == null ? Map.of() : Map.copyOf(props.seasons());
     }
 
     /**
@@ -66,6 +70,8 @@ public class SidgadNormalizer {
     @Transactional
     public int catalog(String catalog, String portal) {
         Map<Integer, Integer> yearOfSeason = new HashMap<>();
+        // El mapeo configurado como base; el selector del portal lo pisa si todavía lo trae.
+        configuredSeasons.forEach((year, season) -> yearOfSeason.put(season, year));
         if (portal != null && !portal.isBlank()) {
             SidgadParser.seasons(portal).forEach((year, season) -> yearOfSeason.put(season, year));
         }
