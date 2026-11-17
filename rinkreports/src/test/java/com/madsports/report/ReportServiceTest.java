@@ -42,7 +42,8 @@ class ReportServiceTest {
     @Test
     void periods() {
         assertThat(Scope.parse(null)).isEqualTo(Scope.SEASON);
-        assertThat(Scope.parse("last_5").lastMatches()).isEqualTo(5);
+        // La opción "últimos 5 partidos" se retiró: un pedido con ese período cae a temporada completa.
+        assertThat(Scope.parse("last_5")).isEqualTo(Scope.SEASON);
         assertThat(Scope.parse("OPENING").tournament()).isEqualTo(Competition.Tournament.OPENING);
         assertThat(Scope.SEASON.tournament()).isNull();
         assertThatThrownBy(() -> Scope.parse("PLAYOFF")).isInstanceOf(IllegalArgumentException.class)

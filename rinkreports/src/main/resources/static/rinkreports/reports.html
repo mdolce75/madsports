@@ -69,12 +69,9 @@
                     <option value="SEASON" selected>Temporada completa</option>
                     <option value="OPENING">Apertura</option>
                     <option value="CLOSING">Clausura</option>
-                    <option value="LAST_5" id="last5">Últimos 5 partidos</option>
                 </select>
             </div>
         </div>
-        <p class="hint" id="periodo-hint" hidden>Últimos 5 partidos de cada categoría: récord, goles, faltas y tarjetas de
-            esos partidos. Goleadores y pelota parada se muestran acumulados del torneo.</p>
 
         <button class="go" id="go" type="submit" disabled>Generar informe</button>
         <p class="hint" id="cupo"></p>
@@ -106,7 +103,7 @@
     // categoría elegida ya se puede generar (siempre una: el club completo no se ofrece, es demasiado costoso). Un
     // jugador, su informe de jugador; «Todos los jugadores», el del equipo.
     const BRANCH_LABEL = {MASCULINO: "Masculino", FEMENINO: "Femenino"};
-    const PERIOD = {SEASON: "Temporada completa", OPENING: "Apertura", CLOSING: "Clausura", LAST_5: "Últimos 5 partidos"};
+    const PERIOD = {SEASON: "Temporada completa", OPENING: "Apertura", CLOSING: "Clausura"};
     let catalog = null;
     // Cada carga lleva su número: si llega tarde (ya se eligió otra cosa), se descarta.
     let loading = 0;
@@ -131,21 +128,11 @@
             fill(sel, id === "jugador" ? "Todos los jugadores"
                 : id === "categoria" ? "Elegí el club" : "Elegí la federación", []);
         }
-        updatePeriod();
         updateGo();
     }
 
     function updateGo() {
         $("go").disabled = !$("categoria").value || $("categoria").disabled;
-    }
-
-    // El informe de jugador no tiene «Últimos 5 partidos».
-    function updatePeriod() {
-        const player = !!$("jugador").value;
-        $("last5").disabled = player;
-        $("last5").hidden = player;
-        if (player && $("periodo").value === "LAST_5") $("periodo").value = "SEASON";
-        $("periodo-hint").hidden = $("periodo").value !== "LAST_5";
     }
 
     async function getJson(url) {
@@ -268,8 +255,6 @@
     });
     $("club").addEventListener("change", () => { status(""); loadCategories(); });
     $("categoria").addEventListener("change", () => { status(""); loadPlayers(); });
-    $("jugador").addEventListener("change", updatePeriod);
-    $("periodo").addEventListener("change", updatePeriod);
 
     $("form").addEventListener("submit", async ev => {
         ev.preventDefault();

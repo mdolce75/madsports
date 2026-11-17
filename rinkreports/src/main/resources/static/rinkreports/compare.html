@@ -23,13 +23,13 @@
     <section class="hero">
         <span class="tag">Comparar equipos</span>
         <h1>Dos equipos,<br><em>cara a cara.</em></h1>
-        <p class="lead">Elegí la categoría, los dos equipos y el período (un torneo, los últimos 5 partidos o el año
+        <p class="lead">Elegí la categoría, los dos equipos y el período (un torneo o el año
             completo): el comparativo los pone lado a lado en ese período, con goles y tarjetas por tramo de 5' y los
             enfrentamientos entre los dos.</p>
     </section>
 
     <div class="board" aria-hidden="true">
-        <div><strong>1</strong><span>Período: un torneo, últimos 5 o el año</span></div>
+        <div><strong>1</strong><span>Período: un torneo o el año</span></div>
         <div><strong>5'</strong><span>Goles y tarjetas por tramo</span></div>
         <div><strong>VS</strong><span>Enfrentamientos entre los dos</span></div>
     </div>
@@ -63,8 +63,8 @@
             <label for="periodo"><span class="num"><i>6</i></span>Período</label>
             <select id="periodo" required disabled><option value="">Elegí la categoría</option></select>
         </div>
-        <p class="hint">Cada torneo que tenga la categoría en el año, los últimos 5 partidos de cada equipo o el año
-            completo. El informe muestra solo el período elegido.</p>
+        <p class="hint">Cada torneo que tenga la categoría en el año o el año completo. El informe muestra solo el
+            período elegido.</p>
 
         <button class="go" id="go" type="submit" disabled>Generar comparativo</button>
         <p class="hint" id="cupo"></p>
@@ -118,7 +118,7 @@
         $("go").disabled = !a || !b || a === b || !$("periodo").value;
     }
 
-    // Los períodos de la categoría en el año: sus torneos, los últimos 5 y el año completo (elegido de entrada).
+    // Los períodos de la categoría en el año: sus torneos y el año completo (elegido de entrada).
     let loadingPeriods = 0;
 
     async function periods() {
